@@ -1,15 +1,24 @@
-from .repositories import InventoryRepository
-from .models import StockLevel
+from django.core.cache import cache
+
+from .repositories import InventoryRepository, StockLevelRepository
 
 
 class InventoryService:
     def __init__(self):
         self.repo = InventoryRepository()
+        self.stock_repo = StockLevelRepository()
 
     def get_low_stock_items(self):
-        stock_levels = StockLevel.objects.select_related('sku__product').all()
-        return [
+        """Get low stock items (cached 5 min)."""
+        cache_key = 'low_stock_items'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        low_stock = self.stock_repo.get_low_stock()
+        result = [
             {
+                'id': sl.id,
                 'product_id': sl.sku.product.id,
                 'product_name': sl.sku.product.name,
                 'sku_code': sl.sku.code,
@@ -17,12 +26,22 @@ class InventoryService:
                 'reorder_point': sl.reorder_point,
                 'reorder_quantity': sl.reorder_quantity,
             }
-            for sl in stock_levels
-            if sl.quantity < sl.reorder_point
+            for sl in low_stock
         ]
+        cache.set(cache_key, result, timeout=300)
+        return result
 
-    def update_stock(self, sku_id: int, quantity: int):
-        stock, _ = StockLevel.objects.get_or_create(sku_id=sku_id)
-        stock.quantity = quantity
-        stock.save()
+    def adjust_stock(self, stock_level_id: int, quantity: int):
+        """Update stock quantity and invalidate cache."""
+        stock = self.stock_repo.update(stock_level_id, {'quantity': quantity})
+        cache.delete('low_stock_items')
         return stock
+
+    def create_product(self, data: dict):
+        return self.repo.create(data)
+
+    def update_product(self, product_id: int, data: dict):
+        return self.repo.update(product_id, data)
+
+    def delete_product(self, product_id: int):
+        return self.repo.delete(product_id)

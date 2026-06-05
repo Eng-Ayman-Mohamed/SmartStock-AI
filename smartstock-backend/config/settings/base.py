@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'django_filters',
     'apps.authentication',
     'apps.inventory',
     'apps.forecasting',
@@ -95,6 +96,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.StandardPagination',
     'PAGE_SIZE': 20,
     'EXCEPTION_HANDLER': 'config.exception_handler.custom_exception_handler',
@@ -109,7 +115,6 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_HTTP_ONLY': True,
     'AUTH_COOKIE_SAMESITE': 'Lax',
 }
-
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
