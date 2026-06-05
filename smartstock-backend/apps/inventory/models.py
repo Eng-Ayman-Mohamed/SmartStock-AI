@@ -31,3 +31,20 @@ class StockLevel(models.Model):
 
     def __str__(self):
         return f"{self.sku.code}: {self.quantity}"
+
+
+class SalesRecord(models.Model):
+    """Historical daily sales data per SKU — used as training data for Prophet."""
+    sku = models.ForeignKey(SKU, on_delete=models.CASCADE, related_name='sales_records')
+    date = models.DateField()
+    quantity_sold = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['sku', 'date']),
+        ]
+        unique_together = [('sku', 'date')]
+
+    def __str__(self):
+        return f"{self.sku.code} on {self.date}: {self.quantity_sold}"
