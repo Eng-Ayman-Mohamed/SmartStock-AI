@@ -7,3 +7,4 @@ celery>=5.3,<5.4
 redis>=5.0,<5.1
 python-dotenv>=1.0,<1.1
 gunicorn>=21.2,<21.3
+django-filter>=24.0,<25.0
