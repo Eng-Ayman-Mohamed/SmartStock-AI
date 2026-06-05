@@ -197,8 +197,8 @@ smartstock-backend/
 │   │   ├── permissions.py           # IsViewer, IsManager, IsAdmin classes
 │   │   └── urls.py
 │   │
-│   ├── inventory/                   # Products, SKUs, stock levels, sales records
-│   │   ├── models.py                # Product, SKU, StockLevel, SalesRecord models
+│   ├── inventory/                   # Products, SKUs, stock levels
+│   │   ├── models.py                # Product, SKU, StockLevel models
 │   │   ├── views.py                 # Thin views — calls services only
 │   │   ├── serializers.py
 │   │   ├── services.py              # Business logic (get_low_stock, update_stock)
