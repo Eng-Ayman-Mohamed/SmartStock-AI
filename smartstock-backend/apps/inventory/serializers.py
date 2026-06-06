@@ -1,7 +1,7 @@
 import re
 
 from rest_framework import serializers
-from .models import Product, SKU, StockLevel, SalesRecord
+from .models import Product, SKU, StockLevel, SalesRecord ,Supplier
 
 
 class SKUCompactSerializer(serializers.ModelSerializer):
@@ -70,3 +70,16 @@ class SalesRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = SalesRecord
         fields = '__all__'
+
+class SupplierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = '__all__'
+
+    def validate_contact_email(self, value):
+        return value.lower().strip()
+
+    def validate_default_lead_time_days(self, value):
+        if value < 1:
+            raise serializers.ValidationError('Lead time must be at least 1 day.')
+        return value
