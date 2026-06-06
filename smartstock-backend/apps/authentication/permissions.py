@@ -15,73 +15,63 @@ def _user_role_level(user):
 
 
 class IsViewerOrAbove(BasePermission):
+    message = 'Authentication required.'
+
     def has_permission(self, request, view):
-        return _user_role_level(request.user) >= 1
+        level = _user_role_level(request.user)
+        return level >= 1
 
 
 class IsManagerOrAbove(BasePermission):
+    message = 'Manager role or above required.'
+
     def has_permission(self, request, view):
-        return _user_role_level(request.user) >= 2
+        level = _user_role_level(request.user)
+        return level >= 2
 
 
 class IsAdminOnly(BasePermission):
+    message = 'Admin role required.'
+
     def has_permission(self, request, view):
-        return _user_role_level(request.user) >= 3
+        level = _user_role_level(request.user)
+        return level >= 3
 
 
 class ReadOnly(BasePermission):
+    message = 'Write operations require Manager role or above.'
+
     def has_permission(self, request, view):
-        return request.method in SAFE_METHODS and request.user.is_authenticated
+        if request.method in SAFE_METHODS:
+            return _user_role_level(request.user) >= 1
+        return _user_role_level(request.user) >= 2
 
 
 class IsViewer(BasePermission):
+    message = 'Viewer role required.'
+
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated
-            and request.user.role == "viewer"
+            and request.user.role == 'viewer'
         )
 
 
 class IsManager(BasePermission):
+    message = 'Manager role required.'
+
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated
-            and request.user.role == "manager"
+            and request.user.role == 'manager'
         )
 
 
 class IsAdmin(BasePermission):
+    message = 'Admin role required.'
+
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated
-            and request.user.role == "admin"
+            and request.user.role == 'admin'
         )
-
-
-class IsViewerOrAbove(BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role in ["viewer", "manager", "admin"]
-        )
-
-
-class IsManagerOrAbove(BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role in ["manager", "admin"]
-        )
-
-
-class IsAdminOnly(BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role == "admin"
-        )
-
-
-class ReadOnly(BasePermission):
-    def has_permission(self, request, view):
-        return request.method in SAFE_METHODS

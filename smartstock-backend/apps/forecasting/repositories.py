@@ -1,4 +1,6 @@
-from apps.inventory.models import SKU
+from django.db import transaction
+
+from apps.inventory.models import SKU, SalesRecord
 from core.base_repository import BaseRepository
 from .models import ForecastResult
 
@@ -11,7 +13,7 @@ class ForecastingRepository(BaseRepository):
         return ForecastResult.objects.all()
 
     def get_by_sku(self, sku_id: int):
-        return ForecastResult.objects.filter(sku_id=sku_id)
+        return ForecastResult.objects.filter(sku_id=sku_id).order_by('forecast_date')
 
     def create(self, data: dict):
         return ForecastResult.objects.create(**data)
@@ -24,4 +26,30 @@ class ForecastingRepository(BaseRepository):
         ForecastResult.objects.filter(pk=id).delete()
 
     def get_all_skus(self):
-        return SKU.objects.all()
+        return SKU.objects.select_related('product').all()
+
+    def get_sku(self, sku_id: int):
+        return SKU.objects.get(pk=sku_id)
+
+    def get_sales_for_sku(self, sku_id: int):
+        return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
+
+    @transaction.atomic
+    def upsert(
+        self, sku_id: int, forecast_date: str,
+        predicted_quantity: float, lower_bound: float = None,
+        upper_bound: float = None, mae: float = None,
+        mape: float = None, model_version: str = '',
+    ):
+        ForecastResult.objects.update_or_create(
+            sku_id=sku_id,
+            forecast_date=forecast_date,
+            defaults={
+                'predicted_quantity': predicted_quantity,
+                'lower_bound': lower_bound,
+                'upper_bound': upper_bound,
+                'mae': mae,
+                'mape': mape,
+                'model_version': model_version,
+            },
+        )
