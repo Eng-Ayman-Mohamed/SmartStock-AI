@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../lib/axios';
+import { devBypass } from '../features/auth/devBypass';
 
 export type Role = 'viewer' | 'manager' | 'admin';
 
@@ -34,6 +35,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   bootstrapSession: async () => {
     if (!get().isBootstrapping) return;
     set({ isBootstrapping: true });
+    if (devBypass.enabled) {
+      set({ user: null, token: null, isBootstrapping: false });
+      return;
+    }
     try {
       const { data: refresh } = await api.post<{ access: string }>(
         '/api/auth/refresh/',

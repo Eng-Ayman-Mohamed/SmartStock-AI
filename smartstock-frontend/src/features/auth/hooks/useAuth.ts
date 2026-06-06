@@ -3,7 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import * as authApi from '../api';
-import type { LoginPayload, RegisterPayload } from '../types';
+import { buildMockSession, devBypass } from '../devBypass';
+import type { LoginPayload, RegisterPayload, Role } from '../types';
 
 export type AuthError = { kind: 'invalid_credentials' | 'network' | 'unknown'; message: string };
 
@@ -39,7 +40,9 @@ export function useAuth() {
       setError(null);
       setIsSubmitting(true);
       try {
-        const res = await authApi.login(payload);
+        const res = devBypass.enabled
+          ? buildMockSession('viewer')
+          : await authApi.login(payload);
         setToken(res.access);
         setUser(res.user);
         navigate(redirectTo, { replace: true });
@@ -53,12 +56,30 @@ export function useAuth() {
     [navigate, setToken, setUser],
   );
 
+  const loginAsRole = useCallback(
+    async (role: Role, redirectTo: string = '/') => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const res = buildMockSession(role);
+        setToken(res.access);
+        setUser(res.user);
+        navigate(redirectTo, { replace: true });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [navigate, setToken, setUser],
+  );
+
   const register = useCallback(
     async (payload: RegisterPayload, redirectTo: string = '/') => {
       setError(null);
       setIsSubmitting(true);
       try {
-        const res = await authApi.register(payload);
+        const res = devBypass.enabled
+          ? buildMockSession('viewer')
+          : await authApi.register(payload);
         setToken(res.access);
         setUser(res.user);
         navigate(redirectTo, { replace: true });
@@ -91,6 +112,7 @@ export function useAuth() {
     isSubmitting,
     error,
     login,
+    loginAsRole,
     register,
     logout,
     clearError: () => setError(null),

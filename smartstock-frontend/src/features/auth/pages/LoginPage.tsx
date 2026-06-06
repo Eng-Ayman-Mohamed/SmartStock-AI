@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import LoginForm from '../components/LoginForm';
+import DemoLoginPanel from '../components/DemoLoginPanel';
+import { devBypass } from '../devBypass';
 
 export default function LoginPage() {
   return (
@@ -18,6 +20,7 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-6 sm:p-8">
+          {devBypass.enabled && <DemoLoginPanel />}
           <LoginForm />
         </div>
 
