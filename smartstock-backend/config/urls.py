@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.urls import path
+from apps.inventory.views import NLQueryEndpointView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -8,4 +10,5 @@ urlpatterns = [
     path('api/forecasting/', include('apps.forecasting.urls')),
     path('api/purchasing/', include('apps.purchasing.urls')),
     path('api/health/', include('apps.health.urls')),
+    path('api/ai/nlquery/', NLQueryEndpointView.as_view(), name='nl-query-endpoint'),
 ]
