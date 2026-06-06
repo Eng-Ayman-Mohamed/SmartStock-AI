@@ -8,7 +8,7 @@
 > **Team:** React-ive ITIIANS
 > **Members:** Ayman Mohamed · Omar Wael · Mostafa Abdel Aziz · Mostafa Abdel Qawy · Mawada Alexander
 > **Target Industry:** Logistics, E-commerce, and Retail Supply Chain
-> **Version:** 1.0 — June 2025
+> **Version:** 1.1 — June 2026
 
 ---
 
@@ -96,13 +96,13 @@ Incumbent systems are reactive — they rely on manual, periodic audits that fai
 
 | Layer                  | Technology                                   | Version | Purpose                                      |
 | ---------------------- | -------------------------------------------- | ------- | -------------------------------------------- |
-| **Frontend Framework** | React                                        | 18.x    | Component-based SPA                          |
+| **Frontend Framework** | React                                        | 19.x    | Component-based SPA                          |
 | **Frontend Language**  | TypeScript                                   | 5.x     | Type safety across all components            |
-| **Styling**            | Tailwind CSS                                 | 3.x     | Utility-first responsive design              |
+| **Styling**            | Tailwind CSS                                 | 4.x     | Utility-first responsive design              |
 | **Build Tool**         | Vite                                         | 5.x     | Fast dev server + production build           |
 | **Data Visualisation** | Recharts                                     | 2.x     | Inventory + forecast charts                  |
 | **Server State**       | TanStack React Query                         | 5.x     | API caching, refetch, stale-while-revalidate |
-| **Client State**       | Zustand                                      | 4.x     | Auth token, global UI state                  |
+| **Client State**       | Zustand                                      | 5.x     | Auth token, global UI state                  |
 | **HTTP Client**        | Axios                                        | 1.x     | API calls with interceptors for JWT          |
 | **Routing**            | React Router                                 | 6.x     | SPA navigation + protected routes            |
 | **Backend Framework**  | Django                                       | 5.x     | Feature-based REST API                       |

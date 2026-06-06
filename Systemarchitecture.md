@@ -5,7 +5,7 @@
 > **Project:** SmartStock AI — AI-powered Inventory Management Platform
 > **Team:** React-ive ITIIANS
 > **Stack:** React + TypeScript + Tailwind · Django REST + Python · PostgreSQL + Redis + pgvector · Docker + GitHub Actions
-> **Last Updated:** June 2025
+> **Last Updated:** June 2026
 
 ---
 
@@ -684,3 +684,5 @@ When in doubt: **add a service method**.
 ---
 
 _This document is a living reference. Update it when architectural decisions change. Do not let the code diverge from this document — they should always match._
+
+> **Last verified against current codebase:** June 2026
