@@ -15,7 +15,7 @@ def _user_role_level(user):
 
 
 class IsViewerOrAbove(BasePermission):
-    message = 'Authentication required.'
+    message = 'Viewer role or above required.'
 
     def has_permission(self, request, view):
         level = _user_role_level(request.user)
