@@ -51,8 +51,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(out.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         product = InventoryService().update_product(kwargs['pk'], serializer.validated_data)
         out = ProductSerializer(product, context={'request': request})
@@ -96,8 +97,9 @@ class SKUViewSet(viewsets.ModelViewSet):
         return Response(out.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         sku = SKUService().update_sku(kwargs['pk'], serializer.validated_data)
         out = SKUSerializer(sku, context={'request': request})
@@ -136,8 +138,9 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         return Response(out.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         stock = InventoryService().update_stock_level(kwargs['pk'], serializer.validated_data)
         out = StockLevelSerializer(stock, context={'request': request})
@@ -182,8 +185,9 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
         return Response(out.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         record = SalesRecordService().update_sales_record(kwargs['pk'], serializer.validated_data)
         out = SalesRecordSerializer(record, context={'request': request})
