@@ -13,7 +13,13 @@ from .serializers import (
 )
 from .services import InventoryService, SKUService, SalesRecordService
 
-
+import asyncio
+from concurrent.futures import TimeoutError
+from rest_framework.views import APIView
+from rest_framework import serializers
+from apps.forecasting.services import ForecastingService
+from apps.audit.models import AuditLog                 
+from ai.llm.chain import LLMChain, prompt_injection_filter, call_gpt4o_formatter
 class ProductViewSet(viewsets.ModelViewSet):
     """Full CRUD for products.
     
@@ -196,3 +202,125 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         SalesRecordService().delete_sales_record(kwargs['pk'])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --- 1. INPUT VALIDATION SERIALIZER ---
+class NLQuerySerializer(serializers.Serializer):
+    query = serializers.CharField(required=True)
+
+    def validate_query(self, value):
+        cleaned_value = value.strip()
+        if len(cleaned_value) < 3 or len(cleaned_value) > 500:
+            raise serializers.ValidationError(
+                "Query must be between 3 and 500 characters long."
+            )
+        return cleaned_value
+
+
+# --- 2. ORCHESTRATOR VIEW ENDPOINT ---
+class NLQueryEndpointView(APIView):
+    # Using your existing IsManagerOrAbove permission imported at the top of your file!
+    permission_classes = [IsManagerOrAbove]
+
+    def post(self, request, *args, **kwargs):
+        # Validate incoming body data
+        serializer = NLQuerySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"status": "error", "errors": serializer.errors},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+        
+        query = serializer.validated_data['query']
+
+        try:
+            # Enforce 10-second absolute execution timeout limit using asyncio
+            return asyncio.run(self.orchestrate_pipeline(query, request.user))
+            
+        except TimeoutError:
+            return Response(
+                {"status": "error", "message": "Gateway Timeout: AI pipeline took too long."},
+                status=status.HTTP_504_GATEWAY_TIMEOUT
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    async def orchestrate_pipeline(self, query, user):
+        return await asyncio.wait_for(self._run_pipeline(query, user), timeout=10.0)
+
+    async def _run_pipeline(self, query, user):
+        # Step A: Prompt Injection Check
+        is_safe = prompt_injection_filter(query)
+        if not is_safe:
+            # Create entry directly in your audit log app
+            AuditLog.objects.create(
+                user=user, 
+                action="PROMPT_INJECTION_ATTEMPT", 
+                details=f"Blocked query: {query}"
+            )
+            return Response(
+                {"status": "error", "message": "Malicious query detected."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Step B: LangChain Processing
+        try:
+            chain_instance = LLMChain()
+            chain_result = chain_instance.run(query)
+            
+            # Extracting information based on your structured JSON schema rules
+            action_type = chain_result.get("action")
+            filters = chain_result.get("filters", {})
+        except Exception as chain_err:
+            return Response(
+                {"status": "error", "message": f"LLM Chain failure: {str(chain_err)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Step C: Dispatch requests dynamically using your clean service architecture
+        raw_data = None
+        try:
+            # Instantiating services matching the design used in your ViewSets
+            if action_type == "get_inventory":
+                raw_data = InventoryService().get_all_products()  # Maps to your method
+            elif action_type == "get_sales_report":
+                raw_data = InventoryService().get_all_stock_levels() # Fallback or update to match your SalesService
+            elif action_type == "get_low_stock":
+                raw_data = InventoryService().get_low_stock_items() # Maps directly to your low_stock action
+            elif action_type == "forecast_demand":
+                raw_data = ForecastingService().get_forecast(filters)
+            elif action_type == "get_supplier_info":
+                # Maps to your inventory/purchasing service lookup method
+                raw_data = InventoryService().get_all_products()  
+            else:
+                return Response(
+                    {"status": "error", "message": f"Unknown action type: {action_type}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as db_err:
+            return Response(
+                {"status": "error", "message": f"Database execution error: {str(db_err)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Step D: Second LLM Call to convert data records into plain sentences
+        try:
+            natural_language_answer = call_gpt4o_formatter(original_query=query, raw_data=raw_data)
+        except Exception as format_err:
+            return Response(
+                {"status": "error", "message": "Failed to format natural language response."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Step E: Return structured backend JSON payload
+        return Response({
+            "status": "success",
+            "data": {
+                "answer": natural_language_answer,
+                "action": chain_result,
+                "raw_data": raw_data
+            }
+        }, status=status.HTTP_200_OK)
