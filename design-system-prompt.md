@@ -745,4 +745,4 @@ DO NOT use: gradients, drop shadows on cards, purple/teal gradient backgrounds, 
 ---
 
 _This document is the design source of truth for SmartStock AI._
-_Version 1.0 — June 2025 — React-ive ITIIANS_
+_Version 1.1 — June 2026 — React-ive ITIIANS_
