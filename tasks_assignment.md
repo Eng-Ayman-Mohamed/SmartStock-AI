@@ -1706,4 +1706,4 @@ If a task introduces a new architectural pattern, a new environment variable, or
 
 _This document is the authoritative task reference for SmartStock AI._
 _All agents must treat the architecture and security constraints as inviolable._
-_Last updated: June 2025 — React-ive ITIIANS_
+_Last updated: June 2026 — React-ive ITIIANS_
