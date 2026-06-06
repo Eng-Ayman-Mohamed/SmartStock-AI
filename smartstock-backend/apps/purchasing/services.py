@@ -24,5 +24,5 @@ class PurchasingService:
         if po.status != "draft":
             raise ValidationError("Only draft orders can be approved.")
         po = self.repo.update(po_id, {"status": "approved", "approved_by_id": user.id})
-        po_approved.send(sender=self, po=po, user=user)
+        po_approved.send(sender=self.__class__, po=po, user=user)
         return po

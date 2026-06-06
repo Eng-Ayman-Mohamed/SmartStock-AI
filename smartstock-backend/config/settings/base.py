@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     'apps.inventory',
     'apps.forecasting',
     'apps.purchasing',
-    'apps.audit',
+    'apps.audit.apps.AuditConfig',
 ]
 
 MIDDLEWARE = [

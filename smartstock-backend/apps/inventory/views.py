@@ -4,13 +4,14 @@ from rest_framework.response import Response
 
 from apps.authentication.permissions import IsViewerOrAbove, IsManagerOrAbove, IsAdminOnly, ReadOnly
 from .filters import ProductFilter, SKUFilter, StockLevelFilter
-from .models import Product, SKU, StockLevel, SalesRecord
+from .models import Product, SKU, StockLevel, SalesRecord ,Supplier
 from .serializers import (
     ProductSerializer,
     ProductWriteSerializer,
     SKUSerializer,
     StockLevelSerializer,
     SalesRecordSerializer,
+    SupplierSerializer,
 )
 from .services import InventoryService
 
@@ -108,3 +109,30 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return [IsViewerOrAbove()]
         return [IsManagerOrAbove()]
+
+
+class SupplierViewSet(viewsets.ModelViewSet):
+    """
+    Full CRUD for suppliers.
+    - Viewer+: list, retrieve
+    - Manager+: create, update
+    - Admin: delete (soft delete via is_active)
+    """
+    queryset = Supplier.objects.filter(is_active=True).order_by('name')
+    serializer_class = SupplierSerializer
+    search_fields = ['name', 'contact_email']
+    ordering_fields = ['name', 'created_at']
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsViewerOrAbove()]
+        if self.action in ('create', 'update', 'partial_update'):
+            return [IsManagerOrAbove()]
+        if self.action == 'destroy':
+            return [IsAdminOnly()]
+        return [IsManagerOrAbove()]
+
+    def perform_destroy(self, instance):
+        # Soft delete: matches blueprint's is_active pattern
+        instance.is_active = False
+        instance.save()
