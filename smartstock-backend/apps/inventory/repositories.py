@@ -7,10 +7,10 @@ class InventoryRepository(BaseRepository):
     """Repository for Product model."""
 
     def get_by_id(self, id: int):
-        return Product.objects.get(pk=id)
+        return Product.objects.prefetch_related('skus').get(pk=id)
 
     def get_all(self):
-        return Product.objects.all()
+        return Product.objects.prefetch_related('skus').all()
 
     def create(self, data: dict):
         return Product.objects.create(**data)
@@ -69,14 +69,27 @@ class StockLevelRepository(BaseRepository):
         )
 
 
-class SalesRecordRepository:
-    """Repository for SalesRecord model (no delete/update needed)."""
+class SalesRecordRepository(BaseRepository):
+    """Repository for SalesRecord model."""
 
-    def get_by_sku(self, sku_id: int):
-        return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
+    def get_by_id(self, id: int):
+        return SalesRecord.objects.select_related('sku__product').get(pk=id)
+
+    def get_all(self):
+        return SalesRecord.objects.select_related('sku__product').all()
 
     def create(self, data: dict):
         return SalesRecord.objects.create(**data)
+
+    def update(self, id: int, data: dict):
+        SalesRecord.objects.filter(pk=id).update(**data)
+        return self.get_by_id(id)
+
+    def delete(self, id: int):
+        SalesRecord.objects.filter(pk=id).delete()
+
+    def get_by_sku(self, sku_id: int):
+        return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
 
     def bulk_create(self, records: list):
         return SalesRecord.objects.bulk_create(

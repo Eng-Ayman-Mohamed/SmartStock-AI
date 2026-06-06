@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 from .models import Product, SKU, StockLevel, SalesRecord
 
@@ -22,6 +24,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ('id', 'name', 'description', 'category')
+        read_only_fields = ('id',)
 
     def validate_name(self, value):
         if len(value.strip()) < 2:
@@ -37,7 +40,6 @@ class SKUSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_code(self, value):
-        import re
         if not re.match(r'^[A-Za-z0-9-]+$', value):
             raise serializers.ValidationError('SKU code may only contain letters, digits, and hyphens.')
         return value.upper()

@@ -1,5 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { Bell, Menu } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import { useUIStore } from '../../store/uiStore';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -11,20 +13,26 @@ const pageTitles: Record<string, string> = {
   '/settings': 'Settings',
 };
 
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export default function Header() {
   const location = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const title = pageTitles[location.pathname] || 'SmartStock AI';
-
-  // Get sidebar toggle — we dispatch a custom event so Sidebar can listen
-  const handleToggle = () => {
-    window.dispatchEvent(new CustomEvent('toggle-sidebar'));
-  };
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b-[1px] border-gray-100 bg-white">
       <div className="flex items-center gap-2">
         <button
-          onClick={handleToggle}
+          onClick={toggleSidebar}
           className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
           aria-label="Toggle navigation"
         >
@@ -47,15 +55,17 @@ export default function Header() {
           <Bell className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-medium" aria-hidden="true">
-            JD
+        {user && (
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-medium" aria-hidden="true">
+              {getInitials(user.name)}
+            </div>
+            <span className="hidden sm:inline text-caption font-medium text-gray-600">{user.name}</span>
+            <span className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-sm text-caption font-medium bg-brand-50 text-brand-800 capitalize">
+              {user.role}
+            </span>
           </div>
-          <span className="hidden sm:inline text-caption font-medium text-gray-600">John Doe</span>
-          <span className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-sm text-caption font-medium bg-brand-50 text-brand-800">
-            Manager
-          </span>
-        </div>
+        )}
       </div>
     </header>
   );
