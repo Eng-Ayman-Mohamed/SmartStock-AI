@@ -40,8 +40,8 @@ export default function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
     <div
       className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm ${
         isCritical
-          ? 'bg-danger/10 border-danger/30 text-danger'
-          : 'bg-warning/10 border-warning/30 text-warning'
+          ? 'bg-red-50 border-red-200 text-red-800'
+          : 'bg-amber-50 border-amber-200 text-amber-800'
       }`}
     >
       {isCritical ? (
@@ -52,7 +52,7 @@ export default function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
       <p className="text-sm flex-1">{alert.message}</p>
       <button
         onClick={() => onDismiss(alert.sku.id)}
-        className="shrink-0 p-0.5 rounded hover:bg-surface-800/60 transition-colors"
+        className="shrink-0 p-0.5 rounded hover:bg-gray-800/60 transition-colors"
       >
         <X className="w-4 h-4" />
       </button>

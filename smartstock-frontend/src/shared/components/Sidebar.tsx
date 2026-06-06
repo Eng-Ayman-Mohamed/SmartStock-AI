@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -13,6 +13,7 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
+import { useUIStore } from '../../store/uiStore';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -26,21 +27,16 @@ const navItems = [
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setMobileOpen(prev => !prev);
-    window.addEventListener('toggle-sidebar', handler);
-    return () => window.removeEventListener('toggle-sidebar', handler);
-  }, []);
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
 
   return (
     <>
       {/* Mobile overlay */}
-      {mobileOpen && (
+      {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/30 md:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
@@ -48,14 +44,14 @@ export default function Sidebar() {
       {/* Mobile drawer */}
       <aside
         className={`fixed top-0 left-0 h-screen z-50 flex flex-col bg-white border-r-[1px] border-gray-100 transition-all duration-200 md:hidden w-[220px] ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label="Navigation sidebar"
       >
         <div className="flex items-center justify-between h-10 px-3 border-b-[1px] border-gray-100">
           <span className="text-card-title font-medium text-gray-900">SmartStock AI</span>
           <button
-            onClick={() => setMobileOpen(false)}
+            onClick={() => setSidebarOpen(false)}
             className="flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
             aria-label="Close navigation"
           >
@@ -68,7 +64,7 @@ export default function Sidebar() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 h-10 px-3 rounded-md text-body transition-colors duration-150 ${
                   isActive
@@ -84,7 +80,7 @@ export default function Sidebar() {
         </nav>
         <div className="px-2 py-2 border-t-[1px] border-gray-100">
           <button
-            onClick={() => setMobileOpen(false)}
+            onClick={() => setSidebarOpen(false)}
             className="w-full flex items-center gap-3 h-10 px-3 rounded-md text-body text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
           >
             <Settings className="w-[18px] h-[18px]" aria-hidden="true" />
