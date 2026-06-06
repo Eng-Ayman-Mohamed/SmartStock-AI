@@ -1,40 +1,59 @@
-import { AlertTriangle, AlertCircle, X } from 'lucide-react';
-import type { ForecastSKU } from '../hooks/useForecastDashboard';
+import { AlertTriangle, Info, X } from 'lucide-react';
+import type { SkuForecast } from '../hooks/useForecastDashboard';
 
-interface Alert {
+interface AlertInfo {
+  sku: SkuForecast;
   severity: 'critical' | 'warning';
-  daysUntil: number;
-  sku: ForecastSKU;
+  message: string;
 }
 
-export function classifyAlert(sku: ForecastSKU): Alert | null {
-  const firstBelowIdx = sku.days.findIndex(d => d.demand < sku.threshold);
-  if (firstBelowIdx === -1 && sku.current_stock >= sku.threshold) return null;
-  const critical = sku.current_stock < sku.threshold ||
-    sku.days.slice(0, 7).some(d => d.demand === 0);
-  return { severity: critical ? 'critical' : 'warning', daysUntil: firstBelowIdx, sku };
+export function classifyAlert(sku: SkuForecast): AlertInfo | null {
+  if (sku.current_stock <= sku.reorder_point) {
+    return {
+      sku,
+      severity: 'critical',
+      message: `${sku.product_name} stock is at ${sku.current_stock} — below reorder point of ${sku.reorder_point}. Consider ordering soon.`,
+    };
+  }
+
+  const ratio = sku.current_stock / sku.predicted_demand_30d;
+  if (ratio < 0.5) {
+    return {
+      sku,
+      severity: 'warning',
+      message: `${sku.product_name} has only ${sku.current_stock} units, which may be insufficient for the forecasted 30-day demand of ${sku.predicted_demand_30d.toFixed(0)}.`,
+    };
+  }
+
+  return null;
 }
 
-interface Props { alert: Alert; onDismiss: (id: string) => void; }
+interface AlertBannerProps {
+  alert: AlertInfo;
+  onDismiss: (id: string) => void;
+}
 
-export default function AlertBanner({ alert, onDismiss }: Props) {
-  const { severity, daysUntil, sku } = alert;
-  const isCritical = severity === 'critical';
+export default function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
+  const isCritical = alert.severity === 'critical';
+
   return (
-    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border text-sm
-      ${isCritical
-        ? 'bg-danger/10 border-danger/30 text-danger'
-        : 'bg-warning/10 border-warning/30 text-warning'}`}>
-      {isCritical
-        ? <AlertTriangle className="w-4 h-4 shrink-0" />
-        : <AlertCircle className="w-4 h-4 shrink-0" />}
-      <span className="flex-1 text-surface-200">
-        <span className="font-semibold">{sku.id}</span>{' · '}{sku.name}{' — '}
-        {isCritical
-          ? `stock (${sku.current_stock}) is below reorder threshold (${sku.threshold})`
-          : `demand dips below threshold in ${daysUntil} days`}
-      </span>
-      <button onClick={() => onDismiss(sku.id)} className="text-surface-500 hover:text-surface-300">
+    <div
+      className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm ${
+        isCritical
+          ? 'bg-red-50 border-red-200 text-red-800'
+          : 'bg-amber-50 border-amber-200 text-amber-800'
+      }`}
+    >
+      {isCritical ? (
+        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+      ) : (
+        <Info className="w-5 h-5 shrink-0 mt-0.5" />
+      )}
+      <p className="text-sm flex-1">{alert.message}</p>
+      <button
+        onClick={() => onDismiss(alert.sku.id)}
+        className="shrink-0 p-0.5 rounded hover:bg-gray-800/60 transition-colors"
+      >
         <X className="w-4 h-4" />
       </button>
     </div>

@@ -1,5 +1,5 @@
 import django_filters
-from .models import Product, SKU, StockLevel
+from .models import Product, SKU, StockLevel, SalesRecord
 
 
 class ProductFilter(django_filters.FilterSet):
@@ -30,3 +30,14 @@ class StockLevelFilter(django_filters.FilterSet):
     class Meta:
         model = StockLevel
         fields = ['quantity_lte', 'quantity_gte', 'product']
+
+
+class SalesRecordFilter(django_filters.FilterSet):
+    date_after = django_filters.DateFilter(field_name='date', lookup_expr='gte')
+    date_before = django_filters.DateFilter(field_name='date', lookup_expr='lte')
+    sku = django_filters.NumberFilter(field_name='sku_id')
+    quantity_sold_min = django_filters.NumberFilter(field_name='quantity_sold', lookup_expr='gte')
+
+    class Meta:
+        model = SalesRecord
+        fields = ['date_after', 'date_before', 'sku', 'quantity_sold_min']

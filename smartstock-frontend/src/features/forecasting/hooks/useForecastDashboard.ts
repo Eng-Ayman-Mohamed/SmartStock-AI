@@ -1,35 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../lib/axios';
 
-export interface ForecastDay {
-  date: string;
-  demand: number;
-}
-
-export interface ForecastSKU {
+export interface SkuForecast {
   id: string;
-  name: string;
-  threshold: number;
+  sku_code: string;
+  product_name: string;
   current_stock: number;
-  supplier: string;
-  lead_time_days: number;
-  days: ForecastDay[];
+  reorder_point: number;
+  forecast: { date: string; predicted_demand: number }[];
+  predicted_demand_30d: number;
+  confidence_score: number;
 }
 
-interface ForecastDashboardResponse {
-  skus: ForecastSKU[];
-}
-
-async function fetchForecastDashboard(): Promise<ForecastDashboardResponse> {
-  const { data } = await api.get<ForecastDashboardResponse>('/forecasting/dashboard/');
-  return data;
+interface ForecastDashboardData {
+  skus: SkuForecast[];
 }
 
 export function useForecastDashboard() {
-  return useQuery({
+  return useQuery<ForecastDashboardData>({
     queryKey: ['forecast-dashboard'],
-    queryFn: fetchForecastDashboard,
-    staleTime: 5 * 60 * 1000,  // 5 min — forecasts don't change by the second
+    queryFn: async () => {
+      const { data } = await api.get('/forecasting/dashboard/');
+      return data;
+    },
+    refetchOnWindowFocus: false,
     retry: 2,
   });
 }
