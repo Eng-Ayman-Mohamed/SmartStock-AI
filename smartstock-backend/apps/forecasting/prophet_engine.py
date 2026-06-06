@@ -32,9 +32,7 @@ def _compute_accuracy(df: pd.DataFrame, model) -> tuple:
     test = df.iloc[split_idx:]
     if len(test) < 1:
         return None, None
-    future = test[['ds']].copy()
-    future.rename(columns={'ds': 'ds'}, inplace=True)
-    forecast = model.predict(future)
+    forecast = model.predict(test[['ds']])
     y_true = test['y'].values
     y_pred = forecast['yhat'].values
     y_true = np.maximum(y_true, 0)

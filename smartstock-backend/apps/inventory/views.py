@@ -42,7 +42,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [IsManagerOrAbove()]
 
     def get_queryset(self):
-        return InventoryService().get_all_products()
+        return InventoryService().get_all_products(self.request)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
