@@ -48,3 +48,16 @@ class SalesRecord(models.Model):
 
     def __str__(self):
         return f"{self.sku.code} on {self.date}: {self.quantity_sold}"
+
+class Supplier(models.Model):
+    name = models.CharField(max_length=255)
+    contact_email = models.EmailField()
+    contact_phone = models.CharField(max_length=50, blank=True)
+    address = models.TextField(blank=True)
+    default_lead_time_days = models.IntegerField(default=7)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

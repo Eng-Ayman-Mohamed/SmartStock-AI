@@ -10,6 +10,7 @@ from .serializers import (
     SKUSerializer,
     StockLevelSerializer,
     SalesRecordSerializer,
+    SupplierSerializer,
 )
 from .services import InventoryService, SKUService, SalesRecordService
 
