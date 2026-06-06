@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { TrendingUp, RefreshCw } from 'lucide-react';
+import { RefreshCw, TrendingUp } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForecastDashboard } from '../hooks/useForecastDashboard';
 import SkuChart from '../components/SkuChart';
 import AlertBanner, { classifyAlert } from '../components/AlertBanner';
+import Card from '../../../shared/components/Card';
+import Button from '../../../shared/components/Button';
 
 export default function ForecastingPage() {
   const { data, isLoading, isError } = useForecastDashboard();
@@ -23,33 +25,29 @@ export default function ForecastingPage() {
     queryClient.invalidateQueries({ queryKey: ['forecast-dashboard'] });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-surface-100">Demand Forecasting</h2>
-          <p className="text-sm text-surface-400 mt-1">
-            AI-powered 30-day demand predictions per SKU
-          </p>
+          <h1 className="text-page-heading text-gray-900">Demand Forecasting</h1>
+          <p className="text-body text-gray-600 mt-1">AI-powered 30-day demand predictions per SKU</p>
         </div>
-        <button onClick={handleRefresh}
-          className="flex items-center gap-2 h-9 px-4 rounded-lg bg-gradient-to-r
-            from-emerald-600 to-emerald-500 text-sm font-medium text-white
-            shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all">
+        <Button variant="primary" size="md" onClick={handleRefresh}>
           <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
+        </Button>
       </div>
 
       {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.sort((a, b) => a!.severity === 'critical' ? -1 : 1).map(alert =>
-            <AlertBanner key={alert!.sku.id} alert={alert!} onDismiss={handleDismiss} />
-          )}
-        </div>
+        <Card title="Alerts" subtitle={`${alerts.length} items need attention`}>
+          <div className="space-y-2">
+            {alerts.sort((a) => a!.severity === 'critical' ? -1 : 1).map(alert =>
+              <AlertBanner key={alert!.sku.id} alert={alert!} onDismiss={handleDismiss} />
+            )}
+          </div>
+        </Card>
       )}
 
       {isError && (
-        <div className="rounded-lg border border-danger/30 bg-danger/10
-          px-4 py-3 text-sm text-danger">
+        <div className="rounded-md border-[0.5px] border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
           Failed to load forecast data from /api/forecasting/dashboard/
         </div>
       )}
@@ -57,10 +55,19 @@ export default function ForecastingPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {[1,2,3,4].map(i => (
-            <div key={i} className="h-72 rounded-2xl border border-surface-800/50
-              bg-surface-900/60 animate-pulse" />
+            <div key={i} className="h-72 rounded-md border-[0.5px] border-gray-100 bg-gray-100 animate-skeleton" />
           ))}
         </div>
+      ) : skus.length === 0 ? (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-16">
+            <TrendingUp className="w-12 h-12 text-gray-300 mb-4" />
+            <h3 className="text-card-title text-gray-700 mb-1">No forecast data</h3>
+            <p className="text-body text-gray-500 text-center max-w-[280px]">
+              Forecast data will appear here once the AI model completes its initial analysis.
+            </p>
+          </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {skus.map((sku, i) => (

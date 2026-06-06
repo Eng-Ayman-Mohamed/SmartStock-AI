@@ -4,13 +4,15 @@ import Header from './Header';
 
 export default function Layout() {
   return (
-    <div className="min-h-screen bg-surface-950">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="ml-64 transition-all duration-300">
+      <div className="flex-1 min-w-0 flex flex-col">
         <Header />
-        <main className="p-6">
-          <Outlet />
-        </main>
+        <div className="flex justify-center">
+          <main className="w-full max-w-[1440px] px-8 py-8">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );
