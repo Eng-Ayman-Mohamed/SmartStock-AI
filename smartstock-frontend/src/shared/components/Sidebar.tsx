@@ -5,69 +5,172 @@ import {
   Package,
   TrendingUp,
   ShoppingCart,
+  Bot,
+  Scan,
+  Settings,
   ChevronLeft,
   ChevronRight,
+  X,
   Sparkles,
 } from 'lucide-react';
+import { useUIStore } from '../../store/uiStore';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/inventory', icon: Package, label: 'Inventory' },
   { to: '/forecasting', icon: TrendingUp, label: 'Forecasting' },
   { to: '/purchasing', icon: ShoppingCart, label: 'Purchasing' },
+  { to: '/ai-assistant', icon: Bot, label: 'AI Assistant', accent: true },
+  { to: '/invoice-scan', icon: Scan, label: 'Invoice Scan' },
+  { to: '/settings', icon: Settings, label: 'Settings', bottom: true },
 ];
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
 
   return (
-    <aside
-      className={`fixed top-0 left-0 h-screen z-40 flex flex-col border-r border-surface-800/50 bg-surface-900/80 backdrop-blur-xl transition-all duration-300 ease-in-out ${
-        collapsed ? 'w-[72px]' : 'w-64'
-      }`}
-    >
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-surface-800/50">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg shadow-brand-500/25">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        {!collapsed && (
-          <span className="text-lg font-bold bg-gradient-to-r from-brand-300 to-brand-500 bg-clip-text text-transparent whitespace-nowrap">
-            SmartStock AI
-          </span>
-        )}
-      </div>
+    <>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
-                isActive
-                  ? 'bg-brand-500/15 text-brand-400 shadow-sm shadow-brand-500/10'
-                  : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/60'
-              }`
-            }
+      {/* Mobile drawer */}
+      <aside
+        className={`fixed top-0 left-0 h-screen z-50 flex flex-col bg-white border-r-[1px] border-gray-100 transition-all duration-200 md:hidden w-[220px] ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Navigation sidebar"
+      >
+        <div className="flex items-center justify-between h-10 px-3 border-b-[1px] border-gray-100">
+          <span className="text-card-title font-medium text-gray-900">SmartStock AI</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+            aria-label="Close navigation"
           >
-            <item.icon className="w-5 h-5 shrink-0" />
-            {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
-          </NavLink>
-        ))}
-      </nav>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 h-10 px-3 rounded-md text-body transition-colors duration-150 ${
+                  isActive
+                    ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                } ${item.accent && !collapsed ? '' : ''}`
+              }
+            >
+              <item.icon className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-600' : ''}`} aria-hidden="true" />
+              <span className="truncate">{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <div className="px-2 py-2 border-t-[1px] border-gray-100">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="w-full flex items-center gap-3 h-10 px-3 rounded-md text-body text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          >
+            <Settings className="w-[18px] h-[18px]" aria-hidden="true" />
+            <span>Settings</span>
+          </button>
+        </div>
+      </aside>
 
-      {/* Collapse Toggle */}
-      <div className="p-3 border-t border-surface-800/50">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-full h-9 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-800/60 transition-colors duration-200"
-        >
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </button>
-      </div>
-    </aside>
+      {/* Desktop sidebar */}
+      <aside
+        className={`hidden md:flex flex-col bg-white border-r-[1px] border-gray-100 shrink-0 min-h-screen sticky top-0 h-screen transition-all duration-200 ${
+          collapsed ? 'w-14' : 'w-[220px]'
+        }`}
+        aria-label="Navigation sidebar"
+      >
+        <div className={`flex items-center h-10 px-3 border-b-[1px] border-gray-100 ${collapsed ? 'justify-center' : 'gap-2'}`}>
+          <Sparkles className="w-4 h-4 text-brand-600 shrink-0" aria-hidden="true" />
+          {!collapsed && <span className="text-card-title font-medium text-gray-900 truncate">SmartStock AI</span>}
+        </div>
+
+        <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+          {/* Top items */}
+          <div className="space-y-0.5">
+            {navItems.filter(n => !n.bottom).map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={({ isActive }) =>
+                  `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
+                    collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
+                  } ${
+                    isActive
+                      ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`
+                }
+              >
+                <item.icon
+                  className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-600' : ''}`}
+                  aria-hidden="true"
+                />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+                {collapsed && (
+                  <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
+                    {item.label}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Bottom item (Settings) */}
+          <div className="pt-2 mt-2 border-t-[1px] border-gray-100">
+            {navItems.filter(n => n.bottom).map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
+                    collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
+                  } ${
+                    isActive
+                      ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`
+                }
+              >
+                <item.icon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+                {collapsed && (
+                  <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
+                    {item.label}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
+
+        <div className="px-2 py-2 border-t-[1px] border-gray-100">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex items-center justify-center w-full h-9 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors duration-150"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
