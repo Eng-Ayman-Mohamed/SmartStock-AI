@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, LogOut, Menu } from 'lucide-react';
+import { Bell, LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../features/auth/hooks/useAuth';
@@ -12,7 +12,8 @@ const pageTitles: Record<string, string> = {
   '/purchasing': 'Purchasing',
   '/ai-assistant': 'AI Assistant',
   '/invoice-scan': 'Invoice Scan',
-  '/settings': 'Settings',
+  '/settings': 'Team & permissions',
+  '/profile': 'Profile',
 };
 
 function getInitials(name: string): string {
@@ -37,6 +38,11 @@ export default function Header() {
     setMenuOpen(false);
     await logout();
     navigate('/login', { replace: true });
+  }
+
+  function onProfile() {
+    setMenuOpen(false);
+    navigate('/profile');
   }
 
   return (
@@ -82,9 +88,6 @@ export default function Header() {
                 {getInitials(user.name)}
               </div>
               <span className="hidden sm:inline text-caption font-medium text-gray-600">{user.name}</span>
-              <span className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-sm text-caption font-medium bg-brand-50 text-brand-800 capitalize">
-                {user.role}
-              </span>
             </button>
 
             {menuOpen && (
@@ -102,6 +105,15 @@ export default function Header() {
                     <p className="text-caption font-medium text-gray-900 truncate">{user.name}</p>
                     <p className="text-caption text-gray-600 truncate">{user.email}</p>
                   </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onProfile}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-caption text-gray-900 hover:bg-gray-50"
+                  >
+                    <UserIcon className="w-4 h-4" aria-hidden="true" />
+                    <span>Profile</span>
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
