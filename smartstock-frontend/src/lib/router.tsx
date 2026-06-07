@@ -26,11 +26,11 @@ export const routes: RouteObject[] = [
   {
     element: <ProtectedRoute />,
     children: [
-      { path: 'profile', element: <ProfilePage /> },
       {
         element: <Layout />,
         children: [
           { index: true, element: <DashboardPage /> },
+          { path: 'profile', element: <ProfilePage /> },
           { path: 'inventory', element: <InventoryPage /> },
           { path: 'forecasting', element: <ForecastingPage /> },
           { path: 'purchasing', element: <PurchasingPage /> },
@@ -42,6 +42,11 @@ export const routes: RouteObject[] = [
   },
   {
     element: <ProtectedRoute allowedRoles={['admin']} />,
-    children: [{ path: 'settings', element: <UsersSettingsPage /> }],
+    children: [
+      {
+        element: <Layout />,
+        children: [{ path: 'settings', element: <UsersSettingsPage /> }],
+      },
+    ],
   },
 ];
