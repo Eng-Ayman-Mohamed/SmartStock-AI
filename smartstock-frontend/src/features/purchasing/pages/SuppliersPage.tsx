@@ -128,7 +128,7 @@ export const SuppliersPage: React.FC = () => {
                 {/* 1. Filtered inventory navigation link */}
                 <button 
                   className="link-btn" 
-                  onClick={() => navigate(`/api/inventory?supplierId=${supplier.id}`)}
+                  onClick={() => navigate(`/inventory?supplierId=${supplier.id}`)}
                 >
                   View Products
                 </button>
