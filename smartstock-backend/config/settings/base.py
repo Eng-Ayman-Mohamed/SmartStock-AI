@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'apps.forecasting',
     'apps.purchasing',
     'apps.audit.apps.AuditConfig',
+    'apps.ingestion.apps.IngestionConfig',
 ]
 
 MIDDLEWARE = [
