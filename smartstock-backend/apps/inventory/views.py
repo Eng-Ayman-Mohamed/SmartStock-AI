@@ -14,12 +14,12 @@ from .serializers import (
 )
 from .services import InventoryService, SKUService, SalesRecordService
 
-import asyncio
-from concurrent.futures import TimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from rest_framework.views import APIView
 from rest_framework import serializers
 from apps.forecasting.services import ForecastingService
-from apps.audit.models import AuditLog                 
+from apps.audit.models import AuditLog
+from apps.inventory.models import Supplier
 from ai.llm.chain import LLMChain, prompt_injection_filter, call_gpt4o_formatter
 class ProductViewSet(viewsets.ModelViewSet):
     """Full CRUD for products.
@@ -220,11 +220,9 @@ class NLQuerySerializer(serializers.Serializer):
 
 # --- 2. ORCHESTRATOR VIEW ENDPOINT ---
 class NLQueryEndpointView(APIView):
-    # Using your existing IsManagerOrAbove permission imported at the top of your file!
     permission_classes = [IsManagerOrAbove]
 
     def post(self, request, *args, **kwargs):
-        # Validate incoming body data
         serializer = NLQuerySerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -235,9 +233,9 @@ class NLQueryEndpointView(APIView):
         query = serializer.validated_data['query']
 
         try:
-            # Enforce 10-second absolute execution timeout limit using asyncio
-            return asyncio.run(self.orchestrate_pipeline(query, request.user))
-            
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(self._run_pipeline, query, request.user)
+                return future.result(timeout=10)
         except TimeoutError:
             return Response(
                 {"status": "error", "message": "Gateway Timeout: AI pipeline took too long."},
@@ -249,18 +247,14 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    async def orchestrate_pipeline(self, query, user):
-        return await asyncio.wait_for(self._run_pipeline(query, user), timeout=10.0)
-
-    async def _run_pipeline(self, query, user):
+    def _run_pipeline(self, query, user):
         # Step A: Prompt Injection Check
         is_safe = prompt_injection_filter(query)
         if not is_safe:
-            # Create entry directly in your audit log app
             AuditLog.objects.create(
-                user=user, 
-                action="PROMPT_INJECTION_ATTEMPT", 
-                details=f"Blocked query: {query}"
+                user=user,
+                event="PROMPT_INJECTION_ATTEMPT",
+                data={"query": query},
             )
             return Response(
                 {"status": "error", "message": "Malicious query detected."},
@@ -281,21 +275,29 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Step C: Dispatch requests dynamically using your clean service architecture
+        # Step C: Dispatch to the correct service
         raw_data = None
         try:
-            # Instantiating services matching the design used in your ViewSets
             if action_type == "get_inventory":
-                raw_data = InventoryService().get_all_products()  # Maps to your method
+                raw_data = list(InventoryService().get_all_products().values(
+                    "id", "name", "category", "description"
+                ))
             elif action_type == "get_sales_report":
-                raw_data = InventoryService().get_all_stock_levels() # Fallback or update to match your SalesService
+                from .services import SalesRecordService
+                records = SalesRecordService().get_all_sales_records().values(
+                    "sku__code", "date", "quantity_sold"
+                )
+                raw_data = list(records)
             elif action_type == "get_low_stock":
-                raw_data = InventoryService().get_low_stock_items() # Maps directly to your low_stock action
+                raw_data = InventoryService().get_low_stock_items()
             elif action_type == "forecast_demand":
                 raw_data = ForecastingService().get_forecast(filters)
             elif action_type == "get_supplier_info":
-                # Maps to your inventory/purchasing service lookup method
-                raw_data = InventoryService().get_all_products()  
+                suppliers = Supplier.objects.values(
+                    "id", "name", "contact_email", "contact_phone",
+                    "default_lead_time_days", "is_active"
+                )
+                raw_data = list(suppliers)
             else:
                 return Response(
                     {"status": "error", "message": f"Unknown action type: {action_type}"},
