@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Env files - never commit real secrets/credentials.
+# The tracked template lives at .env.example.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

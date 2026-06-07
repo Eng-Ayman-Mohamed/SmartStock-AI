@@ -3,7 +3,8 @@ import { RefreshCw, TrendingUp } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForecastDashboard } from '../hooks/useForecastDashboard';
 import SkuChart from '../components/SkuChart';
-import AlertBanner, { classifyAlert } from '../components/AlertBanner';
+import AlertBanner from '../components/AlertBanner';
+import { classifyAlert } from '../utils/classifyAlert';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 
