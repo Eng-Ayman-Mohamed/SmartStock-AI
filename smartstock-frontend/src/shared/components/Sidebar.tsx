@@ -13,6 +13,7 @@ import {
   ChevronRight,
   X,
   Sparkles,
+  Users,
 } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
@@ -22,6 +23,7 @@ const mainNavItems = [
   { to: '/inventory', icon: Package, label: 'Inventory' },
   { to: '/forecasting', icon: TrendingUp, label: 'Forecasting' },
   { to: '/purchasing', icon: ShoppingCart, label: 'Purchasing' },
+  { to: '/suppliers', icon: Users, label: 'Suppliers' },
   { to: '/ai-assistant', icon: Bot, label: 'AI Assistant', accent: true },
   { to: '/invoice-scan', icon: Scan, label: 'Invoice Scan' },
 ];
