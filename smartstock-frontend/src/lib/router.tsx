@@ -6,7 +6,8 @@ import ForecastingPage from '../features/forecasting/pages/ForecastingPage';
 import PurchasingPage from '../features/purchasing/pages/PurchasingPage';
 import AIAssistantPage from '../features/ai-assistant/pages/AIAssistantPage';
 import InvoiceScanPage from '../features/invoice-scan/pages/InvoiceScanPage';
-import SettingsPage from '../features/settings/pages/SettingsPage';
+import UsersSettingsPage from '../features/users/pages/UsersSettingsPage';
+import ProfilePage from '../features/profile/pages/ProfilePage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import ForbiddenPage from '../features/auth/pages/ForbiddenPage';
@@ -25,6 +26,7 @@ export const routes: RouteObject[] = [
   {
     element: <ProtectedRoute />,
     children: [
+      { path: 'profile', element: <ProfilePage /> },
       {
         element: <Layout />,
         children: [
@@ -40,6 +42,6 @@ export const routes: RouteObject[] = [
   },
   {
     element: <ProtectedRoute allowedRoles={['admin']} />,
-    children: [{ path: 'settings', element: <SettingsPage /> }],
+    children: [{ path: 'settings', element: <UsersSettingsPage /> }],
   },
 ];
