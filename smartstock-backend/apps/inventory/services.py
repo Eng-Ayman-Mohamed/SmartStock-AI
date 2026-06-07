@@ -8,47 +8,25 @@ from .repositories import (
 )
 
 
-PRODUCT_LIST_CACHE_KEY = 'product_list_{page}_{search}_{ordering}'
-
-
 class InventoryService:
     def __init__(self):
         self.repo = InventoryRepository()
         self.stock_repo = StockLevelRepository()
 
-    def get_all_products(self, request=None):
-        if request:
-            page = request.query_params.get('page', '1')
-            search = request.query_params.get('search', '')
-            ordering = request.query_params.get('ordering', '-created_at')
-            cache_key = PRODUCT_LIST_CACHE_KEY.format(page=page, search=search, ordering=ordering)
-            cached = cache.get(cache_key)
-            if cached is not None:
-                return cached
-        result = self.repo.get_all()
-        if request:
-            cache.set(cache_key, list(result), timeout=300)
-        return result
+    def get_all_products(self):
+        return self.repo.get_all()
 
     def get_product(self, product_id: int):
         return self.repo.get_by_id(product_id)
 
     def create_product(self, data: dict):
-        result = self.repo.create(data)
-        self._invalidate_product_cache()
-        return result
+        return self.repo.create(data)
 
     def update_product(self, product_id: int, data: dict):
-        result = self.repo.update(product_id, data)
-        self._invalidate_product_cache()
-        return result
+        return self.repo.update(product_id, data)
 
     def delete_product(self, product_id: int):
         self.repo.delete(product_id)
-        self._invalidate_product_cache()
-
-    def _invalidate_product_cache(self):
-        cache.delete_pattern('product_list_*')
 
     def get_low_stock_items(self):
         """Get low stock items (cached 5 min)."""
