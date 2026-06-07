@@ -15,6 +15,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN DJANGO_SECRET_KEY=collectstatic-only-dummy \
+    DATABASE_URL=sqlite:///tmp/collectstatic.db \
+    python manage.py collectstatic --noinput
+
 RUN useradd -m -r appuser && chown -R appuser /app
 USER appuser
 
