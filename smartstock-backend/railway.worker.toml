@@ -1,0 +1,7 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "celery -A config worker --loglevel=info --concurrency=2"
+restartPolicyType = "ON_FAILURE"
