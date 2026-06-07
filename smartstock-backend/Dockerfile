@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 RUN DJANGO_SECRET_KEY=collectstatic-only-dummy \
-    DATABASE_URL=sqlite:///tmp/collectstatic.db \
+    DATABASE_URL=postgresql://build:build@localhost:5432/build \
     python manage.py collectstatic --noinput
 
 RUN useradd -m -r appuser && chown -R appuser /app
