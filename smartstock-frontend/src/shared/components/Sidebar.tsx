@@ -8,22 +8,55 @@ import {
   Bot,
   Scan,
   Settings,
+  User as UserIcon,
   ChevronLeft,
   ChevronRight,
   X,
   Sparkles,
 } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
+import { useAuthStore } from '../../store/authStore';
 
-const navItems = [
+const mainNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/inventory', icon: Package, label: 'Inventory' },
   { to: '/forecasting', icon: TrendingUp, label: 'Forecasting' },
   { to: '/purchasing', icon: ShoppingCart, label: 'Purchasing' },
   { to: '/ai-assistant', icon: Bot, label: 'AI Assistant', accent: true },
   { to: '/invoice-scan', icon: Scan, label: 'Invoice Scan' },
-  { to: '/settings', icon: Settings, label: 'Settings', bottom: true },
 ];
+
+function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: () => void }) {
+  const role = useAuthStore((s) => s.user?.role);
+  const isAdmin = role === 'admin';
+  const to = isAdmin ? '/settings' : '/profile';
+  const Icon = isAdmin ? Settings : UserIcon;
+  const label = isAdmin ? 'Team & permissions' : 'Profile';
+
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) =>
+        `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
+          collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
+        } ${
+          isActive
+            ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        }`
+      }
+    >
+      <Icon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
+      {!collapsed && <span className="truncate">{label}</span>}
+      {collapsed && (
+        <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
+          {label}
+        </span>
+      )}
+    </NavLink>
+  );
+}
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -59,7 +92,7 @@ export default function Sidebar() {
           </button>
         </div>
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => (
+          {mainNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -70,22 +103,19 @@ export default function Sidebar() {
                   isActive
                     ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                } ${item.accent && !collapsed ? '' : ''}`
+                }`
               }
             >
-              <item.icon className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-600' : ''}`} aria-hidden="true" />
+              <item.icon
+                className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-600' : ''}`}
+                aria-hidden="true"
+              />
               <span className="truncate">{item.label}</span>
             </NavLink>
           ))}
         </nav>
         <div className="px-2 py-2 border-t-[1px] border-gray-100">
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="w-full flex items-center gap-3 h-10 px-3 rounded-md text-body text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-          >
-            <Settings className="w-[18px] h-[18px]" aria-hidden="true" />
-            <span>Settings</span>
-          </button>
+          <BottomNavItem collapsed={false} onClick={() => setSidebarOpen(false)} />
         </div>
       </aside>
 
@@ -102,9 +132,8 @@ export default function Sidebar() {
         </div>
 
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-          {/* Top items */}
           <div className="space-y-0.5">
-            {navItems.filter(n => !n.bottom).map((item) => (
+            {mainNavItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -133,31 +162,8 @@ export default function Sidebar() {
             ))}
           </div>
 
-          {/* Bottom item (Settings) */}
           <div className="pt-2 mt-2 border-t-[1px] border-gray-100">
-            {navItems.filter(n => n.bottom).map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
-                    collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
-                  } ${
-                    isActive
-                      ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`
-                }
-              >
-                <item.icon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-                {collapsed && (
-                  <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
-                    {item.label}
-                  </span>
-                )}
-              </NavLink>
-            ))}
+            <BottomNavItem collapsed={collapsed} />
           </div>
         </nav>
 
