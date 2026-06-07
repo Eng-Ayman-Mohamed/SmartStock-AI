@@ -1,6 +1,7 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.cache import cache
 
 from apps.authentication.models import CustomUser
 from apps.inventory.models import Product
@@ -23,6 +24,9 @@ class InventoryEndpointTests(APITestCase):
             password='testpass123',
             role='admin',
         )
+
+    def setUp(self):
+        cache.clear()
 
     def _auth_header(self, user):
         refresh = RefreshToken.for_user(user)
