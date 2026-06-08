@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.core.cache import cache
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from apps.authentication.permissions import IsViewerOrAbove, IsManagerOrAbove, IsAdminOnly
 from .filters import ProductFilter, SKUFilter, StockLevelFilter, SalesRecordFilter
@@ -13,9 +14,10 @@ from .serializers import (
     StockLevelSerializer,
     SalesRecordSerializer,
     SupplierSerializer,
+    CategorySerializer,
 )
 from .services import InventoryService, SKUService, SalesRecordService
-from .models import Product, SKU, StockLevel, SalesRecord
+from .models import Product, SKU, StockLevel, SalesRecord, Supplier, Category
 
 import asyncio
 from concurrent.futures import TimeoutError
@@ -34,9 +36,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Product.objects.prefetch_related('skus').all().order_by('-created_at')
     filterset_class = ProductFilter
-    search_fields = ['name', 'category']
+    search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'category', 'created_at']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        from .repositories import InventoryRepository
+        include_inactive = self.request.query_params.get('include_inactive', '').lower() == 'true'
+        if include_inactive and self.request.user.role == 'admin':
+            return InventoryRepository().get_all_queryset(include_inactive=True)
+        return InventoryRepository().get_all_queryset(include_inactive=False)
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
@@ -52,9 +61,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             return [IsAdminOnly()]
         return [IsManagerOrAbove()]
 
-    def _invalidate_product_cache(self):
-        cache.delete_pattern('product_list_*')
-
     def list(self, request, *args, **kwargs):
         cache_key = f"product_list_{request.get_full_path()}"
         cached = cache.get(cache_key)
@@ -65,9 +71,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        product = InventoryService().create_product(serializer.validated_data)
-        self._invalidate_product_cache()
-        return product
+        return InventoryService().create_product(serializer.validated_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -77,11 +81,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(out.data, status=status.HTTP_201_CREATED)
 
     def perform_update(self, serializer):
-        product = InventoryService().update_product(
+        return InventoryService().update_product(
             serializer.instance.id, serializer.validated_data,
         )
-        self._invalidate_product_cache()
-        return product
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -94,7 +96,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         InventoryService().delete_product(instance.id)
-        self._invalidate_product_cache()
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -169,8 +170,8 @@ class StockLevelViewSet(viewsets.ModelViewSet):
     serializer_class = StockLevelSerializer
     filterset_class = StockLevelFilter
     search_fields = ['sku__code', 'sku__product__name']
-    ordering_fields = ['quantity', 'updated_at']
-    ordering = ['quantity']
+    ordering_fields = ['quantity_on_hand', 'updated_at']
+    ordering = ['quantity_on_hand']
     queryset = StockLevel.objects.select_related('sku__product').all().order_by('sku__code')
 
     def get_permissions(self):
@@ -215,6 +216,32 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         """Return items where quantity < reorder_point (cached)."""
         items = InventoryService().get_low_stock_items()
         return Response(items)
+
+    @action(detail=True, methods=['patch'], url_path='adjust-stock')
+    def adjust_stock(self, request, pk=None):
+        """Adjust stock quantity by a delta (positive or negative).
+        Request body: {"quantity_delta": int, "reason": str (optional)}
+        """
+        stock = self.get_object()
+        delta = request.data.get('quantity_delta')
+        if delta is None:
+            return Response(
+                {'quantity_delta': ['This field is required.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            delta = int(delta)
+        except (TypeError, ValueError):
+            return Response(
+                {'quantity_delta': ['Must be a valid integer.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reason = request.data.get('reason', '')
+        stock = InventoryService().adjust_stock(
+            stock.id, delta, user=request.user, reason=reason,
+        )
+        out = StockLevelSerializer(stock, context={'request': request})
+        return Response(out.data)
 
 
 class SalesRecordViewSet(viewsets.ModelViewSet):
@@ -269,6 +296,112 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class SupplierViewSet(viewsets.ModelViewSet):
+    """Full CRUD for suppliers.
+
+    - Viewer+: list, retrieve
+    - Manager+: create, update
+    - Admin: delete
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = SupplierSerializer
+    queryset = Supplier.objects.all().order_by('name')
+    search_fields = ['name', 'contact_email']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['name']
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsViewerOrAbove()]
+        if self.action in ('create', 'update', 'partial_update'):
+            return [IsManagerOrAbove()]
+        if self.action == 'destroy':
+            return [IsAdminOnly()]
+        return [IsManagerOrAbove()]
+
+    def perform_create(self, serializer):
+        return InventoryService().create_supplier(serializer.validated_data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        supplier = self.perform_create(serializer)
+        out = SupplierSerializer(supplier, context={'request': request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        return InventoryService().update_supplier(
+            serializer.instance.id, serializer.validated_data,
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        supplier = self.perform_update(serializer)
+        out = SupplierSerializer(supplier, context={'request': request})
+        return Response(out.data)
+
+    def perform_destroy(self, instance):
+        InventoryService().delete_supplier(instance.id)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only endpoints for categories.
+
+    - Viewer+: list, retrieve
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all().order_by('name')
+
+
+class StockAdjustView(APIView):
+    """Adjust stock quantity for a product.
+    PATCH /api/inventory/stock/{product_id}/
+    """
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
+
+    @extend_schema(
+        request=inline_serializer('StockAdjustInput', {
+            'quantity_delta': serializers.IntegerField(),
+            'reason': serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={200: StockLevelSerializer, 404: None, 422: None},
+    )
+    def patch(self, request, product_id):
+        stock = InventoryService().find_stock_for_product(product_id)
+        if stock is None:
+            return Response(
+                {'status': 'error', 'error': 'NotFound', 'message': 'Stock level not found for this product.', 'code': 404},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        delta = request.data.get('quantity_delta')
+        if delta is None:
+            return Response(
+                {'quantity_delta': ['This field is required.']},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        try:
+            delta = int(delta)
+        except (TypeError, ValueError):
+            return Response(
+                {'quantity_delta': ['Must be a valid integer.']},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        reason = request.data.get('reason', '')
+        stock = InventoryService().adjust_stock(stock.id, delta, user=request.user, reason=reason)
+        out = StockLevelSerializer(stock, context={'request': request})
+        return Response(out.data)
+
+
 # --- 1. INPUT VALIDATION SERIALIZER ---
 class NLQuerySerializer(serializers.Serializer):
     query = serializers.CharField(required=True)
@@ -284,9 +417,12 @@ class NLQuerySerializer(serializers.Serializer):
 
 # --- 2. ORCHESTRATOR VIEW ENDPOINT ---
 class NLQueryEndpointView(APIView):
-    # Using your existing IsManagerOrAbove permission imported at the top of your file!
     permission_classes = [IsManagerOrAbove]
 
+    @extend_schema(
+        request=NLQuerySerializer,
+        responses={200: None, 422: NLQuerySerializer, 504: None},
+    )
     def post(self, request, *args, **kwargs):
         # Validate incoming body data
         serializer = NLQuerySerializer(data=request.data)
