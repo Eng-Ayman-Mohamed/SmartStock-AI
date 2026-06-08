@@ -1,6 +1,13 @@
 import type { LoginResponse, Role, User } from './types';
 
-const FLAG = import.meta.env.VITE_AUTH_BYPASS;
+declare global {
+  interface Window {
+    __ENV__?: Record<string, string>;
+  }
+}
+
+const env = window.__ENV__ ?? {};
+const FLAG = env.VITE_AUTH_BYPASS ?? import.meta.env.VITE_AUTH_BYPASS ?? '';
 
 export const devBypass = {
   enabled: FLAG === 'true' || FLAG === '1',

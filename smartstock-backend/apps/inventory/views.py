@@ -1,6 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.core.cache import cache
+from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from apps.authentication.permissions import IsViewerOrAbove, IsManagerOrAbove, IsAdminOnly
 from .filters import ProductFilter, SKUFilter, StockLevelFilter, SalesRecordFilter
@@ -11,15 +14,17 @@ from .serializers import (
     StockLevelSerializer,
     SalesRecordSerializer,
     SupplierSerializer,
+    CategorySerializer,
 )
 from .services import InventoryService, SKUService, SalesRecordService
+from .models import Product, SKU, StockLevel, SalesRecord, Supplier, Category
 
-import asyncio
-from concurrent.futures import TimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from rest_framework.views import APIView
 from rest_framework import serializers
 from apps.forecasting.services import ForecastingService
-from apps.audit.models import AuditLog                 
+from apps.audit.models import AuditLog
+from apps.inventory.models import Supplier
 from ai.llm.chain import LLMChain, prompt_injection_filter, call_gpt4o_formatter
 class ProductViewSet(viewsets.ModelViewSet):
     """Full CRUD for products.
@@ -28,10 +33,19 @@ class ProductViewSet(viewsets.ModelViewSet):
     - Manager+: create, update
     - Admin: delete
     """
+    permission_classes = [IsAuthenticated]
+    queryset = Product.objects.prefetch_related('skus').all().order_by('-created_at')
     filterset_class = ProductFilter
-    search_fields = ['name', 'category']
+    search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'category', 'created_at']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        from .repositories import InventoryRepository
+        include_inactive = self.request.query_params.get('include_inactive', '').lower() == 'true'
+        if include_inactive and self.request.user.role == 'admin':
+            return InventoryRepository().get_all_queryset(include_inactive=True)
+        return InventoryRepository().get_all_queryset(include_inactive=False)
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
@@ -47,27 +61,45 @@ class ProductViewSet(viewsets.ModelViewSet):
             return [IsAdminOnly()]
         return [IsManagerOrAbove()]
 
-    def get_queryset(self):
-        return InventoryService().get_all_products(self.request)
+    def list(self, request, *args, **kwargs):
+        cache_key = f"product_list_{request.get_full_path()}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=300)
+        return response
+
+    def perform_create(self, serializer):
+        return InventoryService().create_product(serializer.validated_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        product = InventoryService().create_product(serializer.validated_data)
+        product = self.perform_create(serializer)
         out = ProductSerializer(product, context={'request': request})
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        return InventoryService().update_product(
+            serializer.instance.id, serializer.validated_data,
+        )
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        product = InventoryService().update_product(kwargs['pk'], serializer.validated_data)
+        product = self.perform_update(serializer)
         out = ProductSerializer(product, context={'request': request})
         return Response(out.data)
 
+    def perform_destroy(self, instance):
+        InventoryService().delete_product(instance.id)
+
     def destroy(self, request, *args, **kwargs):
-        InventoryService().delete_product(kwargs['pk'])
+        instance = self.get_object()
+        self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -78,11 +110,13 @@ class SKUViewSet(viewsets.ModelViewSet):
     - Manager+: create, update
     - Admin: delete
     """
+    permission_classes = [IsAuthenticated]
     serializer_class = SKUSerializer
     filterset_class = SKUFilter
     search_fields = ['code', 'product__name']
     ordering_fields = ['code', 'created_at']
     ordering = ['-created_at']
+    queryset = SKU.objects.select_related('product').all().order_by('-created_at')
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
@@ -93,27 +127,36 @@ class SKUViewSet(viewsets.ModelViewSet):
             return [IsAdminOnly()]
         return [IsManagerOrAbove()]
 
-    def get_queryset(self):
-        return SKUService().get_all_skus()
+    def perform_create(self, serializer):
+        return SKUService().create_sku(serializer.validated_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        sku = SKUService().create_sku(serializer.validated_data)
+        sku = self.perform_create(serializer)
         out = SKUSerializer(sku, context={'request': request})
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        return SKUService().update_sku(
+            serializer.instance.id, serializer.validated_data,
+        )
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        sku = SKUService().update_sku(kwargs['pk'], serializer.validated_data)
+        sku = self.perform_update(serializer)
         out = SKUSerializer(sku, context={'request': request})
         return Response(out.data)
 
+    def perform_destroy(self, instance):
+        SKUService().delete_sku(instance.id)
+
     def destroy(self, request, *args, **kwargs):
-        SKUService().delete_sku(kwargs['pk'])
+        instance = self.get_object()
+        self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -123,24 +166,34 @@ class StockLevelViewSet(viewsets.ModelViewSet):
     - Viewer+: list, retrieve, low_stock
     - Manager+: update stock quantities
     """
+    permission_classes = [IsAuthenticated]
     serializer_class = StockLevelSerializer
     filterset_class = StockLevelFilter
     search_fields = ['sku__code', 'sku__product__name']
-    ordering_fields = ['quantity', 'updated_at']
-    ordering = ['quantity']
+    ordering_fields = ['quantity_on_hand', 'updated_at']
+    ordering = ['quantity_on_hand']
+    queryset = StockLevel.objects.select_related('sku__product').all().order_by('sku__code')
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve', 'low_stock'):
             return [IsViewerOrAbove()]
         return [IsManagerOrAbove()]
 
-    def get_queryset(self):
-        return InventoryService().get_all_stock_levels()
+    def perform_create(self, serializer):
+        return InventoryService().create_stock_level(serializer.validated_data)
+
+    def perform_update(self, serializer):
+        return InventoryService().update_stock_level(
+            serializer.instance.id, serializer.validated_data,
+        )
+
+    def perform_destroy(self, instance):
+        InventoryService().delete_stock_level(instance.id)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        stock = InventoryService().create_stock_level(serializer.validated_data)
+        stock = self.perform_create(serializer)
         out = StockLevelSerializer(stock, context={'request': request})
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -149,12 +202,13 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        stock = InventoryService().update_stock_level(kwargs['pk'], serializer.validated_data)
+        stock = self.perform_update(serializer)
         out = StockLevelSerializer(stock, context={'request': request})
         return Response(out.data)
 
     def destroy(self, request, *args, **kwargs):
-        InventoryService().delete_stock_level(kwargs['pk'])
+        instance = self.get_object()
+        self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'])
@@ -163,6 +217,32 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         items = InventoryService().get_low_stock_items()
         return Response(items)
 
+    @action(detail=True, methods=['patch'], url_path='adjust-stock')
+    def adjust_stock(self, request, pk=None):
+        """Adjust stock quantity by a delta (positive or negative).
+        Request body: {"quantity_delta": int, "reason": str (optional)}
+        """
+        stock = self.get_object()
+        delta = request.data.get('quantity_delta')
+        if delta is None:
+            return Response(
+                {'quantity_delta': ['This field is required.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            delta = int(delta)
+        except (TypeError, ValueError):
+            return Response(
+                {'quantity_delta': ['Must be a valid integer.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reason = request.data.get('reason', '')
+        stock = InventoryService().adjust_stock(
+            stock.id, delta, user=request.user, reason=reason,
+        )
+        out = StockLevelSerializer(stock, context={'request': request})
+        return Response(out.data)
+
 
 class SalesRecordViewSet(viewsets.ModelViewSet):
     """CRUD for sales records (training data for Prophet).
@@ -170,24 +250,34 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
     - Viewer+: list, retrieve
     - Manager+: create, update, delete
     """
+    permission_classes = [IsAuthenticated]
     serializer_class = SalesRecordSerializer
     filterset_class = SalesRecordFilter
     search_fields = ['sku__code']
     ordering_fields = ['date', 'quantity_sold']
     ordering = ['-date']
+    queryset = SalesRecord.objects.select_related('sku__product').all().order_by('-date')
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [IsViewerOrAbove()]
         return [IsManagerOrAbove()]
 
-    def get_queryset(self):
-        return SalesRecordService().get_all_sales_records()
+    def perform_create(self, serializer):
+        return SalesRecordService().create_sales_record(serializer.validated_data)
+
+    def perform_update(self, serializer):
+        return SalesRecordService().update_sales_record(
+            serializer.instance.id, serializer.validated_data,
+        )
+
+    def perform_destroy(self, instance):
+        SalesRecordService().delete_sales_record(instance.id)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        record = SalesRecordService().create_sales_record(serializer.validated_data)
+        record = self.perform_create(serializer)
         out = SalesRecordSerializer(record, context={'request': request})
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -196,13 +286,120 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        record = SalesRecordService().update_sales_record(kwargs['pk'], serializer.validated_data)
+        record = self.perform_update(serializer)
         out = SalesRecordSerializer(record, context={'request': request})
         return Response(out.data)
 
     def destroy(self, request, *args, **kwargs):
-        SalesRecordService().delete_sales_record(kwargs['pk'])
+        instance = self.get_object()
+        self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SupplierViewSet(viewsets.ModelViewSet):
+    """Full CRUD for suppliers.
+
+    - Viewer+: list, retrieve
+    - Manager+: create, update
+    - Admin: delete
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = SupplierSerializer
+    queryset = Supplier.objects.all().order_by('name')
+    search_fields = ['name', 'contact_email']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['name']
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsViewerOrAbove()]
+        if self.action in ('create', 'update', 'partial_update'):
+            return [IsManagerOrAbove()]
+        if self.action == 'destroy':
+            return [IsAdminOnly()]
+        return [IsManagerOrAbove()]
+
+    def perform_create(self, serializer):
+        return InventoryService().create_supplier(serializer.validated_data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        supplier = self.perform_create(serializer)
+        out = SupplierSerializer(supplier, context={'request': request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        return InventoryService().update_supplier(
+            serializer.instance.id, serializer.validated_data,
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        supplier = self.perform_update(serializer)
+        out = SupplierSerializer(supplier, context={'request': request})
+        return Response(out.data)
+
+    def perform_destroy(self, instance):
+        InventoryService().delete_supplier(instance.id)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only endpoints for categories.
+
+    - Viewer+: list, retrieve
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all().order_by('name')
+
+
+class StockAdjustView(APIView):
+    """Adjust stock quantity for a product.
+    PATCH /api/inventory/stock/{product_id}/
+    """
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
+
+    @extend_schema(
+        request=inline_serializer('StockAdjustInput', {
+            'quantity_delta': serializers.IntegerField(),
+            'reason': serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={200: StockLevelSerializer, 404: None, 422: None},
+    )
+    def patch(self, request, product_id):
+        stock = InventoryService().find_stock_for_product(product_id)
+        if stock is None:
+            return Response(
+                {'status': 'error', 'error': 'NotFound', 'message': 'Stock level not found for this product.', 'code': 404},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        delta = request.data.get('quantity_delta')
+        if delta is None:
+            return Response(
+                {'quantity_delta': ['This field is required.']},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        try:
+            delta = int(delta)
+        except (TypeError, ValueError):
+            return Response(
+                {'quantity_delta': ['Must be a valid integer.']},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        reason = request.data.get('reason', '')
+        stock = InventoryService().adjust_stock(stock.id, delta, user=request.user, reason=reason)
+        out = StockLevelSerializer(stock, context={'request': request})
+        return Response(out.data)
 
 
 # --- 1. INPUT VALIDATION SERIALIZER ---
@@ -220,11 +417,13 @@ class NLQuerySerializer(serializers.Serializer):
 
 # --- 2. ORCHESTRATOR VIEW ENDPOINT ---
 class NLQueryEndpointView(APIView):
-    # Using your existing IsManagerOrAbove permission imported at the top of your file!
     permission_classes = [IsManagerOrAbove]
 
+    @extend_schema(
+        request=NLQuerySerializer,
+        responses={200: None, 422: NLQuerySerializer, 504: None},
+    )
     def post(self, request, *args, **kwargs):
-        # Validate incoming body data
         serializer = NLQuerySerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -235,9 +434,9 @@ class NLQueryEndpointView(APIView):
         query = serializer.validated_data['query']
 
         try:
-            # Enforce 10-second absolute execution timeout limit using asyncio
-            return asyncio.run(self.orchestrate_pipeline(query, request.user))
-            
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(self._run_pipeline, query, request.user)
+                return future.result(timeout=10)
         except TimeoutError:
             return Response(
                 {"status": "error", "message": "Gateway Timeout: AI pipeline took too long."},
@@ -249,18 +448,14 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    async def orchestrate_pipeline(self, query, user):
-        return await asyncio.wait_for(self._run_pipeline(query, user), timeout=10.0)
-
-    async def _run_pipeline(self, query, user):
+    def _run_pipeline(self, query, user):
         # Step A: Prompt Injection Check
         is_safe = prompt_injection_filter(query)
         if not is_safe:
-            # Create entry directly in your audit log app
             AuditLog.objects.create(
-                user=user, 
-                action="PROMPT_INJECTION_ATTEMPT", 
-                details=f"Blocked query: {query}"
+                user=user,
+                event="PROMPT_INJECTION_ATTEMPT",
+                data={"query": query},
             )
             return Response(
                 {"status": "error", "message": "Malicious query detected."},
@@ -281,21 +476,29 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Step C: Dispatch requests dynamically using your clean service architecture
+        # Step C: Dispatch to the correct service
         raw_data = None
         try:
-            # Instantiating services matching the design used in your ViewSets
             if action_type == "get_inventory":
-                raw_data = InventoryService().get_all_products()  # Maps to your method
+                raw_data = list(InventoryService().get_all_products().values(
+                    "id", "name", "category", "description"
+                ))
             elif action_type == "get_sales_report":
-                raw_data = InventoryService().get_all_stock_levels() # Fallback or update to match your SalesService
+                from .services import SalesRecordService
+                records = SalesRecordService().get_all_sales_records().values(
+                    "sku__code", "date", "quantity_sold"
+                )
+                raw_data = list(records)
             elif action_type == "get_low_stock":
-                raw_data = InventoryService().get_low_stock_items() # Maps directly to your low_stock action
+                raw_data = InventoryService().get_low_stock_items()
             elif action_type == "forecast_demand":
                 raw_data = ForecastingService().get_forecast(filters)
             elif action_type == "get_supplier_info":
-                # Maps to your inventory/purchasing service lookup method
-                raw_data = InventoryService().get_all_products()  
+                suppliers = Supplier.objects.values(
+                    "id", "name", "contact_email", "contact_phone",
+                    "default_lead_time_days", "is_active"
+                )
+                raw_data = list(suppliers)
             else:
                 return Response(
                     {"status": "error", "message": f"Unknown action type: {action_type}"},

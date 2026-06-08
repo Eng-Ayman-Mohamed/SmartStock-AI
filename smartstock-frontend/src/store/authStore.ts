@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     try {
       const { data: refresh } = await api.post<{ access: string }>(
-        '/api/auth/refresh/',
+        '/auth/refresh/',
         {},
         { withCredentials: true },
       );
@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ token: refresh.access });
         try {
           const { data: me } = await api.get<{ id: number; email: string; name: string; role: Role }>(
-            '/api/auth/me/',
+            '/auth/me/',
           );
           set({ user: me });
         } catch {

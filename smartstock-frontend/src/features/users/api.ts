@@ -2,21 +2,21 @@ import api from '../../lib/axios';
 import type { CreateUserPayload, UpdateUserRolePayload, User } from './types';
 
 export async function listUsers(): Promise<User[]> {
-  const { data } = await api.get<User[]>('/api/auth/users/');
+  const { data } = await api.get<User[]>('/auth/users/');
   return data;
 }
 
 export async function createUser(payload: CreateUserPayload): Promise<User> {
-  const { data } = await api.post<User>('/api/auth/users/', payload);
+  const { data } = await api.post<User>('/auth/users/', payload);
   return data;
 }
 
 export async function updateUserRole(id: number, payload: UpdateUserRolePayload): Promise<User> {
-  const { data } = await api.patch<User>(`/api/auth/users/${id}/`, payload);
+  const { data } = await api.patch<User>(`/auth/users/${id}/`, payload);
   return data;
 }
 
 export async function deactivateUser(id: number): Promise<User> {
-  const { data } = await api.delete<User>(`/api/auth/users/${id}/`);
+  const { data } = await api.delete<User>(`/auth/users/${id}/`);
   return data;
 }

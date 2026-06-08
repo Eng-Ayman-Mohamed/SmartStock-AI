@@ -24,7 +24,7 @@ class TriggerForecastView(APIView):
         sku_id = request.data.get('sku_id')
         service = ForecastingService()
         result = service.run_forecast(sku_id=sku_id)
-        return Response({"status": "forecast_triggered", "results": result})
+        return Response({"status": "forecast_triggered", "forecasts": result})
 
 
 class ForecastDashboardView(APIView):
@@ -50,7 +50,7 @@ class ForecastDashboardView(APIView):
                     "id": row.sku.code,
                     "name": row.sku.product.name,
                     "threshold": stock.reorder_point if stock else 0,
-                    "current_stock": stock.quantity if stock else 0,
+                    "current_stock": stock.quantity_on_hand if stock else 0,
                     "supplier": "—",
                     "lead_time_days": 0,
                     "mae": row.mae,
