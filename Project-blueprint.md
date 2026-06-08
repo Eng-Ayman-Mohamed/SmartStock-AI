@@ -699,16 +699,86 @@ export default api;
 
 ### 6.5 AI Endpoints
 
-| Method | Endpoint                             | Auth   | Role     | Description                              |
-| ------ | ------------------------------------ | ------ | -------- | ---------------------------------------- |
-| POST   | `/api/ai/nlquery/`                   | Bearer | Viewer+  | NL text → structured DB query + response |
-| POST   | `/api/ai/rag-query/`                 | Bearer | Viewer+  | NL query → RAG pipeline → cited response |
-| POST   | `/api/ai/invoice-scan/`              | Bearer | Manager+ | Image → GPT-4o Vision → extracted JSON   |
-| POST   | `/api/ai/invoice-scan/{id}/confirm/` | Bearer | Manager+ | Confirm extraction → DB update           |
-| POST   | `/api/ai/invoice-scan/{id}/reject/`  | Bearer | Manager+ | Reject extraction                        |
-| POST   | `/api/ai/transcribe/`                | Bearer | Viewer+  | Audio → Whisper → transcribed text       |
+| Method | Endpoint                             | Auth   | Role     | Description                                              |
+| ------ | ------------------------------------ | ------ | -------- | -------------------------------------------------------- |
+| POST   | `/api/ai/chat/`                      | Bearer | Viewer+  | Unified chat — routes to NL Query or RAG via mode param  |
+| POST   | `/api/ai/nlquery/`                   | Bearer | Viewer+  | Legacy: NL text → structured DB query + response         |
+| POST   | `/api/ai/rag-query/`                 | Bearer | Viewer+  | Legacy: NL query → RAG pipeline → cited response         |
+| POST   | `/api/ai/invoice-scan/`              | Bearer | Manager+ | Image → GPT-4o Vision → extracted JSON                   |
+| POST   | `/api/ai/invoice-scan/{id}/confirm/` | Bearer | Manager+ | Confirm extraction → DB update                           |
+| POST   | `/api/ai/invoice-scan/{id}/reject/`  | Bearer | Manager+ | Reject extraction                                        |
+| POST   | `/api/ai/transcribe/`                | Bearer | Viewer+  | Audio → Whisper → transcribed text                       |
+
+#### Chat Endpoint Mode Parameter
+
+| Mode | Behavior | UI Label |
+|------|----------|----------|
+| `auto` (default) | GPT-4o-mini classifies intent, routes automatically | "Ask AI" |
+| `nl_query` | Forces NL Query engine (live DB data) | "NL Query" |
+| `rag` | Forces RAG engine (document search) | "Search Documents" |
+
+**Request:**
+
+```json
+POST /api/ai/chat/
+{
+  "query": "Show me products with stock below 10",
+  "mode": "auto"  // optional, defaults to "auto"
+}
+```
+
+**Response (auto mode — routed to NL Query):**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "engine": "nl_query",
+    "mode": "auto",
+    "answer": "We have 3 products below 10 units...",
+    "action": { "action": "get_low_stock", "conditions": [...] },
+    "raw_data": { "products": [...] }
+  }
+}
+```
+
+**Response (auto mode — routed to RAG):**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "engine": "rag",
+    "mode": "auto",
+    "answer": "According to our supplier policy...",
+    "sources": [
+      { "document": "supplier_policy.pdf", "page": 3 }
+    ]
+  }
+}
+```
+
+**Response (forced mode):**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "engine": "rag",
+    "mode": "rag",
+    "answer": "The return policy states...",
+    "sources": [
+      { "document": "return_policy.pdf", "page": 1 }
+    ]
+  }
+}
+```
 
 ### 6.6 NL Query JSON Schema (Function Calling)
+
+The NL Query schema uses a condition-based approach that supports complex queries
+with multiple filters, sorting, and limiting. This replaces the previous fixed-filter
+schema which could not handle queries like "products with stock below 10 that start with a".
 
 ```json
 {
@@ -721,23 +791,115 @@ export default api;
         "get_sales_report",
         "get_low_stock",
         "forecast_demand",
-        "get_supplier_info"
+        "get_supplier_info",
+        "get_total_value",
+        "get_top_products"
       ]
     },
-    "filters": {
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string" },
+          "op": {
+            "type": "string",
+            "enum": [
+              "eq", "neq",
+              "lt", "lte", "gt", "gte",
+              "contains", "starts_with", "ends_with",
+              "in", "not_in"
+            ]
+          },
+          "value": {}
+        },
+        "required": ["field", "op", "value"]
+      }
+    },
+    "sort": {
       "type": "object",
       "properties": {
-        "product_name": { "type": "string" },
-        "sku_code": { "type": "string" },
-        "date_from": { "type": "string", "format": "date" },
-        "date_to": { "type": "string", "format": "date" },
-        "stock_below": { "type": "number" },
-        "supplier_name": { "type": "string" }
+        "field": { "type": "string" },
+        "order": { "type": "string", "enum": ["asc", "desc"] }
       }
-    }
+    },
+    "limit": { "type": "integer", "maximum": 100 },
+    "offset": { "type": "integer" }
   },
   "required": ["action"]
 }
+```
+
+#### Operator Reference
+
+| Operator | Description | Example Value | SQL Equivalent |
+|----------|-------------|---------------|----------------|
+| `eq` | Equals | `"Widget-001"` | `= 'Widget-001'` |
+| `neq` | Not equals | `"Widget-001"` | `!= 'Widget-001'` |
+| `lt` | Less than | `10` | `< 10` |
+| `lte` | Less than or equal | `10` | `<= 10` |
+| `gt` | Greater than | `50` | `> 50` |
+| `gte` | Greater than or equal | `50` | `>= 50` |
+| `contains` | Contains (case-insensitive) | `"widget"` | `ILIKE '%widget%'` |
+| `starts_with` | Starts with (case-insensitive) | `"a"` | `ILIKE 'a%'` |
+| `ends_with` | Ends with (case-insensitive) | `"x"` | `ILIKE '%x'` |
+| `in` | In list | `["X", "Y"]` | `IN ('X', 'Y')` |
+| `not_in` | Not in list | `["X", "Y"]` | `NOT IN ('X', 'Y')` |
+
+#### Allowed Fields Per Action
+
+| Action | Allowed Condition Fields |
+|--------|--------------------------|
+| `get_inventory` | `product_name`, `sku_code`, `category`, `supplier_name`, `quantity_available`, `quantity_on_hand`, `quantity_reserved`, `unit_price` |
+| `get_low_stock` | `product_name`, `sku_code`, `supplier_name`, `quantity_available`, `reorder_point` |
+| `get_sales_report` | `product_name`, `sku_code`, `date_from`, `date_to`, `quantity_sold`, `unit_price_at_sale` |
+| `forecast_demand` | `product_name`, `sku_code`, `predicted_quantity`, `forecast_date` |
+| `get_supplier_info` | `supplier_name`, `product_name`, `lead_time_days` |
+| `get_total_value` | `category`, `supplier_name` |
+| `get_top_products` | `sort_by` (revenue, quantity, margin), `date_from`, `date_to` |
+
+#### Few-Shot Examples (Updated)
+
+```
+Example 1 (simple):
+User: Show items with stock below 5
+Output: {"action": "get_low_stock", "conditions": [{"field": "quantity_available", "op": "lt", "value": 5}]}
+
+Example 2 (complex — multiple conditions):
+User: Show me products with stock below 10 that starts with letter a
+Output: {"action": "get_inventory", "conditions": [{"field": "quantity_available", "op": "lt", "value": 10}, {"field": "product_name", "op": "starts_with", "value": "a"}], "sort": {"field": "product_name", "order": "asc"}}
+
+Example 3 (date range):
+User: Sales report from Jan 1 to Jan 15
+Output: {"action": "get_sales_report", "conditions": [{"field": "date_from", "op": "gte", "value": "2026-01-01"}, {"field": "date_to", "op": "lte", "value": "2026-01-15"}]}
+
+Example 4 (aggregation):
+User: What's our total inventory value?
+Output: {"action": "get_total_value", "conditions": []}
+
+Example 5 (top products with limit):
+User: Top 5 best-selling products this month
+Output: {"action": "get_top_products", "conditions": [{"field": "date_from", "op": "gte", "value": "2026-06-01"}], "sort": {"field": "quantity_sold", "order": "desc"}, "limit": 5}
+
+Example 6 (supplier filter):
+User: Who supplies Widget-001?
+Output: {"action": "get_supplier_info", "conditions": [{"field": "sku_code", "op": "eq", "value": "Widget-001"}]}
+
+Example 7 (list filter):
+User: Show me products from Supplier A or Supplier B
+Output: {"action": "get_inventory", "conditions": [{"field": "supplier_name", "op": "in", "value": ["Supplier A", "Supplier B"]}]}
+
+Example 8 (contains):
+User: Find products with "pro" in the name
+Output: {"action": "get_inventory", "conditions": [{"field": "product_name", "op": "contains", "value": "pro"}], "sort": {"field": "product_name", "order": "asc"}}
+
+Example 9 (pagination):
+User: Show me the next 20 products
+Output: {"action": "get_inventory", "conditions": [], "limit": 20, "offset": 20}
+
+Example 10 (combined filters + sort):
+User: Low stock items from Acme sorted by quantity ascending
+Output: {"action": "get_low_stock", "conditions": [{"field": "supplier_name", "op": "eq", "value": "Acme"}], "sort": {"field": "quantity_available", "order": "asc"}}
 ```
 
 ### 6.7 Standard API Response Shape
@@ -772,59 +934,119 @@ Your role:
 - Translate user natural language queries into structured database queries.
 - Only operate within inventory, suppliers, sales, and purchase orders.
 - Never generate free-form SQL.
-- Always respond using the provided JSON schema.
+- Always respond using the provided JSON schema with conditions array.
+- Support complex queries with multiple conditions, sorting, and pagination.
 
 If the request is outside inventory scope, respond:
 {"error": "Out of scope request"}
 
-Few-shot examples (all 5 must be embedded in this prompt):
+Few-shot examples (all 10 must be embedded in this prompt):
 
-Example 1:
+Example 1 (simple threshold):
 User: Show items with stock below 5
-Output: {"action": "get_low_stock", "filters": {"stock_below": 5}}
+Output: {"action": "get_low_stock", "conditions": [{"field": "quantity_available", "op": "lt", "value": 5}]}
 
-Example 2:
+Example 2 (complex — multiple conditions):
+User: Show me products with stock below 10 that starts with letter a
+Output: {"action": "get_inventory", "conditions": [{"field": "quantity_available", "op": "lt", "value": 10}, {"field": "product_name", "op": "starts_with", "value": "a"}], "sort": {"field": "product_name", "order": "asc"}}
+
+Example 3 (date range):
 User: Sales report from Jan 1 to Jan 15
-Output: {"action": "get_sales_report", "filters": {"date_from": "2026-01-01", "date_to": "2026-01-15"}}
+Output: {"action": "get_sales_report", "conditions": [{"field": "date_from", "op": "gte", "value": "2026-01-01"}, {"field": "date_to", "op": "lte", "value": "2026-01-15"}]}
 
-Example 3:
-User: Forecast demand for Product X next month
-Output: {"action": "forecast_demand", "filters": {"product_name": "Product X"}}
+Example 4 (aggregation):
+User: What's our total inventory value?
+Output: {"action": "get_total_value", "conditions": []}
 
-Example 4:
+Example 5 (top products with limit):
+User: Top 5 best-selling products this month
+Output: {"action": "get_top_products", "conditions": [{"field": "date_from", "op": "gte", "value": "2026-06-01"}], "sort": {"field": "quantity_sold", "order": "desc"}, "limit": 5}
+
+Example 6 (exact match):
 User: How many units of SKU ABC-001 do we have?
-Output: {"action": "get_inventory", "filters": {"sku_code": "ABC-001"}}
+Output: {"action": "get_inventory", "conditions": [{"field": "sku_code", "op": "eq", "value": "ABC-001"}]}
 
-Example 5:
+Example 7 (list filter):
+User: Show me products from Supplier A or Supplier B
+Output: {"action": "get_inventory", "conditions": [{"field": "supplier_name", "op": "in", "value": ["Supplier A", "Supplier B"]}]}
+
+Example 8 (contains search):
+User: Find products with "pro" in the name
+Output: {"action": "get_inventory", "conditions": [{"field": "product_name", "op": "contains", "value": "pro"}], "sort": {"field": "product_name", "order": "asc"}}
+
+Example 9 (supplier lookup):
 User: Who is the supplier for Product Y?
-Output: {"action": "get_supplier_info", "filters": {"product_name": "Product Y"}}
+Output: {"action": "get_supplier_info", "conditions": [{"field": "product_name", "op": "eq", "value": "Product Y"}]}
+
+Example 10 (combined filters + sort):
+User: Low stock items from Acme sorted by quantity ascending
+Output: {"action": "get_low_stock", "conditions": [{"field": "supplier_name", "op": "eq", "value": "Acme"}], "sort": {"field": "quantity_available", "order": "asc"}}
 ```
 
 ### 7.2 RAG System Prompt Template
 
 ```
-You are an assistant reading official warehouse documentation.
-You must answer the user's question using ONLY the provided context chunks.
-For every claim or statement you make, you must explicitly cite the
-source_document and page_number from the context metadata using square
-brackets — for example, [Source: supplier_policy.pdf, Page: 3].
-If the context does not contain the answer, explicitly state:
-"I cannot find this information in the provided records."
-Do not attempt to invent an answer under any circumstances.
+You are SmartStock AI's document assistant. You answer questions about stored
+warehouse documentation including supplier policies, contracts, procedures,
+shipping rules, compliance documents, and product specifications.
+
+Your scope:
+- Supplier policies and contracts
+- Shipping and logistics procedures
+- Internal warehouse policies and protocols
+- Product specifications and technical documentation
+- Compliance and regulatory documents
+
+You do NOT answer questions about:
+- Current stock levels → "This requires real-time inventory data."
+- Live sales data → "This requires real-time sales data."
+- Purchase order status → "This requires real-time procurement data."
+- Forecast results → "This requires real-time forecast data."
+
+If the user asks about live operational data, respond:
+"This question requires real-time data from the inventory system. Please use
+the NL Query mode or ask the AI assistant to route your question accordingly."
+
+For document-based questions:
+- You must answer using ONLY the provided context chunks.
+- For every claim, explicitly cite the source_document and page_number using
+  square brackets — for example, [Source: supplier_policy.pdf, Page: 3].
+- If the context does not contain the answer, explicitly state:
+  "I cannot find this information in the provided records."
+- Do not attempt to invent an answer under any circumstances.
 ```
 
 ### 7.3 RAG Pipeline Specification
 
 | Stage                    | Implementation                                             | Config                                       |
 | ------------------------ | ---------------------------------------------------------- | -------------------------------------------- |
+| **Document ingestion**   | PDF upload via management command                          | `python manage.py ingest_document --file <path>` (PDF only) |
 | **Document chunking**    | Recursive text splitter (LangChain)                        | 512 tokens, 50-token overlap                 |
-| **DB record chunking**   | Record-level (one chunk per row)                           | product catalogue, supplier records          |
 | **Embedding model**      | `text-embedding-3-small` (OpenAI)                          | 1536 dimensions                              |
 | **Vector store**         | pgvector on PostgreSQL                                     | HNSW index, cosine distance                  |
 | **Retrieval**            | Hybrid: dense vector + PostgreSQL FTS                      | Combined score                               |
 | **Reranking**            | Cohere Rerank v3 (or `bge-reranker` local)                 | Top 3 chunks selected                        |
-| **Metadata payload**     | `{source_document, page_number, record_type, ingested_at}` | Immutable, stored at ingest time             |
+| **Metadata payload**     | `{source_document, page_number, doc_type, ingested_at}`    | Immutable, stored at ingest time             |
 | **Citation enforcement** | System prompt instruction                                  | Every claim must cite `[Source: X, Page: Y]` |
+
+#### Ingested Document Types
+
+| doc_type     | Examples                                            | Chunking Strategy     |
+| ------------ | --------------------------------------------------- | --------------------- |
+| `policy`     | Supplier policies, return policies, quality standards | Page-level chunks     |
+| `contract`   | Supplier contracts, pricing agreements                | Section-level chunks  |
+| `procedure`  | Warehouse procedures, safety protocols                | Section-level chunks  |
+| `specification` | Product datasheets, technical specs                | Page-level chunks     |
+
+#### NOT Ingested (Handled by NL Query)
+
+| Data Type        | Reason                                                     |
+| ---------------- | ---------------------------------------------------------- |
+| Products, SKUs   | In structured DB, queryable via ORM with real-time data    |
+| Suppliers        | In structured DB                                           |
+| Stock levels     | Changes in real-time, must query live database             |
+| Sales records    | Large volume, needs aggregation queries                    |
+| Forecast results | Computed daily, stored in DB                               |
 
 ### 7.4 Agent Tool Registry
 
@@ -880,6 +1102,92 @@ Do not attempt to invent an answer under any circumstances.
 - Each entry: `{ nl_input, expected_action, expected_filters, expected_response_structure }`
 - Stored in `tests/golden_dataset/`
 - Executed automatically in CI on every merge to `main`
+
+### 7.7 Intent Router — Unified Chat Interface
+
+The `/api/ai/chat/` endpoint accepts a natural language query and routes it to
+the appropriate engine based on user selection or automatic intent classification.
+
+#### Mode Parameter
+
+| Mode | Behavior | UI Label |
+|------|----------|----------|
+| `auto` (default) | GPT-4o-mini classifies intent, routes automatically | "Ask AI" |
+| `nl_query` | Forces NL Query engine (live DB data) | "NL Query" |
+| `rag` | Forces RAG engine (document search) | "Search Documents" |
+
+#### Auto-Mode Routing Flow
+
+```
+User Query (mode=auto)
+  │
+  ▼
+┌─────────────────────────────┐
+│  Intent Classifier          │
+│  Model: GPT-4o-mini         │
+│  Latency: < 300ms           │
+│  Cost: ~$0.0001/query       │
+│                              │
+│  Classifies into:           │
+│  - nl_query (live data)     │
+│  - rag (document search)    │
+│  - out_of_scope             │
+└──────────┬──────────────────┘
+           │
+     ┌─────┴─────────────────────┐
+     │                           │
+     ▼                           ▼
+┌─────────────┐          ┌─────────────┐
+│  NL Query   │          │    RAG      │
+│  Engine     │          │  Engine     │
+└─────────────┘          └─────────────┘
+     │                           │
+     └───────────┬───────────────┘
+                 ▼
+     ┌─────────────────────┐
+     │  Response Composer  │
+     └─────────────────────┘
+```
+
+#### Intent Classification Prompt
+
+```
+You are a warehouse query classifier. Classify the user's query into exactly one category:
+
+- "nl_query": The query needs live database data — stock levels, sales, forecasts,
+  supplier info, purchase orders, inventory counts, reorder status.
+
+- "rag": The query needs information from stored documents — policies, contracts,
+  procedures, shipping terms, compliance rules, product specifications.
+
+- "out_of_scope": The query is not related to warehouse operations.
+
+Respond with JSON only: {"intent": "...", "confidence": 0.0-1.0}
+```
+
+#### Routing Decision Table
+
+| Query Pattern | Engine | Example |
+|---------------|--------|---------|
+| Current stock, inventory counts | NL Query | "How many Widget-001 do we have?" |
+| Sales, revenue, forecasts | NL Query | "Sales report for January" |
+| Supplier contact, relationships | NL Query | "Who supplies Widget-001?" |
+| Reorder, procurement status | NL Query | "Are there open POs for Product X?" |
+| Policies, procedures, contracts | RAG | "What's our return policy?" |
+| Shipping rules, terms | RAG | "What are the shipping terms?" |
+| Compliance, regulations | RAG | "What safety standards apply?" |
+| Mixed query (live data + policy) | Both | "Which low-stock items have reorder policies?" |
+
+#### Performance Budget
+
+| Stage | Max Time |
+|-------|----------|
+| Intent classification (GPT-4o-mini) | 300ms |
+| NL Query execution | 3s |
+| RAG retrieval + generation | 5s |
+| Response composition | 200ms |
+| **Total (auto mode)** | **5.5s** |
+| **Total (forced mode)** | **5s** |
 
 ---
 
@@ -944,7 +1252,7 @@ Do not attempt to invent an answer under any circumstances.
 | --- | --------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
 | MW1 | NL query Django endpoint                      | Backend  | `POST /api/ai/nlquery/` receives text, runs LangChain chain, returns structured action + formatted response.           |
 | MW2 | Supplier management UI                        | Frontend | Supplier list page renders. Add/edit form submits to API. Validation errors displayed inline.                          |
-| MW3 | RAG document ingestion — chunking + embedding | AI/ML    | Supplier PDFs chunked (512t/50 overlap). DB rows chunked at record level. Embeddings stored in pgvector with metadata. |
+| MW3 | RAG document ingestion — chunking + embedding | AI/ML    | PDFs chunked (512t/50 overlap). Embeddings stored in pgvector with metadata. DB records NOT embedded — queried live via NL Query. |
 | MW4 | Frontend Dockerfile                           | DevOps   | `docker build` succeeds for React app. Full `docker-compose up` runs frontend + backend + db + redis together.         |
 | MW5 | API key management + secret config            | Security | All 8 API keys loaded via `os.getenv()`. App raises `ImproperlyConfigured` on startup if any key is missing.           |
 
