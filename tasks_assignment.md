@@ -770,22 +770,33 @@ Build the primary inventory management interface — a data-dense, sortable, fil
 ### TASK MA3 — LangChain + GPT-4o Base Chain
 
 **Objective:**
-Establish the foundational LangChain chain that powers the NL query feature — the core AI capability that translates natural language inventory questions into structured database actions.
+Establish the foundational LangChain chain that powers the NL query feature — the core AI capability that translates natural language inventory questions into structured database actions using the enhanced condition-based schema.
 
 **Functional Requirements:**
 
-- Build a LangChain chain with three components in sequence: a prompt template (containing the system prompt with scope restrictions and all 5 few-shot examples), a GPT-4o model call with function calling enabled, and an output parser that validates the response against the NL query JSON schema.
+- Build a LangChain chain with three components in sequence: a prompt template (containing the system prompt with scope restrictions and all 10 few-shot examples), a GPT-4o model call with function calling enabled, and an output parser that validates the response against the enhanced NL query JSON schema.
 - The system prompt must enforce scope: the model must only respond to queries about inventory, suppliers, sales, and purchase orders. Out-of-scope queries must cause the model to return `{"error": "Out of scope request"}`.
-- All five few-shot examples must be embedded directly in the system prompt — not in separate messages. The examples must cover: low stock query, sales report, demand forecast, inventory check by SKU, and supplier lookup.
-- Function calling must be configured with the NL query JSON schema as the function definition. The model must be forced to always call this function (not return free text). `tool_choice: "required"` or equivalent must be set.
-- The `OutputParser` must validate that the returned JSON matches the schema: valid `action` enum value, valid `filters` structure. If validation fails, it must raise a typed exception that the calling service can catch and convert to a 400 response.
+- All ten few-shot examples must be embedded directly in the system prompt — not in separate messages. The examples must cover:
+  1. Simple threshold query (stock below X)
+  2. Complex multi-condition query (stock below X AND name starts with Y)
+  3. Date range query (sales from date to date)
+  4. Aggregation query (total inventory value)
+  5. Top products with limit
+  6. Exact match query (by SKU)
+  7. List filter query (from Supplier A or B)
+  8. Contains search query (name contains "pro")
+  9. Supplier lookup query
+  10. Combined filters with sort
+- Function calling must be configured with the enhanced NL query JSON schema (with conditions array, sort, limit, offset) as the function definition. The model must be forced to always call this function (not return free text). `tool_choice: "required"` or equivalent must be set.
+- The `OutputParser` must validate that the returned JSON matches the schema: valid `action` enum value, valid `conditions` array with allowed operators, valid field names per action. If validation fails, it must raise a typed exception that the calling service can catch and convert to a 400 response.
 - The chain must be instantiated once and reused across requests — not re-created per request (which is expensive). The agent must implement this as a module-level singleton or dependency injection pattern.
 
 **Expected Output (Definition of Done):**
 
-- Calling the chain with "Show me items with stock below 5" returns `{ "action": "get_low_stock", "filters": { "stock_below": 5 } }`.
+- Calling the chain with "Show me items with stock below 5" returns the correct simple condition.
+- Calling with "Show me products with stock below 10 that starts with letter a" returns the correct multi-condition response with sort.
 - Calling with "What's the weather today?" returns `{ "error": "Out of scope request" }`.
-- Calling with a query that should trigger each of the 5 action types returns the correct structured output.
+- Calling with a query that should trigger each of the 7 action types returns the correct structured output.
 - The chain object is importable and usable by the NL query endpoint service.
 - The API key is read from the environment — calling the chain without `OPENAI_API_KEY` set raises a `ConfigurationError`, not a cryptic LangChain error.
 
@@ -794,6 +805,7 @@ Establish the foundational LangChain chain that powers the NL query feature — 
 - The chain must live in the AI layer (`ai/llm/`). It must not import from any Django app directly — it receives inputs and returns outputs.
 - Use LangChain's `ChatOpenAI` with `model="gpt-4o"`. Do not use the deprecated `OpenAI` class.
 - The output parser must raise a specific typed exception (not a generic `Exception`) so the calling service can distinguish a schema validation failure from an API failure.
+- The enhanced schema supports complex queries that the old fixed-filter schema could not handle. This is critical for real-world warehouse queries like "products from Supplier A with stock below 10 sorted by quantity".
 
 ---
 
@@ -1345,19 +1357,26 @@ Make the three-agent pipeline production-resilient by implementing all specified
 ### TASK MW1 — NL Query Django Endpoint
 
 **Objective:**
-Build the backend endpoint that orchestrates the Natural Language query pipeline — accepting a user's plain text question, routing it through the LangChain chain, executing the appropriate database query, and returning a formatted response.
+Build the backend endpoint that orchestrates the Natural Language query pipeline — accepting a user's plain text question, routing it through the LangChain chain, executing the appropriate database query using the enhanced condition-based schema, and returning a formatted response.
 
 **Functional Requirements:**
 
 - The endpoint must accept `POST` with body `{ "query": "string" }`. The query must be validated: minimum 3 characters, maximum 500 characters, not empty after stripping whitespace.
 - The query must pass through the prompt injection filter (Task A10) before any LLM call. Rejected queries return HTTP 400 immediately.
-- The LangChain chain (Task MA3) must be invoked with the validated query. The chain returns a structured JSON action object.
+- The LangChain chain (Task MA3) must be invoked with the validated query. The chain returns a structured JSON action object with the enhanced condition-based schema.
+- The action object contains: `action`, `conditions` (array of filter objects with field/op/value), `sort` (optional), `limit` (optional), `offset` (optional).
+- The dispatcher must build a Django ORM query from the conditions array:
+  - Each condition translates to a Q object: `{"field": "quantity_available", "op": "lt", "value": 10}` → `Q(quantity_available__lt=10)`
+  - Supported operators: `eq`, `neq`, `lt`, `lte`, `gt`, `gte`, `contains`, `starts_with`, `ends_with`, `in`, `not_in`
+  - Multiple conditions are combined with AND logic.
 - The action object must be dispatched to the correct service method based on the `action` field value:
-  - `get_inventory` → `InventoryService.get_all(filters)`
-  - `get_sales_report` → `SalesService.get_report(filters)`
-  - `get_low_stock` → `InventoryService.get_low_stock(filters)`
-  - `forecast_demand` → `ForecastingService.get_forecast(filters)`
-  - `get_supplier_info` → `InventoryService.get_supplier(filters)`
+  - `get_inventory` → `InventoryService.get_filtered(conditions, sort, limit, offset)`
+  - `get_sales_report` → `SalesService.get_filtered(conditions, sort, limit, offset)`
+  - `get_low_stock` → `InventoryService.get_low_stock_filtered(conditions, sort, limit, offset)`
+  - `forecast_demand` → `ForecastingService.get_filtered(conditions, sort, limit, offset)`
+  - `get_supplier_info` → `InventoryService.get_supplier_filtered(conditions, sort, limit, offset)`
+  - `get_total_value` → `InventoryService.get_total_value(conditions)`
+  - `get_top_products` → `InventoryService.get_top_products(conditions, sort, limit)`
 - The database result must be formatted into a human-readable response by making a second GPT-4o call with the raw data and the original query: "Given this data, answer the user's question in plain language."
 - The final response shape must be: `{ "status": "success", "data": { "answer": "...", "action": {...}, "raw_data": {...} } }`.
 - Total response time must not exceed 10 seconds. If the LLM call takes longer, return HTTP 504.
@@ -1365,6 +1384,8 @@ Build the backend endpoint that orchestrates the Natural Language query pipeline
 **Expected Output (Definition of Done):**
 
 - `POST /api/ai/nlquery/` with `{ "query": "Show me products with stock below 10" }` returns a natural language answer describing the low-stock products.
+- `POST /api/ai/nlquery/` with `{ "query": "Show me products with stock below 10 that starts with letter a" }` returns filtered results matching both conditions.
+- `POST /api/ai/nlquery/` with `{ "query": "Top 5 best-selling products this month" }` returns sorted and limited results.
 - `POST /api/ai/nlquery/` with a prompt injection attempt returns HTTP 400 and creates an audit log entry.
 - `POST /api/ai/nlquery/` with an empty string returns HTTP 422 with a validation error.
 - A Langfuse trace is created for every successful query.
@@ -1374,6 +1395,8 @@ Build the backend endpoint that orchestrates the Natural Language query pipeline
 
 - The endpoint is a thin orchestrator. The LangChain chain, prompt injection filter, and service methods are all implemented elsewhere — this endpoint wires them together.
 - The "formatting" second LLM call must not be made if the first LLM call fails. The error from the chain must propagate up as an HTTP 500 (unexpected LLM failure) or HTTP 400 (out-of-scope query).
+- The condition-to-Q-object translation must validate that only allowed fields per action are used. Unknown fields must raise a validation error, not be passed to the ORM.
+- Use Django's `Q` objects for condition组合: `Q(field__op=value)` for each condition, then `queryset.filter(q1 & q2 & ...)` for AND logic.
 
 ---
 
@@ -1407,34 +1430,43 @@ Build the supplier management screens that allow managers to view, add, edit, an
 
 ---
 
-### TASK MW3 — RAG Document Ingestion (Chunking and Embedding)
+### TASK MW3 — RAG Document Upload + Ingestion Pipeline
 
 **Objective:**
-Build the document ingestion pipeline that converts raw business documents (supplier PDFs, shipping policies, product catalogues) into searchable vector embeddings stored in pgvector — the knowledge base that powers the RAG AI assistant.
+Build the document upload and ingestion pipeline that allows managers and admins to upload PDF documents (supplier policies, contracts, procedures, specifications) through the dashboard UI. Uploaded files are stored in Cloudinary, chunked, embedded, and stored in pgvector — powering the RAG AI assistant. This pipeline handles ONLY unstructured PDF documents, NOT database records which are queried live via the NL Query engine.
 
 **Functional Requirements:**
 
-- Implement an ingestion pipeline that accepts a file path or file-like object and processes it into chunks for storage in the `DocumentChunk` model.
-- For unstructured documents (PDFs): use LangChain's `RecursiveCharacterTextSplitter` with chunk size 512 tokens and 50-token overlap. Extract page numbers and preserve them in chunk metadata.
-- For structured database records (product catalogue rows, supplier records): implement record-level chunking where each database row becomes one chunk. The chunk text must be a human-readable serialization of the row: "Product: [name], SKU: [sku], Supplier: [name], Reorder Point: [n] units."
+- Implement a `POST /api/ai/documents/upload/` endpoint that accepts a multipart/form-data request with a PDF file and a `doc_type` field (one of: policy, contract, procedure, specification).
+- The endpoint must validate: file is a PDF (check content type and magic bytes, not just extension), file size is under 10MB, `doc_type` is one of the allowed values.
+- On valid upload: save the original PDF to Cloudinary via `cloudinary.uploader.upload()`, create a `DOCUMENT` record in the database, then run the ingestion pipeline (chunk + embed + store chunks in `DocumentChunk`).
+- Implement `GET /api/ai/documents/` endpoint that returns all active documents with: id, filename, original_filename, doc_type, file_size, total_chunks, uploaded_by, ingested_at. Support pagination.
+- Implement `DELETE /api/ai/documents/{id}/` endpoint (Admin only) that soft-deletes the document (`is_active = False`) and deactivates its chunks.
+- For chunking: use LangChain's `RecursiveCharacterTextSplitter` with chunk size 512 tokens and 50-token overlap. Extract page numbers and preserve them in chunk metadata.
 - Each chunk must be embedded using `text-embedding-3-small` (1536 dimensions) via the OpenAI API. Embeddings must be generated in batches of 100 to respect API rate limits, with a 1-second delay between batches.
-- Every chunk must be stored in the `DocumentChunk` table with: `chunk_text`, `embedding` (vector), `source_document` (filename), `page_number`, and a `metadata` JSONB field containing `{ "doc_type": "pdf|catalogue|policy", "ingested_at": "ISO timestamp" }`.
-- If a document with the same name has been previously ingested, the pipeline must delete the old chunks before inserting new ones (re-ingestion replaces, not duplicates).
-- The pipeline must be triggerable via a Django management command: `python manage.py ingest_document --file <path>`.
+- Every chunk must be stored in the `DocumentChunk` table with: `document_id` (FK to DOCUMENT), `chunk_text`, `embedding` (vector), `source_document` (filename), `page_number`, and `metadata` JSONB containing `{ "doc_type": "...", "ingested_at": "ISO timestamp" }`.
+- If a document with the same filename has been previously ingested, the pipeline must delete the old chunks before inserting new ones (re-ingestion replaces, not duplicates).
+- The `CLOUDINARY_URL` environment variable must be loaded on startup. The app must raise `ImproperlyConfigured` if missing.
 
 **Expected Output (Definition of Done):**
 
-- Running `python manage.py ingest_document --file supplier_policy.pdf` creates `DocumentChunk` records in the database with non-null embedding vectors.
+- `POST /api/ai/documents/upload/` with a valid PDF creates a `DOCUMENT` record and `DocumentChunk` records with non-null embedding vectors.
 - Each chunk has a `page_number` value matching the PDF page it came from.
-- Re-running the same command on the same file replaces existing chunks (same record count after second run, not doubled).
+- The response includes the Cloudinary URL of the stored file.
+- Re-uploading a file with the same name replaces existing chunks (same record count, not doubled).
+- `GET /api/ai/documents/` returns a paginated list of documents with chunk counts.
+- `DELETE /api/ai/documents/{id}/` soft-deletes the document and its chunks are excluded from retrieval.
 - Batch embedding respects the rate limit — no OpenAI rate limit errors on a 50-page document.
-- The management command reports: files processed, chunks created, embedding API calls made, and total time.
-- Unit tests mock the OpenAI embedding API and verify chunking logic with a sample document.
+- Unit tests mock the OpenAI embedding API and Cloudinary upload, and verify chunking logic with a sample document.
+- Attempting to upload a non-PDF file returns HTTP 422 with a clear error message.
 
 **Implicit Context:**
 
+- The `DOCUMENT` model is defined in the project's ingestion app. The `DocumentChunk` model gains a `document_id` FK field.
 - The embedding model used here must match the model used at retrieval time (Task O8). If the retrieval code is written first, use whatever model it specifies. If this task runs first, `text-embedding-3-small` is the default.
 - LangChain's `OpenAIEmbeddings` class handles batching internally. Verify whether it respects the batch size limit before implementing a manual batching loop.
+- DB records (products, suppliers, stock levels, sales) are NOT ingested into the vector store. They are queried live via the NL Query engine which translates natural language into structured ORM queries. This is by design — DB data changes in real-time and must always be queried from the source.
+- Use `cloudinary` Python SDK for upload. The `CLOUDINARY_URL` format is: `cloudinary://api_key:api_secret@cloud_name`.
 
 ---
 
@@ -1534,11 +1566,12 @@ Auto-generate comprehensive, accurate API documentation that the frontend team c
 ### TASK MW7 — AI Chat Panel and Citation Tag UI
 
 **Objective:**
-Build the conversational interface that lets warehouse managers ask questions in natural language and receive AI-generated answers with source citations — the primary user interface for the NL query and RAG features.
+Build the conversational interface that lets warehouse managers ask questions in natural language and receive AI-generated answers with source citations — the primary user interface for the unified chat endpoint.
 
 **Functional Requirements:**
 
 - Build a full-height chat panel with a scrollable message history area and a fixed input area at the bottom.
+- **Include a mode selector** above the input area with three buttons: "Ask AI" (default, mode=auto), "NL Query" (mode=nl_query), "Search Documents" (mode=rag). The active mode must be visually distinguished (brand-600 background for active).
 - User messages must appear as right-aligned bubbles (brand-600 background, white text). AI responses must appear as left-aligned bubbles (gray-50 background, gray-900 text).
 - Within AI response bubbles, source citation tags must render inline as clickable elements: `[Source: supplier_policy.pdf, Page: 3]` styled as a small purple pill (purple-50 background, purple-800 text, 11px font). Clicking a citation must show a tooltip with the full chunk text from that source.
 - While an AI response is loading, a typing indicator must appear: three animated dots in a gray bubble at the left.
@@ -1546,10 +1579,14 @@ Build the conversational interface that lets warehouse managers ask questions in
 - Message history must be maintained in component state for the session. On page refresh, the history resets (no persistence required).
 - The chat panel must auto-scroll to the latest message when a new message is added.
 - An empty state must appear when no messages exist: a robot icon, the text "Ask anything about your inventory", and three example prompt suggestions as clickable chips.
+- Each message in the history must show which engine was used (NL Query, RAG, or Auto) as a small badge.
 
 **Expected Output (Definition of Done):**
 
-- Typing a message and pressing Send displays the user message and shows the typing indicator.
+- The mode selector renders with three buttons and "Ask AI" is selected by default.
+- Clicking "NL Query" changes the mode and visually highlights the button.
+- Clicking "Search Documents" changes the mode and visually highlights the button.
+- Typing a message and pressing Send sends the query with the selected mode to `POST /api/ai/chat/`.
 - The AI response renders with citation tags styled correctly.
 - Clicking a citation tag shows the source chunk text in a tooltip.
 - The panel auto-scrolls to new messages.
@@ -1559,8 +1596,63 @@ Build the conversational interface that lets warehouse managers ask questions in
 
 **Implicit Context:**
 
-- The `useNLQuery` hook handles the API call and returns `{ answer, sources, isLoading, error }`. The component maps `sources` to `CitationTag` atoms.
+- The chat panel uses the unified `/api/ai/chat/` endpoint (Task MW7B), not the legacy `/nlquery/` or `/rag-query/` endpoints.
+- The `useChat` hook handles the API call and returns `{ answer, sources, engine, mode, isLoading, error }`. The component maps `sources` to `CitationTag` atoms.
 - The `CitationTag` component is an atom in `shared/atoms/`. If it doesn't exist yet, create it here and it will be promoted to shared since it will be reused by the RAG response panel.
+- The mode selector state is local component state (not global). Each message tracks which mode was used when it was sent.
+
+---
+
+### TASK MW7B — Unified Chat Endpoint with Intent Router
+
+**Objective:**
+Build the unified `/api/ai/chat/` endpoint that combines the NL Query and RAG pipelines into a single interface, with automatic intent classification using GPT-4o-mini and user-selectable mode parameter.
+
+**Functional Requirements:**
+
+- The endpoint must accept `POST` with body `{ "query": "string", "mode": "auto|nl_query|rag" }`. The `mode` parameter is optional and defaults to `"auto"`.
+- The query must pass through the prompt injection filter (Task A10) before any LLM call. Rejected queries return HTTP 400 immediately.
+- For `mode=auto`: invoke the intent classifier (GPT-4o-mini) to determine whether the query should go to NL Query or RAG engine.
+- For `mode=nl_query`: bypass the classifier and route directly to the NL Query engine.
+- For `mode=rag`: bypass the classifier and route directly to the RAG engine.
+- The intent classifier must use GPT-4o-mini (not GPT-4o) for cost and latency efficiency. Target latency: < 300ms.
+- The classifier prompt must classify queries into: `nl_query` (live data), `rag` (document search), or `out_of_scope`.
+- If the classifier confidence is below 0.7, default to `nl_query` (safer for operational queries).
+- The response shape must include the `engine` field indicating which engine was used:
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "engine": "nl_query|rag",
+      "mode": "auto|nl_query|rag",
+      "answer": "...",
+      "action": {...},  // for nl_query
+      "sources": [...]  // for rag
+    }
+  }
+  ```
+- The endpoint must log a Langfuse trace capturing: the query, mode, classifier decision (if auto), engine used, and total latency.
+- The endpoint must be accessible to Viewer role or above.
+- The legacy endpoints (`/api/ai/nlquery/` and `/api/ai/rag-query/`) must continue to work independently for backward compatibility.
+
+**Expected Output (Definition of Done):**
+
+- `POST /api/ai/chat/` with `{ "query": "How many Widget-001 do we have?" }` routes to NL Query engine and returns live data.
+- `POST /api/ai/chat/` with `{ "query": "What's our return policy?" }` routes to RAG engine and returns cited answer.
+- `POST /api/ai/chat/` with `{ "query": "Show me low stock items", "mode": "nl_query" }` bypasses classifier and goes to NL Query.
+- `POST /api/ai/chat/` with `{ "query": "What's our return policy?", "mode": "rag" }` bypasses classifier and goes to RAG.
+- A prompt injection attempt returns HTTP 400 and creates an audit log entry.
+- The intent classifier uses GPT-4o-mini (verified in Langfuse traces).
+- The response includes `engine` and `mode` fields.
+- Langfuse traces are visible and contain routing decisions.
+- The legacy `/api/ai/nlquery/` and `/api/ai/rag-query/` endpoints still work.
+
+**Implicit Context:**
+
+- The intent classifier is a lightweight LangChain chain using GPT-4o-mini. It must be instantiated once and reused.
+- The chat endpoint is a thin orchestrator that calls the classifier (if auto mode), then delegates to the appropriate engine service.
+- The classifier must be fast (< 300ms) — use minimal prompt, no few-shot examples, just the classification instruction.
+- Cache classifier results per user session if the same query is repeated (optional optimization).
 
 ---
 

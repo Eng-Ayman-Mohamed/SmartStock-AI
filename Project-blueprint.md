@@ -371,8 +371,24 @@ erDiagram
         datetime created_at
     }
 
+    DOCUMENT {
+        int id PK
+        string filename UK
+        string original_filename
+        string file_url
+        long file_size
+        string doc_type "policy|contract|procedure|specification"
+        int uploaded_by_user_id FK
+        int total_chunks
+        bool is_active
+        datetime ingested_at
+        datetime created_at
+        datetime updated_at
+    }
+
     DOCUMENT_CHUNK {
         int id PK
+        int document_id FK
         string source_document
         int page_number
         string chunk_text
@@ -398,6 +414,7 @@ erDiagram
     USER ||--o{ PURCHASE_ORDER : "approves"
     USER ||--o{ AUDIT_LOG : "generates"
     USER ||--o{ INVOICE_SCAN : "scans"
+    USER ||--o{ DOCUMENT : "uploads"
     CATEGORY ||--o{ PRODUCT : "classifies"
     SUPPLIER ||--o{ PRODUCT : "supplies"
     SUPPLIER ||--o{ PURCHASE_ORDER : "receives"
@@ -406,6 +423,7 @@ erDiagram
     PRODUCT ||--o{ FORECAST_RESULT : "forecast for"
     PRODUCT ||--o{ PURCHASE_ORDER : "ordered in"
     PRODUCT ||--o{ INVOICE_SCAN : "identified in"
+    DOCUMENT ||--o{ DOCUMENT_CHUNK : "contains"
 ```
 
 ### 4.2 Model Field Reference
@@ -476,16 +494,34 @@ draft → pending_approval → approved → sent → confirmed
               ↘ cancelled (any stage before sent)
 ```
 
+#### `DOCUMENT`
+
+| Field                  | Type          | Constraints         | Notes                                        |
+| ---------------------- | ------------- | ------------------- | -------------------------------------------- |
+| `id`                   | INTEGER       | PK                  | —                                            |
+| `filename`             | VARCHAR(255)  | UNIQUE, NOT NULL    | Sanitized unique name on Cloudinary          |
+| `original_filename`    | VARCHAR(255)  | NOT NULL            | User's original filename                     |
+| `file_url`             | VARCHAR(500)  | NOT NULL            | Cloudinary URL                               |
+| `file_size`            | BIGINT        | NOT NULL            | File size in bytes                           |
+| `doc_type`             | ENUM          | NOT NULL            | `policy`, `contract`, `procedure`, `specification` |
+| `uploaded_by_user_id`  | INTEGER       | FK → USER           | Who uploaded the document                    |
+| `total_chunks`         | INTEGER       | DEFAULT 0           | Count of associated chunks                   |
+| `is_active`            | BOOLEAN       | DEFAULT TRUE        | Soft delete                                  |
+| `ingested_at`          | TIMESTAMPTZ   | NULLABLE            | Set after chunking/embedding completes       |
+| `created_at`           | TIMESTAMPTZ   | auto_now_add        | —                                            |
+| `updated_at`           | TIMESTAMPTZ   | auto_now            | —                                            |
+
 #### `DOCUMENT_CHUNK`
 
 | Field             | Type         | Constraints | Notes                                  |
 | ----------------- | ------------ | ----------- | -------------------------------------- |
 | `id`              | INTEGER      | PK          | —                                      |
+| `document_id`     | INTEGER      | FK → DOCUMENT, NULLABLE | NULL for legacy/manual chunks |
 | `source_document` | VARCHAR(500) | NOT NULL    | Original filename                      |
-| `page_number`     | INTEGER      | NULLABLE    | PDF page; NULL for DB records          |
+| `page_number`     | INTEGER      | NULLABLE    | PDF page                               |
 | `chunk_text`      | TEXT         | NOT NULL    | Raw chunk content                      |
 | `embedding`       | VECTOR(1536) | NOT NULL    | pgvector column                        |
-| `metadata`        | JSONB        | NOT NULL    | `{doc_type, record_type, ingested_at}` |
+| `metadata`        | JSONB        | NOT NULL    | `{doc_type, ingested_at}`              |
 
 ---
 
@@ -560,6 +596,16 @@ src/
 │       ├── api.ts
 │       └── types.ts                   # InvoiceScan, ExtractedData
 │
+│   ├── document-manager/
+│   │   ├── components/
+│   │   │   ├── DocumentUpload.tsx      # Drag-and-drop PDF uploader + doc_type selector
+│   │   │   ├── DocumentList.tsx        # Table: filename, doc_type, chunks, uploaded_by, date
+│   │   │   └── DocumentDeleteButton.tsx
+│   │   ├── hooks/
+│   │   │   └── useDocuments.ts         # useQuery + useMutation for CRUD
+│   │   ├── api.ts
+│   │   └── types.ts                    # Document, DocType
+│   │
 ├── shared/
 │   ├── components/
 │   │   ├── Button.tsx                 # Variants: primary, secondary, danger, ghost
@@ -643,6 +689,7 @@ export default api;
     ├── /dashboard/purchasing        → PurchasingPage (POQueue + POHistoryTable)
     ├── /dashboard/assistant         → AIAssistantPage (ChatPanel + VoiceButton)
     ├── /dashboard/invoice-scan      → InvoiceScanPage (InvoiceUpload + ConfirmationCard)
+    ├── /dashboard/documents         → DocumentManagerPage (DocumentUpload + DocumentList)
     └── /dashboard/settings          → SettingsPage (Admin only: user management)
 ```
 
@@ -708,6 +755,9 @@ export default api;
 | POST   | `/api/ai/invoice-scan/{id}/confirm/` | Bearer | Manager+ | Confirm extraction → DB update                           |
 | POST   | `/api/ai/invoice-scan/{id}/reject/`  | Bearer | Manager+ | Reject extraction                                        |
 | POST   | `/api/ai/transcribe/`                | Bearer | Viewer+  | Audio → Whisper → transcribed text                       |
+| POST   | `/api/ai/documents/upload/`          | Bearer | Manager+ | Upload PDF → Cloudinary → chunk → embed → store          |
+| GET    | `/api/ai/documents/`                 | Bearer | Manager+ | List all ingested documents with chunk counts            |
+| DELETE | `/api/ai/documents/{id}/`            | Bearer | Admin    | Soft-delete document + deactivate chunks                 |
 
 #### Chat Endpoint Mode Parameter
 
@@ -771,6 +821,74 @@ POST /api/ai/chat/
       { "document": "return_policy.pdf", "page": 1 }
     ]
   }
+}
+```
+
+#### Document Upload Endpoint
+
+**Request:**
+
+```
+POST /api/ai/documents/upload/
+Content-Type: multipart/form-data
+
+file: <PDF binary>
+doc_type: "policy"
+```
+
+**Response (success):**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "filename": "supplier-policy-v2.pdf",
+    "original_filename": "Supplier Policy v2.pdf",
+    "doc_type": "policy",
+    "file_url": "https://res.cloudinary.com/.../supplier-policy-v2.pdf",
+    "file_size": 245760,
+    "total_chunks": 12,
+    "uploaded_by": "manager@smartstock.com",
+    "ingested_at": "2026-06-08T14:30:00Z"
+  }
+}
+```
+
+**Response (invalid file type):**
+
+```json
+{
+  "status": "error",
+  "error": "InvalidFileTypeError",
+  "message": "Only PDF files are accepted. Received .xlsx",
+  "code": 422
+}
+```
+
+**Request (list documents):**
+
+```
+GET /api/ai/documents/
+```
+
+**Response:**
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "filename": "supplier-policy-v2.pdf",
+      "doc_type": "policy",
+      "total_chunks": 12,
+      "file_size": 245760,
+      "uploaded_by": "manager@smartstock.com",
+      "ingested_at": "2026-06-08T14:30:00Z"
+    }
+  ],
+  "meta": { "page": 1, "total": 3, "per_page": 20 }
 }
 ```
 
@@ -1020,7 +1138,8 @@ For document-based questions:
 
 | Stage                    | Implementation                                             | Config                                       |
 | ------------------------ | ---------------------------------------------------------- | -------------------------------------------- |
-| **Document ingestion**   | PDF upload via management command                          | `python manage.py ingest_document --file <path>` (PDF only) |
+| **Document upload**      | PDF upload via API endpoint                                | `POST /api/ai/documents/upload/` (Manager+)  |
+| **File storage**         | Cloudinary                                                 | Original PDFs stored externally              |
 | **Document chunking**    | Recursive text splitter (LangChain)                        | 512 tokens, 50-token overlap                 |
 | **Embedding model**      | `text-embedding-3-small` (OpenAI)                          | 1536 dimensions                              |
 | **Vector store**         | pgvector on PostgreSQL                                     | HNSW index, cosine distance                  |
@@ -1252,7 +1371,7 @@ Respond with JSON only: {"intent": "...", "confidence": 0.0-1.0}
 | --- | --------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
 | MW1 | NL query Django endpoint                      | Backend  | `POST /api/ai/nlquery/` receives text, runs LangChain chain, returns structured action + formatted response.           |
 | MW2 | Supplier management UI                        | Frontend | Supplier list page renders. Add/edit form submits to API. Validation errors displayed inline.                          |
-| MW3 | RAG document ingestion — chunking + embedding | AI/ML    | PDFs chunked (512t/50 overlap). Embeddings stored in pgvector with metadata. DB records NOT embedded — queried live via NL Query. |
+| MW3 | RAG document upload + ingestion pipeline | AI/ML    | `POST /api/ai/documents/upload/` endpoint: PDF → Cloudinary → chunk (512t/50) → embed → pgvector. DOCUMENT model tracks uploads. Manager+ role required. |
 | MW4 | Frontend Dockerfile                           | DevOps   | `docker build` succeeds for React app. Full `docker-compose up` runs frontend + backend + db + redis together.         |
 | MW5 | API key management + secret config            | Security | All 8 API keys loaded via `os.getenv()`. App raises `ImproperlyConfigured` on startup if any key is missing.           |
 
@@ -1383,6 +1502,9 @@ EMAIL_HOST=
 EMAIL_PORT=587
 EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
+
+# Cloudinary (file storage for RAG documents)
+CLOUDINARY_URL=cloudinary://api_key:api_secret@cloud_name
 
 # Frontend
 VITE_API_URL=http://localhost:8000/api
