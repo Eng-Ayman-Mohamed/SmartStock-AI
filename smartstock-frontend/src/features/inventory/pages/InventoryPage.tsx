@@ -1,56 +1,154 @@
-import { useState } from 'react';
-import { Package, Plus, Download, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Edit3, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import api from '../../../lib/axios';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
+import { useAuthStore } from '../../../store/authStore';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
-import DataTable from '../../../shared/components/DataTable';
 import EmptyState from '../../../shared/components/EmptyState';
 import Badge from '../../../shared/components/Badge';
-import type { Column } from '../../../shared/components/DataTable';
+import Skeleton from '../../../shared/components/Skeleton';
 
-interface Product {
-  sku: string;
+type Product = {
+  id: number;
   name: string;
-  category: string;
-  onHand: number;
-  reserved: number;
-  reorderPoint: number;
-  supplier: string;
-  status: string;
+  description: string;
+  category_name?: string | null;
+  supplier_name?: string | null;
+  reorder_point: number;
+  safety_stock: number;
+  skus: { id: number; code: string }[];
+};
+
+type StockLevel = {
+  id: number;
+  sku: number;
+  sku_code: string;
+  product_name: string;
+  quantity?: number;
+  quantity_on_hand?: number;
+  reorder_point: number;
+};
+
+type LowStockItem = {
+  id: number;
+  product_name: string;
+  sku_code: string;
+  quantity: number;
+  reorder_point: number;
+};
+
+type Status = 'In Stock' | 'Low Stock' | 'Out of Stock';
+
+function unwrap<T>(payload: T | { data: T }): T {
+  return payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload;
 }
 
-const products: Product[] = [];
-
-const columns: Column<Product>[] = [
-  { key: 'sku', label: 'SKU', width: '130px', render: (r) => <span className="text-mono text-gray-600">{r.sku}</span> },
-  { key: 'name', label: 'Product Name', render: (r) => <span className="truncate block">{r.name}</span> },
-  { key: 'category', label: 'Category', width: '120px', render: (r) => <span className="text-gray-600">{r.category}</span> },
-  { key: 'onHand', label: 'On Hand', align: 'right', width: '90px', render: (r) => <span className="tabular-nums">{r.onHand}</span> },
-  { key: 'reserved', label: 'Reserved', align: 'right', width: '90px', render: (r) => <span className="tabular-nums">{r.reserved}</span> },
-  { key: 'reorder', label: 'Reorder Pt', align: 'right', width: '90px', render: (r) => <span className="tabular-nums">{r.reorderPoint}</span> },
-  { key: 'supplier', label: 'Supplier', width: '140px', render: (r) => <span className="truncate block text-gray-600">{r.supplier}</span> },
-  { key: 'status', label: 'Status', width: '120px', render: (r) => <Badge>{r.status}</Badge> },
-];
+function statusFor(quantity: number, reorderPoint: number): Status {
+  if (quantity <= 0) return 'Out of Stock';
+  if (quantity < reorderPoint) return 'Low Stock';
+  return 'In Stock';
+}
 
 export default function InventoryPage() {
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+  const canManage = user?.role === 'manager' || user?.role === 'admin';
+  const canDelete = user?.role === 'admin';
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  const inventoryQuery = useQuery({
+    queryKey: ['inventory', debouncedSearch],
+    queryFn: async () => {
+      const params = debouncedSearch ? { search: debouncedSearch, page_size: 100 } : { page_size: 100 };
+      const [productsRes, stockRes, lowStockRes] = await Promise.all([
+        api.get('/inventory/products/', { params }),
+        api.get('/inventory/stock-levels/', { params: { page_size: 100 } }),
+        api.get('/inventory/stock-levels/low_stock/'),
+      ]);
+
+      return {
+        products: unwrap<Product[]>(productsRes.data),
+        stockLevels: unwrap<StockLevel[]>(stockRes.data),
+        lowStock: unwrap<LowStockItem[]>(lowStockRes.data),
+      };
+    },
+  });
+
+  const saveProduct = useMutation({
+    mutationFn: async (product?: Product) => {
+      const name = window.prompt('Product name', product?.name ?? '');
+      if (!name) return;
+      const payload = {
+        name,
+        description: product?.description ?? '',
+        reorder_point: product?.reorder_point ?? 10,
+        safety_stock: product?.safety_stock ?? 0,
+      };
+      if (product) {
+        await api.patch(`/inventory/products/${product.id}/`, payload);
+      } else {
+        await api.post('/inventory/products/', payload);
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+  });
+
+  const deleteProduct = useMutation({
+    mutationFn: async (product: Product) => {
+      if (!window.confirm(`Delete ${product.name}?`)) return;
+      await api.delete(`/inventory/products/${product.id}/`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+  });
+
+  const rows = useMemo(() => {
+    const data = inventoryQuery.data;
+    if (!data) return [];
+    const stockBySkuId = new Map(data.stockLevels.map((stock) => [stock.sku, stock]));
+
+    return data.products
+      .flatMap((product) => {
+        const skus = product.skus.length ? product.skus : [{ id: 0, code: 'No SKU' }];
+        return skus.map((sku) => {
+          const stock = stockBySkuId.get(sku.id);
+          const quantity = stock?.quantity ?? stock?.quantity_on_hand ?? 0;
+          const reorderPoint = stock?.reorder_point ?? product.reorder_point;
+          const status = statusFor(quantity, reorderPoint);
+          return { product, sku, quantity, reorderPoint, status };
+        });
+      })
+      .filter((row) => !statusFilter || row.status === statusFilter);
+  }, [inventoryQuery.data, statusFilter]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-page-heading text-gray-900">Inventory</h1>
-          <p className="text-body text-gray-600 mt-1">Manage your inventory items and stock levels</p>
+          <p className="text-body text-gray-600 mt-1">Manage products, stock levels, and low-stock alerts</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="md"><Download className="w-4 h-4" /> Export CSV</Button>
-          <Button variant="primary" size="md"><Plus className="w-4 h-4" /> Add Product</Button>
-        </div>
+        <Button variant="primary" size="md" onClick={() => saveProduct.mutate(undefined)} disabled={!canManage}>
+          <Plus className="w-4 h-4" /> Add Product
+        </Button>
       </div>
+
+      {inventoryQuery.data?.lowStock.length ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {inventoryQuery.data.lowStock.slice(0, 6).map((item) => (
+            <Card key={item.id}>
+              <p className="text-body font-medium text-gray-900 truncate">{item.product_name}</p>
+              <p className="text-caption text-gray-600 mt-1">
+                <span className="font-mono">{item.sku_code}</span>
+                <span className="tabular-nums"> · {item.quantity}/{item.reorder_point}</span>
+              </p>
+            </Card>
+          ))}
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
@@ -60,41 +158,78 @@ export default function InventoryPage() {
             placeholder="Search by product name or SKU..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-10 pr-4 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 hover:border-gray-400 focus:border-brand-600 focus:outline-none focus:ring-0 transition-colors duration-150"
+            className="w-full h-9 pl-10 pr-4 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 hover:border-gray-400 focus:border-brand-600 focus:outline-none transition-colors duration-150"
             aria-label="Search products"
           />
         </div>
-        <select className="h-9 px-3 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-600 hover:border-gray-400 focus:border-brand-600 focus:outline-none transition-colors duration-150" aria-label="Category filter">
-          <option>All categories</option>
-        </select>
-        <select className="h-9 px-3 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-600 hover:border-gray-400 focus:border-brand-600 focus:outline-none transition-colors duration-150" aria-label="Status filter">
-          <option>All statuses</option>
+        <select
+          className="h-9 px-3 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-600 hover:border-gray-400 focus:border-brand-600 focus:outline-none transition-colors duration-150"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Status filter"
+        >
+          <option value="">All statuses</option>
+          <option>In Stock</option>
+          <option>Low Stock</option>
+          <option>Out of Stock</option>
         </select>
       </div>
 
-      <Card>
-        <DataTable
-          columns={columns}
-          data={filtered}
-          keyExtractor={(r) => r.sku}
-          caption="Product inventory list"
-          emptyState={
-            <EmptyState
-              icon={Package}
-              heading="No products yet"
-              body="Add your first product to start tracking inventory."
-              actionLabel="Add Product"
-              onAction={() => {}}
-            />
-          }
-        />
-        {filtered.length > 0 && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t-[0.5px] border-gray-100">
-            <span className="text-caption text-gray-600 tabular-nums">Showing 1–{filtered.length} of {filtered.length} results</span>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" disabled>Previous</Button>
-              <Button variant="secondary" size="sm" disabled>Next</Button>
-            </div>
+      {inventoryQuery.isError && (
+        <div className="rounded-md border-[0.5px] border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+          Failed to load inventory data.
+        </div>
+      )}
+
+      <Card noPadding>
+        {inventoryQuery.isLoading ? (
+          <div className="p-5 space-y-3">
+            {[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-10" />)}
+          </div>
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={Package}
+            heading="No products yet"
+            body="Add your first product to start tracking inventory."
+            actionLabel={canManage ? 'Add Product' : undefined}
+            onAction={canManage ? () => saveProduct.mutate(undefined) : undefined}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] table-fixed border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b-[1px] border-gray-100">
+                  {['SKU', 'Product', 'Category', 'On Hand', 'Reorder', 'Supplier', 'Status', 'Actions'].map((heading) => (
+                    <th key={heading} className="h-9 px-3 text-caption font-medium text-gray-600 uppercase tracking-[0.05em] text-left">
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={`${row.product.id}-${row.sku.code}`} className="bg-white border-b-[0.5px] border-gray-100 hover:bg-gray-50">
+                    <td className="h-11 px-3 text-body text-gray-800 truncate font-mono">{row.sku.code}</td>
+                    <td className="h-11 px-3 text-body text-gray-900 truncate">{row.product.name}</td>
+                    <td className="h-11 px-3 text-body text-gray-600 truncate">{row.product.category_name ?? 'Unassigned'}</td>
+                    <td className="h-11 px-3 text-body text-gray-800 tabular-nums">{row.quantity}</td>
+                    <td className="h-11 px-3 text-body text-gray-800 tabular-nums">{row.reorderPoint}</td>
+                    <td className="h-11 px-3 text-body text-gray-600 truncate">{row.product.supplier_name ?? 'Unassigned'}</td>
+                    <td className="h-11 px-3"><Badge variant={row.status}>{row.status}</Badge></td>
+                    <td className="h-11 px-3">
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => saveProduct.mutate(row.product)} disabled={!canManage} aria-label="Edit product">
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => deleteProduct.mutate(row.product)} disabled={!canDelete} aria-label="Delete product">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Card>
