@@ -1,10 +1,8 @@
+import json
 import os
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from dotenv import load_dotenv
-
-load_dotenv()
 
 def get_llm():
     api_key = os.getenv("OPENAI_API_KEY")
@@ -12,12 +10,41 @@ def get_llm():
         raise ValueError("OPENAI_API_KEY is missing. Please check your .env file.")
     return ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 
+ACTIONS = [
+    "get_inventory",
+    "get_sales_report",
+    "get_low_stock",
+    "forecast_demand",
+    "get_supplier_info",
+]
+
+ACTION_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", (
+        "You are an inventory assistant that parses natural language queries into structured actions. "
+        "Available actions: {actions}. "
+        "Respond with ONLY valid JSON: {{\"action\": \"<action_name>\", \"filters\": {{...}}}}. "
+        "Filters should include any relevant parameters like sku_id, product_id, supplier_id, date_from, date_to, etc. "
+        "If the query doesn't match any action, set action to \"get_inventory\" with empty filters."
+    )),
+    ("user", "{query}"),
+])
+
+action_chain = ACTION_PROMPT | llm | StrOutputParser()
+
+
 class LLMChain:
     def run(self, query: str) -> dict:
-        return {
-            "action": "get_low_stock",
-            "filters": {}
-        }
+        try:
+            raw = action_chain.invoke({"query": query, "actions": ", ".join(ACTIONS)})
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[-1].rsplit("\n", 1)[0]
+            result = json.loads(raw)
+            if result.get("action") not in ACTIONS:
+                result["action"] = "get_inventory"
+            return result
+        except Exception:
+            return {"action": "get_inventory", "filters": {}}
 
 def prompt_injection_filter(query: str) -> bool:
     llm = get_llm()
