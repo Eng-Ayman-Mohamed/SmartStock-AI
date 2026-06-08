@@ -1,32 +1,51 @@
 from django.core.cache import cache
+from django.dispatch import Signal
 
 from .repositories import (
     InventoryRepository,
     SKURepository,
     StockLevelRepository,
     SalesRecordRepository,
+    SupplierRepository,
+    CategoryRepository,
 )
+
+stock_adjusted = Signal()
+
+
+def _invalidate_product_cache():
+    cache.delete_pattern('product_list_*')
+    cache.delete('low_stock_items')
 
 
 class InventoryService:
     def __init__(self):
         self.repo = InventoryRepository()
         self.stock_repo = StockLevelRepository()
+        self.cat_repo = CategoryRepository()
 
-    def get_all_products(self):
-        return self.repo.get_all()
+    def get_all_products(self, include_inactive: bool = False):
+        return self.repo.get_all(include_inactive=include_inactive)
 
     def get_product(self, product_id: int):
         return self.repo.get_by_id(product_id)
 
     def create_product(self, data: dict):
-        return self.repo.create(data)
+        product = self.repo.create(data)
+        _invalidate_product_cache()
+        return product
 
     def update_product(self, product_id: int, data: dict):
-        return self.repo.update(product_id, data)
+        product = self.repo.update(product_id, data)
+        _invalidate_product_cache()
+        return product
 
     def delete_product(self, product_id: int):
-        self.repo.delete(product_id)
+        self.repo.soft_delete(product_id)
+        _invalidate_product_cache()
+
+    def find_stock_for_product(self, product_id: int):
+        return self.stock_repo.get_by_product_id(product_id)
 
     def get_low_stock_items(self):
         """Get low stock items (cached 5 min)."""
@@ -42,7 +61,7 @@ class InventoryService:
                 'product_id': sl.sku.product.id,
                 'product_name': sl.sku.product.name,
                 'sku_code': sl.sku.code,
-                'quantity': sl.quantity,
+                'quantity': sl.quantity_on_hand,
                 'reorder_point': sl.reorder_point,
                 'reorder_quantity': sl.reorder_quantity,
             }
@@ -51,11 +70,36 @@ class InventoryService:
         cache.set(cache_key, result, timeout=300)
         return result
 
-    def adjust_stock(self, stock_level_id: int, quantity: int):
-        """Update stock quantity and invalidate cache."""
-        stock = self.stock_repo.update(stock_level_id, {'quantity': quantity})
+    @staticmethod
+    def filter_by_stock_status(queryset, value):
+        from django.db.models import F, Q
+        if value == 'in_stock':
+            return queryset.filter(
+                skus__stock_level__quantity_on_hand__gte=F('skus__stock_level__reorder_point')
+            )
+        if value == 'low_stock':
+            return queryset.filter(
+                skus__stock_level__quantity_on_hand__lt=F('skus__stock_level__reorder_point'),
+                skus__stock_level__quantity_on_hand__gt=0,
+            )
+        if value == 'out_of_stock':
+            return queryset.filter(skus__stock_level__quantity_on_hand=0)
+        return queryset
+
+    def adjust_stock(self, stock_level_id: int, quantity_delta: int, user=None, reason: str = ''):
+        stock = self.repo.adjust_stock(stock_level_id, quantity_delta)
         cache.delete('low_stock_items')
+        stock_adjusted.send(
+            sender=self, stock_level=stock, delta=quantity_delta,
+            user=user, reason=reason,
+        )
         return stock
+
+    def get_all_categories(self):
+        return self.cat_repo.get_all()
+
+    def get_category(self, category_id: int):
+        return self.cat_repo.get_by_id(category_id)
 
     def get_all_stock_levels(self):
         return self.stock_repo.get_all()
@@ -71,6 +115,21 @@ class InventoryService:
 
     def delete_stock_level(self, stock_level_id: int):
         self.stock_repo.delete(stock_level_id)
+
+    def get_all_suppliers(self):
+        return SupplierRepository().get_all()
+
+    def get_supplier(self, supplier_id: int):
+        return SupplierRepository().get_by_id(supplier_id)
+
+    def create_supplier(self, data: dict):
+        return SupplierRepository().create(data)
+
+    def update_supplier(self, supplier_id: int, data: dict):
+        return SupplierRepository().update(supplier_id, data)
+
+    def delete_supplier(self, supplier_id: int):
+        SupplierRepository().delete(supplier_id)
 
 
 class SKUService:

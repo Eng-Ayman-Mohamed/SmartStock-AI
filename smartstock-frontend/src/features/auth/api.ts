@@ -3,19 +3,19 @@ import api from '../../lib/axios';
 import type { LoginPayload, LoginResponse, RegisterPayload, User } from './types';
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/api/auth/login/', payload);
+  const { data } = await api.post<LoginResponse>('/auth/login/', payload);
   return data;
 }
 
 export async function register(payload: RegisterPayload): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/api/auth/register/', payload);
+  const { data } = await api.post<LoginResponse>('/auth/register/', payload);
   return data;
 }
 
 export async function logout(): Promise<void> {
   try {
     await api.post(
-      '/api/auth/logout/',
+      '/auth/logout/',
       {},
       { withCredentials: true },
     );
@@ -28,6 +28,6 @@ export async function logout(): Promise<void> {
 }
 
 export async function me(): Promise<User> {
-  const { data } = await api.get<User>('/api/auth/me/');
+  const { data } = await api.get<User>('/auth/me/');
   return data;
 }
