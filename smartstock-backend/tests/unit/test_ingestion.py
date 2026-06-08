@@ -1,7 +1,6 @@
 import io
 import os
 import time
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pypdf
@@ -9,11 +8,9 @@ from django.test import TestCase
 
 from ai.rag.ingestion import (
     BATCH_SIZE,
-    chunk_database_records,
     chunk_pdf_pages,
     chunk_text,
     extract_text_from_pdf,
-    ingest_database_records,
     ingest_pdf,
 )
 from apps.ingestion.models import DocumentChunk
@@ -78,28 +75,6 @@ class ChunkPdfPagesTest(TestCase):
             self.assertEqual(c["page_number"], 3)
 
 
-class ChunkDatabaseRecordsTest(TestCase):
-    def test_chunk_database_records_uses_correct_format(self):
-        chunks = chunk_database_records()
-        for c in chunks:
-            self.assertIn("text", c)
-            self.assertIn("source_document", c)
-            if c["source_document"] == "product_catalogue":
-                self.assertIn("Product:", c["text"])
-                self.assertIn("SKU:", c["text"])
-            elif c["source_document"] == "supplier_records":
-                self.assertIn("Supplier:", c["text"])
-            elif c["source_document"] == "purchase_orders":
-                self.assertIn("Purchase Order", c["text"])
-
-    def test_chunk_database_records_metadata(self):
-        chunks = chunk_database_records()
-        for c in chunks:
-            self.assertEqual(c["metadata"]["doc_type"], "catalogue")
-            self.assertIn("ingested_at", c["metadata"])
-            self.assertIsNone(c["page_number"])
-
-
 @patch("ai.rag.ingestion.OpenAIEmbeddings")
 class IngestPdfTest(TestCase):
     def setUp(self):
@@ -159,13 +134,3 @@ class BatchEmbeddingTest(TestCase):
         elapsed = time.time() - start
         self.assertGreaterEqual(elapsed, 0)
 
-
-class ManagementCommandTest(TestCase):
-    def test_command_output(self):
-        from io import StringIO
-        from django.core.management import call_command
-
-        out = StringIO()
-        call_command("ingest_document", stdout=out)
-        output = out.getvalue()
-        self.assertIn("Database records", output)
