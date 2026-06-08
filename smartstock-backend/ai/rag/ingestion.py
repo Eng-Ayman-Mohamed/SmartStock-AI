@@ -1,8 +1,6 @@
-import io
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Optional
 
 import pypdf
 from django.db import transaction
@@ -46,76 +44,6 @@ def chunk_pdf_pages(pages: list[dict]) -> list[dict]:
                 "text": t,
                 "page_number": page["page_number"],
             })
-    return chunks
-
-
-def chunk_database_records() -> list[dict]:
-    from apps.inventory.models import Product, SKU, StockLevel, Supplier as InvSupplier
-    from apps.purchasing.models import PurchaseOrder
-
-    chunks = []
-    now = datetime.now(timezone.utc).isoformat()
-
-    products = Product.objects.select_related().all()
-    for product in products:
-        for sku in product.skus.all():
-            stock = getattr(sku, 'stock_level', None)
-            reorder = stock.reorder_point if stock else "N/A"
-            text = (
-                f"Product: {product.name}, "
-                f"SKU: {sku.code}, "
-                f"Reorder Point: {reorder} units."
-            )
-            chunks.append({
-                "text": text,
-                "source_document": "product_catalogue",
-                "page_number": None,
-                "metadata": {
-                    "doc_type": "catalogue",
-                    "ingested_at": now,
-                },
-            })
-
-    suppliers = InvSupplier.objects.all()
-    for supplier in suppliers:
-        text = (
-            f"Supplier: {supplier.name}, "
-            f"Email: {supplier.contact_email}, "
-            f"Phone: {supplier.contact_phone or 'N/A'}, "
-            f"Address: {supplier.address or 'N/A'}, "
-            f"Lead Time: {supplier.default_lead_time_days} days, "
-            f"Active: {supplier.is_active}"
-        )
-        chunks.append({
-            "text": text,
-            "source_document": "supplier_records",
-            "page_number": None,
-            "metadata": {
-                "doc_type": "catalogue",
-                "ingested_at": now,
-            },
-        })
-
-    orders = PurchaseOrder.objects.select_related("sku__product", "supplier").all()
-    for po in orders:
-        text = (
-            f"Purchase Order {po.id}: "
-            f"SKU: {po.sku.code}, "
-            f"Product: {po.sku.product.name}, "
-            f"Supplier: {po.supplier.name}, "
-            f"Quantity: {po.quantity}, "
-            f"Status: {po.status}"
-        )
-        chunks.append({
-            "text": text,
-            "source_document": "purchase_orders",
-            "page_number": None,
-            "metadata": {
-                "doc_type": "catalogue",
-                "ingested_at": now,
-            },
-        })
-
     return chunks
 
 
@@ -170,30 +98,6 @@ def ingest_pdf(file_path: str) -> dict:
     return {
         "filename": filename,
         "pages": total_pages,
-        "chunks": len(raw_chunks),
-        "api_calls": (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE,
-    }
-
-
-def ingest_database_records() -> dict:
-    raw_chunks = chunk_database_records()
-    if not raw_chunks:
-        return {"chunks": 0, "api_calls": 0}
-
-    texts = [c["text"] for c in raw_chunks]
-    embeddings = generate_embeddings(texts)
-
-    with transaction.atomic():
-        for chunk_data, embedding in zip(raw_chunks, embeddings):
-            DocumentChunk.objects.create(
-                chunk_text=chunk_data["text"],
-                embedding=embedding,
-                source_document=chunk_data["source_document"],
-                page_number=chunk_data["page_number"],
-                metadata=chunk_data["metadata"],
-            )
-
-    return {
         "chunks": len(raw_chunks),
         "api_calls": (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE,
     }
