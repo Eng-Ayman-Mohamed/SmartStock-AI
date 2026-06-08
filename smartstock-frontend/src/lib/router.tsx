@@ -13,6 +13,7 @@ import RegisterPage from '../features/auth/pages/RegisterPage';
 import ForbiddenPage from '../features/auth/pages/ForbiddenPage';
 import ProtectedRoute from '../features/auth/components/ProtectedRoute';
 import RedirectIfAuthenticated from '../features/auth/components/RedirectIfAuthenticated';
+import { SuppliersPage } from '../features/purchasing/pages/SuppliersPage';
 
 export const routes: RouteObject[] = [
   {
@@ -36,6 +37,7 @@ export const routes: RouteObject[] = [
           { path: 'purchasing', element: <PurchasingPage /> },
           { path: 'ai-assistant', element: <AIAssistantPage /> },
           { path: 'invoice-scan', element: <InvoiceScanPage /> },
+          { path: 'suppliers', element: <SuppliersPage /> },
         ],
       },
     ],

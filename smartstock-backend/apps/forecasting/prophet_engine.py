@@ -10,6 +10,15 @@ MIN_DATA_POINTS = 30
 
 
 def _moving_average_forecast(df: pd.DataFrame, periods: int = 30) -> pd.DataFrame:
+    if df.empty:
+        forecast_dates = pd.date_range(
+            start=pd.Timestamp.today(), periods=periods
+        )
+        forecast = pd.DataFrame({'ds': forecast_dates})
+        forecast['yhat'] = 0.0
+        forecast['yhat_lower'] = 0.0
+        forecast['yhat_upper'] = 0.0
+        return forecast
     window = min(7, len(df))
     ma = df['y'].rolling(window=window).mean().iloc[-1]
     if pd.isna(ma):
