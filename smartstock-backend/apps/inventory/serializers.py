@@ -1,7 +1,13 @@
 import re
 
 from rest_framework import serializers
-from .models import Product, SKU, StockLevel, SalesRecord ,Supplier
+from .models import Product, SKU, StockLevel, SalesRecord, Supplier, Category
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
 
 
 class SKUCompactSerializer(serializers.ModelSerializer):
@@ -13,6 +19,8 @@ class SKUCompactSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     skus = SKUCompactSerializer(many=True, read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
 
     class Meta:
         model = Product
@@ -23,7 +31,10 @@ class ProductWriteSerializer(serializers.ModelSerializer):
     """Serializer for create/update — no nested SKUs."""
     class Meta:
         model = Product
-        fields = ('id', 'name', 'description', 'category')
+        fields = (
+            'id', 'name', 'description', 'category', 'supplier',
+            'unit_price', 'unit_of_measure', 'reorder_point', 'safety_stock',
+        )
         read_only_fields = ('id',)
 
     def validate_name(self, value):
