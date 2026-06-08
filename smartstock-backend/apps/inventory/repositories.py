@@ -1,6 +1,26 @@
-from django.db import models
+from django.db import models, transaction
 from core.base_repository import BaseRepository
-from .models import Product, SKU, StockLevel, SalesRecord
+from .models import Product, SKU, StockLevel, SalesRecord, Supplier, Category
+
+
+class CategoryRepository(BaseRepository):
+    """Repository for Category model."""
+
+    def get_by_id(self, id: int):
+        return Category.objects.get(pk=id)
+
+    def get_all(self):
+        return Category.objects.all()
+
+    def create(self, data: dict):
+        return Category.objects.create(**data)
+
+    def update(self, id: int, data: dict):
+        Category.objects.filter(pk=id).update(**data)
+        return self.get_by_id(id)
+
+    def delete(self, id: int):
+        Category.objects.filter(pk=id).delete()
 
 
 class InventoryRepository(BaseRepository):
@@ -9,8 +29,17 @@ class InventoryRepository(BaseRepository):
     def get_by_id(self, id: int):
         return Product.objects.prefetch_related('skus').get(pk=id)
 
-    def get_all(self):
-        return Product.objects.prefetch_related('skus').all()
+    def get_all(self, include_inactive: bool = False):
+        qs = Product.objects.prefetch_related('skus')
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+        return qs.all()
+
+    def get_all_queryset(self, include_inactive: bool = False):
+        qs = Product.objects.prefetch_related('skus')
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+        return qs.order_by('-created_at')
 
     def create(self, data: dict):
         return Product.objects.create(**data)
@@ -19,8 +48,18 @@ class InventoryRepository(BaseRepository):
         Product.objects.filter(pk=id).update(**data)
         return self.get_by_id(id)
 
+    def soft_delete(self, id: int):
+        Product.objects.filter(pk=id).update(is_active=False)
+
     def delete(self, id: int):
         Product.objects.filter(pk=id).delete()
+
+    def adjust_stock(self, stock_level_id: int, quantity_delta: int):
+        with transaction.atomic():
+            stock = StockLevel.objects.select_for_update().get(pk=stock_level_id)
+            stock.quantity_on_hand += quantity_delta
+            stock.save()
+        return stock
 
 
 class SKURepository(BaseRepository):
@@ -65,8 +104,18 @@ class StockLevelRepository(BaseRepository):
     def get_low_stock(self):
         """Return all stock levels where quantity is below reorder point."""
         return StockLevel.objects.select_related('sku__product').filter(
-            quantity__lt=models.F('reorder_point')
+            quantity_on_hand__lt=models.F('reorder_point')
         )
+
+    def get_by_product_id(self, product_id: int):
+        """Get the StockLevel for a given product_id. Returns None if not found."""
+        sku = SKU.objects.filter(product_id=product_id).first()
+        if not sku:
+            return None
+        try:
+            return StockLevel.objects.get(sku=sku)
+        except StockLevel.DoesNotExist:
+            return None
 
 
 class SalesRecordRepository(BaseRepository):
@@ -96,3 +145,23 @@ class SalesRecordRepository(BaseRepository):
             [SalesRecord(**r) for r in records],
             ignore_conflicts=True
         )
+
+
+class SupplierRepository(BaseRepository):
+    """Repository for Supplier model."""
+
+    def get_by_id(self, id: int):
+        return Supplier.objects.get(pk=id)
+
+    def get_all(self):
+        return Supplier.objects.all()
+
+    def create(self, data: dict):
+        return Supplier.objects.create(**data)
+
+    def update(self, id: int, data: dict):
+        Supplier.objects.filter(pk=id).update(**data)
+        return self.get_by_id(id)
+
+    def delete(self, id: int):
+        Supplier.objects.filter(pk=id).delete()

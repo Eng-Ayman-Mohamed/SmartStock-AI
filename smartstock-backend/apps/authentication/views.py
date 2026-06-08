@@ -4,6 +4,11 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
+
+
+class TokenRefreshView(BaseTokenRefreshView):
+    envelope_exempt = True
 
 from .models import CustomUser
 from .permissions import IsAdminOnly
@@ -22,17 +27,19 @@ class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = RegisterSerializer
+    envelope_exempt = True
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
         return Response(
             {
-                'id': user.id,
-                'email': user.email,
-                'name': f'{user.first_name} {user.last_name}'.strip(),
-                'role': user.role,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': MeSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -40,10 +47,28 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(TokenObtainPairView):
     permission_classes = (permissions.AllowAny,)
+    envelope_exempt = True
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception:
+            return Response(
+                {'status': 'error', 'error': 'AuthenticationFailed',
+                 'message': 'Invalid email or password.', 'code': 401},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        user = getattr(serializer, 'user', None)
+        data = serializer.validated_data
+        if user:
+            data['user'] = MeSerializer(user).data
+        return Response(data)
 
 
 class LogoutView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
+    envelope_exempt = True
 
     def post(self, request):
         response = Response({'detail': 'Logged out.'}, status=status.HTTP_200_OK)
@@ -54,6 +79,7 @@ class LogoutView(APIView):
 
 class MeView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
+    envelope_exempt = True
 
     def get(self, request):
         serializer = MeSerializer(request.user)
@@ -63,6 +89,7 @@ class MeView(APIView):
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = CustomUser.objects.all().order_by('-date_joined')
     permission_classes = (IsAdminOnly,)
+    envelope_exempt = True
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -80,6 +107,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
     permission_classes = (IsAdminOnly,)
     lookup_field = 'pk'
+    envelope_exempt = True
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):

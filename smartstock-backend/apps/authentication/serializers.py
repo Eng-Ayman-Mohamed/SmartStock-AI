@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import CustomUser
 
@@ -8,6 +9,21 @@ User = get_user_model()
 
 def _full_name(first_name: str, last_name: str) -> str:
     return f'{first_name} {last_name}'.strip()
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        token['email'] = user.email
+        return token
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict) and 'email' in data and 'username' not in data:
+            data = data.copy()
+            data['username'] = data.pop('email')
+        return super().to_internal_value(data)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
