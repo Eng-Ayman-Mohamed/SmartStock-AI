@@ -61,6 +61,7 @@ class StockLevelSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='sku.product.name', read_only=True)
 
     quantity = serializers.IntegerField(source='quantity_on_hand', read_only=True)
+    quantity_available = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = StockLevel
