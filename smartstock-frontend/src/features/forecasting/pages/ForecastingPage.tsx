@@ -29,8 +29,8 @@ export default function ForecastingPage() {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-page-heading text-gray-900">Demand Forecasting</h1>
-          <p className="text-body text-gray-600 mt-1">AI-powered 30-day demand predictions per SKU</p>
+          <h1 className="text-page-heading text-ink">Demand Forecasting</h1>
+          <p className="text-body text-ink-muted mt-1">Peek 30 days ahead — AI predicts what you'll need before you need it</p>
         </div>
         <Button variant="primary" size="md" onClick={handleRefresh}>
           <RefreshCw className="w-4 h-4" /> Refresh
@@ -48,7 +48,7 @@ export default function ForecastingPage() {
       )}
 
       {isError && (
-        <div className="rounded-md border-[0.5px] border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
           Failed to load forecast data from /api/forecasting/dashboard/
         </div>
       )}
@@ -56,15 +56,15 @@ export default function ForecastingPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {[1,2,3,4].map(i => (
-            <div key={i} className="h-72 rounded-md border-[0.5px] border-gray-100 bg-gray-100 animate-skeleton" />
+            <div key={i} className="h-72 rounded-md border border-hairline bg-hairline animate-skeleton" />
           ))}
         </div>
       ) : skus.length === 0 ? (
         <Card>
           <div className="flex flex-col items-center justify-center py-16">
-            <TrendingUp className="w-12 h-12 text-gray-300 mb-4" />
-            <h3 className="text-card-title text-gray-700 mb-1">No forecast data</h3>
-            <p className="text-body text-gray-500 text-center max-w-[280px]">
+            <TrendingUp className="w-12 h-12 text-ink-faint mb-4" />
+            <h3 className="text-card-title text-ink-secondary mb-1">No forecast data</h3>
+            <p className="text-body text-ink-muted text-center max-w-[280px]">
               Forecast data will appear here once the AI model completes its initial analysis.
             </p>
           </div>

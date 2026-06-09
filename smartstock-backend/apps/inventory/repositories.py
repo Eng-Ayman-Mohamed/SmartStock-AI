@@ -57,7 +57,13 @@ class InventoryRepository(BaseRepository):
     def adjust_stock(self, stock_level_id: int, quantity_delta: int):
         with transaction.atomic():
             stock = StockLevel.objects.select_for_update().get(pk=stock_level_id)
-            stock.quantity_on_hand += quantity_delta
+            new_quantity = stock.quantity_on_hand + quantity_delta
+            if new_quantity < stock.quantity_reserved:
+                raise ValueError(
+                    f"Cannot reduce stock to {new_quantity}: {stock.quantity_reserved} "
+                    f"units are reserved (minimum allowed)."
+                )
+            stock.quantity_on_hand = new_quantity
             stock.save()
         return stock
 

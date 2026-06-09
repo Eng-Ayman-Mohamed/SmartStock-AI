@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import QuerySet
 
 from apps.inventory.models import SKU, SalesRecord
 from core.base_repository import BaseRepository
@@ -33,6 +34,21 @@ class ForecastingRepository(BaseRepository):
 
     def get_sales_for_sku(self, sku_id: int):
         return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
+
+    def get_sales_for_all_skus(self) -> dict[str, QuerySet]:
+        """
+        Returns {sku_code: SalesRecord queryset} for all active SKUs with sales data.
+        Used by batch ingestion pipeline.
+        """
+        skus_with_sales = SKU.objects.filter(
+            sales_records__isnull=False,
+            product__is_active=True
+        ).distinct().select_related('product').values_list('id', 'code')
+
+        result = {}
+        for sku_id, sku_code in skus_with_sales:
+            result[sku_code] = self.get_sales_for_sku(sku_id)
+        return result
 
     @transaction.atomic
     def upsert(

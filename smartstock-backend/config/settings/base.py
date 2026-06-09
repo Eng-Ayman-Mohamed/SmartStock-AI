@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'django_filters',
     'django_celery_beat',
     'drf_spectacular',
+    'django.contrib.postgres',
     'apps.health',
     'apps.authentication',
     'apps.inventory',
@@ -137,7 +138,7 @@ SIMPLE_JWT = {
     'AUTH_COOKIE': 'refresh_token',
     'AUTH_COOKIE_HTTP_ONLY': True,
     'AUTH_COOKIE_SECURE': False,
-    'AUTH_COOKIE_SAMESITE': 'Lax',
+    'AUTH_COOKIE_SAMESITE': 'Strict',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')

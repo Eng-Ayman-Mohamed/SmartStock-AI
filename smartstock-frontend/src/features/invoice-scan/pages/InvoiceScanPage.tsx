@@ -22,13 +22,13 @@ export default function InvoiceScanPage() {
 
   const confidenceColor = (pct: number) => {
     if (pct >= 90) return 'text-green-600 bg-green-50';
-    if (pct >= 70) return 'text-amber-600 bg-amber-50';
+    if (pct >= 70) return 'text-orange-600 bg-orange-50';
     return 'text-red-600 bg-red-50';
   };
 
   const confidenceDot = (pct: number) => {
     if (pct >= 90) return 'bg-green-600';
-    if (pct >= 70) return 'bg-amber-600';
+    if (pct >= 70) return 'bg-orange-600';
     return 'bg-red-600';
   };
 
@@ -36,37 +36,35 @@ export default function InvoiceScanPage() {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-page-heading text-gray-900">Invoice Scan</h1>
-          <p className="text-body text-gray-600 mt-1">Upload invoices to auto-extract product data</p>
+          <h1 className="text-page-heading text-ink">Invoice Scan</h1>
+          <p className="text-body text-ink-muted mt-1">Drop an invoice, we'll do the paperwork — AI extracts product details automatically</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           {!uploaded ? (
-            <div
-              className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-gray-100 rounded-lg cursor-pointer hover:border-brand-200 hover:bg-brand-50/30 transition-colors"
+            <button
+              type="button"
+              className="flex flex-col items-center justify-center py-16 w-full border-2 border-dashed border-hairline rounded-lg cursor-pointer hover:border-brand-200 hover:bg-brand-50/30 transition-colors"
               onClick={handleUpload}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleUpload(); }}
               aria-label="Upload invoice"
             >
-              <Upload className="w-12 h-12 text-gray-300 mb-4" />
-              <h3 className="text-card-title text-gray-700 mb-1">Upload Invoice</h3>
-              <p className="text-body text-gray-500 text-center max-w-[280px] mb-4">
+              <Upload className="w-12 h-12 text-ink-faint mb-4" />
+              <h3 className="text-card-title text-ink-secondary mb-1">Upload Invoice</h3>
+              <p className="text-body text-ink-muted text-center max-w-[280px] mb-4">
                 Drop an invoice PDF or image here, or click to browse
               </p>
               <Button variant="primary" size="md"><Upload className="w-4 h-4" /> Select File</Button>
-            </div>
-          ) : (
+              </button>
+            ) : (
             <div className="flex flex-col items-center justify-center py-8">
-              <div className="w-full max-w-sm rounded-lg border-[0.5px] border-gray-100 bg-gray-50 p-2 mb-4">
-                <div className="aspect-[3/4] rounded-md bg-white flex items-center justify-center">
-                  <FileText className="w-16 h-16 text-gray-200" />
+              <div className="w-full max-w-sm rounded-lg border border-hairline bg-canvas-soft p-2 mb-4">
+                <div className="aspect-[3/4] rounded-md bg-canvas flex items-center justify-center">
+                  <FileText className="w-16 h-16 text-hairline" />
                 </div>
               </div>
-              <p className="text-body text-gray-600">invoice_techsupply_20250601.pdf</p>
+              <p className="text-body text-ink-muted">invoice_techsupply_20250601.pdf</p>
               <Badge variant="AI Generated">AI Generated</Badge>
             </div>
           )}
@@ -76,8 +74,8 @@ export default function InvoiceScanPage() {
           {!uploaded ? (
             <EmptyState
               icon={Scan}
-              heading="No invoice scanned yet"
-              body="Upload an invoice document to automatically extract product details."
+              heading="No invoices yet"
+              body="Upload a supplier invoice and the AI will pull out the product names, SKUs, quantities, and prices."
             />
           ) : (
             <>
@@ -85,7 +83,7 @@ export default function InvoiceScanPage() {
                 {fields.map((field) => (
                   <div key={field.label}>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-caption text-gray-600">{field.label}</label>
+                      <label className="text-caption text-ink-muted">{field.label}</label>
                       <span className={`inline-flex items-center gap-1 text-caption px-1.5 py-0.5 rounded-sm ${confidenceColor(field.confidence)}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${confidenceDot(field.confidence)}`} />
                         {field.confidence}%
@@ -95,7 +93,7 @@ export default function InvoiceScanPage() {
                     <input
                       type="text"
                       defaultValue={field.value}
-                      className="w-full h-9 px-3 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-900 hover:border-gray-400 focus:border-brand-600 focus:outline-none transition-colors"
+                      className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
                       aria-label={field.label}
                     />
                     {field.confidence < 70 && (
@@ -107,12 +105,12 @@ export default function InvoiceScanPage() {
                 ))}
               </div>
 
-              <div className="flex items-center gap-3 mt-6 pt-4 border-t-[0.5px] border-gray-100">
+              <div className="flex items-center gap-3 mt-6 pt-4 border-t border-hairline">
                 <Button variant="secondary" size="md" className="flex-1"><X className="w-4 h-4" /> Reject</Button>
                 <Button variant="primary" size="md" className="flex-1"><Check className="w-4 h-4" /> Confirm &amp; Add</Button>
               </div>
 
-              <p className="text-caption text-gray-400 text-center mt-3">
+              <p className="text-caption text-ink-faint text-center mt-3">
                 This action will be logged with your user ID and timestamp.
               </p>
             </>

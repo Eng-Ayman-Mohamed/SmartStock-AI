@@ -45,7 +45,7 @@ function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: (
         } ${
           isActive
             ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
-            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
         }`
       }
     >
@@ -78,16 +78,16 @@ export default function Sidebar() {
 
       {/* Mobile drawer */}
       <aside
-        className={`fixed top-0 left-0 h-screen z-50 flex flex-col bg-white border-r-[1px] border-gray-100 transition-all duration-200 md:hidden w-[220px] ${
+        className={`fixed top-0 left-0 h-screen z-50 flex flex-col bg-canvas border-r border-hairline transition-all duration-200 md:hidden w-[220px] ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label="Navigation sidebar"
       >
-        <div className="flex items-center justify-between h-10 px-3 border-b-[1px] border-gray-100">
-          <span className="text-card-title font-medium text-gray-900">SmartStock AI</span>
+        <div className="flex items-center justify-between h-10 px-3 border-b border-hairline">
+          <span className="text-card-title font-medium text-ink">SmartStock AI</span>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
             aria-label="Close navigation"
           >
             <X className="w-4 h-4" />
@@ -104,7 +104,7 @@ export default function Sidebar() {
                 `flex items-center gap-3 h-10 px-3 rounded-md text-body transition-colors duration-150 ${
                   isActive
                     ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
                 }`
               }
             >
@@ -116,21 +116,21 @@ export default function Sidebar() {
             </NavLink>
           ))}
         </nav>
-        <div className="px-2 py-2 border-t-[1px] border-gray-100">
+        <div className="px-2 py-2 border-t border-hairline">
           <BottomNavItem collapsed={false} onClick={() => setSidebarOpen(false)} />
         </div>
       </aside>
 
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex flex-col bg-white border-r-[1px] border-gray-100 shrink-0 min-h-screen sticky top-0 h-screen transition-all duration-200 ${
+        className={`hidden md:flex flex-col bg-canvas border-r border-hairline shrink-0 min-h-screen sticky top-0 h-screen transition-all duration-200 ${
           collapsed ? 'w-14' : 'w-[220px]'
         }`}
         aria-label="Navigation sidebar"
       >
-        <div className={`flex items-center h-10 px-3 border-b-[1px] border-gray-100 ${collapsed ? 'justify-center' : 'gap-2'}`}>
+        <div className={`flex items-center h-10 px-3 border-b border-hairline ${collapsed ? 'justify-center' : 'gap-2'}`}>
           <Sparkles className="w-4 h-4 text-brand-600 shrink-0" aria-hidden="true" />
-          {!collapsed && <span className="text-card-title font-medium text-gray-900 truncate">SmartStock AI</span>}
+          {!collapsed && <span className="text-card-title font-medium text-ink truncate">SmartStock AI</span>}
         </div>
 
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
@@ -146,7 +146,7 @@ export default function Sidebar() {
                   } ${
                     isActive
                       ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
                   }`
                 }
               >
@@ -164,15 +164,15 @@ export default function Sidebar() {
             ))}
           </div>
 
-          <div className="pt-2 mt-2 border-t-[1px] border-gray-100">
+          <div className="pt-2 mt-2 border-t border-hairline">
             <BottomNavItem collapsed={collapsed} />
           </div>
         </nav>
 
-        <div className="px-2 py-2 border-t-[1px] border-gray-100">
+        <div className="px-2 py-2 border-t border-hairline">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center justify-center w-full h-9 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors duration-150"
+            className="flex items-center justify-center w-full h-9 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors duration-150"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
