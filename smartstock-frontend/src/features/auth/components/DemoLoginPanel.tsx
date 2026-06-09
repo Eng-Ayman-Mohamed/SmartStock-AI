@@ -16,7 +16,7 @@ const OPTIONS: RoleOption[] = [
     label: 'Viewer',
     description: 'Read-only access to inventory and forecasts',
     icon: Eye,
-    accent: 'text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-200',
+    accent: 'text-ink-muted bg-canvas-soft hover:bg-hairline border-hairline',
   },
   {
     role: 'manager',
@@ -38,14 +38,14 @@ export default function DemoLoginPanel() {
   const { loginAsRole, isSubmitting } = useAuth();
 
   return (
-    <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+    <div className="mb-6 rounded-lg border border-orange-200 bg-orange-50 p-4">
       <div className="flex items-center gap-2 mb-3">
-        <FlaskConical className="w-4 h-4 text-amber-700" aria-hidden="true" />
-        <p className="text-caption font-semibold text-amber-800 uppercase tracking-wide">
-          Dev mode · backend not connected
+        <FlaskConical className="w-4 h-4 text-orange-700" aria-hidden="true" />
+        <p className="text-caption font-semibold text-orange-800 uppercase tracking-wide">
+          Dev mode &middot; backend not connected
         </p>
       </div>
-      <p className="text-caption text-amber-900 mb-3">
+      <p className="text-caption text-orange-900 mb-3">
         Sign in as a demo user to explore the app. No real authentication is performed.
       </p>
       <div className="grid grid-cols-1 gap-2">
