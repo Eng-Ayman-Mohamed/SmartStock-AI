@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Edit3, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { Edit3, Package, Plus, Search, Trash2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axios';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
@@ -9,6 +9,10 @@ import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
 import Badge from '../../../shared/components/Badge';
 import Skeleton from '../../../shared/components/Skeleton';
+import Modal from '../../../shared/components/Modal';
+import DataTable from '../../../shared/components/DataTable';
+import type { Column } from '../../../shared/components/DataTable';
+import { useToastStore } from '../../../store/toastStore';
 
 type Product = {
   id: number;
@@ -60,6 +64,15 @@ export default function InventoryPage() {
   const canManage = user?.role === 'manager' || user?.role === 'admin';
   const canDelete = user?.role === 'admin';
 
+  const [editingProduct, setEditingProduct] = useState<Product | 'new' | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formReorder, setFormReorder] = useState(10);
+  const [formSafety, setFormSafety] = useState(10);
+
+  const addToast = useToastStore((s) => s.addToast);
+
   const inventoryQuery = useQuery({
     queryKey: ['inventory', debouncedSearch],
     queryFn: async () => {
@@ -80,13 +93,11 @@ export default function InventoryPage() {
 
   const saveProduct = useMutation({
     mutationFn: async (product?: Product) => {
-      const name = window.prompt('Product name', product?.name ?? '');
-      if (!name) return;
       const payload = {
-        name,
-        description: product?.description ?? '',
-        reorder_point: product?.reorder_point ?? 10,
-        safety_stock: product?.safety_stock ?? 0,
+        name: formName,
+        description: formDescription,
+        reorder_point: formReorder,
+        safety_stock: formSafety,
       };
       if (product) {
         await api.patch(`/inventory/products/${product.id}/`, payload);
@@ -94,16 +105,45 @@ export default function InventoryPage() {
         await api.post('/inventory/products/', payload);
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+    onSuccess: (_data, product) => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setEditingProduct(null);
+      addToast(product ? `Updated ${product.name}` : 'Product created', 'success');
+    },
+    onError: () => {
+      addToast('Failed to save product', 'error');
+    },
   });
 
   const deleteProduct = useMutation({
     mutationFn: async (product: Product) => {
-      if (!window.confirm(`Delete ${product.name}?`)) return;
       await api.delete(`/inventory/products/${product.id}/`);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+    onSuccess: (_, product) => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setDeletingProduct(null);
+      addToast(`Deleted ${product.name}`, 'success');
+    },
+    onError: () => {
+      addToast('Failed to delete product', 'error');
+    },
   });
+
+  function openNewProductForm() {
+    setFormName('');
+    setFormDescription('');
+    setFormReorder(10);
+    setFormSafety(10);
+    setEditingProduct('new');
+  }
+
+  function openEditForm(product: Product) {
+    setFormName(product.name);
+    setFormDescription(product.description);
+    setFormReorder(product.reorder_point);
+    setFormSafety(product.safety_stock);
+    setEditingProduct(product);
+  }
 
   const rows = useMemo(() => {
     const data = inventoryQuery.data;
@@ -124,14 +164,76 @@ export default function InventoryPage() {
       .filter((row) => !statusFilter || row.status === statusFilter);
   }, [inventoryQuery.data, statusFilter]);
 
+  type Row = (typeof rows)[number];
+
+  const columns: Column<Row>[] = [
+    {
+      key: 'sku',
+      label: 'SKU',
+      width: '130px',
+      render: (r) => <span className="text-mono text-ink-secondary">{r.sku.code}</span>,
+    },
+    {
+      key: 'product',
+      label: 'Product',
+      render: (r) => <span className="truncate block">{r.product.name}</span>,
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      width: '130px',
+      render: (r) => <span className="truncate block text-ink-muted">{r.product.category_name ?? 'Unassigned'}</span>,
+    },
+    {
+      key: 'qty',
+      label: 'On Hand',
+      align: 'right',
+      width: '90px',
+      render: (r) => <span className="tabular-nums">{r.quantity}</span>,
+    },
+    {
+      key: 'reorder',
+      label: 'Reorder',
+      align: 'right',
+      width: '80px',
+      render: (r) => <span className="tabular-nums">{r.reorderPoint}</span>,
+    },
+    {
+      key: 'supplier',
+      label: 'Supplier',
+      render: (r) => <span className="truncate block text-ink-muted">{r.product.supplier_name ?? 'Unassigned'}</span>,
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '120px',
+      render: (r) => <Badge variant={r.status}>{r.status}</Badge>,
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      width: '80px',
+      render: (r) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => openEditForm(r.product)} disabled={!canManage} aria-label="Edit product">
+            <Edit3 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => setDeletingProduct(r.product)} disabled={!canDelete} aria-label="Delete product">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-page-heading text-gray-900">Inventory</h1>
-          <p className="text-body text-gray-600 mt-1">Manage products, stock levels, and low-stock alerts</p>
+          <h1 className="text-page-heading text-ink">Inventory</h1>
+          <p className="text-body text-ink-muted mt-1">Stock's lookin' thin in places — {inventoryQuery.data?.lowStock.length ?? 'some'} SKUs could use a top-up.</p>
         </div>
-        <Button variant="primary" size="md" onClick={() => saveProduct.mutate(undefined)} disabled={!canManage}>
+        <Button variant="primary" size="md" onClick={openNewProductForm} disabled={!canManage}>
           <Plus className="w-4 h-4" /> Add Product
         </Button>
       </div>
@@ -140,10 +242,10 @@ export default function InventoryPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {inventoryQuery.data.lowStock.slice(0, 6).map((item) => (
             <Card key={item.id}>
-              <p className="text-body font-medium text-gray-900 truncate">{item.product_name}</p>
-              <p className="text-caption text-gray-600 mt-1">
+              <p className="text-body font-medium text-ink truncate">{item.product_name}</p>
+              <p className="text-caption text-ink-muted mt-1">
                 <span className="font-mono">{item.sku_code}</span>
-                <span className="tabular-nums"> · {item.quantity}/{item.reorder_point}</span>
+                <span className="tabular-nums"> &middot; {item.quantity}/{item.reorder_point}</span>
               </p>
             </Card>
           ))}
@@ -152,18 +254,18 @@ export default function InventoryPage() {
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint" aria-hidden="true" />
           <input
             type="text"
             placeholder="Search by product name or SKU..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-10 pr-4 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 hover:border-gray-400 focus:border-brand-600 focus:outline-none transition-colors duration-150"
+            className="w-full h-9 pl-10 pr-4 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
             aria-label="Search products"
           />
         </div>
         <select
-          className="h-9 px-3 rounded-md border-[0.5px] border-gray-100 bg-white text-body text-gray-600 hover:border-gray-400 focus:border-brand-600 focus:outline-none transition-colors duration-150"
+          className="h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           aria-label="Status filter"
@@ -176,14 +278,14 @@ export default function InventoryPage() {
       </div>
 
       {inventoryQuery.isError && (
-        <div className="rounded-md border-[0.5px] border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
           Failed to load inventory data.
         </div>
       )}
 
       <Card noPadding>
         {inventoryQuery.isLoading ? (
-          <div className="p-5 space-y-3">
+          <div className="p-6 space-y-3">
             {[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-10" />)}
           </div>
         ) : rows.length === 0 ? (
@@ -192,47 +294,110 @@ export default function InventoryPage() {
             heading="No products yet"
             body="Add your first product to start tracking inventory."
             actionLabel={canManage ? 'Add Product' : undefined}
-            onAction={canManage ? () => saveProduct.mutate(undefined) : undefined}
+            onAction={canManage ? openNewProductForm : undefined}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] table-fixed border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b-[1px] border-gray-100">
-                  {['SKU', 'Product', 'Category', 'On Hand', 'Reorder', 'Supplier', 'Status', 'Actions'].map((heading) => (
-                    <th key={heading} className="h-9 px-3 text-caption font-medium text-gray-600 uppercase tracking-[0.05em] text-left">
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={`${row.product.id}-${row.sku.code}`} className="bg-white border-b-[0.5px] border-gray-100 hover:bg-gray-50">
-                    <td className="h-11 px-3 text-body text-gray-800 truncate font-mono">{row.sku.code}</td>
-                    <td className="h-11 px-3 text-body text-gray-900 truncate">{row.product.name}</td>
-                    <td className="h-11 px-3 text-body text-gray-600 truncate">{row.product.category_name ?? 'Unassigned'}</td>
-                    <td className="h-11 px-3 text-body text-gray-800 tabular-nums">{row.quantity}</td>
-                    <td className="h-11 px-3 text-body text-gray-800 tabular-nums">{row.reorderPoint}</td>
-                    <td className="h-11 px-3 text-body text-gray-600 truncate">{row.product.supplier_name ?? 'Unassigned'}</td>
-                    <td className="h-11 px-3"><Badge variant={row.status}>{row.status}</Badge></td>
-                    <td className="h-11 px-3">
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => saveProduct.mutate(row.product)} disabled={!canManage} aria-label="Edit product">
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => deleteProduct.mutate(row.product)} disabled={!canDelete} aria-label="Delete product">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={rows}
+            keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
+            caption="Inventory products and stock levels"
+          />
         )}
       </Card>
+
+      <Modal
+        open={editingProduct !== null}
+        onClose={() => setEditingProduct(null)}
+        title={editingProduct && editingProduct !== 'new' ? 'Edit Product' : 'New Product'}
+        footer={
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" size="md" onClick={() => setEditingProduct(null)}>
+              <X className="w-4 h-4" /> Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => saveProduct.mutate(editingProduct && editingProduct !== 'new' ? editingProduct : undefined)}
+              disabled={!formName.trim() || saveProduct.isPending}
+            >
+              <Plus className="w-4 h-4" /> {editingProduct ? 'Save Changes' : 'Create Product'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-caption text-ink-muted mb-1">Product Name</label>
+            <input
+              type="text"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
+              placeholder="Wireless Mouse"
+              aria-label="Product name"
+            />
+          </div>
+          <div>
+            <label className="block text-caption text-ink-muted mb-1">Description</label>
+            <input
+              type="text"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
+              placeholder="Optional description"
+              aria-label="Product description"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-caption text-ink-muted mb-1">Reorder Point</label>
+              <input
+                type="number"
+                value={formReorder}
+                onChange={(e) => setFormReorder(Number(e.target.value))}
+                className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
+                aria-label="Reorder point"
+              />
+            </div>
+            <div>
+              <label className="block text-caption text-ink-muted mb-1">Safety Stock</label>
+              <input
+                type="number"
+                value={formSafety}
+                onChange={(e) => setFormSafety(Number(e.target.value))}
+                className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
+                aria-label="Safety stock"
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={deletingProduct !== null}
+        onClose={() => setDeletingProduct(null)}
+        title="Delete Product"
+        footer={
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" size="md" onClick={() => setDeletingProduct(null)}>
+              <X className="w-4 h-4" /> Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="md"
+              onClick={() => { if (deletingProduct) deleteProduct.mutate(deletingProduct); }}
+              disabled={deleteProduct.isPending}
+            >
+              <Trash2 className="w-4 h-4" /> Delete
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-body text-ink-secondary">
+          Are you sure you want to delete <strong>{deletingProduct?.name}</strong>? This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 }

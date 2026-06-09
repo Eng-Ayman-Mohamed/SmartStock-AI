@@ -14,7 +14,7 @@ export default function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
       className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm ${
         isCritical
           ? 'bg-red-50 border-red-200 text-red-800'
-          : 'bg-amber-50 border-amber-200 text-amber-800'
+          : 'bg-orange-50 border-orange-200 text-orange-800'
       }`}
     >
       {isCritical ? (

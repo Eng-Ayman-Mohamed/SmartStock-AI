@@ -10,7 +10,7 @@ export default function Skeleton({ className = '', lines }: SkeletonProps) {
         {Array.from({ length: lines }).map((_, i) => (
           <div
             key={i}
-            className={`h-4 rounded-md bg-gray-100 animate-skeleton ${
+            className={`h-4 rounded-md bg-hairline animate-skeleton ${
               i === lines - 1 ? 'w-3/4' : 'w-full'
             }`}
           />
@@ -21,7 +21,7 @@ export default function Skeleton({ className = '', lines }: SkeletonProps) {
 
   return (
     <div
-      className={`rounded-md bg-gray-100 animate-skeleton ${className}`}
+      className={`rounded-md bg-hairline animate-skeleton ${className}`}
       aria-hidden="true"
     />
   );
