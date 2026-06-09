@@ -3,16 +3,16 @@ import { Sparkles } from 'lucide-react';
 
 const statusStyles: Record<string, string> = {
   'In Stock': 'bg-green-50 text-green-800 before:bg-green-600',
-  'Low Stock': 'bg-amber-50 text-amber-800 before:bg-amber-600',
+  'Low Stock': 'bg-orange-50 text-orange-800 before:bg-orange-600',
   'Out of Stock': 'bg-red-50 text-red-800 before:bg-red-600',
-  Draft: 'bg-gray-100 text-gray-600',
-  'Pending Approval': 'bg-amber-50 text-amber-800',
+  Draft: 'bg-canvas-soft text-ink-muted',
+  'Pending Approval': 'bg-orange-50 text-orange-800',
   Approved: 'bg-green-50 text-green-800',
   Sent: 'bg-brand-50 text-brand-800',
   Confirmed: 'bg-green-50 text-green-800',
   Rejected: 'bg-red-50 text-red-800',
   'AI Generated': 'bg-purple-50 text-purple-800',
-  Viewer: 'bg-gray-100 text-gray-600',
+  Viewer: 'bg-canvas-soft text-ink-muted',
   Manager: 'bg-brand-50 text-brand-800',
   Admin: 'bg-purple-50 text-purple-800',
 };
@@ -30,7 +30,7 @@ export default function Badge({ children, variant, showDot = true }: BadgeProps)
 
   if (!classes) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-caption font-medium bg-gray-100 text-gray-600">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-eyebrow bg-canvas-soft text-ink-muted">
         {children}
       </span>
     );
@@ -40,7 +40,7 @@ export default function Badge({ children, variant, showDot = true }: BadgeProps)
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-caption font-medium ${classes} ${
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-eyebrow ${classes} ${
         hasDot ? 'before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:shrink-0' : ''
       }`}
     >
