@@ -25,7 +25,6 @@ from rest_framework import serializers
 from apps.forecasting.services import ForecastingService
 from apps.audit.models import AuditLog
 from apps.inventory.models import Supplier
-from ai.llm.chain import LLMChain, prompt_injection_filter, call_gpt4o_formatter
 class ProductViewSet(viewsets.ModelViewSet):
     """Full CRUD for products.
     
@@ -449,6 +448,8 @@ class NLQueryEndpointView(APIView):
             )
 
     def _run_pipeline(self, query, user):
+        from ai.llm.chain import LLMChain, prompt_injection_filter, call_gpt4o_formatter
+
         # Step A: Prompt Injection Check
         is_safe = prompt_injection_filter(query)
         if not is_safe:
