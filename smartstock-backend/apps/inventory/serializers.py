@@ -60,6 +60,8 @@ class StockLevelSerializer(serializers.ModelSerializer):
     sku_code = serializers.CharField(source='sku.code', read_only=True)
     product_name = serializers.CharField(source='sku.product.name', read_only=True)
 
+    quantity = serializers.IntegerField(source='quantity_on_hand', read_only=True)
+
     class Meta:
         model = StockLevel
         fields = '__all__'
@@ -74,6 +76,14 @@ class StockLevelSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Reorder point cannot be negative.')
         return value
 
+    # Added
+    def validate_reorder_quantity(self, value):
+        if value < 1:
+            raise serializers.ValidationError(
+                'Reorder quantity must be at least 1.'
+            )
+        return value
+
 
 class SalesRecordSerializer(serializers.ModelSerializer):
     sku_code = serializers.CharField(source='sku.code', read_only=True)
@@ -82,7 +92,31 @@ class SalesRecordSerializer(serializers.ModelSerializer):
         model = SalesRecord
         fields = '__all__'
 
+    def validate_quantity_sold(self, value):
+        if value < 0:
+            raise serializers.ValidationError(
+                'Quantity sold cannot be negative.'
+            )
+        return value
+
 class SupplierSerializer(serializers.ModelSerializer):
+
+    name = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        error_messages={
+            'required': 'Supplier name is required.',
+            'blank': 'Supplier name cannot be blank.',
+        }
+    )
+
+    contact_email = serializers.EmailField(
+        required=True,
+        error_messages={
+            'required': 'Contact email is required.',
+        }
+    )
+
     class Meta:
         model = Supplier
         fields = '__all__'
@@ -92,5 +126,13 @@ class SupplierSerializer(serializers.ModelSerializer):
 
     def validate_default_lead_time_days(self, value):
         if value < 1:
-            raise serializers.ValidationError('Lead time must be at least 1 day.')
+            raise serializers.ValidationError(
+                'Lead time must be at least 1 day.'
+            )
+
+        if value > 365:
+            raise serializers.ValidationError(
+                'Lead time cannot exceed 365 days.'
+            )
+
         return value
