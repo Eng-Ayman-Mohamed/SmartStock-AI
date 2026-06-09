@@ -17,6 +17,46 @@ class ForecastResultViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsViewerOrAbove]
 
 
+class ForecastBySKUView(APIView):
+    permission_classes = [IsViewerOrAbove]
+
+    def get(self, request, sku):
+        filters = {'sku__code__iexact': sku}
+        if str(sku).isdigit():
+            filters = {'sku_id': int(sku)}
+
+        rows = list(
+            ForecastResult.objects
+            .filter(**filters)
+            .select_related('sku__product')
+            .order_by('forecast_date')[:30]
+        )
+        if not rows:
+            return Response(
+                {"status": "error", "message": f"No forecast found for SKU {sku}."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        first = rows[0]
+        return Response({
+            "sku_id": first.sku_id,
+            "sku_code": first.sku.code,
+            "product_name": first.sku.product.name,
+            "forecasts": [
+                {
+                    "date": row.forecast_date.isoformat(),
+                    "predicted_quantity": row.predicted_quantity,
+                    "lower_bound": row.lower_bound,
+                    "upper_bound": row.upper_bound,
+                    "mae": row.mae,
+                    "mape": row.mape,
+                    "model_version": row.model_version,
+                }
+                for row in rows
+            ],
+        })
+
+
 class TriggerForecastView(APIView):
     permission_classes = [IsAdminOnly]
 
