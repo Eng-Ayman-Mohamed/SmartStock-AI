@@ -11,4 +11,5 @@ urlpatterns = [
     path('api/purchasing/', include('apps.purchasing.urls')),
     path('api/health/', include('apps.health.urls')),
     path('api/ai/nlquery/', NLQueryEndpointView.as_view(), name='nl-query-endpoint'),
+    path('api/audit/logs/', include('apps.audit.urls')),
 ]
