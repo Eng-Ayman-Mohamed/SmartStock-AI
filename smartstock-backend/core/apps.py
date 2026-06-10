@@ -7,5 +7,5 @@ class CoreConfig(AppConfig):
     verbose_name = 'Core'
 
     def ready(self):
-        from core.env_config import validate_environment
-        validate_environment()
+        from config.validators import validate_required_env_vars
+        validate_required_env_vars()
