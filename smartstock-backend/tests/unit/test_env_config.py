@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 from django.core.exceptions import ImproperlyConfigured
 
-
 REQUIRED_VARS = [
     'OPENAI_API_KEY',
     'LANGFUSE_PUBLIC_KEY',
@@ -21,7 +20,9 @@ ALL_ENV = {var: f'test-{var.lower()}' for var in REQUIRED_VARS}
 class TestValidateRequiredEnvVars(unittest.TestCase):
     def _import(self):
         import importlib
+
         import config.validators
+
         importlib.reload(config.validators)
         return config.validators.validate_required_env_vars
 
@@ -60,17 +61,16 @@ class TestValidateRequiredEnvVars(unittest.TestCase):
         validate = self._import()
         with patch('config.validators.logger') as mock_logger:
             validate()
-            config_calls = [
-                call for call in mock_logger.info.call_args_list
-                if call[0][0].startswith('[CONFIG]')
-            ]
+            config_calls = [call for call in mock_logger.info.call_args_list if call[0][0].startswith('[CONFIG]')]
             self.assertEqual(len(config_calls), len(REQUIRED_VARS) + 3)
 
 
 class TestMaskValue(unittest.TestCase):
     def _import(self):
         import importlib
+
         import config.validators
+
         importlib.reload(config.validators)
         return config.validators._mask_value
 

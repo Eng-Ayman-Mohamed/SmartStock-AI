@@ -1,5 +1,4 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
-
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 ROLE_HIERARCHY = {
     'admin': 3,
@@ -51,27 +50,18 @@ class IsViewer(BasePermission):
     message = 'Viewer role required.'
 
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role == 'viewer'
-        )
+        return request.user.is_authenticated and request.user.role == 'viewer'
 
 
 class IsManager(BasePermission):
     message = 'Manager role required.'
 
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role == 'manager'
-        )
+        return request.user.is_authenticated and request.user.role == 'manager'
 
 
 class IsAdmin(BasePermission):
     message = 'Admin role required.'
 
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role == 'admin'
-        )
+        return request.user.is_authenticated and request.user.role == 'admin'

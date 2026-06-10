@@ -1,4 +1,6 @@
-from .base import *
+import os  # noqa: F811
+
+from .base import *  # noqa: F403
 
 DEBUG = False
 
@@ -7,13 +9,11 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-ALLOWED_HOSTS = list({*ALLOWED_HOSTS, '.up.railway.app'})
+ALLOWED_HOSTS = list({*ALLOWED_HOSTS, '.up.railway.app'})  # noqa: F405
 
 _extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 _default_csrf = 'https://smart-stock-dev.vercel.app'
-CSRF_TRUSTED_ORIGINS = [
-    o.strip() for o in (_extra_csrf or _default_csrf).split(',') if o.strip()
-]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in (_extra_csrf or _default_csrf).split(',') if o.strip()]
 
 if not os.environ.get('CORS_ALLOWED_ORIGINS'):
     CORS_ALLOWED_ORIGINS = ['https://smart-stock-dev.vercel.app']

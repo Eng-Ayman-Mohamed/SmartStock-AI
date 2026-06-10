@@ -1,10 +1,10 @@
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.cache import cache
 
 from apps.authentication.models import CustomUser
-from apps.inventory.models import Product, Category, Supplier, SKU, StockLevel
+from apps.inventory.models import SKU, Category, Product, StockLevel, Supplier
 
 
 class InventoryEndpointTests(APITestCase):
@@ -54,7 +54,8 @@ class InventoryEndpointTests(APITestCase):
 
     def test_create_product_as_manager(self):
         payload = {
-            'name': 'New Product', 'description': 'Test',
+            'name': 'New Product',
+            'description': 'Test',
             'category': self.cat_electronics.id,
         }
         resp = self.client.post(
@@ -74,7 +75,8 @@ class InventoryEndpointTests(APITestCase):
             role='viewer',
         )
         payload = {
-            'name': 'Should Fail', 'description': '',
+            'name': 'Should Fail',
+            'description': '',
             'category': self.cat_electronics.id,
         }
         resp = self.client.post(
@@ -90,7 +92,8 @@ class InventoryEndpointTests(APITestCase):
 
         # Create
         payload = {
-            'name': 'CRUD Product', 'description': 'Full cycle',
+            'name': 'CRUD Product',
+            'description': 'Full cycle',
             'category': self.cat_testing.id,
         }
         resp = self.client.post('/api/inventory/products/', payload, format='json', **headers)
@@ -124,7 +127,8 @@ class InventoryEndpointTests(APITestCase):
     def test_pagination_default_page_size(self):
         for i in range(25):
             Product.objects.create(
-                name=f'Pagination Product {i}', category=self.cat_testing,
+                name=f'Pagination Product {i}',
+                category=self.cat_testing,
             )
         resp = self.client.get(
             '/api/inventory/products/',
@@ -137,7 +141,8 @@ class InventoryEndpointTests(APITestCase):
     def test_pagination_custom_page_size(self):
         for i in range(10):
             Product.objects.create(
-                name=f'Page Product {i}', category=self.cat_testing,
+                name=f'Page Product {i}',
+                category=self.cat_testing,
             )
         resp = self.client.get(
             '/api/inventory/products/?page_size=5',
@@ -222,8 +227,10 @@ class InventoryEndpointTests(APITestCase):
 
     def test_create_category_as_viewer_fails(self):
         viewer = CustomUser.objects.create_user(
-            email='viewer2@test.com', username='viewer2@test.com',
-            password='testpass123', role='viewer',
+            email='viewer2@test.com',
+            username='viewer2@test.com',
+            password='testpass123',
+            role='viewer',
         )
         resp = self.client.post(
             '/api/inventory/categories/',
@@ -237,12 +244,15 @@ class InventoryEndpointTests(APITestCase):
 
     def test_create_supplier_as_manager(self):
         payload = {
-            'name': 'Test Supplier', 'contact_email': 'supplier@test.com',
-            'contact_phone': '1234567890', 'default_lead_time_days': 5,
+            'name': 'Test Supplier',
+            'contact_email': 'supplier@test.com',
+            'contact_phone': '1234567890',
+            'default_lead_time_days': 5,
         }
         resp = self.client.post(
             '/api/inventory/suppliers/',
-            payload, format='json',
+            payload,
+            format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.manager),
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
@@ -272,8 +282,10 @@ class InventoryEndpointTests(APITestCase):
     def test_delete_supplier_as_viewer_fails(self):
         supplier = Supplier.objects.create(name='Del Supplier', contact_email='del@test.com')
         viewer = CustomUser.objects.create_user(
-            email='viewer3@test.com', username='viewer3@test.com',
-            password='testpass123', role='viewer',
+            email='viewer3@test.com',
+            username='viewer3@test.com',
+            password='testpass123',
+            role='viewer',
         )
         resp = self.client.delete(
             f'/api/inventory/suppliers/{supplier.id}/',
@@ -294,7 +306,8 @@ class InventoryEndpointTests(APITestCase):
     def test_soft_delete_product(self):
         headers = {'HTTP_AUTHORIZATION': self._auth_header(self.admin)}
         payload = {
-            'name': 'Soft Delete Test', 'description': 'Will be deleted',
+            'name': 'Soft Delete Test',
+            'description': 'Will be deleted',
             'category': self.cat_testing.id,
         }
         resp = self.client.post('/api/inventory/products/', payload, format='json', **headers)
