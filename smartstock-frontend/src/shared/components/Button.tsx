@@ -1,13 +1,24 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'utility';
 type Size = 'sm' | 'md' | 'lg';
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-800 disabled:bg-gray-100 disabled:text-gray-400',
-  secondary: 'bg-white border border-brand-600 text-brand-600 hover:bg-brand-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-100',
-  danger: 'bg-red-600 text-white hover:bg-red-800 disabled:bg-gray-100 disabled:text-gray-400',
-  ghost: 'bg-transparent text-brand-600 hover:bg-brand-50 disabled:text-gray-400 disabled:hover:bg-transparent',
+  primary:
+    'bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint ' +
+    'rounded-full',
+  secondary:
+    'bg-canvas border border-hairline text-ink hover:bg-canvas-soft disabled:bg-canvas-soft disabled:text-ink-faint disabled:border-hairline ' +
+    'shadow-soft rounded-full',
+  danger:
+    'bg-red-600 text-white hover:bg-red-800 disabled:bg-canvas-soft disabled:text-ink-faint ' +
+    'rounded-full',
+  ghost:
+    'bg-transparent text-brand-600 hover:bg-brand-50 disabled:text-ink-faint disabled:hover:bg-transparent ' +
+    'rounded-full',
+  utility:
+    'bg-canvas border border-hairline text-ink hover:bg-canvas-soft disabled:bg-canvas-soft disabled:text-ink-faint ' +
+    'rounded-full',
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -25,7 +36,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export default function Button({ variant = 'primary', size = 'md', className = '', children, ...props }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all duration-150 cursor-pointer disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 cursor-pointer disabled:cursor-not-allowed active:scale-[0.97] ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       {...props}
     >
       {children}

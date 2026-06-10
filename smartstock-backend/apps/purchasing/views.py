@@ -1,9 +1,10 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from apps.authentication.permissions import IsViewerOrAbove, IsManagerOrAbove, IsAdminOnly
+from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
+
 from .models import PurchaseOrder, Supplier
 from .serializers import PurchaseOrderSerializer, SupplierSerializer
 from .services import PurchasingService
@@ -40,4 +41,4 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     def approve(self, request, pk=None):
         po = self.get_object()
         result = PurchasingService().approve_po(po.id, request.user)
-        return Response({"status": "approved", "po_id": result.id})
+        return Response({'status': 'approved', 'po_id': result.id})

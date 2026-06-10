@@ -112,6 +112,7 @@ class NLQueryFilters:
 class NLQueryResult:
     def __init__(self, action: NLQueryAction, filters: NLQueryFilters):
         self.action = action
+        self.action = action
         self.filters = filters
 
     def to_dict(self) -> dict:
@@ -176,9 +177,9 @@ NL_QUERY_JSON_SCHEMA = {
                     "description": "Number of results to skip.",
                 },
             },
-            "additionalProperties": False,
+            'additionalProperties': False,
         },
     },
-    "required": ["action"],
-    "additionalProperties": False,
+    'required': ['action'],
+    'additionalProperties': False,
 }

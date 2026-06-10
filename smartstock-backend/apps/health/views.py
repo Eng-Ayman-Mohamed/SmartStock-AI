@@ -1,7 +1,7 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.db import connections
 from django.core.cache import cache
+from django.db import connections
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 def _check_database() -> bool:
@@ -27,6 +27,7 @@ class HealthCheckView(APIView):
     Body includes dep status for diagnostics, but the status code never
     drops to 503, so Railway (and similar orchestrators) keep routing traffic.
     """
+
     authentication_classes = []
     permission_classes = []
 
@@ -50,6 +51,7 @@ class ReadinessView(APIView):
     when a dependency is down. Returns 503 + diagnostic body when DB or Redis
     is unreachable so callers can react.
     """
+
     authentication_classes = []
     permission_classes = []
 

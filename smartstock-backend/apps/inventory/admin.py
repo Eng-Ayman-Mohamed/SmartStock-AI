@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Product, SKU, StockLevel, SalesRecord
+
+from .models import SKU, Product, SalesRecord, StockLevel
 
 admin.site.register(Product)
 admin.site.register(SKU)

@@ -1,9 +1,8 @@
 import logging
 
-import pandas as pd
-
-from .repositories import ForecastingRepository
+from .ingestion import prepare_forecast_dataframe
 from .prophet_engine import ProphetEngine
+from .repositories import ForecastingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -28,25 +27,23 @@ class ForecastingService:
                 result = self._forecast_for_sku(sku)
                 results.append(result)
             except Exception as e:
-                logger.exception("Forecast failed for SKU %s: %s", sku.code, e)
+                logger.exception('Forecast failed for SKU %s: %s', sku.code, e)
         return results
 
     def _forecast_for_sku(self, sku) -> dict:
-        sales = self.repo.get_sales_for_sku(sku.id)
-        if not sales:
-            logger.warning("No sales data for SKU %s; skipping", sku.code)
-            return {'sku': sku.code, 'status': 'skipped', 'reason': 'no_data'}
+        df = prepare_forecast_dataframe(sku.id)
 
-        df = pd.DataFrame([
-            {'ds': r.date, 'y': float(r.quantity_sold)}
-            for r in sales
-        ])
-        df = df.sort_values('ds').drop_duplicates(subset='ds').reset_index(drop=True)
-
-        full_range = pd.date_range(
-            start=df['ds'].min(), end=df['ds'].max(), freq='D'
-        )
-        df = df.set_index('ds').reindex(full_range).fillna(0).rename_axis('ds').reset_index()
+        if df is None:
+            logger.warning('Insufficient data for SKU %s; skipping', sku.code)
+            return {
+                'sku': sku.code,
+                'status': 'skipped',
+                'reason': 'no_data',
+                'forecast_days': 0,
+                'model_version': None,
+                'mae': None,
+                'mape': None,
+            }
 
         result = self.engine.predict(df, periods=30)
 
