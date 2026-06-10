@@ -401,6 +401,21 @@ class StockAdjustView(APIView):
                 {'quantity_delta': ['Must be a valid integer.']},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
+        new_quantity = stock.quantity_on_hand + delta
+        if new_quantity < 0:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'ValidationError',
+                    'message': 'Validation failed.',
+                    'fields': {
+                        'quantity_delta': [
+                            f'Adjusting by {delta} would make quantity_on_hand ({stock.quantity_on_hand}) negative.'
+                        ]
+                    },
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         reason = request.data.get('reason', '')
         stock = InventoryService().adjust_stock(stock.id, delta, user=request.user, reason=reason)
         out = StockLevelSerializer(stock, context={'request': request})
@@ -528,7 +543,7 @@ class NLQueryEndpointView(APIView):
             AuditLog.objects.create(
                 user=user,
                 event="PROMPT_INJECTION_ATTEMPT",
-                data={"query": query},
+                data_snapshot={"query": query},
             )
             return Response(
                 {"status": "error", "message": "Malicious query detected."},
@@ -537,10 +552,13 @@ class NLQueryEndpointView(APIView):
 
         # Step B: LangChain Processing
         try:
-            chain = NLQueryChain()
-            chain_result = chain.run(query)
-            action_type = chain_result.action.value
-            filters = chain_result.filters
+            chain_instance = NLQueryChain()
+            chain_result = chain_instance.run(query)
+            
+            # Extracting information based on your structured JSON schema rules
+            chain_dict = chain_result.to_dict()
+            action_type = chain_dict.get("action")
+            filters = chain_dict.get("filters", {})
         except Exception as chain_err:
             return Response(
                 {"status": "error", "message": f"LLM Chain failure: {chain_err}"},

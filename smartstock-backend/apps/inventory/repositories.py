@@ -171,3 +171,6 @@ class SupplierRepository(BaseRepository):
 
     def delete(self, id: int):
         Supplier.objects.filter(pk=id).delete()
+
+    def soft_delete(self, id: int):
+        Supplier.objects.filter(pk=id).update(is_active=False)
