@@ -10,6 +10,10 @@ Error contract:
 """
 
 import json
+from typing import ClassVar
+
+from langchain_core.output_parsers import BaseOutputParser
+
 from ai.llm.schemas import NLQueryAction, NLQueryFilters, NLQueryResult
 
 
@@ -18,7 +22,7 @@ class NLQueryParseError(ValueError):
     pass
 
 
-class NLQueryOutputParser:
+class NLQueryOutputParser(BaseOutputParser[NLQueryResult]):
     """
     Parses the raw string output from GPT-4o into a NLQueryResult.
 
@@ -28,6 +32,12 @@ class NLQueryOutputParser:
         # result.action  → NLQueryAction enum member
         # result.filters → NLQueryFilters instance
     """
+
+    type: ClassVar[str] = "nl_query_output_parser"
+
+    @property
+    def _type(self) -> str:
+        return self.type
 
     def parse(self, text: str) -> NLQueryResult:
         """
