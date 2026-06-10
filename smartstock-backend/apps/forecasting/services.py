@@ -1,7 +1,5 @@
 import logging
 
-import pandas as pd
-
 from .ingestion import prepare_forecast_dataframe
 from .prophet_engine import ProphetEngine
 from .repositories import ForecastingRepository
@@ -36,11 +34,18 @@ class ForecastingService:
         df = prepare_forecast_dataframe(sku.id)
 
         if df is None:
-            logger.warning('Insufficient data for SKU %s; using moving average fallback', sku.code)
-            empty_df = pd.DataFrame({'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')})
-            result = self.engine._fallback_predict(empty_df, periods=30)
-        else:
-            result = self.engine.predict(df, periods=30)
+            logger.warning('Insufficient data for SKU %s; skipping', sku.code)
+            return {
+                'sku': sku.code,
+                'status': 'skipped',
+                'reason': 'no_data',
+                'forecast_days': 0,
+                'model_version': None,
+                'mae': None,
+                'mape': None,
+            }
+
+        result = self.engine.predict(df, periods=30)
 
         created = 0
         for pred in result['results']:
