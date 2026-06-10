@@ -52,20 +52,24 @@ class ProphetEngine:
             return self._fallback_predict(df, periods)
 
         try:
-            from prophet import Prophet
-        except ImportError:
-            logger.warning('Prophet not installed; using moving average fallback')
+            from prophet import Prophet as _Prophet
+        except Exception:
+            logger.warning('Prophet not available; using moving average fallback')
             return self._fallback_predict(df, periods)
 
         df = df.sort_values('ds').reset_index(drop=True)
         df['y'] = df['y'].clip(lower=0)
 
-        model = Prophet(
-            weekly_seasonality=True,
-            yearly_seasonality=len(df) >= 365,
-            daily_seasonality=False,
-        )
-        model.fit(df[['ds', 'y']])
+        try:
+            model = _Prophet(
+                weekly_seasonality=True,
+                yearly_seasonality=len(df) >= 365,
+                daily_seasonality=False,
+            )
+            model.fit(df[['ds', 'y']])
+        except Exception:
+            logger.warning('Prophet model failed; using moving average fallback')
+            return self._fallback_predict(df, periods)
 
         future = model.make_future_dataframe(periods=periods)
         forecast = model.predict(future)
