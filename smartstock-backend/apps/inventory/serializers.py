@@ -1,7 +1,8 @@
 import re
 
 from rest_framework import serializers
-from .models import Product, SKU, StockLevel, SalesRecord, Supplier, Category
+
+from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -12,6 +13,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class SKUCompactSerializer(serializers.ModelSerializer):
     """Compact SKU serializer for nesting inside ProductSerializer."""
+
     class Meta:
         model = SKU
         fields = ('id', 'code', 'attributes', 'created_at')
@@ -29,11 +31,19 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class ProductWriteSerializer(serializers.ModelSerializer):
     """Serializer for create/update — no nested SKUs."""
+
     class Meta:
         model = Product
         fields = (
-            'id', 'name', 'description', 'category', 'supplier',
-            'unit_price', 'unit_of_measure', 'reorder_point', 'safety_stock',
+            'id',
+            'name',
+            'description',
+            'category',
+            'supplier',
+            'unit_price',
+            'unit_of_measure',
+            'reorder_point',
+            'safety_stock',
         )
         read_only_fields = ('id',)
 
@@ -85,9 +95,7 @@ class StockLevelSerializer(serializers.ModelSerializer):
     # Added
     def validate_reorder_quantity(self, value):
         if value < 1:
-            raise serializers.ValidationError(
-                'Reorder quantity must be at least 1.'
-            )
+            raise serializers.ValidationError('Reorder quantity must be at least 1.')
         return value
 
 
@@ -103,36 +111,32 @@ class SalesRecordSerializer(serializers.ModelSerializer):
 
     def validate_quantity_sold(self, value):
         if value < 0:
-            raise serializers.ValidationError(
-                'Quantity sold cannot be negative.'
-            )
+            raise serializers.ValidationError('Quantity sold cannot be negative.')
         return value
 
     def validate(self, attrs):
         date_from = attrs.pop('date_from', None)
         date_to = attrs.pop('date_to', None)
         if date_from and date_to and date_to <= date_from:
-            raise serializers.ValidationError(
-                {'date_to': 'date_to must be after date_from.'}
-            )
+            raise serializers.ValidationError({'date_to': 'date_to must be after date_from.'})
         return attrs
 
-class SupplierSerializer(serializers.ModelSerializer):
 
+class SupplierSerializer(serializers.ModelSerializer):
     name = serializers.CharField(
         required=True,
         allow_blank=False,
         error_messages={
             'required': 'Supplier name is required.',
             'blank': 'Supplier name cannot be blank.',
-        }
+        },
     )
 
     contact_email = serializers.EmailField(
         required=True,
         error_messages={
             'required': 'Contact email is required.',
-        }
+        },
     )
 
     class Meta:
@@ -149,13 +153,9 @@ class SupplierSerializer(serializers.ModelSerializer):
 
     def validate_default_lead_time_days(self, value):
         if value < 1:
-            raise serializers.ValidationError(
-                'Lead time must be at least 1 day.'
-            )
+            raise serializers.ValidationError('Lead time must be at least 1 day.')
 
         if value > 365:
-            raise serializers.ValidationError(
-                'Lead time cannot exceed 365 days.'
-            )
+            raise serializers.ValidationError('Lead time cannot exceed 365 days.')
 
         return value

@@ -1,30 +1,34 @@
 import unittest
 from datetime import date, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import numpy as np
 
 
 class TestFillMissingDates(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.ingestion import fill_missing_dates
+
         self.fill_missing_dates = fill_missing_dates
 
     def test_fills_single_gap(self):
-        df = pd.DataFrame({
-            'ds': pd.to_datetime(['2025-01-01', '2025-01-03', '2025-01-05']),
-            'y': [10.0, 20.0, 30.0],
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.to_datetime(['2025-01-01', '2025-01-03', '2025-01-05']),
+                'y': [10.0, 20.0, 30.0],
+            }
+        )
         result = self.fill_missing_dates(df)
         self.assertEqual(len(result), 5)
         self.assertEqual(result['y'].iloc[1], 0.0)
 
     def test_continuous_date_range(self):
-        df = pd.DataFrame({
-            'ds': pd.to_datetime(['2025-01-01', '2025-01-10']),
-            'y': [5.0, 15.0],
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.to_datetime(['2025-01-01', '2025-01-10']),
+                'y': [5.0, 15.0],
+            }
+        )
         result = self.fill_missing_dates(df)
         self.assertEqual(len(result), 10)
         expected_dates = pd.date_range(start='2025-01-01', end='2025-01-10', freq='D')
@@ -40,10 +44,12 @@ class TestFillMissingDates(unittest.TestCase):
         self.assertTrue(result.empty)
 
     def test_no_missing_dates(self):
-        df = pd.DataFrame({
-            'ds': pd.to_datetime(['2025-01-01', '2025-01-02', '2025-01-03']),
-            'y': [1.0, 2.0, 3.0],
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.to_datetime(['2025-01-01', '2025-01-02', '2025-01-03']),
+                'y': [1.0, 2.0, 3.0],
+            }
+        )
         result = self.fill_missing_dates(df)
         self.assertEqual(len(result), 3)
         pd.testing.assert_series_equal(result['y'], df['y'], check_names=False)
@@ -52,24 +58,29 @@ class TestFillMissingDates(unittest.TestCase):
 class TestCapOutliers(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.ingestion import cap_outliers
+
         self.cap_outliers = cap_outliers
 
     def test_outlier_capped_at_upper_bound(self):
         normal_data = [10.0] * 20 + [1000.0]
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=len(normal_data)),
-            'y': normal_data,
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=len(normal_data)),
+                'y': normal_data,
+            }
+        )
         result = self.cap_outliers(df, sigma=3.0)
         original_max = max(normal_data)
         result_max = result['y'].max()
         self.assertLess(result_max, original_max)
 
     def test_lower_values_not_capped(self):
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=10),
-            'y': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=10),
+                'y': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+            }
+        )
         result = self.cap_outliers(df, sigma=3.0)
         pd.testing.assert_series_equal(result['y'], df['y'], check_names=False)
 
@@ -79,19 +90,23 @@ class TestCapOutliers(unittest.TestCase):
         self.assertTrue(result.empty)
 
     def test_all_same_values_no_change(self):
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=10),
-            'y': [50.0] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=10),
+                'y': [50.0] * 10,
+            }
+        )
         result = self.cap_outliers(df, sigma=3.0)
         pd.testing.assert_series_equal(result['y'], df['y'], check_names=False)
 
     def test_multiple_outliers_capped(self):
         values = [10.0] * 18 + [500.0, 600.0]
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=len(values)),
-            'y': values,
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=len(values)),
+                'y': values,
+            }
+        )
         result = self.cap_outliers(df, sigma=3.0)
         for val in result['y']:
             self.assertLessEqual(val, 600.0)
@@ -100,27 +115,34 @@ class TestCapOutliers(unittest.TestCase):
 class TestValidateMinimumData(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.ingestion import validate_minimum_data
+
         self.validate_minimum_data = validate_minimum_data
 
     def test_passes_with_enough_records(self):
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=30),
-            'y': [10.0] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=30),
+                'y': [10.0] * 30,
+            }
+        )
         self.assertTrue(self.validate_minimum_data(df))
 
     def test_fails_with_too_few_records(self):
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=29),
-            'y': [10.0] * 29,
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=29),
+                'y': [10.0] * 29,
+            }
+        )
         self.assertFalse(self.validate_minimum_data(df))
 
     def test_exact_threshold_passes(self):
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=30),
-            'y': [10.0] * 30,
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=30),
+                'y': [10.0] * 30,
+            }
+        )
         self.assertTrue(self.validate_minimum_data(df, min_records=30))
 
     def test_empty_df_fails(self):
@@ -131,6 +153,7 @@ class TestValidateMinimumData(unittest.TestCase):
 class TestLogInsufficientData(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.ingestion import _log_insufficient_data
+
         self._log_insufficient_data = _log_insufficient_data
 
     @patch('apps.forecasting.ingestion.logger')
@@ -149,6 +172,7 @@ class TestLogInsufficientData(unittest.TestCase):
 class TestFetchSalesData(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.ingestion import fetch_sales_data
+
         self.fetch_sales_data = fetch_sales_data
 
     @patch('apps.forecasting.ingestion._get_repo')
@@ -199,6 +223,7 @@ class TestFetchSalesData(unittest.TestCase):
 class TestPrepareForecastDataframe(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.ingestion import prepare_forecast_dataframe
+
         self.prepare_forecast_dataframe = prepare_forecast_dataframe
 
     @patch('apps.forecasting.ingestion._get_repo')
@@ -212,10 +237,7 @@ class TestPrepareForecastDataframe(unittest.TestCase):
         mock_repo.get_sku.return_value = mock_sku
 
         base = date.today() - timedelta(days=60)
-        mock_sales = [
-            MagicMock(date=base + timedelta(days=i), quantity_sold=10 + (i % 5))
-            for i in range(60)
-        ]
+        mock_sales = [MagicMock(date=base + timedelta(days=i), quantity_sold=10 + (i % 5)) for i in range(60)]
         mock_repo.get_sales_for_sku.return_value = mock_sales
 
         result = self.prepare_forecast_dataframe(1)
@@ -236,10 +258,7 @@ class TestPrepareForecastDataframe(unittest.TestCase):
         mock_repo.get_sku.return_value = mock_sku
 
         base = date.today() - timedelta(days=20)
-        mock_sales = [
-            MagicMock(date=base + timedelta(days=i), quantity_sold=10)
-            for i in range(20)
-        ]
+        mock_sales = [MagicMock(date=base + timedelta(days=i), quantity_sold=10) for i in range(20)]
         mock_repo.get_sales_for_sku.return_value = mock_sales
 
         result = self.prepare_forecast_dataframe(2)
@@ -263,6 +282,7 @@ class TestPrepareForecastDataframe(unittest.TestCase):
 class TestPrepareAllForecastData(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.ingestion import prepare_all_forecast_data
+
         self.prepare_all_forecast_data = prepare_all_forecast_data
 
     @patch('apps.forecasting.ingestion._get_repo')
@@ -282,10 +302,7 @@ class TestPrepareAllForecastData(unittest.TestCase):
         mock_get_repo.return_value = mock_repo
 
         base = date.today() - timedelta(days=60)
-        mock_sales = [
-            MagicMock(date=base + timedelta(days=i), quantity_sold=10)
-            for i in range(60)
-        ]
+        mock_sales = [MagicMock(date=base + timedelta(days=i), quantity_sold=10) for i in range(60)]
 
         mock_repo.get_sales_for_all_skus.return_value = {
             'GOOD-SKU': mock_sales,
@@ -303,10 +320,7 @@ class TestPrepareAllForecastData(unittest.TestCase):
         mock_get_repo.return_value = mock_repo
 
         base = date.today() - timedelta(days=10)
-        mock_sales = [
-            MagicMock(date=base + timedelta(days=i), quantity_sold=10)
-            for i in range(10)
-        ]
+        mock_sales = [MagicMock(date=base + timedelta(days=i), quantity_sold=10) for i in range(10)]
 
         mock_repo.get_sales_for_all_skus.return_value = {
             'SHORT-SKU': mock_sales,

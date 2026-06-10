@@ -1,7 +1,7 @@
 import logging
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
 
 logger = logging.getLogger(__name__)
@@ -11,9 +11,7 @@ MIN_DATA_POINTS = 30
 
 def _moving_average_forecast(df: pd.DataFrame, periods: int = 30) -> pd.DataFrame:
     if df.empty:
-        forecast_dates = pd.date_range(
-            start=pd.Timestamp.today(), periods=periods
-        )
+        forecast_dates = pd.date_range(start=pd.Timestamp.today(), periods=periods)
         forecast = pd.DataFrame({'ds': forecast_dates})
         forecast['yhat'] = 0.0
         forecast['yhat_lower'] = 0.0
@@ -23,9 +21,7 @@ def _moving_average_forecast(df: pd.DataFrame, periods: int = 30) -> pd.DataFram
     ma = df['y'].rolling(window=window).mean().iloc[-1]
     if pd.isna(ma):
         ma = df['y'].mean()
-    forecast_dates = pd.date_range(
-        start=df['ds'].max() + pd.Timedelta(days=1), periods=periods
-    )
+    forecast_dates = pd.date_range(start=df['ds'].max() + pd.Timedelta(days=1), periods=periods)
     forecast = pd.DataFrame({'ds': forecast_dates})
     forecast['yhat'] = max(ma, 0)
     forecast['yhat_lower'] = forecast['yhat'] * 0.8
@@ -37,7 +33,6 @@ def _compute_accuracy(df: pd.DataFrame, model) -> tuple:
     if len(df) < 2:
         return None, None
     split_idx = max(1, int(len(df) * 0.9))
-    train = df.iloc[:split_idx]
     test = df.iloc[split_idx:]
     if len(test) < 1:
         return None, None
@@ -59,7 +54,7 @@ class ProphetEngine:
         try:
             from prophet import Prophet
         except ImportError:
-            logger.warning("Prophet not installed; using moving average fallback")
+            logger.warning('Prophet not installed; using moving average fallback')
             return self._fallback_predict(df, periods)
 
         df = df.sort_values('ds').reset_index(drop=True)
@@ -80,12 +75,14 @@ class ProphetEngine:
 
         results = []
         for _, row in forecast.iterrows():
-            results.append({
-                'forecast_date': row['ds'].date().isoformat(),
-                'predicted_quantity': max(round(row['yhat'], 2), 0),
-                'lower_bound': max(round(row['yhat_lower'], 2), 0),
-                'upper_bound': max(round(row['yhat_upper'], 2), 0),
-            })
+            results.append(
+                {
+                    'forecast_date': row['ds'].date().isoformat(),
+                    'predicted_quantity': max(round(row['yhat'], 2), 0),
+                    'lower_bound': max(round(row['yhat_lower'], 2), 0),
+                    'upper_bound': max(round(row['yhat_upper'], 2), 0),
+                }
+            )
 
         return {
             'results': results,
@@ -96,18 +93,20 @@ class ProphetEngine:
 
     def _fallback_predict(self, df: pd.DataFrame, periods: int = 30) -> dict:
         logger.info(
-            "Insufficient data (%d points); using moving average fallback",
+            'Insufficient data (%d points); using moving average fallback',
             len(df),
         )
         forecast = _moving_average_forecast(df, periods)
         results = []
         for _, row in forecast.iterrows():
-            results.append({
-                'forecast_date': row['ds'].date().isoformat(),
-                'predicted_quantity': max(round(row['yhat'], 2), 0),
-                'lower_bound': max(round(row['yhat_lower'], 2), 0),
-                'upper_bound': max(round(row['yhat_upper'], 2), 0),
-            })
+            results.append(
+                {
+                    'forecast_date': row['ds'].date().isoformat(),
+                    'predicted_quantity': max(round(row['yhat'], 2), 0),
+                    'lower_bound': max(round(row['yhat_lower'], 2), 0),
+                    'upper_bound': max(round(row['yhat_upper'], 2), 0),
+                }
+            )
         return {
             'results': results,
             'mae': None,

@@ -3,12 +3,12 @@ from django.core.exceptions import ValidationError
 from django.dispatch import Signal
 
 from .repositories import (
+    CategoryRepository,
     InventoryRepository,
+    SalesRecordRepository,
     SKURepository,
     StockLevelRepository,
-    SalesRecordRepository,
     SupplierRepository,
-    CategoryRepository,
 )
 
 stock_adjusted = Signal()
@@ -73,8 +73,9 @@ class InventoryService:
 
     @staticmethod
     def filter_by_stock_status(queryset, value):
-        from django.db.models import F, IntegerField, Q
+        from django.db.models import F, IntegerField
         from django.db.models.expressions import ExpressionWrapper
+
         available = ExpressionWrapper(
             F('skus__stock_level__quantity_on_hand') - F('skus__stock_level__quantity_reserved'),
             output_field=IntegerField(),
@@ -92,8 +93,11 @@ class InventoryService:
         stock = self.repo.adjust_stock(stock_level_id, quantity_delta)
         cache.delete('low_stock_items')
         stock_adjusted.send(
-            sender=self, stock_level=stock, delta=quantity_delta,
-            user=user, reason=reason,
+            sender=self,
+            stock_level=stock,
+            delta=quantity_delta,
+            user=user,
+            reason=reason,
         )
         return stock
 
@@ -132,6 +136,7 @@ class InventoryService:
 
     def delete_supplier(self, supplier_id: int):
         from apps.purchasing.models import PurchaseOrder
+
         open_statuses = [
             PurchaseOrder.Status.DRAFT,
             PurchaseOrder.Status.PENDING_APPROVAL,
@@ -140,8 +145,7 @@ class InventoryService:
         ]
         if PurchaseOrder.objects.filter(supplier_id=supplier_id, status__in=open_statuses).exists():
             raise ValidationError(
-                "Cannot delete supplier with open purchase orders. "
-                "Cancel or complete the pending POs first."
+                'Cannot delete supplier with open purchase orders. Cancel or complete the pending POs first.'
             )
         SupplierRepository().soft_delete(supplier_id)
 
