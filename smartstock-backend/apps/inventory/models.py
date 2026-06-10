@@ -49,9 +49,14 @@ class SKU(models.Model):
 class StockLevel(models.Model):
     sku = models.OneToOneField(SKU, on_delete=models.CASCADE, related_name='stock_level')
     quantity_on_hand = models.IntegerField(default=0)
+    quantity_reserved = models.IntegerField(default=0)
     reorder_point = models.IntegerField(default=10)
     reorder_quantity = models.IntegerField(default=50)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def quantity_available(self):
+        return self.quantity_on_hand - self.quantity_reserved
 
     def __str__(self):
         return f"{self.sku.code}: {self.quantity_on_hand}"

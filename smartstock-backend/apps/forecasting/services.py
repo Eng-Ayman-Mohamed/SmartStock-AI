@@ -4,6 +4,7 @@ import pandas as pd
 
 from .repositories import ForecastingRepository
 from .prophet_engine import ProphetEngine
+from .ingestion import prepare_forecast_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -32,23 +33,14 @@ class ForecastingService:
         return results
 
     def _forecast_for_sku(self, sku) -> dict:
-        sales = self.repo.get_sales_for_sku(sku.id)
-        if not sales:
-            logger.warning("No sales data for SKU %s; skipping", sku.code)
-            return {'sku': sku.code, 'status': 'skipped', 'reason': 'no_data'}
+        df = prepare_forecast_dataframe(sku.id)
 
-        df = pd.DataFrame([
-            {'ds': r.date, 'y': float(r.quantity_sold)}
-            for r in sales
-        ])
-        df = df.sort_values('ds').drop_duplicates(subset='ds').reset_index(drop=True)
-
-        full_range = pd.date_range(
-            start=df['ds'].min(), end=df['ds'].max(), freq='D'
-        )
-        df = df.set_index('ds').reindex(full_range).fillna(0).rename_axis('ds').reset_index()
-
-        result = self.engine.predict(df, periods=30)
+        if df is None:
+            logger.warning("Insufficient data for SKU %s; using moving average fallback", sku.code)
+            empty_df = pd.DataFrame({'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')})
+            result = self.engine._fallback_predict(empty_df, periods=30)
+        else:
+            result = self.engine.predict(df, periods=30)
 
         created = 0
         for pred in result['results']:

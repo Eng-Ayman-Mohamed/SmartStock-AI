@@ -1,5 +1,15 @@
 import { type LucideIcon } from 'lucide-react';
 
+type Accent = 'orange' | 'purple' | 'green' | 'red' | 'none';
+
+const accentBorders: Record<Accent, string> = {
+  orange: 'border-l-2 border-l-orange-600',
+  purple: 'border-l-2 border-l-purple-600',
+  green: 'border-l-2 border-l-green-600',
+  red: 'border-l-2 border-l-red-600',
+  none: '',
+};
+
 interface StatCardProps {
   label: string;
   value: string | number;
@@ -9,25 +19,18 @@ interface StatCardProps {
     color?: string;
   };
   icon?: LucideIcon;
-  accent?: 'amber' | 'purple' | 'green' | 'red' | 'none';
+  accent?: Accent;
 }
 
 export default function StatCard({ label, value, trend, icon: Icon, accent = 'none' }: StatCardProps) {
-  const accentBorder = accent !== 'none' ? 'border-l-2 border-l-' + (
-    accent === 'amber' ? 'amber-600' :
-    accent === 'purple' ? 'purple-600' :
-    accent === 'green' ? 'green-600' :
-    accent === 'red' ? 'red-600' : ''
-  ) : '';
-
   return (
-    <div className={`bg-white rounded-md border-[0.5px] border-gray-100 p-4 h-24 min-w-[160px] flex flex-col justify-between ${accentBorder}`}>
+    <div className={`bg-canvas rounded-lg border border-hairline p-6 h-24 min-w-[160px] flex flex-col justify-between ${accentBorders[accent]}`}>
       <div className="flex items-center justify-between">
-        <span className="text-caption font-medium text-gray-600 uppercase tracking-[0.05em]">{label}</span>
-        {Icon && <Icon className="w-4 h-4 text-gray-400" aria-hidden="true" />}
+        <span className="text-caption font-medium text-ink-muted uppercase tracking-[0.05em]">{label}</span>
+        {Icon && <Icon className="w-4 h-4 text-ink-faint" aria-hidden="true" />}
       </div>
       <div className="flex items-end justify-between">
-        <span className="text-[24px] font-medium text-gray-900 tabular-nums leading-none">{value}</span>
+        <span className="text-[26px] font-medium text-ink tabular-nums leading-none">{value}</span>
         {trend && (
           <span className={`text-caption tabular-nums ${
             trend.direction === 'up'

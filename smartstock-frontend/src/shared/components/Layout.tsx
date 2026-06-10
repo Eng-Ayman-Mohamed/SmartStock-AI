@@ -1,10 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import ToastContainer from './Toast';
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-canvas-soft">
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         <Header />
@@ -14,6 +15,7 @@ export default function Layout() {
           </main>
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 }
