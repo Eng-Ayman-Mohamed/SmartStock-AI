@@ -8,4 +8,5 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         from config.validators import validate_required_env_vars
+
         validate_required_env_vars()

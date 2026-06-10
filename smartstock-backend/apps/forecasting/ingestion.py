@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 import pandas as pd
 
@@ -12,6 +11,7 @@ OUTLIER_SIGMA = 3.0
 def _get_repo():
     """Lazy import to avoid Django AppRegistryNotReady on pure-function imports."""
     from .repositories import ForecastingRepository
+
     return ForecastingRepository()
 
 
@@ -23,10 +23,7 @@ def fetch_sales_data(sku_id: int) -> pd.DataFrame:
     repo = _get_repo()
     sales_qs = repo.get_sales_for_sku(sku_id)
 
-    df = pd.DataFrame([
-        {'ds': r.date, 'y': float(r.quantity_sold)}
-        for r in sales_qs
-    ])
+    df = pd.DataFrame([{'ds': r.date, 'y': float(r.quantity_sold)} for r in sales_qs])
 
     if not df.empty:
         df['ds'] = pd.to_datetime(df['ds'])
@@ -44,11 +41,7 @@ def fill_missing_dates(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     df = df.copy()
-    full_range = pd.date_range(
-        start=df['ds'].min(),
-        end=df['ds'].max(),
-        freq='D'
-    )
+    full_range = pd.date_range(start=df['ds'].min(), end=df['ds'].max(), freq='D')
     df = df.set_index('ds').reindex(full_range).fillna({'y': 0.0}).rename_axis('ds').reset_index()
     return df
 
@@ -82,14 +75,14 @@ def _log_insufficient_data(sku_code: str, record_count: int) -> None:
     Log structured JSON warning for insufficient data.
     """
     logger.warning(
-        "Insufficient forecast data for SKU",
+        'Insufficient forecast data for SKU',
         extra={
-            "event": "INSUFFICIENT_FORECAST_DATA",
-            "sku_code": sku_code,
-            "record_count": record_count,
-            "threshold": MIN_DATA_POINTS,
-            "action": "fallback_to_moving_average",
-        }
+            'event': 'INSUFFICIENT_FORECAST_DATA',
+            'sku_code': sku_code,
+            'record_count': record_count,
+            'threshold': MIN_DATA_POINTS,
+            'action': 'fallback_to_moving_average',
+        },
     )
 
 
@@ -129,10 +122,7 @@ def prepare_all_forecast_data() -> tuple[dict[str, pd.DataFrame], list[str]]:
     excluded: list[str] = []
 
     for sku_code, sales_qs in sales_by_sku.items():
-        df = pd.DataFrame([
-            {'ds': r.date, 'y': float(r.quantity_sold)}
-            for r in sales_qs
-        ])
+        df = pd.DataFrame([{'ds': r.date, 'y': float(r.quantity_sold)} for r in sales_qs])
 
         if df.empty:
             _log_insufficient_data(sku_code, 0)

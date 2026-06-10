@@ -1,6 +1,7 @@
 import django_filters
 from django.db import models as db_models
-from .models import Product, SKU, StockLevel, SalesRecord
+
+from .models import SKU, Product, SalesRecord, StockLevel
 
 
 class ProductFilter(django_filters.FilterSet):
@@ -23,18 +24,23 @@ class ProductFilter(django_filters.FilterSet):
     class Meta:
         model = Product
         fields = [
-            'name', 'category', 'category_name', 'supplier',
-            'stock_status', 'search', 'created_after', 'created_before',
+            'name',
+            'category',
+            'category_name',
+            'supplier',
+            'stock_status',
+            'search',
+            'created_after',
+            'created_before',
         ]
 
     def filter_stock_status(self, queryset, name, value):
         from .services import InventoryService
+
         return InventoryService.filter_by_stock_status(queryset, value)
 
     def filter_search(self, queryset, name, value):
-        return queryset.filter(
-            db_models.Q(name__icontains=value) | db_models.Q(skus__code__icontains=value)
-        ).distinct()
+        return queryset.filter(db_models.Q(name__icontains=value) | db_models.Q(skus__code__icontains=value)).distinct()
 
 
 class SKUFilter(django_filters.FilterSet):
