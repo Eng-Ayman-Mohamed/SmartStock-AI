@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 
 from rest_framework.response import Response
@@ -69,13 +70,41 @@ def custom_exception_handler(exc, context):
                 )
 
         if status_code == 422 or status_code == 400:
-            msg = str(detail) if isinstance(detail, str) else detail
-            error_type = 'ValidationError'
+            fields = {}
+            if isinstance(detail, dict):
+                for k, v in detail.items():
+                    if isinstance(v, list):
+                        fields[k] = [str(e) for e in v]
+                    elif isinstance(v, str):
+                        fields[k] = [v]
+                    else:
+                        fields[k] = [str(v)]
+            elif isinstance(detail, str):
+                fields = {'detail': [detail]}
+            else:
+                fields = {'detail': [str(detail)]}
+
             return Response(
-                _error_response(msg, error_type, 422),
+                {
+                    'status': 'error',
+                    'error': 'ValidationError',
+                    'message': 'Validation failed.',
+                    'fields': fields,
+                },
                 status=422,
             )
         return response
+
+    if isinstance(exc, DjangoValidationError):
+        return Response(
+            {
+                'status': 'error',
+                'error': 'ValidationError',
+                'message': 'Validation failed.',
+                'fields': {'detail': exc.messages if hasattr(exc, 'messages') else [str(exc)]},
+            },
+            status=409,
+        )
 
     if isinstance(exc, IntegrityError):
         msg = str(exc)

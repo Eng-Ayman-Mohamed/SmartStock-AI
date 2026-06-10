@@ -18,7 +18,7 @@ class AuditLog(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
 
     # What the data looked like at the time
-    data = models.JSONField(default=dict)
+    data_snapshot = models.JSONField(default=dict)
 
     # When
     timestamp = models.DateTimeField(auto_now_add=True)

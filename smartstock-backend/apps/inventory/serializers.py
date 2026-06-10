@@ -38,9 +38,12 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
     def validate_name(self, value):
-        if len(value.strip()) < 2:
+        value = value.strip()
+        if len(value) < 2:
             raise serializers.ValidationError('Product name must be at least 2 characters.')
-        return value.strip()
+        if len(value) > 255:
+            raise serializers.ValidationError('Product name must not exceed 255 characters.')
+        return value
 
 
 class SKUSerializer(serializers.ModelSerializer):
@@ -51,6 +54,8 @@ class SKUSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_code(self, value):
+        if len(value) > 100:
+            raise serializers.ValidationError('SKU code must not exceed 100 characters.')
         if not re.match(r'^[A-Za-z0-9-]+$', value):
             raise serializers.ValidationError('SKU code may only contain letters, digits, and hyphens.')
         return value.upper()
@@ -91,6 +96,9 @@ class StockLevelSerializer(serializers.ModelSerializer):
 class SalesRecordSerializer(serializers.ModelSerializer):
     sku_code = serializers.CharField(source='sku.code', read_only=True)
 
+    date_from = serializers.DateField(required=False, write_only=True)
+    date_to = serializers.DateField(required=False, write_only=True)
+
     class Meta:
         model = SalesRecord
         fields = '__all__'
@@ -101,6 +109,15 @@ class SalesRecordSerializer(serializers.ModelSerializer):
                 'Quantity sold cannot be negative.'
             )
         return value
+
+    def validate(self, attrs):
+        date_from = attrs.pop('date_from', None)
+        date_to = attrs.pop('date_to', None)
+        if date_from and date_to and date_to <= date_from:
+            raise serializers.ValidationError(
+                {'date_to': 'date_to must be after date_from.'}
+            )
+        return attrs
 
 class SupplierSerializer(serializers.ModelSerializer):
 
@@ -123,6 +140,11 @@ class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
         fields = '__all__'
+
+    def validate_name(self, value):
+        if len(value) > 255:
+            raise serializers.ValidationError('Supplier name must not exceed 255 characters.')
+        return value
 
     def validate_contact_email(self, value):
         return value.lower().strip()
