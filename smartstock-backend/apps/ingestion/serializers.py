@@ -1,19 +1,31 @@
 from rest_framework import serializers
+
 from .models import Document, DocumentChunk
 
 
 class DocumentSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.CharField(
-        source='uploaded_by.username', read_only=True, allow_null=True,
+        source='uploaded_by.username',
+        read_only=True,
+        allow_null=True,
     )
 
     class Meta:
         model = Document
         fields = [
-            'id', 'filename', 'original_filename', 'doc_type',
-            'file_size', 'total_chunks', 'cloudinary_url',
-            'uploaded_by', 'uploaded_by_username', 'ingested_at',
-            'is_active', 'created_at', 'updated_at',
+            'id',
+            'filename',
+            'original_filename',
+            'doc_type',
+            'file_size',
+            'total_chunks',
+            'cloudinary_url',
+            'uploaded_by',
+            'uploaded_by_username',
+            'ingested_at',
+            'is_active',
+            'created_at',
+            'updated_at',
         ]
         read_only_fields = ['id', 'uploaded_by', 'ingested_at', 'created_at', 'updated_at']
 
@@ -45,7 +57,11 @@ class DocumentChunkSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentChunk
         fields = [
-            'id', 'chunk_text', 'source_document', 'page_number',
-            'metadata', 'document',
+            'id',
+            'chunk_text',
+            'source_document',
+            'page_number',
+            'metadata',
+            'document',
         ]
         read_only_fields = ['id']

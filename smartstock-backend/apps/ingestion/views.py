@@ -3,14 +3,15 @@ import tempfile
 
 import cloudinary.uploader
 from django.utils import timezone
-from rest_framework import viewsets, status
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.authentication.permissions import IsViewerOrAbove, IsAdminOnly
 from ai.rag.ingestion import ingest_pdf
-from .models import Document, DocumentChunk
-from .serializers import DocumentSerializer, DocumentUploadSerializer, DocumentChunkSerializer
+from apps.authentication.permissions import IsAdminOnly, IsViewerOrAbove
+
+from .models import Document
+from .serializers import DocumentSerializer, DocumentUploadSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     - Manager+: upload (create)
     - Admin: soft-delete
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = DocumentSerializer
     queryset = Document.objects.filter(is_active=True).order_by('-created_at')
@@ -79,13 +81,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 document.save(update_fields=['total_chunks', 'ingested_at'])
             finally:
                 import os
+
                 os.unlink(tmp_path)
 
             out = DocumentSerializer(document, context={'request': request})
             return Response(out.data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logger.exception("Document upload/ingestion failed")
+            logger.exception('Document upload/ingestion failed')
             return Response(
                 {'detail': f'Upload or ingestion failed: {e}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

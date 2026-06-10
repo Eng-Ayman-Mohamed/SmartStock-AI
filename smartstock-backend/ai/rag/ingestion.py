@@ -72,7 +72,7 @@ def delete_existing_chunks(source_document: str):
 
 
 def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
-    filename = file_path.rsplit("/", 1)[-1]
+    filename = file_path.rsplit('/', 1)[-1]
     pages = extract_text_from_pdf(file_path)
     raw_chunks = chunk_pdf_pages(pages)
     total_pages = len(pages)
@@ -85,17 +85,19 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
         delete_existing_chunks(filename)
         bulk = []
         for chunk_data, embedding in zip(raw_chunks, embeddings):
-            bulk.append(DocumentChunk(
-                chunk_text=chunk_data["text"],
-                embedding=embedding,
-                source_document=filename,
-                page_number=chunk_data["page_number"],
-                document_id=document_id,
-                metadata={
-                    "doc_type": "pdf",
-                    "ingested_at": now,
-                },
-            ))
+            bulk.append(
+                DocumentChunk(
+                    chunk_text=chunk_data['text'],
+                    embedding=embedding,
+                    source_document=filename,
+                    page_number=chunk_data['page_number'],
+                    document_id=document_id,
+                    metadata={
+                        'doc_type': 'pdf',
+                        'ingested_at': now,
+                    },
+                )
+            )
         DocumentChunk.objects.bulk_create(bulk)
 
     return {
