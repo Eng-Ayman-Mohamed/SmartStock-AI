@@ -1,11 +1,11 @@
 """
 prompts.py — Task MQ3
 Builds the final system prompt that is sent to GPT-4o on every NL query request.
-The few-shot block (all 5 examples) is embedded at build time, not injected per call.
+The few-shot block (all examples) is embedded at build time, not injected per call.
 """
 
 from ai.llm.few_shots import build_few_shot_block
-from ai.llm.schemas import NLQueryAction
+from ai.llm.schemas import NLQueryAction, ACTION_ALLOWED_FIELDS, VALID_OPERATORS
 
 
 def build_system_prompt() -> str:
@@ -16,11 +16,20 @@ def build_system_prompt() -> str:
       1. Role declaration
       2. Strict behavioural rules (scope + output format)
       3. JSON schema description (inline, not the full JSON object)
-      4. All 5 few-shot examples
+      4. All few-shot examples
       5. Out-of-scope error instruction
     """
     allowed_actions = ", ".join(f'"{a.value}"' for a in NLQueryAction)
     few_shots = build_few_shot_block()
+
+    # Build per-action field reference
+    action_fields_lines = []
+    for action_val, fields in ACTION_ALLOWED_FIELDS.items():
+        fields_str = ", ".join(fields)
+        action_fields_lines.append(f'    "{action_val}": [{fields_str}]')
+    action_fields_block = "\n".join(action_fields_lines)
+
+    operators_str = ", ".join(VALID_OPERATORS)
 
     return f"""You are SmartStock AI, a warehouse inventory analytics assistant.
 
@@ -34,14 +43,24 @@ Output rules:
 - Respond with ONLY valid JSON. No preamble, no explanation, no markdown code fences.
 - The JSON must have exactly two keys: "action" and "filters".
 - "action" must be one of: {allowed_actions}
-- "filters" is an object containing only these optional keys:
-    product_name  (string)   — full or partial product name
-    sku_code      (string)   — exact SKU code, e.g. "ABC-001"
-    date_from     (string)   — ISO-8601 date "YYYY-MM-DD"
-    date_to       (string)   — ISO-8601 date "YYYY-MM-DD"
-    stock_below   (number)   — quantity threshold
-    supplier_name (string)   — supplier company name
-- Omit any filter key the user did not specify.
+- "filters" is an object with these optional keys:
+    "conditions" — an array of filter conditions (each has "field", "op", "value")
+    "sort"        — field name to sort by
+    "sort_order"  — "asc" or "desc" (default "asc")
+    "limit"       — max number of results
+    "offset"      — number of results to skip
+
+Each condition object has:
+  "field" — the database field name (must be in the allowed list for the action)
+  "op"    — one of: {operators_str}
+  "value" — the value to compare against
+
+Allowed fields per action:
+{action_fields_block}
+
+- Only use fields that are in the allowed list for the chosen action.
+- Omit conditions for fields the user did not specify.
+- Multiple conditions are combined with AND.
 - If the request is outside inventory scope, respond with:
   {{"error": "Out of scope request"}}
 
