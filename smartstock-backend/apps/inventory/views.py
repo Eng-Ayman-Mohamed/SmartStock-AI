@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.core.cache import cache
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from drf_spectacular.utils import extend_schema, inline_serializer
 
 from apps.authentication.permissions import IsViewerOrAbove, IsManagerOrAbove, IsAdminOnly
@@ -417,6 +418,8 @@ class NLQuerySerializer(serializers.Serializer):
 # --- 2. ORCHESTRATOR VIEW ENDPOINT ---
 class NLQueryEndpointView(APIView):
     permission_classes = [IsManagerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'nlquery'
 
     @extend_schema(
         request=NLQuerySerializer,
