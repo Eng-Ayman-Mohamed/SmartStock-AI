@@ -1,4 +1,5 @@
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.dispatch import Signal
 
 from .repositories import (
@@ -130,7 +131,19 @@ class InventoryService:
         return SupplierRepository().update(supplier_id, data)
 
     def delete_supplier(self, supplier_id: int):
-        SupplierRepository().delete(supplier_id)
+        from apps.purchasing.models import PurchaseOrder
+        open_statuses = [
+            PurchaseOrder.Status.DRAFT,
+            PurchaseOrder.Status.PENDING_APPROVAL,
+            PurchaseOrder.Status.APPROVED,
+            PurchaseOrder.Status.SENT,
+        ]
+        if PurchaseOrder.objects.filter(supplier_id=supplier_id, status__in=open_statuses).exists():
+            raise ValidationError(
+                "Cannot delete supplier with open purchase orders. "
+                "Cancel or complete the pending POs first."
+            )
+        SupplierRepository().soft_delete(supplier_id)
 
 
 class SKUService:
