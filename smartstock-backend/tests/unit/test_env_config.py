@@ -18,12 +18,12 @@ REQUIRED_VARS = [
 ALL_ENV = {var: f'test-{var.lower()}' for var in REQUIRED_VARS}
 
 
-class TestValidateEnvironment(unittest.TestCase):
+class TestValidateRequiredEnvVars(unittest.TestCase):
     def _import(self):
         import importlib
-        import core.env_config
-        importlib.reload(core.env_config)
-        return core.env_config.validate_environment
+        import config.validators
+        importlib.reload(config.validators)
+        return config.validators.validate_required_env_vars
 
     @patch.dict(os.environ, {**ALL_ENV}, clear=True)
     def test_all_present_passes(self):
@@ -58,7 +58,7 @@ class TestValidateEnvironment(unittest.TestCase):
     @patch.dict(os.environ, {**ALL_ENV}, clear=True)
     def test_masked_logging(self):
         validate = self._import()
-        with patch('core.env_config.logger') as mock_logger:
+        with patch('config.validators.logger') as mock_logger:
             validate()
             config_calls = [
                 call for call in mock_logger.info.call_args_list
@@ -70,9 +70,9 @@ class TestValidateEnvironment(unittest.TestCase):
 class TestMaskValue(unittest.TestCase):
     def _import(self):
         import importlib
-        import core.env_config
-        importlib.reload(core.env_config)
-        return core.env_config._mask_value
+        import config.validators
+        importlib.reload(config.validators)
+        return config.validators._mask_value
 
     def test_short_value(self):
         mask = self._import()

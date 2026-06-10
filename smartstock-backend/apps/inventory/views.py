@@ -1,3 +1,7 @@
+import logging
+import time
+
+from django.db.models import Q, Sum, F, DecimalField, ExpressionWrapper
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -24,7 +28,9 @@ from rest_framework.views import APIView
 from rest_framework import serializers
 from apps.forecasting.services import ForecastingService
 from apps.audit.models import AuditLog
-from apps.inventory.models import Supplier
+from ai.llm.schemas import NLQueryFilters
+
+logger = logging.getLogger(__name__)
 class ProductViewSet(viewsets.ModelViewSet):
     """Full CRUD for products.
     
@@ -414,7 +420,71 @@ class NLQuerySerializer(serializers.Serializer):
         return cleaned_value
 
 
-# --- 2. ORCHESTRATOR VIEW ENDPOINT ---
+# --- 2. CONDITIONS-TO-Q TRANSLATION ---
+
+# Maps the NL condition operators to Django Q object field lookups.
+OP_MAP = {
+    "eq":          "",
+    "neq":         "",
+    "lt":          "__lt",
+    "lte":         "__lte",
+    "gt":          "__gt",
+    "gte":         "__gte",
+    "contains":    "__icontains",
+    "starts_with": "__istartswith",
+    "ends_with":   "__iendswith",
+    "in":          "__in",
+    "not_in":      "__in",  # negated at Q construction time
+}
+
+# Field name aliases: NL field name -> actual ORM field path (for joins)
+FIELD_ALIASES = {
+    "product_name":       "name",
+    "sku_code":           "skus__code",
+    "category":           "category__name",
+    "supplier_name":      "supplier__name",
+    "contact_email":      "contact_email",
+    "quantity_on_hand":   "skus__stock_level__quantity_on_hand",
+    "quantity_available": "skus__stock_level__quantity_on_hand",
+    "reorder_point":      "skus__stock_level__reorder_point",
+    "date_from":          "date",
+    "date_to":            "date",
+    "quantity_sold":      "quantity_sold",
+    "is_active":          "is_active",
+    "limit":              None,  # handled separately, not a Q field
+}
+
+
+def conditions_to_q(conditions, model=Product):
+    """
+    Convert a list of Condition objects into a Django Q expression.
+    Multiple conditions are combined with AND.
+    """
+    combined = Q()
+    for cond in conditions:
+        orm_field = FIELD_ALIASES.get(cond.field, cond.field)
+        if orm_field is None:
+            continue
+
+        op_suffix = OP_MAP.get(cond.op, "")
+        lookup = f"{orm_field}{op_suffix}"
+
+        if cond.op == "eq":
+            q = Q(**{lookup: cond.value})
+        elif cond.op == "neq":
+            q = ~Q(**{orm_field: cond.value})
+        elif cond.op == "in":
+            q = Q(**{lookup: cond.value})
+        elif cond.op == "not_in":
+            q = ~Q(**{lookup: cond.value})
+        else:
+            q = Q(**{lookup: cond.value})
+
+        combined &= q
+    return combined
+
+
+# --- 3. ORCHESTRATOR VIEW ENDPOINT ---
 class NLQueryEndpointView(APIView):
     permission_classes = [IsManagerOrAbove]
 
@@ -429,7 +499,7 @@ class NLQueryEndpointView(APIView):
                 {"status": "error", "errors": serializer.errors},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
-        
+
         query = serializer.validated_data['query']
 
         try:
@@ -448,7 +518,9 @@ class NLQueryEndpointView(APIView):
             )
 
     def _run_pipeline(self, query, user):
-        from ai.llm.chain import LLMChain, prompt_injection_filter, call_gpt4o_formatter
+        from ai.llm.chain import NLQueryChain, prompt_injection_filter, call_gpt4o_formatter
+
+        pipeline_start = time.time()
 
         # Step A: Prompt Injection Check
         is_safe = prompt_injection_filter(query)
@@ -465,15 +537,13 @@ class NLQueryEndpointView(APIView):
 
         # Step B: LangChain Processing
         try:
-            chain_instance = LLMChain()
-            chain_result = chain_instance.run(query)
-            
-            # Extracting information based on your structured JSON schema rules
-            action_type = chain_result.get("action")
-            filters = chain_result.get("filters", {})
+            chain = NLQueryChain()
+            chain_result = chain.run(query)
+            action_type = chain_result.action.value
+            filters = chain_result.filters
         except Exception as chain_err:
             return Response(
-                {"status": "error", "message": f"LLM Chain failure: {str(chain_err)}"},
+                {"status": "error", "message": f"LLM Chain failure: {chain_err}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -481,51 +551,187 @@ class NLQueryEndpointView(APIView):
         raw_data = None
         try:
             if action_type == "get_inventory":
-                raw_data = list(InventoryService().get_all_products().values(
-                    "id", "name", "category", "description"
-                ))
+                raw_data = self._handle_get_inventory(filters)
             elif action_type == "get_sales_report":
-                from .services import SalesRecordService
-                records = SalesRecordService().get_all_sales_records().values(
-                    "sku__code", "date", "quantity_sold"
-                )
-                raw_data = list(records)
+                raw_data = self._handle_get_sales_report(filters)
             elif action_type == "get_low_stock":
-                raw_data = InventoryService().get_low_stock_items()
+                raw_data = self._handle_get_low_stock(filters)
             elif action_type == "forecast_demand":
-                raw_data = ForecastingService().get_forecast(filters)
+                raw_data = self._handle_forecast_demand(filters)
             elif action_type == "get_supplier_info":
-                suppliers = Supplier.objects.values(
-                    "id", "name", "contact_email", "contact_phone",
-                    "default_lead_time_days", "is_active"
-                )
-                raw_data = list(suppliers)
+                raw_data = self._handle_get_supplier_info(filters)
+            elif action_type == "get_total_value":
+                raw_data = self._handle_get_total_value(filters)
+            elif action_type == "get_top_products":
+                raw_data = self._handle_get_top_products(filters)
             else:
                 return Response(
                     {"status": "error", "message": f"Unknown action type: {action_type}"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         except Exception as db_err:
+            logger.exception("Database execution error for action %s", action_type)
             return Response(
-                {"status": "error", "message": f"Database execution error: {str(db_err)}"},
+                {"status": "error", "message": f"Database execution error: {db_err}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
         # Step D: Second LLM Call to convert data records into plain sentences
         try:
-            natural_language_answer = call_gpt4o_formatter(original_query=query, raw_data=raw_data)
+            natural_language_answer = call_gpt4o_formatter(
+                original_query=query, raw_data=raw_data
+            )
         except Exception as format_err:
+            logger.exception("Formatter failed: %s", format_err)
             return Response(
                 {"status": "error", "message": "Failed to format natural language response."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # Step E: Return structured backend JSON payload
+        # Step E: Langfuse tracing (audit log fallback)
+        latency_ms = round((time.time() - pipeline_start) * 1000)
+        self._trace_query(user, query, action_type, filters, latency_ms)
+
+        # Step F: Return structured backend JSON payload
         return Response({
             "status": "success",
             "data": {
                 "answer": natural_language_answer,
-                "action": chain_result,
-                "raw_data": raw_data
+                "action": chain_result.to_dict(),
+                "raw_data": raw_data,
             }
         }, status=status.HTTP_200_OK)
+
+    # -- Action handlers --------------------------------------------------------
+
+    def _handle_get_inventory(self, filters: NLQueryFilters):
+        qs = InventoryService().get_all_products()
+        if filters.conditions:
+            q = conditions_to_q(filters.conditions, model=Product)
+            qs = qs.filter(q)
+        data = list(qs.values("id", "name", "category__name", "description"))
+        return data
+
+    def _handle_get_sales_report(self, filters: NLQueryFilters):
+        qs = SalesRecord.objects.select_related("sku__product").all()
+        if filters.conditions:
+            q = conditions_to_q(filters.conditions, model=SalesRecord)
+            qs = qs.filter(q)
+        data = list(qs.values("sku__code", "date", "quantity_sold"))
+        return data
+
+    def _handle_get_low_stock(self, filters: NLQueryFilters):
+        return InventoryService().get_low_stock_items()
+
+    def _handle_forecast_demand(self, filters: NLQueryFilters):
+        sku_id = None
+        for cond in filters.conditions:
+            if cond.field == "sku_code" and cond.op == "eq":
+                try:
+                    sku = SKU.objects.get(code=cond.value)
+                    sku_id = sku.id
+                except SKU.DoesNotExist:
+                    pass
+            elif cond.field == "product_name" and cond.op in ("eq", "contains"):
+                try:
+                    if cond.op == "eq":
+                        product = Product.objects.get(name=cond.value)
+                    else:
+                        product = Product.objects.filter(name__icontains=cond.value).first()
+                    if product:
+                        sku = product.skus.first()
+                        if sku:
+                            sku_id = sku.id
+                except Product.DoesNotExist:
+                    pass
+        return ForecastingService().run_forecast(sku_id=sku_id)
+
+    def _handle_get_supplier_info(self, filters: NLQueryFilters):
+        qs = Supplier.objects.all()
+        if filters.conditions:
+            q = conditions_to_q(filters.conditions, model=Supplier)
+            qs = qs.filter(q)
+        data = list(qs.values(
+            "id", "name", "contact_email", "contact_phone",
+            "default_lead_time_days", "is_active",
+        ))
+        return data
+
+    def _handle_get_total_value(self, filters: NLQueryFilters):
+        qs = Product.objects.filter(is_active=True).select_related("category")
+        if filters.conditions:
+            q = conditions_to_q(filters.conditions, model=Product)
+            qs = qs.filter(q)
+        total = qs.aggregate(
+            total_value=Sum(
+                ExpressionWrapper(
+                    F("unit_price") * 1,
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            )
+        )
+        return {
+            "total_value": str(total["total_value"] or 0),
+            "product_count": qs.count(),
+        }
+
+    def _handle_get_top_products(self, filters: NLQueryFilters):
+        from django.db.models import Sum as DjSum
+        qs = SalesRecord.objects.select_related("sku__product")
+        if filters.conditions:
+            q = conditions_to_q(filters.conditions, model=SalesRecord)
+            qs = qs.filter(q)
+        top = (
+            qs.values("sku__code", "sku__product__name")
+            .annotate(total_sold=DjSum("quantity_sold"))
+            .order_by("-total_sold")
+        )
+        # Apply limit from filters
+        limit = filters.limit or 10
+        top = top[:limit]
+        return list(top)
+
+    # -- Tracing ---------------------------------------------------------------
+
+    def _trace_query(self, user, query, action, filters, latency_ms):
+        """Log the NL query to the audit system. Langfuse integration is optional."""
+        trace_data = {
+            "query": query,
+            "action": action,
+            "conditions": filters.to_dict(),
+            "latency_ms": latency_ms,
+        }
+
+        # Audit log (always available)
+        AuditLog.objects.create(
+            user=user,
+            event="AI_NL_QUERY",
+            data=trace_data,
+        )
+
+        # Langfuse tracing (optional — only if configured)
+        try:
+            from langfuse import Langfuse
+            from django.conf import settings
+            langfuse_host = getattr(settings, "LANGFUSE_HOST", None)
+            public_key = getattr(settings, "LANGFUSE_PUBLIC_KEY", None)
+            secret_key = getattr(settings, "LANGFUSE_SECRET_KEY", None)
+            if public_key and secret_key:
+                lf = Langfuse(
+                    public_key=public_key,
+                    secret_key=secret_key,
+                    host=langfuse_host or "https://cloud.langfuse.com",
+                )
+                trace = lf.trace(
+                    name="nl_query",
+                    user_id=str(user.id) if user else "anonymous",
+                    metadata={"action": action, "latency_ms": latency_ms},
+                )
+                trace.span(
+                    name="query_processing",
+                    input={"query": query},
+                    output={"action": action, "conditions": filters.to_dict()},
+                )
+                lf.flush()
+        except Exception as lf_err:
+            logger.debug("Langfuse trace skipped: %s", lf_err)
