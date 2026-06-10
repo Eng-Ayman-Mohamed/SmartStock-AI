@@ -1,43 +1,46 @@
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
-from django.db.models import Q, Sum, F, DecimalField, ExpressionWrapper
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
 from django.core.cache import cache
-from rest_framework.permissions import IsAuthenticated
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 
-from apps.authentication.permissions import IsViewerOrAbove, IsManagerOrAbove, IsAdminOnly
-from .filters import ProductFilter, SKUFilter, StockLevelFilter, SalesRecordFilter
+from ai.llm.schemas import NLQueryFilters
+from apps.audit.models import AuditLog
+from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
+from apps.forecasting.services import ForecastingService
+
+from .filters import ProductFilter, SalesRecordFilter, SKUFilter, StockLevelFilter
+from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 from .serializers import (
+    CategorySerializer,
     ProductSerializer,
     ProductWriteSerializer,
+    SalesRecordSerializer,
     SKUSerializer,
     StockLevelSerializer,
-    SalesRecordSerializer,
     SupplierSerializer,
-    CategorySerializer,
 )
-from .services import InventoryService, SKUService, SalesRecordService
-from .models import Product, SKU, StockLevel, SalesRecord, Supplier, Category
-
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
-from rest_framework.views import APIView
-from rest_framework import serializers
-from apps.forecasting.services import ForecastingService
-from apps.audit.models import AuditLog
-from ai.llm.schemas import NLQueryFilters
+from .services import InventoryService, SalesRecordService, SKUService
 
 logger = logging.getLogger(__name__)
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     """Full CRUD for products.
-    
+
     - Viewer+: list, retrieve
     - Manager+: create, update
     - Admin: delete
     """
+
     permission_classes = [IsAuthenticated]
     queryset = Product.objects.prefetch_related('skus').all().order_by('-created_at')
     filterset_class = ProductFilter
@@ -47,6 +50,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         from .repositories import InventoryRepository
+
         include_inactive = self.request.query_params.get('include_inactive', '').lower() == 'true'
         if include_inactive and self.request.user.role == 'admin':
             return InventoryRepository().get_all_queryset(include_inactive=True)
@@ -67,7 +71,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [IsManagerOrAbove()]
 
     def list(self, request, *args, **kwargs):
-        cache_key = f"product_list_{request.get_full_path()}"
+        cache_key = f'product_list_{request.get_full_path()}'
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -87,7 +91,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         return InventoryService().update_product(
-            serializer.instance.id, serializer.validated_data,
+            serializer.instance.id,
+            serializer.validated_data,
         )
 
     def update(self, request, *args, **kwargs):
@@ -110,11 +115,12 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 class SKUViewSet(viewsets.ModelViewSet):
     """Full CRUD for SKUs.
-    
+
     - Viewer+: list, retrieve
     - Manager+: create, update
     - Admin: delete
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = SKUSerializer
     filterset_class = SKUFilter
@@ -144,7 +150,8 @@ class SKUViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         return SKUService().update_sku(
-            serializer.instance.id, serializer.validated_data,
+            serializer.instance.id,
+            serializer.validated_data,
         )
 
     def update(self, request, *args, **kwargs):
@@ -167,10 +174,11 @@ class SKUViewSet(viewsets.ModelViewSet):
 
 class StockLevelViewSet(viewsets.ModelViewSet):
     """CRUD for stock levels.
-    
+
     - Viewer+: list, retrieve, low_stock
     - Manager+: update stock quantities
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = StockLevelSerializer
     filterset_class = StockLevelFilter
@@ -189,7 +197,8 @@ class StockLevelViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         return InventoryService().update_stock_level(
-            serializer.instance.id, serializer.validated_data,
+            serializer.instance.id,
+            serializer.validated_data,
         )
 
     def perform_destroy(self, instance):
@@ -243,7 +252,10 @@ class StockLevelViewSet(viewsets.ModelViewSet):
             )
         reason = request.data.get('reason', '')
         stock = InventoryService().adjust_stock(
-            stock.id, delta, user=request.user, reason=reason,
+            stock.id,
+            delta,
+            user=request.user,
+            reason=reason,
         )
         out = StockLevelSerializer(stock, context={'request': request})
         return Response(out.data)
@@ -251,10 +263,11 @@ class StockLevelViewSet(viewsets.ModelViewSet):
 
 class SalesRecordViewSet(viewsets.ModelViewSet):
     """CRUD for sales records (training data for Prophet).
-    
+
     - Viewer+: list, retrieve
     - Manager+: create, update, delete
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = SalesRecordSerializer
     filterset_class = SalesRecordFilter
@@ -273,7 +286,8 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         return SalesRecordService().update_sales_record(
-            serializer.instance.id, serializer.validated_data,
+            serializer.instance.id,
+            serializer.validated_data,
         )
 
     def perform_destroy(self, instance):
@@ -308,6 +322,7 @@ class SupplierViewSet(viewsets.ModelViewSet):
     - Manager+: create, update
     - Admin: delete
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = SupplierSerializer
     queryset = Supplier.objects.all().order_by('name')
@@ -336,7 +351,8 @@ class SupplierViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         return InventoryService().update_supplier(
-            serializer.instance.id, serializer.validated_data,
+            serializer.instance.id,
+            serializer.validated_data,
         )
 
     def update(self, request, *args, **kwargs):
@@ -362,6 +378,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     - Viewer+: list, retrieve
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = CategorySerializer
     queryset = Category.objects.all().order_by('name')
@@ -371,20 +388,29 @@ class StockAdjustView(APIView):
     """Adjust stock quantity for a product.
     PATCH /api/inventory/stock/{product_id}/
     """
+
     permission_classes = [IsAuthenticated, IsManagerOrAbove]
 
     @extend_schema(
-        request=inline_serializer('StockAdjustInput', {
-            'quantity_delta': serializers.IntegerField(),
-            'reason': serializers.CharField(required=False, allow_blank=True),
-        }),
+        request=inline_serializer(
+            'StockAdjustInput',
+            {
+                'quantity_delta': serializers.IntegerField(),
+                'reason': serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
         responses={200: StockLevelSerializer, 404: None, 422: None},
     )
     def patch(self, request, product_id):
         stock = InventoryService().find_stock_for_product(product_id)
         if stock is None:
             return Response(
-                {'status': 'error', 'error': 'NotFound', 'message': 'Stock level not found for this product.', 'code': 404},
+                {
+                    'status': 'error',
+                    'error': 'NotFound',
+                    'message': 'Stock level not found for this product.',
+                    'code': 404,
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -401,6 +427,21 @@ class StockAdjustView(APIView):
                 {'quantity_delta': ['Must be a valid integer.']},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
+        new_quantity = stock.quantity_on_hand + delta
+        if new_quantity < 0:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'ValidationError',
+                    'message': 'Validation failed.',
+                    'fields': {
+                        'quantity_delta': [
+                            f'Adjusting by {delta} would make quantity_on_hand ({stock.quantity_on_hand}) negative.'
+                        ]
+                    },
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         reason = request.data.get('reason', '')
         stock = InventoryService().adjust_stock(stock.id, delta, user=request.user, reason=reason)
         out = StockLevelSerializer(stock, context={'request': request})
@@ -414,9 +455,7 @@ class NLQuerySerializer(serializers.Serializer):
     def validate_query(self, value):
         cleaned_value = value.strip()
         if len(cleaned_value) < 3 or len(cleaned_value) > 500:
-            raise serializers.ValidationError(
-                "Query must be between 3 and 500 characters long."
-            )
+            raise serializers.ValidationError('Query must be between 3 and 500 characters long.')
         return cleaned_value
 
 
@@ -424,34 +463,34 @@ class NLQuerySerializer(serializers.Serializer):
 
 # Maps the NL condition operators to Django Q object field lookups.
 OP_MAP = {
-    "eq":          "",
-    "neq":         "",
-    "lt":          "__lt",
-    "lte":         "__lte",
-    "gt":          "__gt",
-    "gte":         "__gte",
-    "contains":    "__icontains",
-    "starts_with": "__istartswith",
-    "ends_with":   "__iendswith",
-    "in":          "__in",
-    "not_in":      "__in",  # negated at Q construction time
+    'eq': '',
+    'neq': '',
+    'lt': '__lt',
+    'lte': '__lte',
+    'gt': '__gt',
+    'gte': '__gte',
+    'contains': '__icontains',
+    'starts_with': '__istartswith',
+    'ends_with': '__iendswith',
+    'in': '__in',
+    'not_in': '__in',  # negated at Q construction time
 }
 
 # Field name aliases: NL field name -> actual ORM field path (for joins)
 FIELD_ALIASES = {
-    "product_name":       "name",
-    "sku_code":           "skus__code",
-    "category":           "category__name",
-    "supplier_name":      "supplier__name",
-    "contact_email":      "contact_email",
-    "quantity_on_hand":   "skus__stock_level__quantity_on_hand",
-    "quantity_available": "skus__stock_level__quantity_on_hand",
-    "reorder_point":      "skus__stock_level__reorder_point",
-    "date_from":          "date",
-    "date_to":            "date",
-    "quantity_sold":      "quantity_sold",
-    "is_active":          "is_active",
-    "limit":              None,  # handled separately, not a Q field
+    'product_name': 'name',
+    'sku_code': 'skus__code',
+    'category': 'category__name',
+    'supplier_name': 'supplier__name',
+    'contact_email': 'contact_email',
+    'quantity_on_hand': 'skus__stock_level__quantity_on_hand',
+    'quantity_available': 'skus__stock_level__quantity_on_hand',
+    'reorder_point': 'skus__stock_level__reorder_point',
+    'date_from': 'date',
+    'date_to': 'date',
+    'quantity_sold': 'quantity_sold',
+    'is_active': 'is_active',
+    'limit': None,  # handled separately, not a Q field
 }
 
 
@@ -466,16 +505,16 @@ def conditions_to_q(conditions, model=Product):
         if orm_field is None:
             continue
 
-        op_suffix = OP_MAP.get(cond.op, "")
-        lookup = f"{orm_field}{op_suffix}"
+        op_suffix = OP_MAP.get(cond.op, '')
+        lookup = f'{orm_field}{op_suffix}'
 
-        if cond.op == "eq":
+        if cond.op == 'eq':
             q = Q(**{lookup: cond.value})
-        elif cond.op == "neq":
+        elif cond.op == 'neq':
             q = ~Q(**{orm_field: cond.value})
-        elif cond.op == "in":
+        elif cond.op == 'in':
             q = Q(**{lookup: cond.value})
-        elif cond.op == "not_in":
+        elif cond.op == 'not_in':
             q = ~Q(**{lookup: cond.value})
         else:
             q = Q(**{lookup: cond.value})
@@ -487,6 +526,8 @@ def conditions_to_q(conditions, model=Product):
 # --- 3. ORCHESTRATOR VIEW ENDPOINT ---
 class NLQueryEndpointView(APIView):
     permission_classes = [IsManagerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'nlquery'
 
     @extend_schema(
         request=NLQuerySerializer,
@@ -496,8 +537,7 @@ class NLQueryEndpointView(APIView):
         serializer = NLQuerySerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
-                {"status": "error", "errors": serializer.errors},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                {'status': 'error', 'errors': serializer.errors}, status=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
 
         query = serializer.validated_data['query']
@@ -508,17 +548,14 @@ class NLQueryEndpointView(APIView):
                 return future.result(timeout=10)
         except TimeoutError:
             return Response(
-                {"status": "error", "message": "Gateway Timeout: AI pipeline took too long."},
-                status=status.HTTP_504_GATEWAY_TIMEOUT
+                {'status': 'error', 'message': 'Gateway Timeout: AI pipeline took too long.'},
+                status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except Exception as e:
-            return Response(
-                {"status": "error", "message": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _run_pipeline(self, query, user):
-        from ai.llm.chain import NLQueryChain, prompt_injection_filter, call_gpt4o_formatter
+        from ai.llm.chain import NLQueryChain, call_gpt4o_formatter, prompt_injection_filter
 
         pipeline_start = time.time()
 
@@ -527,65 +564,64 @@ class NLQueryEndpointView(APIView):
         if not is_safe:
             AuditLog.objects.create(
                 user=user,
-                event="PROMPT_INJECTION_ATTEMPT",
-                data={"query": query},
+                event='PROMPT_INJECTION_ATTEMPT',
+                data_snapshot={'query': query},
             )
             return Response(
-                {"status": "error", "message": "Malicious query detected."},
-                status=status.HTTP_400_BAD_REQUEST
+                {'status': 'error', 'message': 'Malicious query detected.'}, status=status.HTTP_400_BAD_REQUEST
             )
 
         # Step B: LangChain Processing
         try:
-            chain = NLQueryChain()
-            chain_result = chain.run(query)
-            action_type = chain_result.action.value
-            filters = chain_result.filters
+            chain_instance = NLQueryChain()
+            chain_result = chain_instance.run(query)
+
+            # Extracting information based on your structured JSON schema rules
+            chain_dict = chain_result.to_dict()
+            action_type = chain_dict.get('action')
+            filters = chain_dict.get('filters', {})
         except Exception as chain_err:
             return Response(
-                {"status": "error", "message": f"LLM Chain failure: {chain_err}"},
-                status=status.HTTP_400_BAD_REQUEST
+                {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'}, status=status.HTTP_400_BAD_REQUEST
             )
 
         # Step C: Dispatch to the correct service
         raw_data = None
         try:
-            if action_type == "get_inventory":
+            if action_type == 'get_inventory':
                 raw_data = self._handle_get_inventory(filters)
-            elif action_type == "get_sales_report":
+            elif action_type == 'get_sales_report':
                 raw_data = self._handle_get_sales_report(filters)
-            elif action_type == "get_low_stock":
+            elif action_type == 'get_low_stock':
                 raw_data = self._handle_get_low_stock(filters)
-            elif action_type == "forecast_demand":
+            elif action_type == 'forecast_demand':
                 raw_data = self._handle_forecast_demand(filters)
-            elif action_type == "get_supplier_info":
+            elif action_type == 'get_supplier_info':
                 raw_data = self._handle_get_supplier_info(filters)
-            elif action_type == "get_total_value":
+            elif action_type == 'get_total_value':
                 raw_data = self._handle_get_total_value(filters)
-            elif action_type == "get_top_products":
+            elif action_type == 'get_top_products':
                 raw_data = self._handle_get_top_products(filters)
             else:
                 return Response(
-                    {"status": "error", "message": f"Unknown action type: {action_type}"},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {'status': 'error', 'message': f'Unknown action type: {action_type}'},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
         except Exception as db_err:
-            logger.exception("Database execution error for action %s", action_type)
+            logger.exception('Database execution error for action %s', action_type)
             return Response(
-                {"status": "error", "message": f"Database execution error: {db_err}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'status': 'error', 'message': f'Database execution error: {db_err}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         # Step D: Second LLM Call to convert data records into plain sentences
         try:
-            natural_language_answer = call_gpt4o_formatter(
-                original_query=query, raw_data=raw_data
-            )
+            natural_language_answer = call_gpt4o_formatter(original_query=query, raw_data=raw_data)
         except Exception as format_err:
-            logger.exception("Formatter failed: %s", format_err)
+            logger.exception('Formatter failed: %s', format_err)
             return Response(
-                {"status": "error", "message": "Failed to format natural language response."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'status': 'error', 'message': 'Failed to format natural language response.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         # Step E: Langfuse tracing (audit log fallback)
@@ -593,14 +629,17 @@ class NLQueryEndpointView(APIView):
         self._trace_query(user, query, action_type, filters, latency_ms)
 
         # Step F: Return structured backend JSON payload
-        return Response({
-            "status": "success",
-            "data": {
-                "answer": natural_language_answer,
-                "action": chain_result.to_dict(),
-                "raw_data": raw_data,
-            }
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                'status': 'success',
+                'data': {
+                    'answer': natural_language_answer,
+                    'action': chain_result.to_dict(),
+                    'raw_data': raw_data,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
 
     # -- Action handlers --------------------------------------------------------
 
@@ -609,15 +648,15 @@ class NLQueryEndpointView(APIView):
         if filters.conditions:
             q = conditions_to_q(filters.conditions, model=Product)
             qs = qs.filter(q)
-        data = list(qs.values("id", "name", "category__name", "description"))
+        data = list(qs.values('id', 'name', 'category__name', 'description'))
         return data
 
     def _handle_get_sales_report(self, filters: NLQueryFilters):
-        qs = SalesRecord.objects.select_related("sku__product").all()
+        qs = SalesRecord.objects.select_related('sku__product').all()
         if filters.conditions:
             q = conditions_to_q(filters.conditions, model=SalesRecord)
             qs = qs.filter(q)
-        data = list(qs.values("sku__code", "date", "quantity_sold"))
+        data = list(qs.values('sku__code', 'date', 'quantity_sold'))
         return data
 
     def _handle_get_low_stock(self, filters: NLQueryFilters):
@@ -626,15 +665,15 @@ class NLQueryEndpointView(APIView):
     def _handle_forecast_demand(self, filters: NLQueryFilters):
         sku_id = None
         for cond in filters.conditions:
-            if cond.field == "sku_code" and cond.op == "eq":
+            if cond.field == 'sku_code' and cond.op == 'eq':
                 try:
                     sku = SKU.objects.get(code=cond.value)
                     sku_id = sku.id
                 except SKU.DoesNotExist:
                     pass
-            elif cond.field == "product_name" and cond.op in ("eq", "contains"):
+            elif cond.field == 'product_name' and cond.op in ('eq', 'contains'):
                 try:
-                    if cond.op == "eq":
+                    if cond.op == 'eq':
                         product = Product.objects.get(name=cond.value)
                     else:
                         product = Product.objects.filter(name__icontains=cond.value).first()
@@ -651,40 +690,47 @@ class NLQueryEndpointView(APIView):
         if filters.conditions:
             q = conditions_to_q(filters.conditions, model=Supplier)
             qs = qs.filter(q)
-        data = list(qs.values(
-            "id", "name", "contact_email", "contact_phone",
-            "default_lead_time_days", "is_active",
-        ))
+        data = list(
+            qs.values(
+                'id',
+                'name',
+                'contact_email',
+                'contact_phone',
+                'default_lead_time_days',
+                'is_active',
+            )
+        )
         return data
 
     def _handle_get_total_value(self, filters: NLQueryFilters):
-        qs = Product.objects.filter(is_active=True).select_related("category")
+        qs = Product.objects.filter(is_active=True).select_related('category')
         if filters.conditions:
             q = conditions_to_q(filters.conditions, model=Product)
             qs = qs.filter(q)
         total = qs.aggregate(
             total_value=Sum(
                 ExpressionWrapper(
-                    F("unit_price") * 1,
+                    F('unit_price') * 1,
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 )
             )
         )
         return {
-            "total_value": str(total["total_value"] or 0),
-            "product_count": qs.count(),
+            'total_value': str(total['total_value'] or 0),
+            'product_count': qs.count(),
         }
 
     def _handle_get_top_products(self, filters: NLQueryFilters):
         from django.db.models import Sum as DjSum
-        qs = SalesRecord.objects.select_related("sku__product")
+
+        qs = SalesRecord.objects.select_related('sku__product')
         if filters.conditions:
             q = conditions_to_q(filters.conditions, model=SalesRecord)
             qs = qs.filter(q)
         top = (
-            qs.values("sku__code", "sku__product__name")
-            .annotate(total_sold=DjSum("quantity_sold"))
-            .order_by("-total_sold")
+            qs.values('sku__code', 'sku__product__name')
+            .annotate(total_sold=DjSum('quantity_sold'))
+            .order_by('-total_sold')
         )
         # Apply limit from filters
         limit = filters.limit or 10
@@ -696,42 +742,43 @@ class NLQueryEndpointView(APIView):
     def _trace_query(self, user, query, action, filters, latency_ms):
         """Log the NL query to the audit system. Langfuse integration is optional."""
         trace_data = {
-            "query": query,
-            "action": action,
-            "conditions": filters.to_dict(),
-            "latency_ms": latency_ms,
+            'query': query,
+            'action': action,
+            'conditions': filters.to_dict(),
+            'latency_ms': latency_ms,
         }
 
         # Audit log (always available)
         AuditLog.objects.create(
             user=user,
-            event="AI_NL_QUERY",
+            event='AI_NL_QUERY',
             data=trace_data,
         )
 
         # Langfuse tracing (optional — only if configured)
         try:
-            from langfuse import Langfuse
             from django.conf import settings
-            langfuse_host = getattr(settings, "LANGFUSE_HOST", None)
-            public_key = getattr(settings, "LANGFUSE_PUBLIC_KEY", None)
-            secret_key = getattr(settings, "LANGFUSE_SECRET_KEY", None)
+            from langfuse import Langfuse
+
+            langfuse_host = getattr(settings, 'LANGFUSE_HOST', None)
+            public_key = getattr(settings, 'LANGFUSE_PUBLIC_KEY', None)
+            secret_key = getattr(settings, 'LANGFUSE_SECRET_KEY', None)
             if public_key and secret_key:
                 lf = Langfuse(
                     public_key=public_key,
                     secret_key=secret_key,
-                    host=langfuse_host or "https://cloud.langfuse.com",
+                    host=langfuse_host or 'https://cloud.langfuse.com',
                 )
                 trace = lf.trace(
-                    name="nl_query",
-                    user_id=str(user.id) if user else "anonymous",
-                    metadata={"action": action, "latency_ms": latency_ms},
+                    name='nl_query',
+                    user_id=str(user.id) if user else 'anonymous',
+                    metadata={'action': action, 'latency_ms': latency_ms},
                 )
                 trace.span(
-                    name="query_processing",
-                    input={"query": query},
-                    output={"action": action, "conditions": filters.to_dict()},
+                    name='query_processing',
+                    input={'query': query},
+                    output={'action': action, 'conditions': filters.to_dict()},
                 )
                 lf.flush()
         except Exception as lf_err:
-            logger.debug("Langfuse trace skipped: %s", lf_err)
+            logger.debug('Langfuse trace skipped: %s', lf_err)

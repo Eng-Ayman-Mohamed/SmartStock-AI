@@ -1,8 +1,8 @@
-
 from django.apps import AppConfig
+
 
 class AuditConfig(AppConfig):
     name = 'apps.audit'
 
     def ready(self):
-        import apps.audit.signals  # connects the signal receivers
+        pass  # connects the signal receivers

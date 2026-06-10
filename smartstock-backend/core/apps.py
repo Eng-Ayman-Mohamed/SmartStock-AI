@@ -1,3 +1,5 @@
+import os
+
 from django.apps import AppConfig
 
 
@@ -7,5 +9,9 @@ class CoreConfig(AppConfig):
     verbose_name = 'Core'
 
     def ready(self):
+        if os.environ.get('CI'):
+            return
+
         from config.validators import validate_required_env_vars
+
         validate_required_env_vars()

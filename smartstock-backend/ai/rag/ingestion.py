@@ -15,7 +15,7 @@ BATCH_SIZE = 100
 BATCH_DELAY_SECONDS = 1
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 50
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = 'text-embedding-3-small'
 EMBEDDING_DIMENSIONS = 1536
 
 
@@ -25,7 +25,7 @@ def extract_text_from_pdf(file_path: str) -> list[dict]:
     for i, page in enumerate(reader.pages, start=1):
         text = page.extract_text()
         if text and text.strip():
-            pages.append({"page_number": i, "text": text.strip()})
+            pages.append({'page_number': i, 'text': text.strip()})
     return pages
 
 
@@ -34,16 +34,18 @@ def chunk_pdf_pages(pages: list[dict]) -> list[dict]:
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
         length_function=lambda t: len(t.split()),
-        separators=["\n\n", "\n", ".", " ", ""],
+        separators=['\n\n', '\n', '.', ' ', ''],
     )
     chunks = []
     for page in pages:
-        page_texts = splitter.split_text(page["text"])
+        page_texts = splitter.split_text(page['text'])
         for t in page_texts:
-            chunks.append({
-                "text": t,
-                "page_number": page["page_number"],
-            })
+            chunks.append(
+                {
+                    'text': t,
+                    'page_number': page['page_number'],
+                }
+            )
     return chunks
 
 
@@ -54,7 +56,7 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     )
     all_embeddings = []
     for i in range(0, len(texts), BATCH_SIZE):
-        batch = texts[i:i + BATCH_SIZE]
+        batch = texts[i : i + BATCH_SIZE]
         batch_embeddings = embeddings.embed_documents(batch)
         all_embeddings.extend(batch_embeddings)
         if i + BATCH_SIZE < len(texts):
@@ -75,7 +77,7 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
     raw_chunks = chunk_pdf_pages(pages)
     total_pages = len(pages)
 
-    texts = [c["text"] for c in raw_chunks]
+    texts = [c['text'] for c in raw_chunks]
     embeddings = generate_embeddings(texts)
 
     now = datetime.now(timezone.utc).isoformat()
@@ -97,10 +99,10 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
         DocumentChunk.objects.bulk_create(bulk)
 
     return {
-        "filename": filename,
-        "pages": total_pages,
-        "chunks": len(raw_chunks),
-        "api_calls": (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE,
+        'filename': filename,
+        'pages': total_pages,
+        'chunks': len(raw_chunks),
+        'api_calls': (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE,
     }
 
 
@@ -109,6 +111,6 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
         chunk_size=chunk_size,
         chunk_overlap=overlap,
         length_function=lambda t: len(t.split()),
-        separators=["\n\n", "\n", ".", " ", ""],
+        separators=['\n\n', '\n', '.', ' ', ''],
     )
     return splitter.split_text(text)

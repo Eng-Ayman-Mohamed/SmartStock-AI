@@ -1,7 +1,11 @@
-
 import json
+import logging
+
 from django.utils.deprecation import MiddlewareMixin
+
 from .models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 def _get_client_ip(request):
@@ -31,11 +35,14 @@ class AuditMiddleware(MiddlewareMixin):
                 except (json.JSONDecodeError, AttributeError):
                     user_id = None
 
-                AuditLog.objects.create(
-                    event='USER_LOGIN',
-                    entity_type='User',
-                    entity_id=user_id,
-                    ip_address=_get_client_ip(request),
-                    data={'path': request.path, 'method': request.method},
-                )
+                try:
+                    AuditLog.objects.create(
+                        event='USER_LOGIN',
+                        entity_type='User',
+                        entity_id=user_id,
+                        ip_address=_get_client_ip(request),
+                        data_snapshot={'path': request.path, 'method': request.method},
+                    )
+                except Exception as e:
+                    logger.exception('Failed to log login audit entry: %s', e)
         return response
