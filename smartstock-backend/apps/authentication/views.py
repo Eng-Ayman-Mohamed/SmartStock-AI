@@ -6,19 +6,22 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
-
-class TokenRefreshView(BaseTokenRefreshView):
-    envelope_exempt = True
-
 from .models import CustomUser
 from .permissions import IsAdminOnly
 from .serializers import (
+    CookieTokenRefreshSerializer,
     MeSerializer,
     RegisterSerializer,
     RoleUpdateSerializer,
     UserCreateSerializer,
     UserSerializer,
 )
+
+
+class TokenRefreshView(BaseTokenRefreshView):
+    serializer_class = CookieTokenRefreshSerializer
+    envelope_exempt = True
+
 
 User = get_user_model()
 
@@ -35,14 +38,22 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
-        return Response(
+        response = Response(
             {
                 'access': str(refresh.access_token),
-                'refresh': str(refresh),
                 'user': MeSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
         )
+        response.set_cookie(
+            key='refresh_token',
+            value=str(refresh),
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=7 * 24 * 60 * 60,
+        )
+        return response
 
 
 class LoginView(TokenObtainPairView):
@@ -60,10 +71,23 @@ class LoginView(TokenObtainPairView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         user = getattr(serializer, 'user', None)
-        data = serializer.validated_data
-        if user:
-            data['user'] = MeSerializer(user).data
-        return Response(data)
+        validated_data = serializer.validated_data
+        response = Response(
+            {
+                'access': validated_data['access'],
+                'user': MeSerializer(user).data if user else None,
+            },
+            status=status.HTTP_200_OK,
+        )
+        response.set_cookie(
+            key='refresh_token',
+            value=validated_data['refresh'],
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=7 * 24 * 60 * 60,
+        )
+        return response
 
 
 class LogoutView(APIView):
