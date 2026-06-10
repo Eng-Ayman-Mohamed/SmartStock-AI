@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Edit3, Package, Plus, Search, Trash2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axios';
@@ -32,6 +33,7 @@ type StockLevel = {
   product_name: string;
   quantity?: number;
   quantity_on_hand?: number;
+  quantity_reserved?: number;
   reorder_point: number;
 };
 
@@ -56,8 +58,11 @@ function statusFor(quantity: number, reorderPoint: number): Status {
 }
 
 export default function InventoryPage() {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') ?? '');
+  const [sortField, setSortField] = useState(searchParams.get('sort') ?? '');
+  const [sortOrder, setSortOrder] = useState(searchParams.get('order') ?? '');
   const debouncedSearch = useDebounce(search, 300);
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -73,10 +78,14 @@ export default function InventoryPage() {
 
   const addToast = useToastStore((s) => s.addToast);
 
+  const ordering = sortField ? (sortOrder === 'desc' ? `-${sortField}` : sortField) : '';
+  const orderingParam = ordering ? { ordering } : {};
+
   const inventoryQuery = useQuery({
-    queryKey: ['inventory', debouncedSearch],
+    queryKey: ['inventory', debouncedSearch, sortField, sortOrder],
     queryFn: async () => {
-      const params = debouncedSearch ? { search: debouncedSearch, page_size: 100 } : { page_size: 100 };
+      const params: Record<string, unknown> = { page_size: 100, ...orderingParam };
+      if (debouncedSearch) params.search = debouncedSearch;
       const [productsRes, stockRes, lowStockRes] = await Promise.all([
         api.get('/inventory/products/', { params }),
         api.get('/inventory/stock-levels/', { params: { page_size: 100 } }),
@@ -158,7 +167,7 @@ export default function InventoryPage() {
           const quantity = stock?.quantity ?? stock?.quantity_on_hand ?? 0;
           const reorderPoint = stock?.reorder_point ?? product.reorder_point;
           const status = statusFor(quantity, reorderPoint);
-          return { product, sku, quantity, reorderPoint, status };
+          return { product, sku, quantity, quantity_reserved: stock?.quantity_reserved ?? 0, reorderPoint, status };
         });
       })
       .filter((row) => !statusFilter || row.status === statusFilter);
@@ -188,8 +197,31 @@ export default function InventoryPage() {
       key: 'qty',
       label: 'On Hand',
       align: 'right',
-      width: '90px',
-      render: (r) => <span className="tabular-nums">{r.quantity}</span>,
+      width: '160px',
+      render: (r) => (
+        <div className="flex items-center gap-2 justify-end">
+          <span className="tabular-nums">{r.quantity}</span>
+          <div className="w-16 h-2 rounded-full bg-gray-100 overflow-hidden shrink-0">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                r.quantity <= 0
+                  ? 'bg-red-500 animate-pulse'
+                  : r.quantity < r.reorderPoint
+                  ? 'bg-amber-500'
+                  : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(100, (r.quantity / Math.max(r.reorderPoint, 1)) * 100)}%` }}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'reserved',
+      label: 'Reserved',
+      align: 'right',
+      width: '80px',
+      render: (r) => <span className="tabular-nums">{r.quantity_reserved ?? 0}</span>,
     },
     {
       key: 'reorder',

@@ -8,6 +8,7 @@ class Category(models.Model):
 
     class Meta:
         verbose_name_plural = 'categories'
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.name
@@ -41,6 +42,9 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        ordering = ['-created_at']
+
 
 class SKU(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='skus')
@@ -50,6 +54,9 @@ class SKU(models.Model):
 
     def __str__(self):
         return f'{self.product.name} - {self.code}'
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 class StockLevel(models.Model):
@@ -66,6 +73,9 @@ class StockLevel(models.Model):
 
     def __str__(self):
         return f'{self.sku.code}: {self.quantity_on_hand}'
+
+    class Meta:
+        ordering = ['-updated_at']
 
 
 class SalesRecord(models.Model):
@@ -98,3 +108,6 @@ class Supplier(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ['-created_at']

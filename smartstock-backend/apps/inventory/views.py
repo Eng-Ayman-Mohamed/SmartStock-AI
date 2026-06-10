@@ -30,6 +30,37 @@ from .serializers import (
 )
 from .services import InventoryService, SalesRecordService, SKUService
 
+_nl_chain = None
+_langfuse_client = None
+
+
+def get_nl_chain():
+    global _nl_chain
+    if _nl_chain is None:
+        from ai.llm.chain import NLQueryChain
+        _nl_chain = NLQueryChain()
+    return _nl_chain
+
+
+def get_langfuse():
+    global _langfuse_client
+    if _langfuse_client is None:
+        try:
+            from langfuse import Langfuse
+            from django.conf import settings
+            public_key = getattr(settings, 'LANGFUSE_PUBLIC_KEY', None)
+            secret_key = getattr(settings, 'LANGFUSE_SECRET_KEY', None)
+            if public_key and secret_key:
+                _langfuse_client = Langfuse(
+                    public_key=public_key,
+                    secret_key=secret_key,
+                    host=getattr(settings, 'LANGFUSE_HOST', 'https://cloud.langfuse.com'),
+                )
+        except Exception:
+            _langfuse_client = None
+    return _langfuse_client
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -241,14 +272,14 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         if delta is None:
             return Response(
                 {'quantity_delta': ['This field is required.']},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         try:
             delta = int(delta)
         except (TypeError, ValueError):
             return Response(
                 {'quantity_delta': ['Must be a valid integer.']},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         reason = request.data.get('reason', '')
         stock = InventoryService().adjust_stock(
@@ -555,7 +586,7 @@ class NLQueryEndpointView(APIView):
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _run_pipeline(self, query, user):
-        from ai.llm.chain import NLQueryChain, call_gpt4o_formatter, prompt_injection_filter
+        from ai.llm.chain import call_gpt4o_formatter, prompt_injection_filter
 
         pipeline_start = time.time()
 
@@ -573,7 +604,7 @@ class NLQueryEndpointView(APIView):
 
         # Step B: LangChain Processing
         try:
-            chain_instance = NLQueryChain()
+            chain_instance = get_nl_chain()
             chain_result = chain_instance.run(query)
 
             # Extracting information based on your structured JSON schema rules
@@ -757,18 +788,8 @@ class NLQueryEndpointView(APIView):
 
         # Langfuse tracing (optional — only if configured)
         try:
-            from django.conf import settings
-            from langfuse import Langfuse
-
-            langfuse_host = getattr(settings, 'LANGFUSE_HOST', None)
-            public_key = getattr(settings, 'LANGFUSE_PUBLIC_KEY', None)
-            secret_key = getattr(settings, 'LANGFUSE_SECRET_KEY', None)
-            if public_key and secret_key:
-                lf = Langfuse(
-                    public_key=public_key,
-                    secret_key=secret_key,
-                    host=langfuse_host or 'https://cloud.langfuse.com',
-                )
+            lf = get_langfuse()
+            if lf is not None:
                 trace = lf.trace(
                     name='nl_query',
                     user_id=str(user.id) if user else 'anonymous',

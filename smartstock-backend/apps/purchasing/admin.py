@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from .models import PurchaseOrder, Supplier
+from apps.inventory.models import Supplier
+
+from .models import PurchaseOrder
 
 admin.site.register(PurchaseOrder)
 admin.site.register(Supplier)

@@ -46,6 +46,14 @@ export default function DataTable<T>({ columns, data, keyExtractor, caption, emp
             <tr
               key={keyExtractor(row)}
               className="bg-canvas border-b border-hairline hover:bg-canvas-soft transition-colors duration-150 group"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  const btn = e.currentTarget.querySelector('button, a, [role="button"]');
+                  if (btn instanceof HTMLElement) btn.click();
+                }
+              }}
+              role="row"
             >
               {columns.map((col) => (
                 <td

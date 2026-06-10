@@ -1,8 +1,15 @@
+import logging
 import os
 from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+
+import cloudinary
+import cloudinary.api
+import cloudinary.uploader
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -127,12 +134,13 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': (
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
+        'core.throttles.AIRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
+        'anon': '20/minute',
+        'user': '100/minute',
         'login': '5/minute',
-        'nlquery': '30/minute',
+        'ai': '10/minute',
     },
 }
 
@@ -148,6 +156,21 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'authorization',
+    'content-type',
+    'x-requested-with',
+    'x-csrftoken',
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
@@ -166,6 +189,19 @@ CACHES = {
 }
 
 CACHE_MIDDLEWARE_SECONDS = 300
+
+CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '')
+
+cloudinary.config(cloudinary_url=CLOUDINARY_URL)
+
+# Validate required env vars at module level (not in AppConfig.ready) to catch
+# missing configuration early, before any app attempts to use them.
+if not os.environ.get('CI'):
+    from config.validators import validate_required_env_vars  # noqa: E402
+    try:
+        validate_required_env_vars()
+    except Exception:
+        logger.warning('Environment validation skipped — settings may be incomplete.')
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
 CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')

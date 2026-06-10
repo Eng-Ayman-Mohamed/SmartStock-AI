@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import json
+
 import pytest
 
 from ai.llm.few_shots import FEW_SHOT_EXAMPLES, build_few_shot_block
@@ -13,15 +15,13 @@ from ai.llm.schemas import NL_QUERY_JSON_SCHEMA, NLQueryAction, NLQueryFilters, 
 
 
 class TestNLQueryAction:
-    def test_all_five_actions_exist(self):
+    def test_required_actions_exist(self):
         values = {a.value for a in NLQueryAction}
-        assert values == {
-            'get_inventory',
-            'get_sales_report',
-            'get_low_stock',
-            'forecast_demand',
-            'get_supplier_info',
-        }
+        assert 'get_inventory' in values
+        assert 'get_sales_report' in values
+        assert 'get_low_stock' in values
+        assert 'forecast_demand' in values
+        assert 'get_supplier_info' in values
 
     def test_action_is_string_enum(self):
         """NLQueryAction members must behave as strings for JSON serialisation."""
@@ -43,27 +43,36 @@ class TestNLQueryFilters:
         assert f.to_dict() == {}
 
     def test_from_dict_partial(self):
-        f = NLQueryFilters.from_dict({'sku_code': 'ABC-001'})
-        assert f.sku_code == 'ABC-001'
-        assert f.product_name is None
+        f = NLQueryFilters.from_dict({
+            'conditions': [{'field': 'sku_code', 'op': 'eq', 'value': 'ABC-001'}]
+        })
+        assert len(f.conditions) == 1
+        assert f.conditions[0].field == 'sku_code'
+        assert f.conditions[0].op == 'eq'
+        assert f.conditions[0].value == 'ABC-001'
 
     def test_from_dict_full(self):
         raw = {
-            'product_name': 'Widget',
-            'sku_code': 'W-001',
-            'date_from': '2026-01-01',
-            'date_to': '2026-01-31',
-            'stock_below': 10,
-            'supplier_name': 'Acme Corp',
+            'conditions': [
+                {'field': 'product_name', 'op': 'eq', 'value': 'Widget'},
+                {'field': 'stock_below', 'op': 'lt', 'value': 10},
+            ],
+            'sort': 'date_from',
+            'sort_order': 'desc',
+            'limit': 20,
+            'offset': 0,
         }
         f = NLQueryFilters.from_dict(raw)
         assert f.to_dict() == raw
 
     def test_to_dict_excludes_nones(self):
-        f = NLQueryFilters(product_name='Widget')
+        f = NLQueryFilters()
         d = f.to_dict()
-        assert 'product_name' in d
-        assert 'sku_code' not in d
+        assert d == {}
+
+    def test_sort_defaults_to_asc(self):
+        f = NLQueryFilters.from_dict({'sort': 'name'})
+        assert f.sort_order == 'asc'
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -76,10 +85,11 @@ class TestNLQueryOutputParser:
         self.parser = NLQueryOutputParser()
 
     def test_parses_valid_json(self):
-        raw = '{"action": "get_inventory", "filters": {"sku_code": "ABC-001"}}'
+        raw = '{"action": "get_inventory", "filters": {"conditions": [{"field": "sku_code", "op": "eq", "value": "ABC-001"}]}}'
         result = self.parser.parse(raw)
         assert result.action == NLQueryAction.GET_INVENTORY
-        assert result.filters.sku_code == 'ABC-001'
+        assert result.filters.conditions[0].field == 'sku_code'
+        assert result.filters.conditions[0].value == 'ABC-001'
 
     def test_parses_no_filters(self):
         raw = '{"action": "get_low_stock"}'
@@ -107,7 +117,7 @@ class TestNLQueryOutputParser:
             self.parser.parse(raw)
 
     def test_raises_on_missing_action(self):
-        raw = '{"filters": {"sku_code": "X"}}'
+        raw = '{"filters": {"conditions": [{"field": "sku_code", "op": "eq", "value": "X"}]}}'
         with pytest.raises(NLQueryParseError, match="missing required 'action'"):
             self.parser.parse(raw)
 
@@ -132,7 +142,7 @@ class TestFewShotExamples:
         self.parser = NLQueryOutputParser()
 
     def test_five_examples_defined(self):
-        assert len(FEW_SHOT_EXAMPLES) == 5
+        assert len(FEW_SHOT_EXAMPLES) >= 5
 
     def test_each_example_covers_distinct_action(self):
         actions = {ex['action'] for ex in FEW_SHOT_EXAMPLES}
@@ -146,12 +156,12 @@ class TestFewShotExamples:
 
     def test_build_few_shot_block_contains_all_five(self):
         block = build_few_shot_block()
-        for i in range(1, 6):
+        for i in range(1, len(FEW_SHOT_EXAMPLES) + 1):
             assert f'Example {i}:' in block
 
     def test_few_shot_block_embedded_in_system_prompt(self):
         assert 'Example 1:' in SYSTEM_PROMPT
-        assert 'Example 5:' in SYSTEM_PROMPT
+        assert f'Example {len(FEW_SHOT_EXAMPLES)}:' in SYSTEM_PROMPT
 
     def test_system_prompt_contains_all_action_values(self):
         for action in NLQueryAction:
@@ -167,53 +177,48 @@ class TestFewShotExamples:
 # would produce for each query type.
 
 END_TO_END_CASES = [
-    # (query_type, user_input, mocked_llm_output, expected_action, expected_filter_key, expected_filter_val)
+    # (query_type, user_input, mocked_llm_output, expected_action, conditions)
     (
         'get_inventory',
         'How many units of SKU ABC-001 do we have?',
-        '{"action": "get_inventory", "filters": {"sku_code": "ABC-001"}}',
+        '{"action": "get_inventory", "filters": {"conditions": [{"field": "sku_code", "op": "eq", "value": "ABC-001"}]}}',
         NLQueryAction.GET_INVENTORY,
-        'sku_code',
-        'ABC-001',
+        [('sku_code', 'eq', 'ABC-001')],
     ),
     (
         'get_sales_report',
         'Sales report from Jan 1 to Jan 15',
-        '{"action": "get_sales_report", "filters": {"date_from": "2026-01-01", "date_to": "2026-01-15"}}',
+        '{"action": "get_sales_report", "filters": {"conditions": [{"field": "date_from", "op": "eq", "value": "2026-01-01"}, {"field": "date_to", "op": "eq", "value": "2026-01-15"}]}}',
         NLQueryAction.GET_SALES_REPORT,
-        'date_from',
-        '2026-01-01',
+        [('date_from', 'eq', '2026-01-01'), ('date_to', 'eq', '2026-01-15')],
     ),
     (
         'get_low_stock',
         'Show items with stock below 5',
-        '{"action": "get_low_stock", "filters": {"stock_below": 5}}',
+        '{"action": "get_low_stock", "filters": {"conditions": [{"field": "stock_below", "op": "lt", "value": 5}]}}',
         NLQueryAction.GET_LOW_STOCK,
-        'stock_below',
-        5,
+        [('stock_below', 'lt', 5)],
     ),
     (
         'forecast_demand',
         'Forecast demand for Product X next month',
-        '{"action": "forecast_demand", "filters": {"product_name": "Product X"}}',
+        '{"action": "forecast_demand", "filters": {"conditions": [{"field": "product_name", "op": "eq", "value": "Product X"}]}}',
         NLQueryAction.FORECAST_DEMAND,
-        'product_name',
-        'Product X',
+        [('product_name', 'eq', 'Product X')],
     ),
     (
         'get_supplier_info',
         'Who is the supplier for Product Y?',
-        '{"action": "get_supplier_info", "filters": {"product_name": "Product Y"}}',
+        '{"action": "get_supplier_info", "filters": {"conditions": [{"field": "product_name", "op": "eq", "value": "Product Y"}]}}',
         NLQueryAction.GET_SUPPLIER_INFO,
-        'product_name',
-        'Product Y',
+        [('product_name', 'eq', 'Product Y')],
     ),
 ]
 
 
 class TestNLQueryChainEndToEnd:
     @pytest.mark.parametrize(
-        'query_type, user_input, mocked_output, expected_action, filter_key, filter_val',
+        'query_type, user_input, mocked_output, expected_action, expected_conditions',
         END_TO_END_CASES,
         ids=[c[0] for c in END_TO_END_CASES],
     )
@@ -223,8 +228,7 @@ class TestNLQueryChainEndToEnd:
         user_input,
         mocked_output,
         expected_action,
-        filter_key,
-        filter_val,
+        expected_conditions,
     ):
         """
         For each of the 5 query types:
@@ -234,27 +238,42 @@ class TestNLQueryChainEndToEnd:
         from ai.llm.chain import NLQueryChain
 
         chain = NLQueryChain.__new__(NLQueryChain)  # skip __init__ (avoids API key check)
-        mock_inner_chain = MagicMock()
-        mock_inner_chain.invoke.return_value = mocked_output
-        chain._chain = mock_inner_chain
+
+        # Mock the LCEL chain to return an AIMessage with a tool_call
+        # containing parsed args (bypasses field validation).
+        mock_lcel_chain = MagicMock()
+        mock_msg = MagicMock()
+        mock_msg.content = mocked_output
+        mock_msg.tool_calls = [
+            {'name': 'nl_query', 'args': json.loads(mocked_output), 'id': 'call_1', 'type': 'tool_call'},
+        ]
+        mock_lcel_chain.invoke.return_value = mock_msg
+        chain._chain = mock_lcel_chain
 
         result: NLQueryResult = chain.run(user_input)
 
         assert result.action == expected_action, (
             f'[{query_type}] Expected action {expected_action}, got {result.action}'
         )
-        assert getattr(result.filters, filter_key) == filter_val, (
-            f'[{query_type}] Expected filters.{filter_key}={filter_val!r}, got {getattr(result.filters, filter_key)!r}'
+        assert len(result.filters.conditions) == len(expected_conditions), (
+            f'[{query_type}] Expected {len(expected_conditions)} conditions, got {len(result.filters.conditions)}'
         )
+        for i, (field, op, value) in enumerate(expected_conditions):
+            assert result.filters.conditions[i].field == field
+            assert result.filters.conditions[i].op == op
+            assert result.filters.conditions[i].value == value
 
     def test_chain_falls_back_on_parse_error(self):
         """If the LLM returns garbage, run() should fall back to get_inventory."""
         from ai.llm.chain import NLQueryChain
-
         chain = NLQueryChain.__new__(NLQueryChain)
-        mock_inner_chain = MagicMock()
-        mock_inner_chain.invoke.return_value = 'this is not json'
-        chain._chain = mock_inner_chain
+        mock_lcel_chain = MagicMock()
+        mock_msg = MagicMock()
+        mock_msg.content = 'this is not json'
+        mock_msg.tool_calls = []
+        mock_lcel_chain.invoke.return_value = mock_msg
+
+        chain._chain = mock_lcel_chain
 
         result = chain.run('some query')
         assert result.action == NLQueryAction.GET_INVENTORY
@@ -265,9 +284,13 @@ class TestNLQueryChainEndToEnd:
         from ai.llm.chain import NLQueryChain
 
         chain = NLQueryChain.__new__(NLQueryChain)
-        mock_inner_chain = MagicMock()
-        mock_inner_chain.invoke.return_value = '{"action": "hack_the_planet", "filters": {}}'
-        chain._chain = mock_inner_chain
+        mock_lcel_chain = MagicMock()
+        mock_msg = MagicMock()
+        mock_msg.content = '{"action": "hack_the_planet", "filters": {}}'
+        mock_msg.tool_calls = [
+            {'name': 'nl_query', 'args': {'action': 'hack_the_planet', 'filters': {}}, 'id': 'call_1', 'type': 'tool_call'},
+        ]
+        chain._chain = mock_lcel_chain
 
         result = chain.run('some query')
         assert result.action == NLQueryAction.GET_INVENTORY

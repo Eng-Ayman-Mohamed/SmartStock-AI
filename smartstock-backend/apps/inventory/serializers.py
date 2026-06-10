@@ -55,6 +55,15 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Product name must not exceed 255 characters.')
         return value
 
+    def validate_unit_price(self, value):
+        if value is not None:
+            if value < 0:
+                raise serializers.ValidationError('Unit price cannot be negative.')
+            decimal_places = str(value)
+            if '.' in decimal_places and len(decimal_places.split('.')[1]) > 2:
+                raise serializers.ValidationError('Unit price must have at most 2 decimal places.')
+        return value
+
 
 class SKUSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
