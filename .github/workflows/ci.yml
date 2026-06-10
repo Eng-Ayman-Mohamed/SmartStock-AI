@@ -46,7 +46,9 @@ jobs:
         ports:
           - 6379:6379
     env:
+      CI: true
       DJANGO_SETTINGS_MODULE: config.settings.development
+      DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
       DB_HOST: localhost
       DB_PORT: 5432
       DB_NAME: smartstock_test
