@@ -112,13 +112,9 @@ def build_few_shot_block() -> str:
     """
     lines = []
     for i, ex in enumerate(FEW_SHOT_EXAMPLES, start=1):
-        escaped = (
-            ex["output"]
-            .replace("{", "{{")
-            .replace("}", "}}")
-        )
-        lines.append(f"Example {i}:")
+        escaped = ex['output'].replace('{', '{{').replace('}', '}}')
+        lines.append(f'Example {i}:')
         lines.append(f'User: {ex["user"]}')
         lines.append(f'Output: {escaped}')
-        lines.append("")          # blank line between examples
-    return "\n".join(lines).rstrip()
+        lines.append('')  # blank line between examples
+    return '\n'.join(lines).rstrip()

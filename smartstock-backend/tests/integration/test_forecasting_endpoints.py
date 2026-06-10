@@ -1,12 +1,13 @@
+from datetime import date, timedelta
+
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.cache import cache
-from datetime import date, timedelta
 
 from apps.authentication.models import CustomUser
-from apps.inventory.models import Product, Category, SKU, SalesRecord, StockLevel
 from apps.forecasting.models import ForecastResult
+from apps.inventory.models import SKU, Category, Product, SalesRecord, StockLevel
 
 
 class ForecastingEndpointTests(APITestCase):
@@ -15,16 +16,22 @@ class ForecastingEndpointTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = CustomUser.objects.create_user(
-            email='admin@test.com', username='admin@test.com',
-            password='testpass123', role='admin',
+            email='admin@test.com',
+            username='admin@test.com',
+            password='testpass123',
+            role='admin',
         )
         cls.manager = CustomUser.objects.create_user(
-            email='manager@test.com', username='manager@test.com',
-            password='testpass123', role='manager',
+            email='manager@test.com',
+            username='manager@test.com',
+            password='testpass123',
+            role='manager',
         )
         cls.viewer = CustomUser.objects.create_user(
-            email='viewer@test.com', username='viewer@test.com',
-            password='testpass123', role='viewer',
+            email='viewer@test.com',
+            username='viewer@test.com',
+            password='testpass123',
+            role='viewer',
         )
 
         cls.category = Category.objects.create(name='Forecast Test Cat')

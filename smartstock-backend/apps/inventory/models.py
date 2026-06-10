@@ -17,11 +17,17 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     category = models.ForeignKey(
-        Category, on_delete=models.SET_NULL, null=True, blank=True,
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='products',
     )
     supplier = models.ForeignKey(
-        'Supplier', on_delete=models.SET_NULL, null=True, blank=True,
+        'Supplier',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='products',
     )
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -43,22 +49,28 @@ class SKU(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.product.name} - {self.code}"
+        return f'{self.product.name} - {self.code}'
 
 
 class StockLevel(models.Model):
     sku = models.OneToOneField(SKU, on_delete=models.CASCADE, related_name='stock_level')
     quantity_on_hand = models.IntegerField(default=0)
+    quantity_reserved = models.IntegerField(default=0)
     reorder_point = models.IntegerField(default=10)
     reorder_quantity = models.IntegerField(default=50)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def quantity_available(self):
+        return self.quantity_on_hand - self.quantity_reserved
+
     def __str__(self):
-        return f"{self.sku.code}: {self.quantity_on_hand}"
+        return f'{self.sku.code}: {self.quantity_on_hand}'
 
 
 class SalesRecord(models.Model):
     """Historical daily sales data per SKU — used as training data for Prophet."""
+
     sku = models.ForeignKey(SKU, on_delete=models.CASCADE, related_name='sales_records')
     date = models.DateField()
     quantity_sold = models.IntegerField(default=0)
@@ -71,7 +83,8 @@ class SalesRecord(models.Model):
         unique_together = [('sku', 'date')]
 
     def __str__(self):
-        return f"{self.sku.code} on {self.date}: {self.quantity_sold}"
+        return f'{self.sku.code} on {self.date}: {self.quantity_sold}'
+
 
 class Supplier(models.Model):
     name = models.CharField(max_length=255)

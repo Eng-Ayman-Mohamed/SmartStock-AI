@@ -31,43 +31,43 @@ function ForecastChart() {
     <div className="h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#D3D1C7" horizontal={true} vertical={false} />
+           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hairline)" horizontal={true} vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 12, fill: '#888780' }}
+            tick={{ fontSize: 12, fill: 'var(--color-ink-faint)' }}
             tickLine={false}
-            axisLine={{ stroke: '#D3D1C7', strokeWidth: 0.5 }}
+            axisLine={{ stroke: 'var(--color-hairline)', strokeWidth: 0.5 }}
           />
           <YAxis
-            tick={{ fontSize: 12, fill: '#888780' }}
+            tick={{ fontSize: 12, fill: 'var(--color-ink-faint)' }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v) => `${v}`}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-              fontSize: '13px',
+              backgroundColor: 'var(--color-canvas)',
+              border: '1px solid var(--color-hairline)',
+              borderRadius: '8px',
+              boxShadow: 'var(--shadow-soft)',
+              fontSize: '14px',
             }}
-            labelStyle={{ fontSize: '11px', color: '#888780' }}
+            labelStyle={{ fontSize: '12px', color: 'var(--color-ink-faint)' }}
           />
           <Area
             type="monotone"
             dataKey="upper"
-            stroke="#B5D4F4"
+            stroke="var(--color-brand-100)"
             strokeWidth={1}
             strokeDasharray="4 4"
-            fill="#E6F1FB"
+            fill="var(--color-brand-50)"
             fillOpacity={0.4}
             dot={false}
           />
           <Area
             type="monotone"
             dataKey="lower"
-            stroke="#B5D4F4"
+            stroke="var(--color-brand-100)"
             strokeWidth={1}
             strokeDasharray="4 4"
             fill="none"
@@ -76,16 +76,16 @@ function ForecastChart() {
           <Area
             type="monotone"
             dataKey="demand"
-            stroke="#185FA5"
+            stroke="var(--color-brand-600)"
             strokeWidth={2}
             fill="none"
             dot={false}
-            activeDot={{ r: 4, fill: '#185FA5' }}
+            activeDot={{ r: 4, fill: 'var(--color-brand-600)' }}
           />
           <Area
             type="monotone"
             dataKey="actual"
-            stroke="#5F5E5A"
+            stroke="var(--color-ink-secondary)"
             strokeWidth={1.5}
             strokeDasharray="6 4"
             fill="none"
@@ -94,27 +94,27 @@ function ForecastChart() {
           />
           <ReferenceLine
             y={150}
-            stroke="#854F0B"
+            stroke="var(--color-orange-600)"
             strokeWidth={1.5}
             strokeDasharray="6 4"
             label={{
               value: 'Reorder point',
               position: 'insideTopRight',
               fontSize: 11,
-              fill: '#854F0B',
+              fill: 'var(--color-orange-600)',
             }}
           />
         </AreaChart>
       </ResponsiveContainer>
-      <div className="flex items-center gap-4 mt-2 text-caption text-gray-600">
+      <div className="flex items-center gap-4 mt-2 text-caption text-ink-muted">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 bg-[#185FA5]" /> Predicted demand
+          <span className="w-3 h-0.5 bg-brand-600" /> Predicted demand
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 bg-[#5F5E5A] border-dashed" style={{ borderTop: '1.5px dashed #5F5E5A', height: 0 }} /> Actual sales
+          <span className="w-3 h-0.5" style={{ borderTop: '1.5px dashed var(--color-ink-secondary)', height: 0 }} /> Actual sales
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-[9px] bg-[#E6F1FB] border-[0.5px] border-[#B5D4F4]" /> Confidence interval
+          <span className="w-3 h-[9px] bg-brand-50 border-[0.5px] border-brand-100" /> Confidence interval
         </span>
       </div>
     </div>
@@ -147,27 +147,27 @@ const poData: PurchaseOrder[] = [
 ];
 
 const poColumns: Column<PurchaseOrder>[] = [
-  { key: 'po', label: 'PO Number', width: '110px', render: (r) => <span className="text-mono text-gray-600">{r.id}</span> },
+  { key: 'po', label: 'PO Number', width: '110px', render: (r) => <span className="text-mono text-ink-muted">{r.id}</span> },
   { key: 'product', label: 'Product', render: (r) => <span className="truncate block">{r.product}</span> },
-  { key: 'supplier', label: 'Supplier', render: (r) => <span className="truncate block text-gray-600">{r.supplier}</span> },
+  { key: 'supplier', label: 'Supplier', render: (r) => <span className="truncate block text-ink-muted">{r.supplier}</span> },
   { key: 'qty', label: 'Qty', align: 'right', width: '70px', render: (r) => <span className="tabular-nums">{r.qty}</span> },
   { key: 'cost', label: 'Cost', align: 'right', width: '110px', render: (r) => <span className="tabular-nums">{r.cost}</span> },
   { key: 'status', label: 'Status', width: '140px', render: (r) => <Badge>{r.status}</Badge> },
-  { key: 'date', label: 'Date', width: '110px', render: (r) => <span className="text-caption text-gray-600 tabular-nums">{r.date}</span> },
+  { key: 'date', label: 'Date', width: '110px', render: (r) => <span className="text-caption text-ink-muted tabular-nums">{r.date}</span> },
 ];
 
 export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-fadeIn">
       <div>
-        <h1 className="text-page-heading text-gray-900">Dashboard</h1>
-        <p className="text-body text-gray-600 mt-1">Good morning, John. You have 3 pending POs.</p>
+        <h1 className="text-page-heading text-ink">Dashboard</h1>
+        <p className="text-body text-ink-muted mt-1">Good morning, John. You have 3 pending POs.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Total SKUs" value="1,247" icon={Package} />
-        <StatCard label="Low Stock Alerts" value="23" accent="amber" icon={AlertTriangle} trend={{ direction: 'up', percentage: '12%', color: 'text-amber-600' }} />
-        <StatCard label="Pending POs" value="8" accent="amber" icon={ShoppingCart} />
+        <StatCard label="Low Stock Alerts" value="23" accent="orange" icon={AlertTriangle} trend={{ direction: 'up', percentage: '12%', color: 'text-orange-600' }} />
+        <StatCard label="Pending POs" value="8" accent="orange" icon={ShoppingCart} />
         <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
       </div>
 
@@ -179,17 +179,17 @@ export default function DashboardPage() {
         <Card title="Reorder Alerts" action={<Button variant="ghost" size="sm">View all</Button>}>
           <div className="space-y-3">
             {alertItems.map((item) => (
-              <div key={item.sku} className="flex items-start gap-3 pb-3 border-b-[0.5px] border-gray-100 last:border-0 last:pb-0">
+              <div key={item.sku} className="flex items-start gap-3 pb-3 border-b border-hairline last:border-0 last:pb-0">
                 <div className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${
-                  item.severity === 'critical' ? 'bg-red-50' : 'bg-amber-50'
+                  item.severity === 'critical' ? 'bg-red-50' : 'bg-orange-50'
                 }`}>
                   <AlertTriangle className={`w-4 h-4 ${
-                    item.severity === 'critical' ? 'text-red-600' : 'text-amber-600'
+                    item.severity === 'critical' ? 'text-red-600' : 'text-orange-600'
                   }`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-body text-gray-900 truncate">{item.product}</p>
-                  <p className="text-caption text-gray-600 tabular-nums mt-0.5">{item.stock} units — reorder at {item.reorder}</p>
+                  <p className="text-body text-ink truncate">{item.product}</p>
+                  <p className="text-caption text-ink-muted tabular-nums mt-0.5">{item.stock} units — reorder at {item.reorder}</p>
                 </div>
                 <Badge variant={item.severity === 'critical' ? 'Out of Stock' : 'Low Stock'}>
                   {item.severity === 'critical' ? 'Critical' : 'Low'}
@@ -204,7 +204,7 @@ export default function DashboardPage() {
         title="Recent Purchase Orders"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm"><Download className="w-4 h-4" /> Export CSV</Button>
+            <Button variant="utility" size="sm"><Download className="w-4 h-4" /> Export CSV</Button>
           </div>
         }
       >
@@ -214,8 +214,8 @@ export default function DashboardPage() {
           keyExtractor={(r) => r.id}
           caption="Recent purchase orders"
         />
-        <div className="flex items-center justify-between mt-4 pt-4 border-t-[0.5px] border-gray-100">
-          <span className="text-caption text-gray-600 tabular-nums">Showing 1–5 of 5 results</span>
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-hairline">
+          <span className="text-caption text-ink-muted tabular-nums">Showing 1–5 of 5 results</span>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" disabled>Previous</Button>
             <Button variant="secondary" size="sm" disabled>Next</Button>

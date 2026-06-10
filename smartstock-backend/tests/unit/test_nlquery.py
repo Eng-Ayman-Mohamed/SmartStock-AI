@@ -25,11 +25,12 @@ from ai.llm.schemas import (
 from ai.llm.few_shots import FEW_SHOT_EXAMPLES, build_few_shot_block
 from ai.llm.output_parser import NLQueryOutputParser, NLQueryParseError
 from ai.llm.prompts import SYSTEM_PROMPT
-
+from ai.llm.schemas import NL_QUERY_JSON_SCHEMA, NLQueryAction, NLQueryFilters, NLQueryResult
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. Schema integrity
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestNLQueryAction:
     def test_all_seven_actions_exist(self):
@@ -47,15 +48,13 @@ class TestNLQueryAction:
 
     def test_action_is_string_enum(self):
         """NLQueryAction members must behave as strings for JSON serialisation."""
-        assert NLQueryAction.GET_INVENTORY == "get_inventory"
+        assert NLQueryAction.GET_INVENTORY == 'get_inventory'
         assert isinstance(NLQueryAction.GET_LOW_STOCK.value, str)
 
     def test_json_schema_enum_matches_action_class(self):
-        schema_values = set(NL_QUERY_JSON_SCHEMA["properties"]["action"]["enum"])
-        class_values  = {a.value for a in NLQueryAction}
-        assert schema_values == class_values, (
-            "NL_QUERY_JSON_SCHEMA enum out of sync with NLQueryAction"
-        )
+        schema_values = set(NL_QUERY_JSON_SCHEMA['properties']['action']['enum'])
+        class_values = {a.value for a in NLQueryAction}
+        assert schema_values == class_values, 'NL_QUERY_JSON_SCHEMA enum out of sync with NLQueryAction'
 
     def test_json_schema_action_is_required(self):
         assert "action" in NL_QUERY_JSON_SCHEMA["required"]
@@ -129,6 +128,7 @@ class TestNLQueryFilters:
 # 2. Output parser
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestNLQueryOutputParser:
     def setup_method(self):
         self.parser = NLQueryOutputParser()
@@ -179,12 +179,12 @@ class TestNLQueryOutputParser:
         assert result.action == NLQueryAction.FORECAST_DEMAND
 
     def test_raises_on_invalid_json(self):
-        with pytest.raises(NLQueryParseError, match="invalid JSON"):
-            self.parser.parse("not json at all")
+        with pytest.raises(NLQueryParseError, match='invalid JSON'):
+            self.parser.parse('not json at all')
 
     def test_raises_on_unknown_action(self):
         raw = '{"action": "delete_everything", "filters": {}}'
-        with pytest.raises(NLQueryParseError, match="Unknown action"):
+        with pytest.raises(NLQueryParseError, match='Unknown action'):
             self.parser.parse(raw)
 
     def test_raises_on_missing_action(self):
@@ -194,7 +194,7 @@ class TestNLQueryOutputParser:
 
     def test_raises_on_out_of_scope_signal(self):
         raw = '{"error": "Out of scope request"}'
-        with pytest.raises(NLQueryParseError, match="out-of-scope"):
+        with pytest.raises(NLQueryParseError, match='out-of-scope'):
             self.parser.parse(raw)
 
     def test_raises_when_filters_not_dict(self):
@@ -259,6 +259,7 @@ class TestNLQueryOutputParser:
 # 3. Few-shot examples
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestFewShotExamples:
     def setup_method(self):
         self.parser = NLQueryOutputParser()
@@ -311,8 +312,8 @@ class TestFewShotExamples:
             assert f"Example {i}:" in block, f"build_few_shot_block missing 'Example {i}:'"
 
     def test_few_shot_block_embedded_in_system_prompt(self):
-        assert "Example 1:" in SYSTEM_PROMPT
-        assert "Example 5:" in SYSTEM_PROMPT
+        assert 'Example 1:' in SYSTEM_PROMPT
+        assert 'Example 5:' in SYSTEM_PROMPT
 
     def test_system_prompt_contains_all_action_values(self):
         for action in NLQueryAction:
@@ -509,7 +510,7 @@ class TestNLQueryChainEndToEnd:
         result: NLQueryResult = chain.run(user_input)
 
         assert result.action == expected_action, (
-            f"[{query_type}] Expected action {expected_action}, got {result.action}"
+            f'[{query_type}] Expected action {expected_action}, got {result.action}'
         )
         assert assertions(result), (
             f"[{query_type}] Assertion failed: {assertion_desc}\n"
@@ -525,7 +526,7 @@ class TestNLQueryChainEndToEnd:
         mock_inner.invoke.return_value = "this is not json"
         chain._chain = mock_inner
 
-        result = chain.run("some query")
+        result = chain.run('some query')
         assert result.action == NLQueryAction.GET_INVENTORY
         assert result.filters.to_dict() == {}
 
@@ -538,7 +539,7 @@ class TestNLQueryChainEndToEnd:
         mock_inner.invoke.return_value = '{"action": "hack_the_planet", "filters": {}}'
         chain._chain = mock_inner
 
-        result = chain.run("some query")
+        result = chain.run('some query')
         assert result.action == NLQueryAction.GET_INVENTORY
 
     def test_chain_falls_back_on_disallowed_field(self):
@@ -593,6 +594,7 @@ class TestNLQueryChainEndToEnd:
 # 5. Out-of-scope handling
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestOutOfScope:
     def test_parser_raises_on_error_key(self):
         """LLM returning {"error": "..."} must raise NLQueryParseError."""
@@ -602,7 +604,7 @@ class TestOutOfScope:
 
     def test_system_prompt_includes_out_of_scope_instruction(self):
         """System prompt must tell GPT-4o how to signal out-of-scope queries."""
-        assert "Out of scope request" in SYSTEM_PROMPT
+        assert 'Out of scope request' in SYSTEM_PROMPT
         assert '"error"' in SYSTEM_PROMPT
 
     def test_system_prompt_restricts_to_inventory_scope(self):

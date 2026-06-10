@@ -1,7 +1,7 @@
 """
 prompts.py — Task MQ3
 Builds the final system prompt that is sent to GPT-4o on every NL query request.
-The few-shot block (all 5 examples) is embedded at build time, not injected per call.
+The few-shot block (all examples) is embedded at build time, not injected per call.
 """
 
 from ai.llm.few_shots import build_few_shot_block
@@ -28,6 +28,15 @@ def build_system_prompt() -> str:
     )
 
     few_shots = build_few_shot_block()
+
+    # Build per-action field reference
+    action_fields_lines = []
+    for action_val, fields in ACTION_ALLOWED_FIELDS.items():
+        fields_str = ', '.join(fields)
+        action_fields_lines.append(f'    "{action_val}": [{fields_str}]')
+    action_fields_block = '\n'.join(action_fields_lines)
+
+    operators_str = ', '.join(VALID_OPERATORS)
 
     return f"""You are SmartStock AI, a warehouse inventory analytics assistant.
 

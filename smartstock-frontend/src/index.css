@@ -1,121 +1,165 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Brand Blue — actions, links, buttons, focus rings */
-  --color-brand-50: #E6F1FB;
-  --color-brand-100: #B5D4F4;
-  --color-brand-200: #8DBBEE;
-  --color-brand-300: #64A1E7;
-  --color-brand-400: #378ADD;
-  --color-brand-500: #2675C9;
-  --color-brand-600: #185FA5;
-  --color-brand-700: #124D88;
-  --color-brand-800: #0C447C;
-  --color-brand-900: #042C53;
-  --color-brand-950: #021A33;
+  /* ════════════════════════════════════════════════
+     NOTION-BASED TOKENS
+     Adapted from Notion's warm paper-calm aesthetic:
+     off-white canvas, near-black Inter type, single
+     confident blue, playful sticker palette.
+     ════════════════════════════════════════════════ */
 
-  /* Success Green — in-stock, confirmed, approved */
-  --color-green-50: #EAF3DE;
-  --color-green-100: #CEE6AF;
-  --color-green-200: #97C459;
-  --color-green-300: #74B03A;
-  --color-green-400: #56991E;
-  --color-green-500: #488014;
-  --color-green-600: #3B6D11;
-  --color-green-700: #2F5A0E;
-  --color-green-800: #27500A;
-  --color-green-900: #1A3707;
+  /* ── Primary Notion Blue ─────────────────────── */
+  --color-brand-50: #EEF5FF;
+  --color-brand-100: #D9E8FF;
+  --color-brand-200: #B3D4FF;
+  --color-brand-300: #7EB8FF;
+  --color-brand-400: #4A9EF5;
+  --color-brand-500: #1A85E6;
+  --color-brand-600: #0075DE;
+  --color-brand-700: #005FBA;
+  --color-brand-800: #005BAB;
+  --color-brand-900: #003F82;
+  --color-brand-950: #002A57;
 
-  /* Warning Amber — low stock, pending, reorder */
-  --color-amber-50: #FAEEDA;
-  --color-amber-100: #FAC775;
-  --color-amber-200: #F5B34A;
-  --color-amber-300: #E09E32;
-  --color-amber-400: #C5871E;
-  --color-amber-500: #A46C12;
-  --color-amber-600: #854F0B;
-  --color-amber-700: #70420A;
-  --color-amber-800: #633806;
-  --color-amber-900: #4D2B04;
+  /* ── Success / Sticker Green ─────────────────── */
+  --color-green-50: #E8F5E9;
+  --color-green-100: #CCE8D0;
+  --color-green-200: #A5D6AA;
+  --color-green-300: #7CC484;
+  --color-green-400: #55B260;
+  --color-green-500: #34A042;
+  --color-green-600: #1AAE39;
+  --color-green-700: #2D8B39;
+  --color-green-800: #1B5E20;
+  --color-green-900: #124015;
 
-  /* Danger Red — stockout, rejected, critical */
-  --color-red-50: #FCEBEB;
-  --color-red-100: #F8CECE;
-  --color-red-200: #F09595;
-  --color-red-300: #E86B6B;
-  --color-red-400: #D14545;
-  --color-red-500: #BA3333;
-  --color-red-600: #A32D2D;
-  --color-red-700: #8C2626;
-  --color-red-800: #791F1F;
-  --color-red-900: #5E1818;
+  /* ── Warning / Sticker Orange ────────────────── */
+  --color-orange-50: #FFF3E0;
+  --color-orange-100: #FFE0B2;
+  --color-orange-200: #FFCC80;
+  --color-orange-300: #FFB74D;
+  --color-orange-400: #FFA21A;
+  --color-orange-500: #F28A00;
+  --color-orange-600: #DD5B00;
+  --color-orange-700: #C44A00;
+  --color-orange-800: #E65100;
+  --color-orange-900: #B53A00;
 
-  /* AI / Purple — AI-generated content, forecast */
-  --color-purple-50: #EEEDFE;
-  --color-purple-100: #CECBF6;
-  --color-purple-200: #B0A9EF;
-  --color-purple-300: #9388E8;
-  --color-purple-400: #7567E1;
-  --color-purple-500: #5C4FC4;
-  --color-purple-600: #534AB7;
-  --color-purple-700: #473F9E;
-  --color-purple-800: #3C3489;
-  --color-purple-900: #2E2870;
+  /* ── Danger Red ──────────────────────────────── */
+  --color-red-50: #FFEBEE;
+  --color-red-100: #FFCDD2;
+  --color-red-200: #EF9A9A;
+  --color-red-300: #E57373;
+  --color-red-400: #EF5350;
+  --color-red-500: #F44336;
+  --color-red-600: #E53935;
+  --color-red-700: #D32F2F;
+  --color-red-800: #C62828;
+  --color-red-900: #B71C1C;
 
-  /* Neutral Gray — structure, borders, text */
-  --color-gray-50: #F1EFE8;
-  --color-gray-100: #D3D1C7;
-  --color-gray-200: #BEBCB1;
-  --color-gray-300: #A8A69B;
-  --color-gray-400: #888780;
-  --color-gray-500: #73726C;
-  --color-gray-600: #5F5E5A;
+  /* ── AI / Sticker Purple ─────────────────────── */
+  --color-purple-50: #F3E5F5;
+  --color-purple-100: #E1BEE7;
+  --color-purple-200: #CE93D8;
+  --color-purple-300: #BA68C8;
+  --color-purple-400: #AB47BC;
+  --color-purple-500: #9C27B0;
+  --color-purple-600: #D6B6F6;
+  --color-purple-700: #6A1B9A;
+  --color-purple-800: #391C57;
+  --color-purple-900: #2E1242;
+
+  /* ── Neutral Gray (warm Notion-inspired scale) ─ */
+  --color-gray-50: #F6F5F4;
+  --color-gray-100: #E6E6E6;
+  --color-gray-200: #D3D1C7;
+  --color-gray-300: #BEBCB1;
+  --color-gray-400: #A39E98;
+  --color-gray-500: #888780;
+  --color-gray-600: #615D59;
   --color-gray-700: #52514D;
-  --color-gray-800: #444441;
-  --color-gray-900: #2C2C2A;
-  --color-gray-950: #1C1C1B;
+  --color-gray-800: #31302E;
+  --color-gray-900: #000000;
+  --color-gray-950: #1A1A1A;
 
-  /* Font family */
-  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+  /* ── Semantic surface aliases ─────────────────── */
+  --color-canvas: #FFFFFF;
+  --color-canvas-soft: #F6F5F4;
+  --color-hairline: #E6E6E6;
+  --color-ink: #000000;
+  --color-ink-secondary: #31302E;
+  --color-ink-muted: #504C48;
+  --color-ink-faint: #A39E98;
 
-  /* Font sizes matching design spec */
+  /* ── Font families ───────────────────────────── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Type scale (Notion-adapted for dashboard) ─ */
+
+  /* Page heading: 22px, 700, -0.25px tracking */
   --text-page-heading: 22px;
-  --text-page-heading--font-weight: 500;
-  --text-page-heading--line-height: 1.2;
+  --text-page-heading--font-weight: 700;
+  --text-page-heading--line-height: 1.27;
+  --text-page-heading--letter-spacing: -0.25px;
+
+  /* Section heading: 18px, 600 */
   --text-section-heading: 18px;
-  --text-section-heading--font-weight: 500;
-  --text-section-heading--line-height: 1.3;
+  --text-section-heading--font-weight: 600;
+  --text-section-heading--line-height: 1.33;
+
+  /* Card title: 15px, 500 */
   --text-card-title: 15px;
   --text-card-title--font-weight: 500;
   --text-card-title--line-height: 1.4;
-  --text-body: 13px;
+
+  /* Body: 14px, 400 */
+  --text-body: 14px;
   --text-body--font-weight: 400;
-  --text-body--line-height: 1.6;
-  --text-caption: 11px;
+  --text-body--line-height: 1.5;
+
+  /* Caption: 12px, 400 */
+  --text-caption: 12px;
   --text-caption--font-weight: 400;
-  --text-caption--line-height: 1.5;
+  --text-caption--line-height: 1.43;
+
+  /* Eyebrow: 11px, 600, +0.125em tracking — for badges, uppercase labels */
+  --text-eyebrow: 11px;
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--line-height: 1.33;
+  --text-eyebrow--letter-spacing: 0.125em;
+
+  /* Mono data: 12px, 400 (uses font-mono) */
   --text-mono: 12px;
   --text-mono--font-weight: 400;
   --text-mono--line-height: 1.5;
   --text-mono--font-family: var(--font-mono);
 
-  /* Border radius per design spec */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  /* ── Border radius ───────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-xl: 16px;
 
-  /* Animations — toggleable via prefers-reduced-motion */
+  /* ── Shadows (Notion layered micro-shadows) ──── */
+
+  /* Soft: layered near-transparent shadows for raised surfaces */
+  --shadow-soft:
+    0 0.175px 1.041px rgba(0,0,0,0.01),
+    0 0.8px 2.925px rgba(0,0,0,0.02),
+    0 2.025px 7.847px rgba(0,0,0,0.027),
+    0 4px 18px rgba(0,0,0,0.04);
+
+  /* Elevated: modal dialogs, popovers */
+  --shadow-elevated: 0 4px 24px rgba(0,0,0,0.12);
+
+  /* ── Animations ──────────────────────────────── */
   --animate-fadeIn: fadeIn 150ms ease-out;
   --animate-slideUp: slideUp 150ms ease-out;
   --animate-sidebar-expand: width 200ms ease;
   --animate-skeleton: skeletonPulse 1.5s ease-in-out infinite;
   --animate-spin: spin 700ms linear infinite;
-
-  /* Shadows per spec — minimal */
-  --shadow-raised: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-modal: 0 4px 24px rgba(0,0,0,0.12);
 }
 
 @keyframes fadeIn {
@@ -142,52 +186,34 @@
 }
 
 @layer base {
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-size: 13px;
-    line-height: 1.6;
+    font-size: 14px;
+    line-height: 1.5;
   }
 
   body {
-    background-color: var(--color-gray-50);
-    color: var(--color-gray-800);
+    background-color: var(--color-canvas-soft);
+    color: var(--color-ink-secondary);
     min-height: 100vh;
   }
 
-  /* Tabular numbers on all numeric data */
-  .tabular-nums,
-  [data-type="numeric"] {
+  .tabular-nums, [data-type="numeric"] {
     font-variant-numeric: tabular-nums;
   }
 
-  /* Focus ring — all interactive elements */
   *:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--color-brand-100);
     border-radius: var(--radius-md);
   }
 
-  /* Custom thin scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--color-gray-100);
-    border-radius: 3px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-gray-400);
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-hairline); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-faint); }
 }

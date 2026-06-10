@@ -1,19 +1,22 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
-import numpy as np
 
 
 class TestMovingAverageForecast(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.prophet_engine import _moving_average_forecast
+
         self._moving_average_forecast = _moving_average_forecast
 
     def _make_df(self, values):
-        return pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=len(values)),
-            'y': values,
-        })
+        return pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=len(values)),
+                'y': values,
+            }
+        )
 
     def test_returns_30_forecast_rows(self):
         df = self._make_df([10] * 60)
@@ -42,13 +45,16 @@ class TestMovingAverageForecast(unittest.TestCase):
 class TestComputeAccuracy(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.prophet_engine import _compute_accuracy
+
         self._compute_accuracy = _compute_accuracy
 
     def test_returns_mae_mape(self):
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=100),
-            'y': [10.0] * 100,
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=100),
+                'y': [10.0] * 100,
+            }
+        )
         model = MagicMock()
         model.predict.return_value = pd.DataFrame({'yhat': [10.0] * 10})
         mae, mape = self._compute_accuracy(df, model)
@@ -56,10 +62,12 @@ class TestComputeAccuracy(unittest.TestCase):
         self.assertIsInstance(mape, float)
 
     def test_returns_none_for_too_few_points(self):
-        df = pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=1),
-            'y': [10.0],
-        })
+        df = pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=1),
+                'y': [10.0],
+            }
+        )
         model = MagicMock()
         mae, mape = self._compute_accuracy(df, model)
         self.assertIsNone(mae)
@@ -69,13 +77,16 @@ class TestComputeAccuracy(unittest.TestCase):
 class TestProphetEngine(unittest.TestCase):
     def setUp(self):
         from apps.forecasting.prophet_engine import ProphetEngine
+
         self.engine = ProphetEngine()
 
     def _make_df(self, n_days, base_value=50):
-        return pd.DataFrame({
-            'ds': pd.date_range('2025-01-01', periods=n_days),
-            'y': [float(base_value)] * n_days,
-        })
+        return pd.DataFrame(
+            {
+                'ds': pd.date_range('2025-01-01', periods=n_days),
+                'y': [float(base_value)] * n_days,
+            }
+        )
 
     def test_fallback_with_few_points(self):
         df = self._make_df(10)
@@ -92,18 +103,24 @@ class TestProphetEngine(unittest.TestCase):
 
         def mock_future(*args, **kwargs):
             periods = kwargs.get('periods', args[1] if len(args) > 1 else 30)
-            return pd.DataFrame({
-                'ds': pd.date_range('2025-04-01', periods=periods),
-            })
+            return pd.DataFrame(
+                {
+                    'ds': pd.date_range('2025-04-01', periods=periods),
+                }
+            )
+
         instance.make_future_dataframe.side_effect = mock_future
 
         def mock_predict(df):
-            return pd.DataFrame({
-                'ds': df['ds'],
-                'yhat': [50.0] * len(df),
-                'yhat_lower': [40.0] * len(df),
-                'yhat_upper': [60.0] * len(df),
-            })
+            return pd.DataFrame(
+                {
+                    'ds': df['ds'],
+                    'yhat': [50.0] * len(df),
+                    'yhat_lower': [40.0] * len(df),
+                    'yhat_upper': [60.0] * len(df),
+                }
+            )
+
         instance.predict.side_effect = mock_predict
 
         df = self._make_df(60)
@@ -124,18 +141,24 @@ class TestProphetEngine(unittest.TestCase):
 
         def mock_future(*args, **kwargs):
             periods = kwargs.get('periods', args[1] if len(args) > 1 else 30)
-            return pd.DataFrame({
-                'ds': pd.date_range('2025-04-01', periods=periods),
-            })
+            return pd.DataFrame(
+                {
+                    'ds': pd.date_range('2025-04-01', periods=periods),
+                }
+            )
+
         instance.make_future_dataframe.side_effect = mock_future
 
         def mock_predict(df):
-            return pd.DataFrame({
-                'ds': df['ds'],
-                'yhat': [-10.0] * len(df),
-                'yhat_lower': [-20.0] * len(df),
-                'yhat_upper': [-5.0] * len(df),
-            })
+            return pd.DataFrame(
+                {
+                    'ds': df['ds'],
+                    'yhat': [-10.0] * len(df),
+                    'yhat_lower': [-20.0] * len(df),
+                    'yhat_upper': [-5.0] * len(df),
+                }
+            )
+
         instance.predict.side_effect = mock_predict
 
         df = self._make_df(60)
@@ -148,13 +171,17 @@ class TestProphetEngine(unittest.TestCase):
 
     def test_import_error_fallback(self):
         real_import = __builtins__['__import__']
+
         def mock_import(name, *args, **kwargs):
             if name == 'prophet':
-                raise ImportError("No prophet")
+                raise ImportError('No prophet')
             return real_import(name, *args, **kwargs)
+
         with patch('builtins.__import__', side_effect=mock_import):
             import importlib
+
             from apps.forecasting import prophet_engine
+
             importlib.reload(prophet_engine)
             engine = prophet_engine.ProphetEngine()
             df = self._make_df(60)

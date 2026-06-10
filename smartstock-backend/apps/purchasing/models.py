@@ -19,6 +19,7 @@ class PurchaseOrder(models.Model):
         APPROVED = 'approved', 'Approved'
         SENT = 'sent', 'Sent'
         CONFIRMED = 'confirmed', 'Confirmed'
+        REJECTED = 'rejected', 'Rejected'
         CANCELLED = 'cancelled', 'Cancelled'
 
     sku = models.ForeignKey('inventory.SKU', on_delete=models.CASCADE, related_name='purchase_orders')
@@ -32,9 +33,10 @@ class PurchaseOrder(models.Model):
     approved_by = models.ForeignKey(
         'authentication.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_orders'
     )
+    agent_reasoning = models.TextField(null=True, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"PO-{self.id}: {self.sku.code} x{self.quantity}"
+        return f'PO-{self.id}: {self.sku.code} x{self.quantity}'

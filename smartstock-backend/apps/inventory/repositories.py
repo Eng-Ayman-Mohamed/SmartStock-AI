@@ -1,6 +1,8 @@
 from django.db import models, transaction
+
 from core.base_repository import BaseRepository
-from .models import Product, SKU, StockLevel, SalesRecord, Supplier, Category
+
+from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 
 
 class CategoryRepository(BaseRepository):
@@ -57,7 +59,13 @@ class InventoryRepository(BaseRepository):
     def adjust_stock(self, stock_level_id: int, quantity_delta: int):
         with transaction.atomic():
             stock = StockLevel.objects.select_for_update().get(pk=stock_level_id)
-            stock.quantity_on_hand += quantity_delta
+            new_quantity = stock.quantity_on_hand + quantity_delta
+            if new_quantity < stock.quantity_reserved:
+                raise ValueError(
+                    f'Cannot reduce stock to {new_quantity}: {stock.quantity_reserved} '
+                    f'units are reserved (minimum allowed).'
+                )
+            stock.quantity_on_hand = new_quantity
             stock.save()
         return stock
 
@@ -103,9 +111,7 @@ class StockLevelRepository(BaseRepository):
 
     def get_low_stock(self):
         """Return all stock levels where quantity is below reorder point."""
-        return StockLevel.objects.select_related('sku__product').filter(
-            quantity_on_hand__lt=models.F('reorder_point')
-        )
+        return StockLevel.objects.select_related('sku__product').filter(quantity_on_hand__lt=models.F('reorder_point'))
 
     def get_by_product_id(self, product_id: int):
         """Get the StockLevel for a given product_id. Returns None if not found."""
@@ -141,10 +147,7 @@ class SalesRecordRepository(BaseRepository):
         return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
 
     def bulk_create(self, records: list):
-        return SalesRecord.objects.bulk_create(
-            [SalesRecord(**r) for r in records],
-            ignore_conflicts=True
-        )
+        return SalesRecord.objects.bulk_create([SalesRecord(**r) for r in records], ignore_conflicts=True)
 
 
 class SupplierRepository(BaseRepository):
