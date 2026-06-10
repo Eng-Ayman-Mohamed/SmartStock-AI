@@ -6,5 +6,4 @@ class BaseTool(ABC):
     description: str
 
     @abstractmethod
-    def run(self, input: dict) -> dict:
-        ...
+    def run(self, input: dict) -> dict: ...

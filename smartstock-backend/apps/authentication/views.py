@@ -40,6 +40,7 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         from rest_framework_simplejwt.tokens import RefreshToken
+
         refresh = RefreshToken.for_user(user)
         response = Response(
             {
@@ -71,8 +72,12 @@ class LoginView(TokenObtainPairView):
             serializer.is_valid(raise_exception=True)
         except Exception:
             return Response(
-                {'status': 'error', 'error': 'AuthenticationFailed',
-                 'message': 'Invalid email or password.', 'code': 401},
+                {
+                    'status': 'error',
+                    'error': 'AuthenticationFailed',
+                    'message': 'Invalid email or password.',
+                    'code': 401,
+                },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         user = getattr(serializer, 'user', None)

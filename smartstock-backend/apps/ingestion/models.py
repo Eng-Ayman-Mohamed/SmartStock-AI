@@ -19,4 +19,4 @@ class DocumentChunk(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.source_document} (page {self.page_number})"
+        return f'{self.source_document} (page {self.page_number})'

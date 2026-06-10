@@ -20,4 +20,4 @@ def log_ai_action(event: str, user, entity_type: str = '', entity_id: int = None
             data_snapshot=data or {},
         )
     except Exception as e:
-        logger.exception("Failed to log AI action audit entry: %s", e)
+        logger.exception('Failed to log AI action audit entry: %s', e)

@@ -2,6 +2,7 @@ import json
 import logging
 
 from django.utils.deprecation import MiddlewareMixin
+
 from .models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -43,5 +44,5 @@ class AuditMiddleware(MiddlewareMixin):
                         data_snapshot={'path': request.path, 'method': request.method},
                     )
                 except Exception as e:
-                    logger.exception("Failed to log login audit entry: %s", e)
+                    logger.exception('Failed to log login audit entry: %s', e)
         return response

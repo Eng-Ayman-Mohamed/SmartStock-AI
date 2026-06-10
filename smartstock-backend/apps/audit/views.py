@@ -1,9 +1,9 @@
-
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
-from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.authentication.permissions import IsAdminOnly
+
 from .models import AuditLog
 from .serializers import AuditLogSerializer
 
