@@ -19,4 +19,4 @@ class ForecastResult(models.Model):
         unique_together = [('sku', 'forecast_date')]
 
     def __str__(self):
-        return f"{self.sku.code} - {self.forecast_date}: {self.predicted_quantity}"
+        return f'{self.sku.code} - {self.forecast_date}: {self.predicted_quantity}'

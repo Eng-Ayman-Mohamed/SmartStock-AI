@@ -3,6 +3,7 @@ from django.db.models import QuerySet
 
 from apps.inventory.models import SKU, SalesRecord
 from core.base_repository import BaseRepository
+
 from .models import ForecastResult
 
 
@@ -40,10 +41,12 @@ class ForecastingRepository(BaseRepository):
         Returns {sku_code: SalesRecord queryset} for all active SKUs with sales data.
         Used by batch ingestion pipeline.
         """
-        skus_with_sales = SKU.objects.filter(
-            sales_records__isnull=False,
-            product__is_active=True
-        ).distinct().select_related('product').values_list('id', 'code')
+        skus_with_sales = (
+            SKU.objects.filter(sales_records__isnull=False, product__is_active=True)
+            .distinct()
+            .select_related('product')
+            .values_list('id', 'code')
+        )
 
         result = {}
         for sku_id, sku_code in skus_with_sales:
@@ -52,10 +55,15 @@ class ForecastingRepository(BaseRepository):
 
     @transaction.atomic
     def upsert(
-        self, sku_id: int, forecast_date: str,
-        predicted_quantity: float, lower_bound: float = None,
-        upper_bound: float = None, mae: float = None,
-        mape: float = None, model_version: str = '',
+        self,
+        sku_id: int,
+        forecast_date: str,
+        predicted_quantity: float,
+        lower_bound: float = None,
+        upper_bound: float = None,
+        mae: float = None,
+        mape: float = None,
+        model_version: str = '',
     ):
         ForecastResult.objects.update_or_create(
             sku_id=sku_id,

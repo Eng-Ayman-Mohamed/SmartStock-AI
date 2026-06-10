@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
@@ -30,6 +31,8 @@ class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = RegisterSerializer
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'login'
     envelope_exempt = True
 
     def create(self, request, *args, **kwargs):
@@ -37,6 +40,7 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         from rest_framework_simplejwt.tokens import RefreshToken
+
         refresh = RefreshToken.for_user(user)
         response = Response(
             {
@@ -58,6 +62,8 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(TokenObtainPairView):
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'login'
     envelope_exempt = True
 
     def post(self, request, *args, **kwargs):
@@ -66,8 +72,12 @@ class LoginView(TokenObtainPairView):
             serializer.is_valid(raise_exception=True)
         except Exception:
             return Response(
-                {'status': 'error', 'error': 'AuthenticationFailed',
-                 'message': 'Invalid email or password.', 'code': 401},
+                {
+                    'status': 'error',
+                    'error': 'AuthenticationFailed',
+                    'message': 'Invalid email or password.',
+                    'code': 401,
+                },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         user = getattr(serializer, 'user', None)

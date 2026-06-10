@@ -1,10 +1,8 @@
 import logging
 
-import pandas as pd
-
-from .repositories import ForecastingRepository
-from .prophet_engine import ProphetEngine
 from .ingestion import prepare_forecast_dataframe
+from .prophet_engine import ProphetEngine
+from .repositories import ForecastingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +27,25 @@ class ForecastingService:
                 result = self._forecast_for_sku(sku)
                 results.append(result)
             except Exception as e:
-                logger.exception("Forecast failed for SKU %s: %s", sku.code, e)
+                logger.exception('Forecast failed for SKU %s: %s', sku.code, e)
         return results
 
     def _forecast_for_sku(self, sku) -> dict:
         df = prepare_forecast_dataframe(sku.id)
 
         if df is None:
-            logger.warning("Insufficient data for SKU %s; using moving average fallback", sku.code)
-            empty_df = pd.DataFrame({'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')})
-            result = self.engine._fallback_predict(empty_df, periods=30)
-        else:
-            result = self.engine.predict(df, periods=30)
+            logger.warning('Insufficient data for SKU %s; skipping', sku.code)
+            return {
+                'sku': sku.code,
+                'status': 'skipped',
+                'reason': 'no_data',
+                'forecast_days': 0,
+                'model_version': None,
+                'mae': None,
+                'mape': None,
+            }
+
+        result = self.engine.predict(df, periods=30)
 
         created = 0
         for pred in result['results']:
