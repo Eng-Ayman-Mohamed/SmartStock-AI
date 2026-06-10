@@ -1,6 +1,6 @@
+from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
-from django.conf import settings
 from django.db import models
 from pgvector.django import VectorField
 
@@ -34,7 +34,7 @@ class Document(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.original_filename} ({self.doc_type})"
+        return f'{self.original_filename} ({self.doc_type})'
 
 
 class DocumentChunk(models.Model):
