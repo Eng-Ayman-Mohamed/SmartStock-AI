@@ -28,7 +28,7 @@ def _mask_value(value):
     return value[:2] + '***' + value[-2:]
 
 
-def validate_environment():
+def validate_required_env_vars():
     missing = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
 
     if missing:
