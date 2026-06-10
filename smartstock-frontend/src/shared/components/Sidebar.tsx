@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -61,9 +61,24 @@ function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: (
 }
 
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
-  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+  const [collapsed, setCollapsed] = useState(sidebarCollapsed);
+
+  useEffect(() => {
+    setCollapsed(sidebarCollapsed);
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        setSidebarCollapsed(true);
+      }
+    };
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [setSidebarCollapsed]);
 
   return (
     <>
@@ -171,7 +186,7 @@ export default function Sidebar() {
 
         <div className="px-2 py-2 border-t border-hairline">
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => setSidebarCollapsed(!collapsed)}
             className="flex items-center justify-center w-full h-9 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors duration-150"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >

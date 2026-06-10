@@ -1,9 +1,11 @@
 import json
 import logging
 import os
+from typing import Any, Optional
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, FewShotPromptTemplate, PromptTemplate
+from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 
 try:
@@ -26,6 +28,14 @@ from ai.llm.prompts import SYSTEM_PROMPT
 from ai.llm.schemas import NLQueryAction, NLQueryFilters, NLQueryResult
 
 logger = logging.getLogger(__name__)
+
+
+class NLQueryToolSchema(BaseModel):
+    action: str = Field(description='Action enum value (get_inventory, get_sales_report, get_low_stock, forecast_demand, get_supplier_info, get_total_value, get_top_products)')
+    filters: Optional[dict] = Field(default=None, description='Filter conditions, sort, limit, offset')
+    sort: Optional[str] = Field(default=None, description='Field name to sort by')
+    limit: Optional[int] = Field(default=None, description='Maximum number of results')
+    offset: Optional[int] = Field(default=None, description='Number of results to skip')
 
 
 # -- LLM factory --------------------------------------------------------------
@@ -78,8 +88,8 @@ _parser = NLQueryOutputParser()
 
 class NLQueryChain:
     """
-    Thin wrapper around the LangChain chain.
-    Accepts a raw NL string, returns a typed NLQueryResult.
+    Thin wrapper around the LangChain chain using OpenAI function calling.
+    Uses tool_choice="required" to force structured JSON output.
 
     Fallback behaviour:
       On any parse error, returns get_inventory with empty filters
@@ -89,19 +99,48 @@ class NLQueryChain:
 
     def __init__(self):
         self._llm = get_llm()
-        self._chain = LLMChain(llm=self._llm, prompt=_NL_PROMPT)
-        self._lcel_chain = _NL_PROMPT | self._llm | StrOutputParser()
+        self._llm_with_tools = self._llm.bind_tools([NLQueryToolSchema], tool_choice='required')
+        self._chain = _NL_PROMPT | self._llm_with_tools
+
+    def _parse_tool_call(self, response) -> NLQueryResult:
+        tool_calls = getattr(response, 'tool_calls', None)
+        if tool_calls and len(tool_calls) > 0:
+            args = tool_calls[0].get('args', {}) if isinstance(tool_calls[0], dict) else tool_calls[0].args
+            action_value = args.get('action', '')
+            raw_filters = args.get('filters', {})
+            try:
+                action = NLQueryAction(action_value)
+            except ValueError:
+                valid = [a.value for a in NLQueryAction]
+                raise NLQueryParseError(f"Unknown action '{action_value}'. Valid values: {valid}")
+            filters = NLQueryFilters(
+                conditions=[],
+                sort=args.get('sort'),
+                limit=args.get('limit'),
+                offset=args.get('offset'),
+            )
+            if raw_filters and isinstance(raw_filters, dict):
+                raw_conditions = raw_filters.get('conditions', [])
+                from ai.llm.schemas import Condition
+                filters.conditions = [
+                    Condition(field=c['field'], op=c['op'], value=c['value'])
+                    for c in raw_conditions
+                ]
+            return NLQueryResult(action=action, filters=filters)
+        content = getattr(response, 'content', '') or ''
+        if content:
+            return _parser.parse(content)
+        raise NLQueryParseError('No tool call or content in LLM response')
 
     def run(self, query: str) -> NLQueryResult:
         try:
-            logger.info('Running NL query chain')
+            logger.info('Running NL query chain with tool_choice=required')
             response = self._chain.invoke(
                 {
                     'few_shot_query': _FEW_SHOT_PROMPT.format(query=query),
                 }
             )
-            raw = response.get('text', response) if isinstance(response, dict) else response
-            return _parser.parse(raw)
+            return self._parse_tool_call(response)
         except NLQueryParseError as exc:
             logger.warning('NLQueryParseError for query %r: %s', query, exc)
             return NLQueryResult(

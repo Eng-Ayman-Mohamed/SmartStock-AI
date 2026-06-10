@@ -60,22 +60,37 @@ class ProphetEngine:
         df = df.sort_values('ds').reset_index(drop=True)
         df['y'] = df['y'].clip(lower=0)
 
+        split_idx = max(1, int(len(df) * 0.9))
+        train_df = df.iloc[:split_idx]
+        test_df = df.iloc[split_idx:]
+
         try:
             model = _Prophet(
                 weekly_seasonality=True,
                 yearly_seasonality=len(df) >= 365,
                 daily_seasonality=False,
             )
-            model.fit(df[['ds', 'y']])
+            model.fit(train_df[['ds', 'y']])
         except Exception:
             logger.warning('Prophet model failed; using moving average fallback')
             return self._fallback_predict(df, periods)
 
-        future = model.make_future_dataframe(periods=periods)
-        forecast = model.predict(future)
-        forecast = forecast.iloc[-periods:]
+        mae, mape = _compute_accuracy(test_df, model) if len(test_df) >= 2 else (None, None)
 
-        mae, mape = _compute_accuracy(df, model)
+        try:
+            model2 = _Prophet(
+                weekly_seasonality=True,
+                yearly_seasonality=len(df) >= 365,
+                daily_seasonality=False,
+            )
+            model2.fit(df[['ds', 'y']])
+        except Exception:
+            logger.warning('Prophet refit failed; using original model for forecast')
+            model2 = model
+
+        future = model2.make_future_dataframe(periods=periods)
+        forecast = model2.predict(future)
+        forecast = forecast.iloc[-periods:]
 
         results = []
         for _, row in forecast.iterrows():

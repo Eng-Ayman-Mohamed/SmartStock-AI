@@ -1,17 +1,6 @@
 from django.db import models
 
 
-class Supplier(models.Model):
-    name = models.CharField(max_length=255)
-    contact_email = models.EmailField()
-    contact_phone = models.CharField(max_length=20, blank=True)
-    address = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
-
-
 class PurchaseOrder(models.Model):
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Draft'
@@ -23,7 +12,7 @@ class PurchaseOrder(models.Model):
         CANCELLED = 'cancelled', 'Cancelled'
 
     sku = models.ForeignKey('inventory.SKU', on_delete=models.CASCADE, related_name='purchase_orders')
-    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='purchase_orders')
+    supplier = models.ForeignKey('inventory.Supplier', on_delete=models.CASCADE, related_name='purchase_orders')
     quantity = models.IntegerField()
     total_cost = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)

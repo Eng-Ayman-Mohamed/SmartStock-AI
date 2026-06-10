@@ -46,6 +46,24 @@ FEW_SHOT_EXAMPLES = [
         'user': 'Show me the top 10 best-selling products this month',
         'output': '{"action": "get_top_products", "filters": {"conditions": [{"field": "date_from", "op": "gte", "value": "2026-06-01"}, {"field": "date_to", "op": "lte", "value": "2026-06-30"}], "sort": "quantity_sold", "sort_order": "desc", "limit": 10}}',
     },
+    # 8. multi-condition query — stock below X AND name starts with Y
+    {
+        'action': NLQueryAction.GET_INVENTORY,
+        'user': 'Show products with stock below 10 whose name starts with "Wire"',
+        'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "quantity_on_hand", "op": "lt", "value": 10}, {"field": "product_name", "op": "starts_with", "value": "Wire"}]}}',
+    },
+    # 9. list filter — from Supplier A or B
+    {
+        'action': NLQueryAction.GET_INVENTORY,
+        'user': 'List all products from Supplier A or Supplier B',
+        'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "supplier_name", "op": "in", "value": ["Supplier A", "Supplier B"]}]}}',
+    },
+    # 10. combined filters with sort
+    {
+        'action': NLQueryAction.GET_INVENTORY,
+        'user': 'Show electronics products with stock below 20 sorted by name',
+        'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "category", "op": "eq", "value": "electronics"}, {"field": "quantity_on_hand", "op": "lt", "value": 20}], "sort": "product_name", "sort_order": "asc"}}',
+    },
 ]
 
 
