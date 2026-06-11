@@ -1,13 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../lib/axios';
 
+export interface ForecastDay {
+  date: string;
+  demand: number;
+  upper_bound: number | null;
+  lower_bound: number | null;
+}
+
 export interface SkuForecast {
   id: string;
   sku_code: string;
   product_name: string;
   current_stock: number;
   reorder_point: number;
-  forecast: { date: string; predicted_demand: number }[];
+  stockout_risk: boolean;
+  forecast: ForecastDay[];
   predicted_demand_30d: number;
   confidence_score: number;
 }

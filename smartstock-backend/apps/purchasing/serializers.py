@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
-from .models import PurchaseOrder, Supplier
+from apps.inventory.models import Supplier
+
+from .models import PurchaseOrder
 
 
 class SupplierSerializer(serializers.ModelSerializer):

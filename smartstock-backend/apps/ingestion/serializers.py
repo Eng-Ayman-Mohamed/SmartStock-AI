@@ -18,7 +18,6 @@ class DocumentSerializer(serializers.ModelSerializer):
             'original_filename',
             'doc_type',
             'file_size',
-            'total_chunks',
             'cloudinary_url',
             'uploaded_by',
             'uploaded_by_username',

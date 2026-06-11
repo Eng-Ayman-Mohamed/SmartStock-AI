@@ -1,9 +1,27 @@
 from django.db import models
 
 
+class AuditEvent(models.TextChoices):
+    USER_LOGIN = 'USER_LOGIN'
+    PO_CREATED = 'PO_CREATED'
+    PO_APPROVED = 'PO_APPROVED'
+    PO_REJECTED = 'PO_REJECTED'
+    PO_SENT = 'PO_SENT'
+    STOCK_ADJUSTED = 'STOCK_ADJUSTED'
+    PRODUCT_CREATED = 'PRODUCT_CREATED'
+    PRODUCT_UPDATED = 'PRODUCT_UPDATED'
+    INVOICE_CONFIRMED = 'INVOICE_CONFIRMED'
+    INVOICE_REJECTED = 'INVOICE_REJECTED'
+    PROMPT_INJECTION_ATTEMPT = 'PROMPT_INJECTION_ATTEMPT'
+    VISION_EXTRACTION_FAILED = 'VISION_EXTRACTION_FAILED'
+    AGENT_RUN_COMPLETED = 'AGENT_RUN_COMPLETED'
+
+
 class AuditLog(models.Model):
     # What happened
-    event = models.CharField(max_length=100)  # e.g. "USER_LOGIN", "PO_APPROVED", "AI_NL_QUERY"
+    event = models.CharField(
+        max_length=100, choices=AuditEvent.choices
+    )  # e.g. "USER_LOGIN", "PO_APPROVED", "AI_NL_QUERY"
     entity_type = models.CharField(max_length=100, blank=True)  # e.g. "PurchaseOrder", "User"
     entity_id = models.IntegerField(null=True, blank=True)
 

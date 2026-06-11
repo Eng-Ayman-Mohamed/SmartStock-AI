@@ -1,8 +1,8 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password as django_validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
-from rest_framework_simplejwt.settings import api_settings
 
 from .models import CustomUser
 
@@ -34,7 +34,7 @@ class CookieTokenRefreshSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         request = self.context['request']
-        refresh = request.COOKIES.get(api_settings.AUTH_COOKIE)
+        refresh = request.COOKIES.get(getattr(settings, 'SIMPLE_JWT', {}).get('AUTH_COOKIE', 'refresh_token'))
         if not refresh:
             raise serializers.ValidationError('Refresh token not found in cookies.')
         inner = TokenRefreshSerializer(data={'refresh': refresh}, context=self.context)
@@ -48,7 +48,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ('id', 'email', 'name', 'password', 'role')
+        fields = ('id', 'email', 'name', 'password')
 
     def validate_email(self, value: str) -> str:
         if User.objects.filter(email__iexact=value).exists():
@@ -69,7 +69,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=email,
             first_name=first_name,
             last_name=last_name,
-            role=validated_data.get('role', CustomUser.Role.VIEWER),
+            role=CustomUser.Role.VIEWER,
         )
         user.set_password(password)
         user.save()

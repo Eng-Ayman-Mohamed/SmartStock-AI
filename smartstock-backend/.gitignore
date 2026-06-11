@@ -3,6 +3,9 @@ __pycache__/
 **/migrations/
 *.pyc
 *.pyo
+*.pyd
+.Python
+.eggs/
 db.sqlite3
 *.db
 .DS_Store
@@ -12,3 +15,13 @@ venv/
 dist/
 build/
 *.log
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.coverage
+staticfiles/
+media/
+.vscode/
+.idea/
+*.swp
+Thumbs.db

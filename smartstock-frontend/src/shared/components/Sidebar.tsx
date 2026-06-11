@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -61,9 +61,19 @@ function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: (
 }
 
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
-  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        setSidebarCollapsed(true);
+      }
+    };
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [setSidebarCollapsed]);
 
   return (
     <>
@@ -124,13 +134,13 @@ export default function Sidebar() {
       {/* Desktop sidebar */}
       <aside
         className={`hidden md:flex flex-col bg-canvas border-r border-hairline shrink-0 min-h-screen sticky top-0 h-screen transition-all duration-200 ${
-          collapsed ? 'w-14' : 'w-[220px]'
+          sidebarCollapsed ? 'w-14' : 'w-[220px]'
         }`}
         aria-label="Navigation sidebar"
       >
-        <div className={`flex items-center h-10 px-3 border-b border-hairline ${collapsed ? 'justify-center' : 'gap-2'}`}>
+        <div className={`flex items-center h-10 px-3 border-b border-hairline ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
           <Sparkles className="w-4 h-4 text-brand-600 shrink-0" aria-hidden="true" />
-          {!collapsed && <span className="text-card-title font-medium text-ink truncate">SmartStock AI</span>}
+          {!sidebarCollapsed && <span className="text-card-title font-medium text-ink truncate">SmartStock AI</span>}
         </div>
 
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
@@ -142,7 +152,7 @@ export default function Sidebar() {
                 end={item.to === '/'}
                 className={({ isActive }) =>
                   `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
-                    collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
+                    sidebarCollapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
                   } ${
                     isActive
                       ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
@@ -154,8 +164,8 @@ export default function Sidebar() {
                   className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-600' : ''}`}
                   aria-hidden="true"
                 />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-                {collapsed && (
+                {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                {sidebarCollapsed && (
                   <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
                     {item.label}
                   </span>
@@ -165,17 +175,17 @@ export default function Sidebar() {
           </div>
 
           <div className="pt-2 mt-2 border-t border-hairline">
-            <BottomNavItem collapsed={collapsed} />
+            <BottomNavItem collapsed={sidebarCollapsed} />
           </div>
         </nav>
 
         <div className="px-2 py-2 border-t border-hairline">
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="flex items-center justify-center w-full h-9 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors duration-150"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
       </aside>

@@ -11,6 +11,7 @@ class ForecastResult(models.Model):
     mape = models.FloatField(null=True, blank=True)
     model_version = models.CharField(max_length=50, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [

@@ -5,7 +5,7 @@ The few-shot block (all examples) is embedded at build time, not injected per ca
 """
 
 from ai.llm.few_shots import build_few_shot_block
-from ai.llm.schemas import NLQueryAction, VALID_OPERATORS
+from ai.llm.schemas import VALID_OPERATORS, NLQueryAction
 
 
 def build_system_prompt() -> str:
@@ -21,22 +21,11 @@ def build_system_prompt() -> str:
       6. Out-of-scope instruction
     """
 
-    allowed_actions = ", ".join(f'"{a.value}"' for a in NLQueryAction)
+    allowed_actions = ', '.join(f'"{a.value}"' for a in NLQueryAction)
 
-    supported_operators = "\n".join(
-        f"    - {op}" for op in VALID_OPERATORS
-    )
+    supported_operators = '\n'.join(f'    - {op}' for op in VALID_OPERATORS)
 
     few_shots = build_few_shot_block()
-
-    # Build per-action field reference
-    action_fields_lines = []
-    for action_val, fields in ACTION_ALLOWED_FIELDS.items():
-        fields_str = ', '.join(fields)
-        action_fields_lines.append(f'    "{action_val}": [{fields_str}]')
-    action_fields_block = '\n'.join(action_fields_lines)
-
-    operators_str = ', '.join(VALID_OPERATORS)
 
     return f"""You are SmartStock AI, a warehouse inventory analytics assistant.
 
