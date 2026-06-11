@@ -99,6 +99,10 @@ class StockLevelSerializer(serializers.ModelSerializer):
     def validate_reorder_point(self, value):
         if value < 0:
             raise serializers.ValidationError('Reorder point cannot be negative.')
+        product = self.instance
+        max_cap = product.max_warehouse_capacity if product else 1000
+        if value > max_cap:
+            raise serializers.ValidationError(f'Reorder point cannot exceed max warehouse capacity ({max_cap}).')
         return value
 
     # Added
