@@ -1,13 +1,10 @@
 import logging
-import magic
-import os
 
-from django.conf import settings
+import magic
 
 from ai.rag.ingestion import ingest_pdf
-from apps.authentication.permissions import IsAdminOnly, IsViewerOrAbove
 
-from .models import DOC_TYPES, Document, DocumentChunk
+from .models import Document, DocumentChunk
 
 logger = logging.getLogger(__name__)
 

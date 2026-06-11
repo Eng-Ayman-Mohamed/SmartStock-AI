@@ -15,12 +15,12 @@ from typing import ClassVar
 from langchain_core.output_parsers import BaseOutputParser
 
 from ai.llm.schemas import (
+    ACTION_ALLOWED_FIELDS,
+    VALID_OPERATORS,
+    Condition,
     NLQueryAction,
     NLQueryFilters,
     NLQueryResult,
-    Condition,
-    ACTION_ALLOWED_FIELDS,
-    VALID_OPERATORS,
 )
 
 

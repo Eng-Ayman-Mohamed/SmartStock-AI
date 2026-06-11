@@ -1,12 +1,12 @@
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Optional
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, FewShotPromptTemplate, PromptTemplate
-from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
 
 try:
     from langchain.chains import LLMChain
