@@ -152,14 +152,17 @@ class SupplierViewSet(viewsets.ModelViewSet):
     ),
 )
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
-    queryset = PurchaseOrder.objects.select_related('sku', 'supplier', 'requested_by').all()
+    queryset = PurchaseOrder.objects.select_related(
+        'sku', 'sku__product', 'supplier', 'requested_by', 'approved_by'
+    ).all()
     serializer_class = PurchaseOrderSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ['status']
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [IsViewerOrAbove()]
-        if self.action == 'approve':
+        if self.action in ('approve', 'reject'):
             return [IsManagerOrAbove()]
         return [IsManagerOrAbove()]
 
@@ -187,3 +190,55 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         po = self.get_object()
         result = PurchasingService().approve_po(po.id, request.user)
         return Response({'status': 'approved', 'po_id': result.id})
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {
+                        'status': {'type': 'string', 'example': 'rejected'},
+                        'po_id': {'type': 'integer'},
+                    },
+                },
+                description='Purchase order rejected',
+            ),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Purchase order not found'),
+        },
+        tags=['purchasing'],
+    )
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        po = self.get_object()
+        result = PurchasingService().reject_po(po.id, request.user)
+        return Response({'status': 'rejected', 'po_id': result.id})
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'supplier_id': {'type': 'integer'},
+                            'supplier_name': {'type': 'string'},
+                            'overdue_pos': {'type': 'integer'},
+                        },
+                    },
+                },
+                description='List of suppliers with overdue purchase orders',
+            ),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+        },
+        tags=['purchasing'],
+    )
+    @action(detail=False, methods=['get'], url_path='overdue-suppliers')
+    def overdue_suppliers(self, request):
+        """Return suppliers with sent POs that exceed their lead time."""
+        overdue = PurchasingService().get_overdue_suppliers()
+        return Response(overdue)

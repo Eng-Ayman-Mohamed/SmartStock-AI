@@ -189,7 +189,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
     'AUTH_COOKIE_HTTP_ONLY': True,
-    'AUTH_COOKIE_SECURE': False,
+    'AUTH_COOKIE_SECURE': os.environ.get('DJANGO_DEBUG', 'True') != 'True',
     'AUTH_COOKIE_SAMESITE': 'Strict',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
@@ -241,9 +241,3 @@ if not os.environ.get('CI'):
         validate_required_env_vars()
     except Exception:
         logger.warning('Environment validation skipped — settings may be incomplete.')
-
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
-CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
-    'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'
-)
