@@ -5,4 +5,4 @@ class AuditConfig(AppConfig):
     name = 'apps.audit'
 
     def ready(self):
-        pass  # connects the signal receivers
+        from . import signals  # noqa: F401 — connects signal receivers
