@@ -1,14 +1,12 @@
 from datetime import date, timedelta
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
-from apps.authentication.models import CustomUser
-from apps.forecasting.models import ForecastResult, ReorderFlag
+from apps.forecasting.models import ForecastResult
 from apps.forecasting.repositories import ForecastingRepository
 from apps.forecasting.services import ForecastingService
-from apps.inventory.models import Category, Product, SKU, SalesRecord, StockLevel, Supplier
+from apps.inventory.models import SKU, Category, Product, StockLevel, Supplier
 
 
 class ForecastingServiceTestBase(TestCase):

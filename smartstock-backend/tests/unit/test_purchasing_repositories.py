@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from apps.authentication.models import CustomUser
-from apps.inventory.models import Category, Product, SKU, Supplier
+from apps.inventory.models import SKU, Category, Product, Supplier
 from apps.purchasing.models import PurchaseOrder
 from apps.purchasing.repositories import PurchasingRepository
 
