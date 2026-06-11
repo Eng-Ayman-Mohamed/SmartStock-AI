@@ -39,12 +39,14 @@ except ImportError:
 # Patch GinIndex to degrade to a plain Index on SQLite
 _orig_gin_create_sql = GinIndex.create_sql
 
+
 def _test_gin_create_sql(self, model, schema_editor, **kwargs):
     if schema_editor.connection.vendor == 'sqlite':
         return models.Index(fields=self.fields, name=self.name).create_sql(
             model, schema_editor, **kwargs
         )
     return _orig_gin_create_sql(self, model, schema_editor, **kwargs)
+
 
 GinIndex.create_sql = _test_gin_create_sql
 
@@ -54,15 +56,22 @@ from django.db.migrations.operations.special import RunSQL  # noqa: E402
 
 _orig_create_extension_database_forwards = CreateExtension.database_forwards
 
+
 def _test_create_extension_database_forwards(self, app_label, schema_editor, from_state, to_state):
     if schema_editor.connection.vendor != 'postgresql':
-        logger.info('Skipping CreateExtension(%s) on %s', self.name, schema_editor.connection.vendor)
+        logger.info(
+            'Skipping CreateExtension(%s) on %s', self.name, schema_editor.connection.vendor
+        )
         return
-    return _orig_create_extension_database_forwards(self, app_label, schema_editor, from_state, to_state)
+    return _orig_create_extension_database_forwards(
+        self, app_label, schema_editor, from_state, to_state
+    )
+
 
 CreateExtension.database_forwards = _test_create_extension_database_forwards
 
 _old_runsql_database_forwards = RunSQL.database_forwards
+
 
 def _test_runsql_database_forwards(self, app_label, schema_editor, from_state, to_state):
     sql = self.sql
@@ -71,6 +80,7 @@ def _test_runsql_database_forwards(self, app_label, schema_editor, from_state, t
             logger.info('Skipping RunSQL(%s) on %s', sql[:60], schema_editor.connection.vendor)
             return
     return _old_runsql_database_forwards(self, app_label, schema_editor, from_state, to_state)
+
 
 RunSQL.database_forwards = _test_runsql_database_forwards
 
@@ -84,6 +94,7 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
 
 # Disable Cloudinary for tests
 import cloudinary  # noqa: E402, F811
+
 cloudinary.config(cloudinary_url='')
 
 # Disable Redis cache for tests — use LocMem with a no-op delete_pattern
@@ -97,9 +108,13 @@ CACHES = {
 # DummyCache does not support delete_pattern used by inventory cache invalidation
 import django.core.cache.backends.locmem  # noqa: E402
 
-_orig_delete_pattern = getattr(django.core.cache.backends.locmem.LocMemCache, 'delete_pattern', None)
+_orig_delete_pattern = getattr(
+    django.core.cache.backends.locmem.LocMemCache, 'delete_pattern', None
+)
 if _orig_delete_pattern is None:
-    django.core.cache.backends.locmem.LocMemCache.delete_pattern = lambda self, pattern, version=None: None
+    django.core.cache.backends.locmem.LocMemCache.delete_pattern = (
+        lambda self, pattern, version=None: None
+    )
 
 # In-memory email backend
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
