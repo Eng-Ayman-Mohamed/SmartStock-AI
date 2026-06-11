@@ -68,7 +68,9 @@ def build_agent(quantity_available, total_predicted_demand, has_open_po=False):
     agent = DecisionAgent(
         stock_tool=FakeStockTool(quantity_available),
         forecast_tool=forecast_tool,
-        po_status_tool=FakePOStatusTool(has_open_po=has_open_po, open_po_id=456 if has_open_po else None),
+        po_status_tool=FakePOStatusTool(
+            has_open_po=has_open_po, open_po_id=456 if has_open_po else None
+        ),
         forecasting_service=service,
         reasoner=FakeReasoner(),
     )
@@ -105,7 +107,9 @@ def test_decision_agent_does_not_flag_sufficient_stock():
 
 
 def test_decision_agent_suppresses_duplicate_when_open_po_exists():
-    agent, service, _ = build_agent(quantity_available=45, total_predicted_demand=62, has_open_po=True)
+    agent, service, _ = build_agent(
+        quantity_available=45, total_predicted_demand=62, has_open_po=True
+    )
 
     result = agent.run({'product_id': 1})
 

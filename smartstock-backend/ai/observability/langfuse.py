@@ -87,7 +87,9 @@ def invoke_with_langfuse(chain, payload: dict):
     return chain.invoke(payload)
 
 
-def trace_agent_run(agent_name: str, input_data: dict, output_data: dict, spans: list[dict] | None = None):
+def trace_agent_run(
+    agent_name: str, input_data: dict, output_data: dict, spans: list[dict] | None = None
+):
     client = get_langfuse_client()
     if client is None:
         return
