@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 def _get_embedding_model():
     from langchain_openai import OpenAIEmbeddings
+
     return OpenAIEmbeddings(model=EMBEDDING_MODEL)
 
 

@@ -142,6 +142,7 @@ class RAGQueryEndpointTests(APITestCase):
 
         def slow_execute(*args, **kwargs):
             import time
+
             time.sleep(15)
             return {'answer': '', 'sources': []}
 
@@ -246,14 +247,23 @@ class RAGQueryServiceTests(APITestCase):
         service._embeddings = MagicMock()
         service._embeddings.embed_query.return_value = [0.1] * 1536
 
-        with patch('apps.ingestion.services.RAGQueryService.hybrid_search') as mock_search, \
-             patch('apps.ingestion.services.RAGQueryService.rerank') as mock_rerank, \
-             patch('apps.ingestion.services.RAGQueryService.call_llm') as mock_llm:
+        with (
+            patch('apps.ingestion.services.RAGQueryService.hybrid_search') as mock_search,
+            patch('apps.ingestion.services.RAGQueryService.rerank') as mock_rerank,
+            patch('apps.ingestion.services.RAGQueryService.call_llm') as mock_llm,
+        ):
             mock_search.return_value = [
                 {'id': 1, 'content': 'chunk text', 'source_document': 'doc.pdf', 'page_number': 1, 'score': 0.8},
             ]
             mock_rerank.return_value = [
-                {'id': 1, 'content': 'chunk text', 'source_document': 'doc.pdf', 'page_number': 1, 'score': 0.8, 'rerank_score': 0.9},
+                {
+                    'id': 1,
+                    'content': 'chunk text',
+                    'source_document': 'doc.pdf',
+                    'page_number': 1,
+                    'score': 0.8,
+                    'rerank_score': 0.9,
+                },
             ]
             mock_llm.return_value = 'The answer is yes. [Source: doc.pdf, Page: 1]'
 
@@ -283,6 +293,7 @@ class RAGQueryFullPipelineTests(APITestCase):
 
     def _auth(self, user):
         from rest_framework_simplejwt.tokens import RefreshToken
+
         refresh = RefreshToken.for_user(user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
 
@@ -291,9 +302,7 @@ class RAGQueryFullPipelineTests(APITestCase):
     @patch('apps.ingestion.services.ChatOpenAI')
     @patch('ai.rag.retrieval._get_embedding_model')
     @patch('ai.rag.retrieval.connection')
-    def test_full_pipeline_mocked_apis(
-        self, mock_conn, mock_emb_model, mock_chat_cls, mock_emb_cls, mock_filter
-    ):
+    def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_chat_cls, mock_emb_cls, mock_filter):
         """Test full pipeline with mocked DB and LLM calls."""
         self._auth(self.manager)
 
@@ -370,8 +379,20 @@ class RAGQueryFullPipelineTests(APITestCase):
             'chunks_retrieved': 5,
             'chunks_reranked': 3,
             'retrieved_chunks': [
-                {'content': 'chunk1', 'source_document': 'doc.pdf', 'page_number': 1, 'score': 0.9, 'rerank_score': 0.95},
-                {'content': 'chunk2', 'source_document': 'doc.pdf', 'page_number': 2, 'score': 0.8, 'rerank_score': 0.88},
+                {
+                    'content': 'chunk1',
+                    'source_document': 'doc.pdf',
+                    'page_number': 1,
+                    'score': 0.9,
+                    'rerank_score': 0.95,
+                },
+                {
+                    'content': 'chunk2',
+                    'source_document': 'doc.pdf',
+                    'page_number': 2,
+                    'score': 0.8,
+                    'rerank_score': 0.88,
+                },
             ],
             'token_usage': {'prompt_tokens': 500, 'completion_tokens': 150},
         }
