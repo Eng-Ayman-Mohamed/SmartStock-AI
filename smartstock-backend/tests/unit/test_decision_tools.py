@@ -115,7 +115,9 @@ def test_forecast_read_tool_calls_service_with_default_window():
 
 
 def test_po_status_check_tool_calls_service():
-    service = SimpleNamespace(get_open_po_status=lambda product_id: {'checked_product_id': product_id})
+    service = SimpleNamespace(
+        get_open_po_status=lambda product_id: {'checked_product_id': product_id}
+    )
 
     result = POStatusCheckTool(service=service).run({'product_id': '1'})
 

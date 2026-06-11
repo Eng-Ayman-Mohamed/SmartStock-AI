@@ -42,7 +42,9 @@ class DecisionReasoner:
                 ]
             )
             chain = prompt | llm | StrOutputParser()
-            return invoke_with_langfuse(chain, {'payload': json.dumps(payload, default=str)}).strip()
+            return invoke_with_langfuse(
+                chain, {'payload': json.dumps(payload, default=str)}
+            ).strip()
         except Exception:
             logger.exception('Decision reasoning generation failed')
             return (
@@ -70,7 +72,9 @@ class DecisionAgent:
     def run(self, context: dict) -> dict:
         product_ids = self._extract_product_ids(context)
         trace_spans = []
-        results = [self.evaluate_product(product_id, trace_spans=trace_spans) for product_id in product_ids]
+        results = [
+            self.evaluate_product(product_id, trace_spans=trace_spans) for product_id in product_ids
+        ]
         output = {
             'agent': 'decision_agent',
             'results': results,
