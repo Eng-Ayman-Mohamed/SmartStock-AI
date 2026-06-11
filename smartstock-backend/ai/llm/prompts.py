@@ -5,7 +5,7 @@ The few-shot block (all examples) is embedded at build time, not injected per ca
 """
 
 from ai.llm.few_shots import build_few_shot_block
-from ai.llm.schemas import ACTION_ALLOWED_FIELDS, VALID_OPERATORS, NLQueryAction
+from ai.llm.schemas import ACTION_ALLOWED_FIELDS, NLQueryAction, VALID_OPERATORS
 
 
 def build_system_prompt() -> str:
@@ -14,12 +14,19 @@ def build_system_prompt() -> str:
 
     Structure:
       1. Role declaration
-      2. Strict behavioural rules (scope + output format)
-      3. JSON schema description (inline, not the full JSON object)
-      4. All few-shot examples
-      5. Out-of-scope error instruction
+      2. Behaviour rules
+      3. Output JSON specification
+      4. Supported operators
+      5. Few-shot examples
+      6. Out-of-scope instruction
     """
-    allowed_actions = ', '.join(f'"{a.value}"' for a in NLQueryAction)
+
+    allowed_actions = ", ".join(f'"{a.value}"' for a in NLQueryAction)
+
+    supported_operators = "\n".join(
+        f"    - {op}" for op in VALID_OPERATORS
+    )
+
     few_shots = build_few_shot_block()
 
     # Build per-action field reference
@@ -40,31 +47,54 @@ Your role:
 - Always respond using the provided JSON schema.
 
 Output rules:
-- Respond with ONLY valid JSON. No preamble, no explanation, no markdown code fences.
-- The JSON must have exactly two keys: "action" and "filters".
-- "action" must be one of: {allowed_actions}
-- "filters" is an object with these optional keys:
-    "conditions" — an array of filter conditions (each has "field", "op", "value")
-    "sort"        — field name to sort by
-    "sort_order"  — "asc" or "desc" (default "asc")
-    "limit"       — max number of results
-    "offset"      — number of results to skip
 
-Each condition object has:
-  "field" — the database field name (must be in the allowed list for the action)
-  "op"    — one of: {operators_str}
-  "value" — the value to compare against
+- Respond with ONLY valid JSON.
+- No preamble.
+- No explanation.
+- No markdown code fences.
 
-Allowed fields per action:
-{action_fields_block}
+- The JSON must have exactly two top-level keys:
+    "action"
+    "filters"
 
-- Only use fields that are in the allowed list for the chosen action.
-- Omit conditions for fields the user did not specify.
-- Multiple conditions are combined with AND.
-- If the request is outside inventory scope, respond with:
-  {{"error": "Out of scope request"}}
+- "action" must be one of:
+    {allowed_actions}
 
-{few_shots}"""
+- "filters" is an object.
+
+- Filtering MUST use a "conditions" array.
+
+- Every condition object must contain:
+    field
+    op
+    value
+
+- Optional filter properties:
+    conditions
+    sort
+    sort_order
+    limit
+    offset
+
+- Supported condition operators:
+{supported_operators}
+
+- Use "sort_order" only with:
+    asc
+    desc
+
+- Omit any filter property that the user did not specify.
+
+- Never invent field names.
+- Never invent operators.
+- Never generate SQL.
+
+- If the request is outside inventory scope, respond with exactly:
+
+{{"error": "Out of scope request"}}
+
+{few_shots}
+"""
 
 
 # Module-level constant — built once at import time, reused on every request.

@@ -1,83 +1,101 @@
-from rest_framework import generics, status
-from rest_framework.parsers import FormParser, MultiPartParser
+import logging
+import tempfile
+
+import cloudinary.uploader
+from django.utils import timezone
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
+from ai.rag.ingestion import ingest_pdf
 from apps.authentication.permissions import IsAdminOnly, IsViewerOrAbove
 
-from .models import Document, DocumentChunk
-from .serializers import DocumentChunkSerializer, DocumentListSerializer, DocumentUploadSerializer
-from .services import IngestionService
+from .models import Document
+from .serializers import DocumentSerializer, DocumentUploadSerializer
 
-service = IngestionService()
-
-
-class DocumentUploadView(APIView):
-    permission_classes = [IsAuthenticated, IsViewerOrAbove]
-    parser_classes = [MultiPartParser, FormParser]
-
-    def post(self, request):
-        serializer = DocumentUploadSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {'status': 'error', 'errors': serializer.errors},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        file = serializer.validated_data['file']
-        doc_type = serializer.validated_data.get('doc_type')
-
-        raw = file.read()
-        if not raw.startswith(b'%PDF'):
-            return Response(
-                {'status': 'error', 'message': 'Only PDF files are currently supported for ingestion.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        file.seek(0)
-
-        if len(raw) > 10 * 1024 * 1024:
-            return Response(
-                {'status': 'error', 'message': 'File size exceeds 10MB limit.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            document = service.upload_document(file, request.user, doc_type)
-            out = DocumentListSerializer(document, context={'request': request})
-            return Response(
-                {'status': 'success', 'data': out.data},
-                status=status.HTTP_201_CREATED,
-            )
-        except ValueError as e:
-            return Response(
-                {'status': 'error', 'message': str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+logger = logging.getLogger(__name__)
 
 
-class DocumentListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, IsViewerOrAbove]
-    serializer_class = DocumentListSerializer
+class DocumentViewSet(viewsets.ModelViewSet):
+    """CRUD for RAG documents.
+
+    - Viewer+: list, retrieve
+    - Manager+: upload (create)
+    - Admin: soft-delete
+    """
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = DocumentSerializer
+    queryset = Document.objects.filter(is_active=True).order_by('-created_at')
+    search_fields = ['original_filename', 'doc_type']
+    ordering_fields = ['created_at', 'doc_type', 'original_filename']
+    ordering = ['-created_at']
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsViewerOrAbove()]
+        if self.action == 'create':
+            return [IsViewerOrAbove()]
+        if self.action == 'destroy':
+            return [IsAdminOnly()]
+        return [IsViewerOrAbove()]
 
     def get_queryset(self):
-        return service.list_documents()
+        if self.action == 'list':
+            return Document.objects.filter(is_active=True).order_by('-created_at')
+        return Document.objects.all()
 
+    def create(self, request, *args, **kwargs):
+        serializer = DocumentUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-class DocumentDetailView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated, IsViewerOrAbove]
-    serializer_class = DocumentListSerializer
-    queryset = Document.objects.filter(is_active=True)
+        file = serializer.validated_data['file']
+        doc_type = serializer.validated_data['doc_type']
 
-
-class DocumentDeleteView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOnly]
-
-    def delete(self, request, pk):
-        success = service.soft_delete_document(pk)
-        if not success:
-            return Response(
-                {'status': 'error', 'message': 'Document not found.'},
-                status=status.HTTP_404_NOT_FOUND,
+        try:
+            upload_result = cloudinary.uploader.upload(
+                file,
+                resource_type='raw',
+                folder='smartstock/documents',
             )
+            cloudinary_url = upload_result.get('secure_url', upload_result.get('url', ''))
+
+            document = Document.objects.create(
+                filename=upload_result.get('original_filename', file.name),
+                original_filename=file.name,
+                doc_type=doc_type,
+                file_size=file.size,
+                cloudinary_url=cloudinary_url,
+                uploaded_by=request.user,
+            )
+
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                for chunk in file.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+
+            try:
+                result = ingest_pdf(tmp_path, document_id=document.id)
+                document.total_chunks = result['chunks']
+                document.ingested_at = timezone.now()
+                document.save(update_fields=['total_chunks', 'ingested_at'])
+            finally:
+                import os
+
+                os.unlink(tmp_path)
+
+            out = DocumentSerializer(document, context={'request': request})
+            return Response(out.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.exception('Document upload/ingestion failed')
+            return Response(
+                {'detail': f'Upload or ingestion failed: {e}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,10 +1,11 @@
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
 from . import views
 
+router = DefaultRouter()
+router.register(r'documents', views.DocumentViewSet, basename='document')
+
 urlpatterns = [
-    path('documents/upload/', views.DocumentUploadView.as_view(), name='document-upload'),
-    path('documents/', views.DocumentListView.as_view(), name='document-list'),
-    path('documents/<int:pk>/', views.DocumentDetailView.as_view(), name='document-detail'),
-    path('documents/<int:pk>/delete/', views.DocumentDeleteView.as_view(), name='document-delete'),
+    path('', include(router.urls)),
 ]

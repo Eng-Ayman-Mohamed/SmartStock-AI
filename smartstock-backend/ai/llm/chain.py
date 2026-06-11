@@ -116,6 +116,7 @@ class NLQueryChain:
             filters = NLQueryFilters(
                 conditions=[],
                 sort=args.get('sort'),
+                sort_order=args.get('sort_order'),
                 limit=args.get('limit'),
                 offset=args.get('offset'),
             )

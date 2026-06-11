@@ -2,49 +2,97 @@ from ai.llm.schemas import NLQueryAction
 
 # ── Raw example pairs ─────────────────────────────────────────────────────────
 # Stored as dicts so they can be unit-tested independently (see test_nlquery.py).
+#
+# Rule: exactly ONE example per action that is tested end-to-end.
+# The 5 required action types are:
+#   1. get_inventory
+#   2. get_sales_report
+#   3. get_low_stock
+#   4. forecast_demand
+#   5. get_supplier_info
+#
+# get_total_value and get_top_products are valid actions in the enum but are
+# NOT required to have a few-shot example in MQ3 — add them later when their
+# repository methods are implemented.
 
 FEW_SHOT_EXAMPLES = [
-    # 1. get_inventory — ask for stock level of a specific SKU
+    # 1. get_inventory — multi-condition: specific category + active only,
+    #    sorted by available quantity descending, paginated.
     {
-        'action': NLQueryAction.GET_INVENTORY,
-        'user': 'How many units of SKU ABC-001 do we have?',
-        'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "sku_code", "op": "eq", "value": "ABC-001"}]}}',
+        "action": NLQueryAction.GET_INVENTORY,
+        "user":   (
+            "Show me all active products in the Electronics category "
+            "sorted by available quantity, lowest first, page 2 (10 per page)"
+        ),
+        "output": (
+            '{"action": "get_inventory", "filters": {'
+            '"conditions": ['
+            '{"field": "category", "op": "eq", "value": "Electronics"}, '
+            '{"field": "is_active", "op": "eq", "value": true}'
+            '], '
+            '"sort": "quantity_available", "sort_order": "asc", '
+            '"limit": 10, "offset": 10}}'
+        ),
     },
-    # 2. get_sales_report — ask for historical sales in a date range
+
+    # 2. get_sales_report — date range + product filter + sort by quantity sold
     {
-        'action': NLQueryAction.GET_SALES_REPORT,
-        'user': 'Show me the sales report from January 1 to January 15',
-        'output': '{"action": "get_sales_report", "filters": {"conditions": [{"field": "date_from", "op": "gte", "value": "2026-01-01"}, {"field": "date_to", "op": "lte", "value": "2026-01-15"}]}}',
+        "action": NLQueryAction.GET_SALES_REPORT,
+        "user":   (
+            "Give me the sales report for SKU WGT-500 "
+            "between March 1 and March 31, ordered by quantity sold descending"
+        ),
+        "output": (
+            '{"action": "get_sales_report", "filters": {'
+            '"conditions": ['
+            '{"field": "sku_code", "op": "eq", "value": "WGT-500"}, '
+            '{"field": "date_from", "op": "gte", "value": "2026-03-01"}, '
+            '{"field": "date_to", "op": "lte", "value": "2026-03-31"}'
+            '], '
+            '"sort": "quantity_sold", "sort_order": "desc"}}'
+        ),
     },
-    # 3. get_low_stock — ask for items below a quantity threshold
+
+    # 3. get_low_stock — category filter + threshold + reorder point check
     {
-        'action': NLQueryAction.GET_LOW_STOCK,
-        'user': 'Show items with stock below 5',
-        'output': '{"action": "get_low_stock", "filters": {"conditions": [{"field": "quantity_on_hand", "op": "lt", "value": 5}]}}',
+        "action": NLQueryAction.GET_LOW_STOCK,
+        "user":   (
+            "Which Furniture items have fewer than 10 units on hand "
+            "and are below their reorder point?"
+        ),
+        "output": (
+            '{"action": "get_low_stock", "filters": {'
+            '"conditions": ['
+            '{"field": "category", "op": "eq", "value": "Furniture"}, '
+            '{"field": "quantity_on_hand", "op": "lt", "value": 10}, '
+            '{"field": "reorder_point", "op": "gt", "value": 0}'
+            ']}}'
+        ),
     },
-    # 4. forecast_demand — ask for a demand prediction for a product
+
+    # 4. forecast_demand — specific SKU (more precise than product_name)
     {
-        'action': NLQueryAction.FORECAST_DEMAND,
-        'user': 'Forecast demand for Product X next month',
-        'output': '{"action": "forecast_demand", "filters": {"conditions": [{"field": "product_name", "op": "eq", "value": "Product X"}]}}',
+        "action": NLQueryAction.FORECAST_DEMAND,
+        "user":   "What is the 30-day demand forecast for SKU CHAIR-PRO-2?",
+        "output": (
+            '{"action": "forecast_demand", "filters": {'
+            '"conditions": ['
+            '{"field": "sku_code", "op": "eq", "value": "CHAIR-PRO-2"}'
+            ']}}'
+        ),
     },
-    # 5. get_supplier_info — ask who supplies a product
+
+    # 5. get_supplier_info — partial name match + active-only filter
     {
-        'action': NLQueryAction.GET_SUPPLIER_INFO,
-        'user': 'Who is the supplier for Product Y?',
-        'output': '{"action": "get_supplier_info", "filters": {"conditions": [{"field": "supplier_name", "op": "contains", "value": "Product Y"}]}}',
-    },
-    # 6. get_total_value — ask for total inventory value
-    {
-        'action': NLQueryAction.GET_TOTAL_VALUE,
-        'user': 'What is the total value of our electronics inventory?',
-        'output': '{"action": "get_total_value", "filters": {"conditions": [{"field": "category", "op": "eq", "value": "electronics"}]}}',
-    },
-    # 7. get_top_products — ask for top-selling products
-    {
-        'action': NLQueryAction.GET_TOP_PRODUCTS,
-        'user': 'Show me the top 10 best-selling products this month',
-        'output': '{"action": "get_top_products", "filters": {"conditions": [{"field": "date_from", "op": "gte", "value": "2026-06-01"}, {"field": "date_to", "op": "lte", "value": "2026-06-30"}], "sort": "quantity_sold", "sort_order": "desc", "limit": 10}}',
+        "action": NLQueryAction.GET_SUPPLIER_INFO,
+        "user":   "Find all active suppliers whose name starts with 'Tech'",
+        "output": (
+            '{"action": "get_supplier_info", "filters": {'
+            '"conditions": ['
+            '{"field": "supplier_name", "op": "starts_with", "value": "Tech"}, '
+            '{"field": "is_active", "op": "eq", "value": true}'
+            ']}}'
+        ),
     },
     # 8. multi-condition query — stock below X AND name starts with Y
     {
@@ -74,7 +122,7 @@ def build_few_shot_block() -> str:
 
     Output:
         Example 1:
-        User: How many units of SKU ABC-001 do we have?
+        User: Show me all active products in the Electronics category ...
         Output: {"action": "get_inventory", ...}
 
         Example 2:
