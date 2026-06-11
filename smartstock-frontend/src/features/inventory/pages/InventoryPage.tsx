@@ -58,11 +58,11 @@ function statusFor(quantity: number, reorderPoint: number): Status {
 }
 
 export default function InventoryPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') ?? '');
-  const [sortField, setSortField] = useState(searchParams.get('sort') ?? '');
-  const [sortOrder, setSortOrder] = useState(searchParams.get('order') ?? '');
+  const [sortField] = useState(searchParams.get('sort') ?? '');
+  const [sortOrder] = useState(searchParams.get('order') ?? '');
   const debouncedSearch = useDebounce(search, 300);
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
