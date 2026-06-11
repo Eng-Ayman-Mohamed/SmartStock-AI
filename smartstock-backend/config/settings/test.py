@@ -1,12 +1,12 @@
 # isort: skip_file
+from .development import *  # noqa: F403
+
 import logging
 
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 
 logger = logging.getLogger(__name__)
-
-from .development import *  # noqa: F403
 
 DEBUG = True
 
