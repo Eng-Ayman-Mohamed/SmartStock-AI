@@ -25,7 +25,13 @@ function processQueue(error: unknown, token: string | null) {
   pendingQueue = [];
 }
 
+const AUTH_EXEMPT_PATHS = ['/auth/login/', '/auth/register/', '/auth/refresh/'];
+
 api.interceptors.request.use((config) => {
+  const url = config.url || '';
+  if (AUTH_EXEMPT_PATHS.some((p) => url.includes(p))) {
+    return config;
+  }
   const token = useAuthStore.getState().token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

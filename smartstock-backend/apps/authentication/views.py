@@ -29,6 +29,7 @@ User = get_user_model()
 
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
+    authentication_classes = ()
     permission_classes = (permissions.AllowAny,)
     serializer_class = RegisterSerializer
     throttle_classes = (ScopedRateThrottle,)
@@ -61,6 +62,7 @@ class RegisterView(generics.CreateAPIView):
 
 
 class LoginView(TokenObtainPairView):
+    authentication_classes = ()
     permission_classes = (permissions.AllowAny,)
     throttle_classes = (ScopedRateThrottle,)
     throttle_scope = 'login'
