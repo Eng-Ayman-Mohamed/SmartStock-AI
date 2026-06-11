@@ -1,13 +1,14 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
+from rest_framework import viewsets
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 
-from apps.authentication.permissions import IsAdminOnly
+from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
 from config.schema_serializers import ErrorResponseSerializer
 
-from .models import AuditLog
-from .serializers import AuditLogSerializer
+from .models import AgentRun, AuditLog
+from .serializers import AgentRunSerializer, AuditLogSerializer
 
 
 class AuditLogView(ListAPIView):
@@ -41,3 +42,68 @@ class AuditLogView(ListAPIView):
         if created_before:
             qs = qs.filter(timestamp__lte=created_before)
         return qs
+
+
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: AgentRunSerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+        },
+        tags=['audit'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: AgentRunSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+        },
+        tags=['audit'],
+    ),
+    create=extend_schema(
+        responses={
+            201: AgentRunSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+        },
+        tags=['audit'],
+    ),
+    update=extend_schema(
+        responses={
+            200: AgentRunSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+        },
+        tags=['audit'],
+    ),
+    partial_update=extend_schema(
+        responses={
+            200: AgentRunSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+        },
+        tags=['audit'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+        },
+        tags=['audit'],
+    ),
+)
+class AgentRunViewSet(viewsets.ModelViewSet):
+    queryset = AgentRun.objects.all()
+    serializer_class = AgentRunSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsViewerOrAbove()]
+        return [IsManagerOrAbove()]

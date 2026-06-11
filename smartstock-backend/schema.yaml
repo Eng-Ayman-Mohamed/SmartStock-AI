@@ -435,6 +435,69 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Gateway timeout — AI pipeline took too long
+  /api/ai/rag-query/:
+    post:
+      operationId: ai_rag_query_create
+      description: |-
+        POST /api/ai/rag-query/
+        Accepts { "query": "string" } and returns an LLM-generated answer
+        grounded in internal documents, with mandatory source citations.
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RAGQueryRequest'
+            examples:
+              RAGQueryRequest:
+                value:
+                  query: What are our top selling products this month?
+                summary: RAG Query Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RAGQueryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RAGQueryRequest'
+        required: true
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RAGQueryResponse'
+              examples:
+                RAGQueryResponse:
+                  value:
+                    status: success
+                    data:
+                      answer: Based on the sales data, your top selling products are...
+                      sources:
+                      - document: sales_report.pdf
+                        page: 1
+                  summary: RAG Query Response
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request or prompt injection detected
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: RAG service unavailable
+        '504':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Gateway timeout
   /api/audit/logs/:
     get:
       operationId: audit_logs_list
@@ -449,6 +512,7 @@ paths:
           type: string
           enum:
           - AGENT_RUN_COMPLETED
+          - AI_RAG_QUERY
           - INVOICE_CONFIRMED
           - INVOICE_REJECTED
           - PO_APPROVED
@@ -473,6 +537,7 @@ paths:
           * `INVOICE_CONFIRMED` - Invoice Confirmed
           * `INVOICE_REJECTED` - Invoice Rejected
           * `PROMPT_INJECTION_ATTEMPT` - Prompt Injection Attempt
+          * `AI_RAG_QUERY` - Ai Rag Query
           * `VISION_EXTRACTION_FAILED` - Vision Extraction Failed
           * `AGENT_RUN_COMPLETED` - Agent Run Completed
       - name: page
@@ -520,6 +585,266 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Too many requests
+  /api/audit/logs/agent-runs/:
+    get:
+      operationId: audit_logs_agent_runs_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - audit
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAgentRunList'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+    post:
+      operationId: audit_logs_agent_runs_create
+      tags:
+      - audit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRunRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AgentRunRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AgentRunRequest'
+        required: true
+      security:
+      - BearerJWT: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Manager or above only
+  /api/audit/logs/agent-runs/{id}/:
+    get:
+      operationId: audit_logs_agent_runs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent run.
+        required: true
+      tags:
+      - audit
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Agent run not found
+    put:
+      operationId: audit_logs_agent_runs_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent run.
+        required: true
+      tags:
+      - audit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRunRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AgentRunRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AgentRunRequest'
+        required: true
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Manager or above only
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Agent run not found
+    patch:
+      operationId: audit_logs_agent_runs_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent run.
+        required: true
+      tags:
+      - audit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRunRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRunRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRunRequest'
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Manager or above only
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Agent run not found
+    delete:
+      operationId: audit_logs_agent_runs_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent run.
+        required: true
+      tags:
+      - audit
+      security:
+      - BearerJWT: []
+      responses:
+        '204':
+          description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Manager or above only
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Agent run not found
   /api/auth/login/:
     post:
       operationId: auth_login_create
@@ -3332,6 +3657,26 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - approved
+          - cancelled
+          - confirmed
+          - draft
+          - pending_approval
+          - rejected
+          - sent
+        description: |-
+          * `draft` - Draft
+          * `pending_approval` - Pending Approval
+          * `approved` - Approved
+          * `sent` - Sent
+          * `confirmed` - Confirmed
+          * `rejected` - Rejected
+          * `cancelled` - Cancelled
       tags:
       - purchasing
       security:
@@ -3633,6 +3978,87 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Purchase order not found
+  /api/purchasing/orders/{id}/reject/:
+    post:
+      operationId: purchasing_orders_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this purchase order.
+        required: true
+      tags:
+      - purchasing
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: rejected
+                  po_id:
+                    type: integer
+          description: Purchase order rejected
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Manager or above only
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Purchase order not found
+  /api/purchasing/orders/overdue-suppliers/:
+    get:
+      operationId: purchasing_orders_overdue_suppliers_retrieve
+      description: Return suppliers with sent POs that exceed their lead time.
+      tags:
+      - purchasing
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    supplier_id:
+                      type: integer
+                    supplier_name:
+                      type: string
+                    overdue_pos:
+                      type: integer
+          description: List of suppliers with overdue purchase orders
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Manager or above only
   /api/purchasing/suppliers/:
     get:
       operationId: purchasing_suppliers_list
@@ -3919,6 +4345,73 @@ paths:
           description: Supplier not found
 components:
   schemas:
+    AgentRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        agent_name:
+          type: string
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/AgentRunStatusEnum'
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - agent_name
+      - created_at
+      - id
+      - updated_at
+    AgentRunRequest:
+      type: object
+      properties:
+        agent_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/AgentRunStatusEnum'
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
+      required:
+      - agent_name
+    AgentRunStatusEnum:
+      enum:
+      - pending
+      - running
+      - completed
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `running` - Running
+        * `completed` - Completed
+        * `failed` - Failed
     AuditLog:
       type: object
       properties:
@@ -4107,6 +4600,7 @@ components:
       - INVOICE_CONFIRMED
       - INVOICE_REJECTED
       - PROMPT_INJECTION_ATTEMPT
+      - AI_RAG_QUERY
       - VISION_EXTRACTION_FAILED
       - AGENT_RUN_COMPLETED
       type: string
@@ -4122,6 +4616,7 @@ components:
         * `INVOICE_CONFIRMED` - Invoice Confirmed
         * `INVOICE_REJECTED` - Invoice Rejected
         * `PROMPT_INJECTION_ATTEMPT` - Prompt Injection Attempt
+        * `AI_RAG_QUERY` - Ai Rag Query
         * `VISION_EXTRACTION_FAILED` - Vision Extraction Failed
         * `AGENT_RUN_COMPLETED` - Agent Run Completed
     ForecastResult:
@@ -4212,6 +4707,29 @@ components:
           minLength: 1
       required:
       - query
+    PaginatedAgentRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentRun'
     PaginatedAuditLogList:
       type: object
       required:
@@ -4473,6 +4991,25 @@ components:
           description: Positive to add stock, negative to remove
         reason:
           type: string
+    PatchedAgentRunRequest:
+      type: object
+      properties:
+        agent_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/AgentRunStatusEnum'
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
     PatchedDocumentUploadRequest:
       type: object
       properties:
@@ -4529,6 +5066,10 @@ components:
           nullable: true
         notes:
           type: string
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
         sku:
           type: integer
         supplier:
@@ -4726,6 +5267,23 @@ components:
         id:
           type: integer
           readOnly: true
+        sku_code:
+          type: string
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        supplier_name:
+          type: string
+          readOnly: true
+        requested_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        approved_by_name:
+          type: string
+          readOnly: true
+          nullable: true
         quantity:
           type: integer
           maximum: 2147483647
@@ -4736,13 +5294,17 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEnum'
+          - $ref: '#/components/schemas/PurchaseOrderStatusEnum'
           readOnly: true
         agent_reasoning:
           type: string
           nullable: true
         notes:
           type: string
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -4765,13 +5327,18 @@ components:
           nullable: true
       required:
       - approved_by
+      - approved_by_name
       - created_at
       - id
+      - product_name
       - quantity
       - requested_by
+      - requested_by_name
       - sku
+      - sku_code
       - status
       - supplier
+      - supplier_name
       - total_cost
       - updated_at
     PurchaseOrderRequest:
@@ -4790,6 +5357,10 @@ components:
           nullable: true
         notes:
           type: string
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
         sku:
           type: integer
         supplier:
@@ -4799,6 +5370,56 @@ components:
       - sku
       - supplier
       - total_cost
+    PurchaseOrderStatusEnum:
+      enum:
+      - draft
+      - pending_approval
+      - approved
+      - sent
+      - confirmed
+      - rejected
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `pending_approval` - Pending Approval
+        * `approved` - Approved
+        * `sent` - Sent
+        * `confirmed` - Confirmed
+        * `rejected` - Rejected
+        * `cancelled` - Cancelled
+    RAGQueryData:
+      type: object
+      properties:
+        answer:
+          type: string
+        sources:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - answer
+      - sources
+    RAGQueryRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - query
+    RAGQueryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          $ref: '#/components/schemas/RAGQueryData'
+      required:
+      - data
+      - status
     RegisterRequest:
       type: object
       properties:
@@ -4943,24 +5564,6 @@ components:
       required:
       - date
       - sku
-    StatusEnum:
-      enum:
-      - draft
-      - pending_approval
-      - approved
-      - sent
-      - confirmed
-      - rejected
-      - cancelled
-      type: string
-      description: |-
-        * `draft` - Draft
-        * `pending_approval` - Pending Approval
-        * `approved` - Approved
-        * `sent` - Sent
-        * `confirmed` - Confirmed
-        * `rejected` - Rejected
-        * `cancelled` - Cancelled
     StockLevel:
       type: object
       properties:

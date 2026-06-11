@@ -510,6 +510,21 @@ class StockLevelViewSet(viewsets.ModelViewSet):
                 {'quantity_delta': ['Must be a valid integer.']},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
+        new_quantity = stock.quantity_on_hand + delta
+        if new_quantity < 0:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'ValidationError',
+                    'message': 'Validation failed.',
+                    'fields': {
+                        'quantity_delta': [
+                            f'Adjusting by {delta} would make quantity_on_hand ({stock.quantity_on_hand}) negative.'
+                        ]
+                    },
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         reason = request.data.get('reason', '')
         stock = InventoryService().adjust_stock(
             stock.id,
@@ -1255,8 +1270,73 @@ class NLQueryEndpointView(APIView):
     def _handle_get_supplier_info(self, filters):
         return _handle_get_supplier_info(NLQueryFilters(**filters) if isinstance(filters, dict) else filters)
 
-    def _handle_get_total_value(self, filters):
-        return _handle_get_total_value(NLQueryFilters(**filters) if isinstance(filters, dict) else filters)
+    def _handle_get_total_value(self, filters: NLQueryFilters):
+        qs = Product.objects.filter(is_active=True).select_related('category')
+        if filters.conditions:
+            q = conditions_to_q(filters.conditions, model=Product)
+            qs = qs.filter(q)
+        total = qs.aggregate(
+            total_value=Sum(
+                ExpressionWrapper(
+                    F('unit_price') * F('skus__stock_level__quantity_on_hand'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            )
+        )
+        return {
+            'total_value': str(total['total_value'] or 0),
+            'product_count': qs.count(),
+        }
 
-    def _handle_get_top_products(self, filters):
-        return _handle_get_top_products(NLQueryFilters(**filters) if isinstance(filters, dict) else filters)
+    def _handle_get_top_products(self, filters: NLQueryFilters):
+        from django.db.models import Sum as DjSum
+
+        qs = SalesRecord.objects.select_related('sku__product')
+        if filters.conditions:
+            q = conditions_to_q(filters.conditions, model=SalesRecord)
+            qs = qs.filter(q)
+        top = (
+            qs.values('sku__code', 'sku__product__name')
+            .annotate(total_sold=DjSum('quantity_sold'))
+            .order_by('-total_sold')
+        )
+        # Apply limit from filters
+        limit = filters.limit or 10
+        top = top[:limit]
+        return list(top)
+
+    # -- Tracing ---------------------------------------------------------------
+
+    def _trace_query(self, user, query, action, filters, latency_ms):
+        """Log the NL query to the audit system. Langfuse integration is optional."""
+        trace_data = {
+            'query': query,
+            'action': action,
+            'conditions': filters.to_dict(),
+            'latency_ms': latency_ms,
+        }
+
+        # Audit log (always available)
+        AuditLog.objects.create(
+            user=user,
+            event='AI_NL_QUERY',
+            data_snapshot=trace_data,
+        )
+
+        # Langfuse tracing (optional — only if configured)
+        try:
+            lf = get_langfuse()
+            if lf is not None:
+                trace = lf.trace(
+                    name='nl_query',
+                    user_id=str(user.id) if user else 'anonymous',
+                    metadata={'action': action, 'latency_ms': latency_ms},
+                )
+                trace.span(
+                    name='query_processing',
+                    input={'query': query},
+                    output={'action': action, 'conditions': filters.to_dict()},
+                )
+                lf.flush()
+        except Exception as lf_err:
+            logger.debug('Langfuse trace skipped: %s', lf_err)
