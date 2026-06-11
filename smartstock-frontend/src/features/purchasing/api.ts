@@ -1,8 +1,9 @@
 import api from '../../lib/axios';
 import type { Supplier, CreateSupplierPayload, UpdateSupplierPayload } from './types';
 
-export async function listSuppliers(): Promise<Supplier[]> {
-  const { data } = await api.get<Supplier[]>('/inventory/suppliers/');
+export async function listSuppliers(searchQuery?: string): Promise<Supplier[]> {
+  const params = searchQuery ? { search: searchQuery } : {};
+  const { data } = await api.get<Supplier[]>('/inventory/suppliers/', { params });
   return data;
 }
 

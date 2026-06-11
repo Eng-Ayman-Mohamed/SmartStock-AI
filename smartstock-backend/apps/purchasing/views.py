@@ -4,8 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
+from apps.inventory.models import Supplier
 
-from .models import PurchaseOrder, Supplier
+from .models import PurchaseOrder
 from .serializers import PurchaseOrderSerializer, SupplierSerializer
 from .services import PurchasingService
 

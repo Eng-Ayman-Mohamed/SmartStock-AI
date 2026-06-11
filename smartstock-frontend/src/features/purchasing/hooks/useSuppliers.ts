@@ -4,10 +4,10 @@ import type { CreateSupplierPayload, UpdateSupplierPayload } from '../types';
 
 export const suppliersQueryKey = ['suppliers'] as const;
 
-export function useSuppliers() {
+export function useSuppliers(searchQuery?: string) {
   return useQuery({
-    queryKey: suppliersQueryKey,
-    queryFn: suppliersApi.listSuppliers,
+    queryKey: [...suppliersQueryKey, searchQuery],
+    queryFn: () => suppliersApi.listSuppliers(searchQuery),
   });
 }
 

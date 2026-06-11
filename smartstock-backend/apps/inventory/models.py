@@ -8,6 +8,7 @@ class Category(models.Model):
 
     class Meta:
         verbose_name_plural = 'categories'
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.name
@@ -34,12 +35,16 @@ class Product(models.Model):
     unit_of_measure = models.CharField(max_length=50, blank=True, default='units')
     reorder_point = models.IntegerField(default=10)
     safety_stock = models.IntegerField(default=0)
+    max_warehouse_capacity = models.IntegerField(default=1000)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 class SKU(models.Model):
@@ -50,6 +55,9 @@ class SKU(models.Model):
 
     def __str__(self):
         return f'{self.product.name} - {self.code}'
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 class StockLevel(models.Model):
@@ -67,6 +75,9 @@ class StockLevel(models.Model):
     def __str__(self):
         return f'{self.sku.code}: {self.quantity_on_hand}'
 
+    class Meta:
+        ordering = ['-updated_at']
+
 
 class SalesRecord(models.Model):
     """Historical daily sales data per SKU — used as training data for Prophet."""
@@ -77,6 +88,7 @@ class SalesRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ['-date', 'sku']
         indexes = [
             models.Index(fields=['sku', 'date']),
         ]
@@ -98,3 +110,6 @@ class Supplier(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ['-created_at']

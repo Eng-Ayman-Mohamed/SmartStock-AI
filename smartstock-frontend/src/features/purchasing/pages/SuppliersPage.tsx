@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SupplierModal } from '../components/SupplierModal';
 import { useAuthStore } from '../../../store/authStore';
 import { useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier } from '../hooks/useSuppliers';
+import { useToastStore } from '../../../store/toastStore';
 import type { Supplier } from '../types';
 
 export const SuppliersPage: React.FC = () => {
@@ -10,19 +11,21 @@ export const SuppliersPage: React.FC = () => {
   const { user } = useAuthStore();
   const role = user?.role;
   const isManagerOrAbove = role === 'manager' || role === 'admin';
+  const isViewer = role === 'viewer';
 
-  const { data: suppliers, isLoading, error } = useSuppliers();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const { data: suppliers, isLoading, error } = useSuppliers(searchQuery || undefined);
   const createMutation = useCreateSupplier();
   const updateMutation = useUpdateSupplier();
   const deleteMutation = useDeleteSupplier();
-
-  const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
 
   const handleSort = (field: string) => {
     const order = sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
@@ -40,19 +43,33 @@ export const SuppliersPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const addToast = useToastStore((s) => s.addToast);
+
   const handleSaveSupplier = async (data: Parameters<typeof createMutation.mutateAsync>[0]) => {
     setErrorMessage(null);
-    if (editingSupplier) {
-      await updateMutation.mutateAsync({ id: editingSupplier.id, payload: data });
-    } else {
-      await createMutation.mutateAsync(data);
+    try {
+      if (editingSupplier) {
+        await updateMutation.mutateAsync({ id: editingSupplier.id, payload: data });
+        addToast('Supplier updated', 'success');
+      } else {
+        await createMutation.mutateAsync(data);
+        addToast('Supplier created', 'success');
+      }
+      setIsModalOpen(false);
+    } catch {
+      addToast('Failed to save supplier', 'error');
     }
   };
 
   const handleDelete = async (id: number, name: string) => {
     setErrorMessage(null);
-    const confirmed = window.confirm(`Are you sure you want to delete supplier "${name}"?`);
-    if (!confirmed) return;
+    setDeleteConfirm({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    const { id } = deleteConfirm;
+    setDeleteConfirm(null);
 
     try {
       await deleteMutation.mutateAsync(id);
@@ -128,8 +145,8 @@ export const SuppliersPage: React.FC = () => {
           {sortedSuppliers.map((supplier) => (
             <tr key={supplier.id}>
               <td>{supplier.name}</td>
-              <td>{supplier.contact_email || '—'}</td>
-              <td>{supplier.contact_phone || '—'}</td>
+              <td>{isViewer ? '—' : (supplier.contact_email || '—')}</td>
+              <td>{isViewer ? '—' : (supplier.contact_phone || '—')}</td>
               <td>{supplier.address || '—'}</td>
               <td>{supplier.default_lead_time_days} days</td>
               <td>
@@ -163,6 +180,43 @@ export const SuppliersPage: React.FC = () => {
         onSave={handleSaveSupplier}
         initialData={editingSupplier}
       />
+
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+          onClick={() => setDeleteConfirm(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm deletion"
+        >
+          <div
+            className="bg-white rounded-lg shadow-elevated w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900">Delete Supplier</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Are you sure you want to delete supplier <strong>{deleteConfirm.name}</strong>? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 pb-6">
+              <button
+                className="px-4 py-2 text-sm rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

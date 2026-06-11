@@ -128,11 +128,14 @@ class TestProphetEngine(unittest.TestCase):
 
         self.assertEqual(result['model_version'], 'prophet_1.1')
         self.assertEqual(len(result['results']), 30)
-        mock_prophet.assert_called_once_with(
+        expected_call_args = dict(
             weekly_seasonality=True,
             yearly_seasonality=len(df) >= 365,
             daily_seasonality=False,
         )
+        self.assertEqual(mock_prophet.call_count, 2)
+        for c in mock_prophet.call_args_list:
+            self.assertEqual(c[1], expected_call_args)
 
     @patch('prophet.Prophet')
     def test_results_clipped_at_zero(self, mock_prophet):
