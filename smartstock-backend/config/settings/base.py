@@ -141,6 +141,7 @@ REST_FRAMEWORK = {
         'user': '100/minute',
         'login': '5/minute',
         'ai': '10/minute',
+        'nlquery': '10/minute',
     },
 }
 
