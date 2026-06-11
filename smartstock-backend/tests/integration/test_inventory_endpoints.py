@@ -328,7 +328,9 @@ class InventoryEndpointTests(APITestCase):
         self.assertIn(pid, ids)
 
     def test_include_inactive_fails_for_non_admin(self):
-        p = Product.objects.create(name='Inactive Product', category=self.cat_testing, is_active=False)
+        p = Product.objects.create(
+            name='Inactive Product', category=self.cat_testing, is_active=False
+        )
         resp = self.client.get(
             '/api/inventory/products/?include_inactive=true',
             HTTP_AUTHORIZATION=self._auth_header(self.manager),

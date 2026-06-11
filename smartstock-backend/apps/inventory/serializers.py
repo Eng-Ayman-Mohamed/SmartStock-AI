@@ -76,7 +76,9 @@ class SKUSerializer(serializers.ModelSerializer):
         if len(value) > 100:
             raise serializers.ValidationError('SKU code must not exceed 100 characters.')
         if not re.match(r'^[A-Za-z0-9-]+$', value):
-            raise serializers.ValidationError('SKU code may only contain letters, digits, and hyphens.')
+            raise serializers.ValidationError(
+                'SKU code may only contain letters, digits, and hyphens.'
+            )
         return value.upper()
 
 
@@ -102,7 +104,9 @@ class StockLevelSerializer(serializers.ModelSerializer):
         product = self.instance
         max_cap = product.max_warehouse_capacity if product else 1000
         if value > max_cap:
-            raise serializers.ValidationError(f'Reorder point cannot exceed max warehouse capacity ({max_cap}).')
+            raise serializers.ValidationError(
+                f'Reorder point cannot exceed max warehouse capacity ({max_cap}).'
+            )
         return value
 
     # Added

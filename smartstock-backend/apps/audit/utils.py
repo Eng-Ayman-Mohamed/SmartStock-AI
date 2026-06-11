@@ -5,7 +5,14 @@ from .models import AuditLog
 logger = logging.getLogger(__name__)
 
 
-def log_ai_action(event: str, user, entity_type: str = '', entity_id: int = None, data: dict = None, ip: str = None):
+def log_ai_action(
+    event: str,
+    user,
+    entity_type: str = '',
+    entity_id: int = None,
+    data: dict = None,
+    ip: str = None,
+):
     """
     Convenience function called directly from AI views/services.
     Events: AI_NL_QUERY, AI_RAG_QUERY, AI_INVOICE_SCAN, AI_VOICE_TRANSCRIBE

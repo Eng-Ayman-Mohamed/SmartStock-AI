@@ -18,7 +18,9 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in (_extra_csrf or _default_csrf).split(
 if not os.environ.get('CORS_ALLOWED_ORIGINS'):
     CORS_ALLOWED_ORIGINS = ['https://smart-stock-dev.vercel.app']
 else:
-    CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ['CORS_ALLOWED_ORIGINS'].split(',') if o.strip()]
+    CORS_ALLOWED_ORIGINS = [
+        o.strip() for o in os.environ['CORS_ALLOWED_ORIGINS'].split(',') if o.strip()
+    ]
 
 CORS_ALLOW_CREDENTIALS = True
 

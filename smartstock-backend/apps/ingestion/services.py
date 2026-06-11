@@ -39,13 +39,17 @@ class IngestionService:
         try:
             import cloudinary.uploader
 
-            upload_result = cloudinary.uploader.upload(file, resource_type='raw', folder='smartstock_documents')
+            upload_result = cloudinary.uploader.upload(
+                file, resource_type='raw', folder='smartstock_documents'
+            )
             cloudinary_url = upload_result.get('secure_url', '')
         except Exception as e:
             logger.warning('Cloudinary upload failed: %s', e)
             cloudinary_url = ''
 
-        original_filename = getattr(file, 'original_filename', None) or getattr(file, 'name', 'untitled')
+        original_filename = getattr(file, 'original_filename', None) or getattr(
+            file, 'name', 'untitled'
+        )
         filename = f'{user.id}_{original_filename}' if user else original_filename
 
         document = Document.objects.create(

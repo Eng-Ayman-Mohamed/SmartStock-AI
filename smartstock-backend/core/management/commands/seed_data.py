@@ -74,7 +74,9 @@ def seed_users(scale: int) -> list[CustomUser]:
         last_name = fake.last_name()
         email = f'{first_name.lower()}.{last_name.lower()}@smartstock.ai'
         while email in emails:
-            email = f'{first_name.lower()}.{last_name.lower()}{random.randint(1, 999)}@smartstock.ai'
+            email = (
+                f'{first_name.lower()}.{last_name.lower()}{random.randint(1, 999)}@smartstock.ai'
+            )
         emails.add(email)
 
         role_weights = [0.6, 0.3, 0.1]
@@ -112,11 +114,13 @@ def seed_categories(scale: int) -> list[Category]:
             name = fake.unique.word().title()
         names.add(name)
 
-        categories.append(Category(
-            name=name,
-            description=fake.paragraph(nb_sentences=3),
-            created_at=aware_dt(start_date='-3y', end_date='-30d'),
-        ))
+        categories.append(
+            Category(
+                name=name,
+                description=fake.paragraph(nb_sentences=3),
+                created_at=aware_dt(start_date='-3y', end_date='-30d'),
+            )
+        )
 
     Category.objects.bulk_create(categories, batch_size=100)
     return categories
@@ -127,58 +131,103 @@ def seed_suppliers(scale: int) -> list[Supplier]:
     suppliers = []
 
     for i in range(count):
-        suppliers.append(Supplier(
-            name=fake.company(),
-            contact_email=fake.company_email(),
-            contact_phone=fake.phone_number(),
-            address=fake.address(),
-            default_lead_time_days=random.choices(
-                [3, 5, 7, 10, 14, 21, 30],
-                weights=[0.1, 0.2, 0.3, 0.2, 0.1, 0.05, 0.05],
-            )[0],
-            is_active=random.random() < 0.9,
-            created_at=aware_dt(start_date='-3y', end_date='-30d'),
-        ))
+        suppliers.append(
+            Supplier(
+                name=fake.company(),
+                contact_email=fake.company_email(),
+                contact_phone=fake.phone_number(),
+                address=fake.address(),
+                default_lead_time_days=random.choices(
+                    [3, 5, 7, 10, 14, 21, 30],
+                    weights=[0.1, 0.2, 0.3, 0.2, 0.1, 0.05, 0.05],
+                )[0],
+                is_active=random.random() < 0.9,
+                created_at=aware_dt(start_date='-3y', end_date='-30d'),
+            )
+        )
 
     Supplier.objects.bulk_create(suppliers, batch_size=100)
     return suppliers
 
 
 CATEGORY_ADJECTIVES = [
-    'Premium', 'Basic', 'Pro', 'Eco', 'Ultra', 'Smart', 'Industrial', 'Heavy-Duty',
-    'Compact', 'Portable', 'Professional', 'Standard', 'Deluxe', 'Essential', 'Advanced',
+    'Premium',
+    'Basic',
+    'Pro',
+    'Eco',
+    'Ultra',
+    'Smart',
+    'Industrial',
+    'Heavy-Duty',
+    'Compact',
+    'Portable',
+    'Professional',
+    'Standard',
+    'Deluxe',
+    'Essential',
+    'Advanced',
 ]
 
 CATEGORY_NOUNS = [
-    'Widget', 'Gadget', 'Tool', 'Component', 'Device', 'Part', 'Accessory', 'Module',
-    'Assembly', 'Fixture', 'Instrument', 'Appliance', 'Unit', 'Element', 'Material',
-    'Sensor', 'Actuator', 'Controller', 'Valve', 'Pump', 'Filter', 'Gauge', 'Bracket',
-    'Fastener', 'Seal', 'Gasket', 'Bearing', 'Spring', 'Gear', 'Pulley',
+    'Widget',
+    'Gadget',
+    'Tool',
+    'Component',
+    'Device',
+    'Part',
+    'Accessory',
+    'Module',
+    'Assembly',
+    'Fixture',
+    'Instrument',
+    'Appliance',
+    'Unit',
+    'Element',
+    'Material',
+    'Sensor',
+    'Actuator',
+    'Controller',
+    'Valve',
+    'Pump',
+    'Filter',
+    'Gauge',
+    'Bracket',
+    'Fastener',
+    'Seal',
+    'Gasket',
+    'Bearing',
+    'Spring',
+    'Gear',
+    'Pulley',
 ]
 
 UNIT_OF_MEASURE = ['units', 'kg', 'meters', 'liters', 'boxes', 'pallets', 'pieces', 'dozens']
 
 
-def seed_products(scale: int, categories: list[Category], suppliers: list[Supplier]) -> list[Product]:
+def seed_products(
+    scale: int, categories: list[Category], suppliers: list[Supplier]
+) -> list[Product]:
     count = BASE_COUNTS[Product] * scale
     products = []
 
     for i in range(count):
         adj = random.choice(CATEGORY_ADJECTIVES)
         noun = random.choice(CATEGORY_NOUNS)
-        products.append(Product(
-            name=f'{adj} {noun} Mk{random.randint(1, 5)}',
-            description=fake.paragraph(nb_sentences=4),
-            category=random.choice(categories) if categories else None,
-            supplier=random.choice(suppliers) if suppliers else None,
-            unit_price=round(random.uniform(1, 999), 2),
-            unit_of_measure=random.choice(UNIT_OF_MEASURE),
-            reorder_point=random.randint(5, 100),
-            safety_stock=random.randint(0, 50),
-            max_warehouse_capacity=random.randint(100, 10000),
-            is_active=random.random() < 0.95,
-            created_at=aware_dt(start_date='-3y', end_date='-30d'),
-        ))
+        products.append(
+            Product(
+                name=f'{adj} {noun} Mk{random.randint(1, 5)}',
+                description=fake.paragraph(nb_sentences=4),
+                category=random.choice(categories) if categories else None,
+                supplier=random.choice(suppliers) if suppliers else None,
+                unit_price=round(random.uniform(1, 999), 2),
+                unit_of_measure=random.choice(UNIT_OF_MEASURE),
+                reorder_point=random.randint(5, 100),
+                safety_stock=random.randint(0, 50),
+                max_warehouse_capacity=random.randint(100, 10000),
+                is_active=random.random() < 0.95,
+                created_at=aware_dt(start_date='-3y', end_date='-30d'),
+            )
+        )
 
     Product.objects.bulk_create(products, batch_size=200)
     return products
@@ -196,18 +245,22 @@ def seed_skus(scale: int, products: list[Product]) -> list[SKU]:
             code = f'SKU-{product.id:04d}-{random.randint(1000, 9999)}'
         codes.add(code)
 
-        skus.append(SKU(
-            product=product,
-            code=code,
-            attributes={
-                'color': random.choice(['Red', 'Blue', 'Green', 'Black', 'White', 'Yellow', None]),
-                'size': random.choice(['S', 'M', 'L', 'XL', None]),
-                'variant': random.choice(['A', 'B', 'C', None]),
-            },
-            created_at=product.created_at + timedelta(
-                days=random.randint(0, 30)
-            ) if product.created_at else aware_dt(start_date='-2y', end_date='-30d'),
-        ))
+        skus.append(
+            SKU(
+                product=product,
+                code=code,
+                attributes={
+                    'color': random.choice(
+                        ['Red', 'Blue', 'Green', 'Black', 'White', 'Yellow', None]
+                    ),
+                    'size': random.choice(['S', 'M', 'L', 'XL', None]),
+                    'variant': random.choice(['A', 'B', 'C', None]),
+                },
+                created_at=product.created_at + timedelta(days=random.randint(0, 30))
+                if product.created_at
+                else aware_dt(start_date='-2y', end_date='-30d'),
+            )
+        )
 
     SKU.objects.bulk_create(skus, batch_size=200)
     return skus
@@ -220,13 +273,15 @@ def seed_stock_levels(scale: int, skus: list[SKU]) -> list[StockLevel]:
     for sku in skus[:count]:
         on_hand = random.randint(0, 1000)
         reserved = random.randint(0, min(on_hand, 100))
-        levels.append(StockLevel(
-            sku=sku,
-            quantity_on_hand=on_hand,
-            quantity_reserved=reserved,
-            reorder_point=random.randint(5, 50),
-            reorder_quantity=random.choice([25, 50, 100, 200, 500]),
-        ))
+        levels.append(
+            StockLevel(
+                sku=sku,
+                quantity_on_hand=on_hand,
+                quantity_reserved=reserved,
+                reorder_point=random.randint(5, 50),
+                reorder_quantity=random.choice([25, 50, 100, 200, 500]),
+            )
+        )
 
     StockLevel.objects.bulk_create(levels, batch_size=200)
     return levels
@@ -253,11 +308,13 @@ def seed_sales_records(scale: int, skus: list[SKU]):
             key = (sku.id, record_date)
         existing.add(key)
 
-        records.append(SalesRecord(
-            sku=sku,
-            date=record_date,
-            quantity_sold=max(0, int(random.gauss(20, 8))),
-        ))
+        records.append(
+            SalesRecord(
+                sku=sku,
+                date=record_date,
+                quantity_sold=max(0, int(random.gauss(20, 8))),
+            )
+        )
 
     SalesRecord.objects.bulk_create(records, batch_size=500)
     return records
@@ -275,7 +332,11 @@ PO_STATUS_WEIGHTS = {
 
 
 def seed_purchase_orders(
-    scale: int, skus: list[SKU], suppliers: list[Supplier], users: list[CustomUser], managers: list[CustomUser]
+    scale: int,
+    skus: list[SKU],
+    suppliers: list[Supplier],
+    users: list[CustomUser],
+    managers: list[CustomUser],
 ):
     count = BASE_COUNTS[PurchasingPurchaseOrder] * scale
     orders = []
@@ -296,17 +357,19 @@ def seed_purchase_orders(
             approved_by = random.choice(managers)
 
         created = aware_dt(start_date='-1y', end_date='-1d')
-        orders.append(PurchasingPurchaseOrder(
-            sku=chosen_sku,
-            supplier=random.choice(suppliers) if suppliers else None,
-            quantity=quantity,
-            total_cost=total_cost,
-            status=status,
-            requested_by=requested_by,
-            approved_by=approved_by,
-            notes=fake.paragraph(nb_sentences=2) if random.random() < 0.3 else '',
-            created_at=created,
-        ))
+        orders.append(
+            PurchasingPurchaseOrder(
+                sku=chosen_sku,
+                supplier=random.choice(suppliers) if suppliers else None,
+                quantity=quantity,
+                total_cost=total_cost,
+                status=status,
+                requested_by=requested_by,
+                approved_by=approved_by,
+                notes=fake.paragraph(nb_sentences=2) if random.random() < 0.3 else '',
+                created_at=created,
+            )
+        )
 
     PurchasingPurchaseOrder.objects.bulk_create(orders, batch_size=200)
     return orders
@@ -332,16 +395,18 @@ def seed_forecasts(scale: int, skus: list[SKU]):
         existing.add(key)
 
         predicted = round(random.uniform(5, 200), 1)
-        forecasts.append(ForecastResult(
-            sku=sku,
-            forecast_date=forecast_date,
-            predicted_quantity=predicted,
-            lower_bound=round(predicted * random.uniform(0.5, 0.85), 1),
-            upper_bound=round(predicted * random.uniform(1.15, 1.8), 1),
-            mae=round(random.uniform(1, 15), 2),
-            mape=round(random.uniform(2, 25), 2),
-            model_version='prophet-1.1.5',
-        ))
+        forecasts.append(
+            ForecastResult(
+                sku=sku,
+                forecast_date=forecast_date,
+                predicted_quantity=predicted,
+                lower_bound=round(predicted * random.uniform(0.5, 0.85), 1),
+                upper_bound=round(predicted * random.uniform(1.15, 1.8), 1),
+                mae=round(random.uniform(1, 15), 2),
+                mape=round(random.uniform(2, 25), 2),
+                model_version='prophet-1.1.5',
+            )
+        )
 
     ForecastResult.objects.bulk_create(forecasts, batch_size=500)
     return forecasts
@@ -351,8 +416,14 @@ DOC_TYPES_POOL = ['policy', 'contract', 'procedure', 'specification']
 DOC_TYPE_WEIGHTS = [0.3, 0.3, 0.2, 0.2]
 
 AUDIT_EVENTS_POOL = [
-    'USER_LOGIN', 'PO_CREATED', 'PO_APPROVED', 'PO_REJECTED', 'PO_SENT',
-    'STOCK_ADJUSTED', 'PRODUCT_CREATED', 'PRODUCT_UPDATED',
+    'USER_LOGIN',
+    'PO_CREATED',
+    'PO_APPROVED',
+    'PO_REJECTED',
+    'PO_SENT',
+    'STOCK_ADJUSTED',
+    'PRODUCT_CREATED',
+    'PRODUCT_UPDATED',
 ]
 AUDIT_EVENT_WEIGHTS = [0.3, 0.1, 0.08, 0.05, 0.05, 0.12, 0.1, 0.1]
 
@@ -370,17 +441,21 @@ def seed_documents(scale: int, users: list[CustomUser]) -> list[Document]:
 
         uploaded_by = random.choice(users) if users and random.random() < 0.8 else None
 
-        documents.append(Document(
-            filename=filename,
-            original_filename=filename,
-            doc_type=doc_type,
-            file_size=random.randint(50000, 5000000),
-            total_chunks=random.randint(5, 50),
-            cloudinary_url=f'https://res.cloudinary.com/smartstock/raw/upload/{filename}',
-            uploaded_by=uploaded_by,
-            ingested_at=aware_dt(start_date='-6M', end_date='-1d') if random.random() < 0.9 else None,
-            is_active=random.random() < 0.95,
-        ))
+        documents.append(
+            Document(
+                filename=filename,
+                original_filename=filename,
+                doc_type=doc_type,
+                file_size=random.randint(50000, 5000000),
+                total_chunks=random.randint(5, 50),
+                cloudinary_url=f'https://res.cloudinary.com/smartstock/raw/upload/{filename}',
+                uploaded_by=uploaded_by,
+                ingested_at=aware_dt(start_date='-6M', end_date='-1d')
+                if random.random() < 0.9
+                else None,
+                is_active=random.random() < 0.95,
+            )
+        )
 
     Document.objects.bulk_create(documents, batch_size=100)
     return documents
@@ -392,13 +467,15 @@ def seed_document_chunks(scale: int, documents: list[Document]):
 
     for _ in range(count):
         doc = random.choice(documents) if documents else None
-        chunks.append(DocumentChunk(
-            chunk_text=fake.paragraph(nb_sentences=10),
-            source_document=doc.filename if doc else 'unknown.pdf',
-            page_number=random.randint(1, 50),
-            metadata={'heading': fake.sentence(nb_words=4)},
-            document=doc,
-        ))
+        chunks.append(
+            DocumentChunk(
+                chunk_text=fake.paragraph(nb_sentences=10),
+                source_document=doc.filename if doc else 'unknown.pdf',
+                page_number=random.randint(1, 50),
+                metadata={'heading': fake.sentence(nb_words=4)},
+                document=doc,
+            )
+        )
 
     DocumentChunk.objects.bulk_create(chunks, batch_size=200)
     return chunks
@@ -409,15 +486,17 @@ def seed_audit_logs(scale: int, users: list[CustomUser]):
     logs = []
 
     for _ in range(count):
-        logs.append(AuditLog(
-            event=random.choices(AUDIT_EVENTS_POOL, weights=AUDIT_EVENT_WEIGHTS)[0],
-            entity_type=random.choice(ENTITY_TYPES),
-            entity_id=random.randint(1, 500),
-            user=random.choice(users) if users and random.random() < 0.7 else None,
-            ip_address=fake.ipv4() if random.random() < 0.9 else None,
-            data_snapshot={'key': fake.word(), 'value': fake.word()},
-            timestamp=aware_dt(start_date='-1y', end_date='now'),
-        ))
+        logs.append(
+            AuditLog(
+                event=random.choices(AUDIT_EVENTS_POOL, weights=AUDIT_EVENT_WEIGHTS)[0],
+                entity_type=random.choice(ENTITY_TYPES),
+                entity_id=random.randint(1, 500),
+                user=random.choice(users) if users and random.random() < 0.7 else None,
+                ip_address=fake.ipv4() if random.random() < 0.9 else None,
+                data_snapshot={'key': fake.word(), 'value': fake.word()},
+                timestamp=aware_dt(start_date='-1y', end_date='now'),
+            )
+        )
 
     AuditLog.objects.bulk_create(logs, batch_size=500)
     return logs
@@ -505,6 +584,4 @@ class Command(BaseCommand):
             seed_audit_logs(scale, users)
 
         elapsed = datetime.now() - start
-        self.stdout.write(self.style.SUCCESS(
-            f'Seeding complete in {elapsed.total_seconds():.2f}s'
-        ))
+        self.stdout.write(self.style.SUCCESS(f'Seeding complete in {elapsed.total_seconds():.2f}s'))

@@ -53,7 +53,9 @@ FEW_SHOT_EXAMPLES = [
     # 3. get_low_stock — category filter + threshold + reorder point check
     {
         'action': NLQueryAction.GET_LOW_STOCK,
-        'user': ('Which Furniture items have fewer than 10 units on hand and are below their reorder point?'),
+        'user': (
+            'Which Furniture items have fewer than 10 units on hand and are below their reorder point?'
+        ),
         'output': (
             '{"action": "get_low_stock", "filters": {'
             '"conditions": ['

@@ -61,7 +61,11 @@ class TestValidateRequiredEnvVars(unittest.TestCase):
         validate = self._import()
         with patch('config.validators.logger') as mock_logger:
             validate()
-            config_calls = [call for call in mock_logger.info.call_args_list if call[0][0].startswith('[CONFIG]')]
+            config_calls = [
+                call
+                for call in mock_logger.info.call_args_list
+                if call[0][0].startswith('[CONFIG]')
+            ]
             self.assertEqual(len(config_calls), len(REQUIRED_VARS) + 3)
 
 

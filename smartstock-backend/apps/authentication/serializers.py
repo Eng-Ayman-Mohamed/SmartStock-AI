@@ -34,7 +34,9 @@ class CookieTokenRefreshSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         request = self.context['request']
-        refresh = request.COOKIES.get(getattr(settings, 'SIMPLE_JWT', {}).get('AUTH_COOKIE', 'refresh_token'))
+        refresh = request.COOKIES.get(
+            getattr(settings, 'SIMPLE_JWT', {}).get('AUTH_COOKIE', 'refresh_token')
+        )
         if not refresh:
             raise serializers.ValidationError('Refresh token not found in cookies.')
         inner = TokenRefreshSerializer(data={'refresh': refresh}, context=self.context)
