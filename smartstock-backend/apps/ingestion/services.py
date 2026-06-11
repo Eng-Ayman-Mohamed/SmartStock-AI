@@ -38,9 +38,8 @@ class IngestionService:
 
         try:
             import cloudinary.uploader
-            upload_result = cloudinary.uploader.upload(
-                file, resource_type='raw', folder='smartstock_documents'
-            )
+
+            upload_result = cloudinary.uploader.upload(file, resource_type='raw', folder='smartstock_documents')
             cloudinary_url = upload_result.get('secure_url', '')
         except Exception as e:
             logger.warning('Cloudinary upload failed: %s', e)

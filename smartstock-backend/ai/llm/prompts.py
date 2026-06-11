@@ -21,11 +21,9 @@ def build_system_prompt() -> str:
       6. Out-of-scope instruction
     """
 
-    allowed_actions = ", ".join(f'"{a.value}"' for a in NLQueryAction)
+    allowed_actions = ', '.join(f'"{a.value}"' for a in NLQueryAction)
 
-    supported_operators = "\n".join(
-        f"    - {op}" for op in VALID_OPERATORS
-    )
+    supported_operators = '\n'.join(f'    - {op}' for op in VALID_OPERATORS)
 
     few_shots = build_few_shot_block()
 

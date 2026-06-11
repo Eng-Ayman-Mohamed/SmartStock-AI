@@ -198,6 +198,7 @@ cloudinary.config(cloudinary_url=CLOUDINARY_URL)
 # missing configuration early, before any app attempts to use them.
 if not os.environ.get('CI'):
     from config.validators import validate_required_env_vars  # noqa: E402
+
     try:
         validate_required_env_vars()
     except Exception:

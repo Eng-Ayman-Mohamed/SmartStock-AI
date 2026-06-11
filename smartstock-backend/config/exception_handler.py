@@ -32,12 +32,12 @@ def custom_exception_handler(exc, context):
         if status_code == 422 or status_code == 400:
             if isinstance(detail, dict):
                 has_cookie_msg = any(
-                    'cookie' in str(v).lower() if isinstance(v, str)
+                    'cookie' in str(v).lower()
+                    if isinstance(v, str)
                     else any('cookie' in str(item).lower() for item in v if isinstance(item, str))
                     for v in detail.values()
                 )
-                if ('refresh' in detail and has_cookie_msg) or \
-                   ('non_field_errors' in detail and has_cookie_msg):
+                if ('refresh' in detail and has_cookie_msg) or ('non_field_errors' in detail and has_cookie_msg):
                     msg = 'Refresh token not found in cookies.'
                     return Response(
                         {'status': 'error', 'error': 'AuthenticationFailed', 'message': msg, 'code': 401},
