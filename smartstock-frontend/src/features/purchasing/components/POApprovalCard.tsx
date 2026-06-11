@@ -195,9 +195,8 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
               <div className="flex items-center gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={handleRejectCancel}>Cancel</Button>
                 <Button
-                  variant="primary"
+                  variant="danger"
                   size="sm"
-                  className="bg-red-600 hover:bg-red-800 text-white"
                   disabled={isLoading}
                   onClick={handleRejectConfirm}
                 >
