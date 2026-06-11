@@ -9,6 +9,7 @@ except Exception:
     class BaseCallbackHandler:
         pass
 
+
 logger = logging.getLogger(__name__)
 
 _langfuse_client = None
