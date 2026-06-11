@@ -157,9 +157,7 @@ class PurchasingEndpointTests(APITestCase):
 
     def test_update_supplier_as_manager(self):
         """Manager can update a supplier."""
-        supplier = Supplier.objects.create(
-            name='Update Me', contact_email='update@supplier.com'
-        )
+        supplier = Supplier.objects.create(name='Update Me', contact_email='update@supplier.com')
         resp = self.client.patch(
             f'/api/purchasing/suppliers/{supplier.id}/',
             {'name': 'Updated Name'},
@@ -171,9 +169,7 @@ class PurchasingEndpointTests(APITestCase):
 
     def test_update_supplier_as_viewer_fails(self):
         """Viewer cannot update a supplier."""
-        supplier = Supplier.objects.create(
-            name='Viewer Update', contact_email='vu@supplier.com'
-        )
+        supplier = Supplier.objects.create(name='Viewer Update', contact_email='vu@supplier.com')
         resp = self.client.patch(
             f'/api/purchasing/suppliers/{supplier.id}/',
             {'name': 'Hacked'},
@@ -184,9 +180,7 @@ class PurchasingEndpointTests(APITestCase):
 
     def test_delete_supplier_as_admin(self):
         """Admin can delete a supplier."""
-        supplier = Supplier.objects.create(
-            name='Admin Delete', contact_email='del@supplier.com'
-        )
+        supplier = Supplier.objects.create(name='Admin Delete', contact_email='del@supplier.com')
         resp = self.client.delete(
             f'/api/purchasing/suppliers/{supplier.id}/',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
@@ -195,9 +189,7 @@ class PurchasingEndpointTests(APITestCase):
 
     def test_delete_supplier_as_manager_fails(self):
         """Manager cannot delete a supplier (admin-only)."""
-        supplier = Supplier.objects.create(
-            name='Manager Delete', contact_email='mdel@supplier.com'
-        )
+        supplier = Supplier.objects.create(name='Manager Delete', contact_email='mdel@supplier.com')
         resp = self.client.delete(
             f'/api/purchasing/suppliers/{supplier.id}/',
             HTTP_AUTHORIZATION=self._auth_header(self.manager),
@@ -206,9 +198,7 @@ class PurchasingEndpointTests(APITestCase):
 
     def test_delete_supplier_as_viewer_fails(self):
         """Viewer cannot delete a supplier."""
-        supplier = Supplier.objects.create(
-            name='Viewer Delete', contact_email='vdel@supplier.com'
-        )
+        supplier = Supplier.objects.create(name='Viewer Delete', contact_email='vdel@supplier.com')
         resp = self.client.delete(
             f'/api/purchasing/suppliers/{supplier.id}/',
             HTTP_AUTHORIZATION=self._auth_header(self.viewer),
@@ -217,9 +207,7 @@ class PurchasingEndpointTests(APITestCase):
 
     def test_delete_supplier_unauthenticated_fails(self):
         """Unauthenticated user cannot delete a supplier."""
-        supplier = Supplier.objects.create(
-            name='Unauth Delete', contact_email='udel@supplier.com'
-        )
+        supplier = Supplier.objects.create(name='Unauth Delete', contact_email='udel@supplier.com')
         resp = self.client.delete(
             f'/api/purchasing/suppliers/{supplier.id}/',
         )
@@ -440,9 +428,7 @@ class PurchasingEndpointTests(APITestCase):
 
         # 1. Draft the PO
         payload = self._valid_po_payload()
-        resp = self.client.post(
-            '/api/purchasing/orders/', payload, format='json', **headers
-        )
+        resp = self.client.post('/api/purchasing/orders/', payload, format='json', **headers)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         po_id = resp.json()['data']['id']
         self.assertEqual(resp.json()['data']['status'], 'draft')
@@ -459,9 +445,7 @@ class PurchasingEndpointTests(APITestCase):
         self.assertEqual(resp.json()['data']['status'], 'draft')
 
         # 4. Approve the PO
-        resp = self.client.post(
-            f'/api/purchasing/orders/{po_id}/approve/', **headers
-        )
+        resp = self.client.post(f'/api/purchasing/orders/{po_id}/approve/', **headers)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         approve_data = resp.json()
         self.assertEqual(approve_data['status'], 'success')
