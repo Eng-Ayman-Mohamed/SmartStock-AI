@@ -108,13 +108,13 @@ class PurchasingRepositoryGetOpenForProductTest(PurchasingRepositoryTest):
 
     def test_approved_po_is_open(self):
         product, sku = self._create_product_with_sku('A')
-        po = self._create_po(sku=sku, status='approved')
+        self._create_po(sku=sku, status='approved')
         result = self.repo.get_open_for_product(product.id)
         self.assertIsNotNone(result)
 
     def test_pending_approval_po_is_open(self):
         product, sku = self._create_product_with_sku('P')
-        po = self._create_po(sku=sku, status='pending_approval')
+        self._create_po(sku=sku, status='pending_approval')
         result = self.repo.get_open_for_product(product.id)
         self.assertIsNotNone(result)
 
@@ -138,7 +138,7 @@ class PurchasingRepositoryGetOpenForProductTest(PurchasingRepositoryTest):
 
     def test_returns_most_recent_open_po(self):
         product, sku = self._create_product_with_sku('M')
-        old_po = self._create_po(sku=sku, quantity=10)
+        self._create_po(sku=sku, quantity=10)
         new_po = self._create_po(sku=sku, quantity=20)
         result = self.repo.get_open_for_product(product.id)
         self.assertEqual(result.id, new_po.id)
@@ -146,7 +146,7 @@ class PurchasingRepositoryGetOpenForProductTest(PurchasingRepositoryTest):
     def test_only_checks_pos_for_given_product(self):
         product_a, sku_a = self._create_product_with_sku('A1')
         product_b, sku_b = self._create_product_with_sku('B1')
-        po_a = self._create_po(sku=sku_a)
+        self._create_po(sku=sku_a)
         result = self.repo.get_open_for_product(product_b.id)
         self.assertIsNone(result)
 

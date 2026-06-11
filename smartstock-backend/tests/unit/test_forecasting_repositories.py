@@ -72,14 +72,14 @@ class ForecastingRepositoryGetBySkuTest(ForecastingRepositoryTest):
     def test_get_by_sku_returns_only_that_sku(self):
         other_sku = SKU.objects.create(product=self.product, code='FC-SKU-002')
         fc1 = self._create_forecast(sku=self.sku, forecast_date=self.today, predicted_quantity=5.0)
-        fc2 = self._create_forecast(sku=other_sku, forecast_date=self.today, predicted_quantity=9.0)
+        self._create_forecast(sku=other_sku, forecast_date=self.today, predicted_quantity=9.0)
         result = self.repo.get_by_sku(self.sku.id)
         self.assertEqual(result.count(), 1)
         self.assertEqual(result.first().id, fc1.id)
 
     def test_get_by_sku_ordered_by_forecast_date(self):
-        fc_early = self._create_forecast(forecast_date=self.yesterday, predicted_quantity=1.0)
-        fc_late = self._create_forecast(forecast_date=self.tomorrow, predicted_quantity=2.0)
+        self._create_forecast(forecast_date=self.yesterday, predicted_quantity=1.0)
+        self._create_forecast(forecast_date=self.tomorrow, predicted_quantity=2.0)
         result = self.repo.get_by_sku(self.sku.id)
         dates = list(result.values_list('forecast_date', flat=True))
         self.assertEqual(dates, sorted(dates))
@@ -91,14 +91,14 @@ class ForecastingRepositoryGetBySkuTest(ForecastingRepositoryTest):
 
 class ForecastingRepositoryGetNextForProductTest(ForecastingRepositoryTest):
     def test_get_next_returns_future_forecasts(self):
-        fc_past = self._create_forecast(forecast_date=self.yesterday, predicted_quantity=1.0)
+        self._create_forecast(forecast_date=self.yesterday, predicted_quantity=1.0)
         fc_future = self._create_forecast(forecast_date=self.tomorrow, predicted_quantity=2.0)
         result = list(self.repo.get_next_for_product(self.product.id))
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].id, fc_future.id)
 
     def test_get_next_includes_today(self):
-        fc_today = self._create_forecast(forecast_date=self.today, predicted_quantity=1.0)
+        self._create_forecast(forecast_date=self.today, predicted_quantity=1.0)
         result = list(self.repo.get_next_for_product(self.product.id))
         self.assertEqual(len(result), 1)
 
@@ -112,7 +112,7 @@ class ForecastingRepositoryGetNextForProductTest(ForecastingRepositoryTest):
     def test_get_next_only_checks_given_product(self):
         other_product = Product.objects.create(name='Other', category=self.category)
         other_sku = SKU.objects.create(product=other_product, code='OTHER-SKU')
-        fc_other = ForecastResult.objects.create(
+        ForecastResult.objects.create(
             sku=other_sku,
             forecast_date=self.tomorrow,
             predicted_quantity=5.0,
@@ -205,7 +205,7 @@ class ForecastingRepositoryDeleteTest(ForecastingRepositoryTest):
 
 class ForecastingRepositoryGetAllSkusTest(ForecastingRepositoryTest):
     def test_get_all_skus_returns_all_skus(self):
-        sku2 = SKU.objects.create(product=self.product, code='FC-SKU-002')
+        SKU.objects.create(product=self.product, code='FC-SKU-002')
         result = self.repo.get_all_skus()
         codes = set(result.values_list('code', flat=True))
         self.assertIn('FC-SKU-001', codes)
@@ -239,7 +239,7 @@ class ForecastingRepositoryGetPrimarySkuForProductTest(ForecastingRepositoryTest
     def test_returns_first_sku_for_product(self):
         new_product = Product.objects.create(name='Primary Test', category=self.category)
         sku1 = SKU.objects.create(product=new_product, code='PRI-001')
-        sku2 = SKU.objects.create(product=new_product, code='PRI-002')
+        SKU.objects.create(product=new_product, code='PRI-002')
         result = self.repo.get_primary_sku_for_product(new_product.id)
         self.assertEqual(result.id, sku1.id)
 
@@ -333,14 +333,14 @@ class ForecastingRepositoryUpsertOpenReorderFlagTest(ForecastingRepositoryTest):
 
 class ForecastingRepositoryGetSalesForSkuTest(ForecastingRepositoryTest):
     def test_returns_sales_for_sku(self):
-        sr1 = SalesRecord.objects.create(sku=self.sku, date=self.yesterday, quantity_sold=5)
-        sr2 = SalesRecord.objects.create(sku=self.sku, date=self.today, quantity_sold=10)
+        SalesRecord.objects.create(sku=self.sku, date=self.yesterday, quantity_sold=5)
+        SalesRecord.objects.create(sku=self.sku, date=self.today, quantity_sold=10)
         result = self.repo.get_sales_for_sku(self.sku.id)
         self.assertEqual(result.count(), 2)
 
     def test_sales_ordered_by_date(self):
-        sr1 = SalesRecord.objects.create(sku=self.sku, date=self.today, quantity_sold=10)
-        sr2 = SalesRecord.objects.create(sku=self.sku, date=self.yesterday, quantity_sold=5)
+        SalesRecord.objects.create(sku=self.sku, date=self.today, quantity_sold=10)
+        SalesRecord.objects.create(sku=self.sku, date=self.yesterday, quantity_sold=5)
         result = self.repo.get_sales_for_sku(self.sku.id)
         dates = list(result.values_list('date', flat=True))
         self.assertEqual(dates, sorted(dates))
