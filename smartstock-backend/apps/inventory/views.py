@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 from django.core.cache import cache
 from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -16,6 +16,7 @@ from ai.llm.schemas import NLQueryFilters
 from apps.audit.models import AuditLog
 from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
 from apps.forecasting.services import ForecastingService
+from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 
 from .filters import ProductFilter, SalesRecordFilter, SKUFilter, StockLevelFilter
 from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
@@ -66,6 +67,67 @@ def get_langfuse():
 logger = logging.getLogger(__name__)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: ProductSerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: ProductSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Product not found'),
+        },
+        tags=['inventory'],
+    ),
+    create=extend_schema(
+        request=ProductWriteSerializer,
+        responses={
+            201: ProductSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    update=extend_schema(
+        request=ProductWriteSerializer,
+        responses={
+            200: ProductSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Product not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    partial_update=extend_schema(
+        request=ProductWriteSerializer,
+        responses={
+            200: ProductSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Product not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Product not found'),
+        },
+        tags=['inventory'],
+    ),
+)
 class ProductViewSet(viewsets.ModelViewSet):
     """Full CRUD for products.
 
@@ -146,6 +208,67 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: SKUSerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: SKUSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='SKU not found'),
+        },
+        tags=['inventory'],
+    ),
+    create=extend_schema(
+        request=SKUSerializer,
+        responses={
+            201: SKUSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    update=extend_schema(
+        request=SKUSerializer,
+        responses={
+            200: SKUSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='SKU not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    partial_update=extend_schema(
+        request=SKUSerializer,
+        responses={
+            200: SKUSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='SKU not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='SKU not found'),
+        },
+        tags=['inventory'],
+    ),
+)
 class SKUViewSet(viewsets.ModelViewSet):
     """Full CRUD for SKUs.
 
@@ -205,6 +328,67 @@ class SKUViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: StockLevelSerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: StockLevelSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Stock level not found'),
+        },
+        tags=['inventory'],
+    ),
+    create=extend_schema(
+        request=StockLevelSerializer,
+        responses={
+            201: StockLevelSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    update=extend_schema(
+        request=StockLevelSerializer,
+        responses={
+            200: StockLevelSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Stock level not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    partial_update=extend_schema(
+        request=StockLevelSerializer,
+        responses={
+            200: StockLevelSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Stock level not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Stock level not found'),
+        },
+        tags=['inventory'],
+    ),
+)
 class StockLevelViewSet(viewsets.ModelViewSet):
     """CRUD for stock levels.
 
@@ -258,15 +442,56 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'sku_id': {'type': 'integer'},
+                            'sku_code': {'type': 'string'},
+                            'product_name': {'type': 'string'},
+                            'quantity_on_hand': {'type': 'integer'},
+                            'reorder_point': {'type': 'integer'},
+                        },
+                    },
+                },
+                description='List of stock items below reorder point',
+            ),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+        },
+        tags=['inventory'],
+    )
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
         """Return items where quantity < reorder_point (cached)."""
         items = InventoryService().get_low_stock_items()
         return Response(items)
 
+    @extend_schema(
+        request=inline_serializer(
+            'AdjustStockInput',
+            {
+                'quantity_delta': serializers.IntegerField(help_text='Positive to add stock, negative to remove'),
+                'reason': serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={
+            200: StockLevelSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Stock level not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    )
     @action(detail=True, methods=['patch'], url_path='adjust-stock')
     def adjust_stock(self, request, pk=None):
         """Adjust stock quantity by a delta (positive or negative).
+
         Request body: {"quantity_delta": int, "reason": str (optional)}
         """
         stock = self.get_object()
@@ -309,6 +534,67 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         return Response(out.data)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: SalesRecordSerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: SalesRecordSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Sales record not found'),
+        },
+        tags=['inventory'],
+    ),
+    create=extend_schema(
+        request=SalesRecordSerializer,
+        responses={
+            201: SalesRecordSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    update=extend_schema(
+        request=SalesRecordSerializer,
+        responses={
+            200: SalesRecordSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Sales record not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    partial_update=extend_schema(
+        request=SalesRecordSerializer,
+        responses={
+            200: SalesRecordSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Sales record not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Sales record not found'),
+        },
+        tags=['inventory'],
+    ),
+)
 class SalesRecordViewSet(viewsets.ModelViewSet):
     """CRUD for sales records (training data for Prophet).
 
@@ -363,6 +649,67 @@ class SalesRecordViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: SupplierSerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: SupplierSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
+        },
+        tags=['inventory'],
+    ),
+    create=extend_schema(
+        request=SupplierSerializer,
+        responses={
+            201: SupplierSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    update=extend_schema(
+        request=SupplierSerializer,
+        responses={
+            200: SupplierSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    partial_update=extend_schema(
+        request=SupplierSerializer,
+        responses={
+            200: SupplierSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
+        },
+        tags=['inventory'],
+    ),
+)
 class SupplierViewSet(viewsets.ModelViewSet):
     """Full CRUD for suppliers.
 
@@ -421,6 +768,26 @@ class SupplierViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: CategorySerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['inventory'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: CategorySerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Category not found'),
+        },
+        tags=['inventory'],
+    ),
+)
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only endpoints for categories.
 
@@ -443,11 +810,18 @@ class StockAdjustView(APIView):
         request=inline_serializer(
             'StockAdjustInput',
             {
-                'quantity_delta': serializers.IntegerField(),
+                'quantity_delta': serializers.IntegerField(help_text='Positive to add stock, negative to remove'),
                 'reason': serializers.CharField(required=False, allow_blank=True),
             },
         ),
-        responses={200: StockLevelSerializer, 404: None, 422: None},
+        responses={
+            200: StockLevelSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Stock level not found for product'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+        },
+        tags=['inventory'],
     )
     def patch(self, request, product_id):
         stock = InventoryService().find_stock_for_product(product_id)
@@ -518,8 +892,8 @@ OP_MAP = {
     'gt': '__gt',
     'gte': '__gte',
     'contains': '__icontains',
-    'starts_with': '__istartswith',
-    'ends_with': '__iendswith',
+    'starts_with': '__istarts_with',
+    'ends_with': '__iends_with',
     'in': '__in',
     'not_in': '__in',  # negated at Q construction time
 }
@@ -542,36 +916,169 @@ FIELD_ALIASES = {
 }
 
 
+def _parse_condition(condition: dict) -> Q:
+    field = condition.get('field')
+    operator = condition.get('operator', 'eq')
+    value = condition.get('value')
+    alias = FIELD_ALIASES.get(field, field)
+    lookup = OP_MAP.get(operator, '')
+    q_key = f'{alias}{lookup}'
+    if operator == 'neq':
+        return ~Q(**{q_key: value})
+    if operator == 'not_in' and isinstance(value, list):
+        return ~Q(**{q_key: value})
+    if operator == 'in' and isinstance(value, list) and not value:
+        return Q(pk__in=[])  # empty → no results
+    return Q(**{q_key: value})
+
+
+def _build_q_from_filters(filters: NLQueryFilters) -> Q:
+    conjunction = getattr(filters, 'conjunction', 'and')
+    conditions = getattr(filters, 'conditions', [])
+    if not conditions:
+        return Q()
+    q_parts = [_parse_condition(c) for c in conditions]
+    if conjunction == 'or':
+        return Q._new_or(q_parts[0] if len(q_parts) == 1 else q_parts)
+    result = q_parts[0]
+    for part in q_parts[1:]:
+        result &= part
+    return result
+
+
 def conditions_to_q(conditions, model=Product):
-    """
-    Convert a list of Condition objects into a Django Q expression.
-    Multiple conditions are combined with AND.
-    """
+    """Convert a list of Condition objects into a Django Q expression."""
     combined = Q()
     for cond in conditions:
         orm_field = FIELD_ALIASES.get(cond.field, cond.field)
         if orm_field is None:
             continue
-
         op_suffix = OP_MAP.get(cond.op, '')
         lookup = f'{orm_field}{op_suffix}'
-
         if cond.op == 'eq':
             q = Q(**{lookup: cond.value})
         elif cond.op == 'neq':
             q = ~Q(**{orm_field: cond.value})
-        elif cond.op == 'in':
+        elif cond.op in ('in', 'not_in'):
             q = Q(**{lookup: cond.value})
-        elif cond.op == 'not_in':
-            q = ~Q(**{lookup: cond.value})
+            if cond.op == 'not_in':
+                q = ~Q(**{lookup: cond.value})
         else:
             q = Q(**{lookup: cond.value})
-
         combined &= q
     return combined
 
 
-# --- 3. ORCHESTRATOR VIEW ENDPOINT ---
+def _apply_pagination(qs, page: int = 1, per_page: int = 20):
+    offset = (page - 1) * per_page
+    total = qs.count() if hasattr(qs, 'count') else len(qs)
+    return list(qs[offset : offset + per_page]), total
+
+
+# --- 3. HANDLER FUNCTIONS ---
+
+
+def _handle_get_inventory(filters: NLQueryFilters) -> list:
+    q = _build_q_from_filters(filters)
+    results = (
+        Product.objects.filter(q)
+        .prefetch_related('skus__stock_level')
+        .select_related('category', 'supplier')
+        .values('id', 'name', 'category__name', 'supplier__name', 'skus__code', 'skus__stock_level__quantity_on_hand')[
+            :50
+        ]
+    )
+    return [
+        {
+            'id': r['id'],
+            'name': r['name'],
+            'category': r['category__name'],
+            'supplier': r['supplier__name'],
+            'skus': [{'code': r['skus__code'], 'stock': r['skus__stock_level__quantity_on_hand']}],
+        }
+        for r in results
+    ]
+
+
+def _handle_get_sales_report(filters: NLQueryFilters) -> list:
+    q = _build_q_from_filters(filters)
+    rows = (
+        SalesRecord.objects.filter(q)
+        .select_related('sku__product')
+        .values('sku__code', 'sku__product__name', 'quantity_sold', 'date', 'unit_price')
+        .order_by('-date')[:100]
+    )
+    return [
+        {
+            'sku_code': r['sku__code'],
+            'product_name': r['sku__product__name'],
+            'quantity_sold': r['quantity_sold'],
+            'date': r['date'].isoformat() if hasattr(r['date'], 'isoformat') else str(r['date']),
+            'unit_price': r['unit_price'],
+        }
+        for r in rows
+    ]
+
+
+def _handle_get_low_stock(filters: NLQueryFilters) -> list:
+    q = _build_q_from_filters(filters)
+    threshold = filters.get('threshold', 10)
+    items = (
+        StockLevel.objects.select_related('sku__product')
+        .filter(q, quantity_on_hand__lt=threshold)
+        .values('sku__code', 'sku__product__name', 'quantity_on_hand', 'reorder_point')
+    )
+    return list(items)
+
+
+def _handle_forecast_demand(filters: NLQueryFilters) -> list:
+    sku_code = filters.get('sku_code')
+    service = ForecastingService()
+    result = service.run_forecast(sku_code=sku_code)
+    return result if result else []
+
+
+def _handle_get_supplier_info(filters: NLQueryFilters) -> list:
+    q = _build_q_from_filters(filters)
+    suppliers = Supplier.objects.filter(q).values('id', 'name', 'contact_email', 'phone', 'address')
+    return list(suppliers)
+
+
+def _handle_get_total_value(filters: NLQueryFilters) -> list:
+    q = _build_q_from_filters(filters)
+    result = Product.objects.filter(q).aggregate(
+        total_value=Sum(F('skus__stock_level__quantity_on_hand') * F('unit_price'), output_field=DecimalField())
+    )
+    return [{'total_inventory_value': float(result['total_value'] or 0.0)}]
+
+
+def _handle_get_top_products(filters: NLQueryFilters) -> list:
+    limit = filters.get('limit', 10)
+    rows = (
+        SalesRecord.objects.values('sku__code', 'sku__product__name')
+        .annotate(total_sold=Sum('quantity_sold'))
+        .order_by('-total_sold')[:limit]
+    )
+    return [
+        {'sku_code': r['sku__code'], 'product_name': r['sku__product__name'], 'total_sold': r['total_sold']}
+        for r in rows
+    ]
+
+
+_handler_map = {
+    'get_inventory': _handle_get_inventory,
+    'get_sales_report': _handle_get_sales_report,
+    'get_low_stock': _handle_get_low_stock,
+    'forecast_demand': _handle_forecast_demand,
+    'get_supplier_info': _handle_get_supplier_info,
+    'get_total_value': _handle_get_total_value,
+    'get_top_products': _handle_get_top_products,
+}
+
+
+# --- 4. VIEW ---
+
+
 class NLQueryEndpointView(APIView):
     permission_classes = [IsManagerOrAbove]
     throttle_classes = [ScopedRateThrottle]
@@ -579,7 +1086,64 @@ class NLQueryEndpointView(APIView):
 
     @extend_schema(
         request=NLQuerySerializer,
-        responses={200: None, 422: NLQuerySerializer, 504: None},
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {
+                        'status': {'type': 'string', 'example': 'success'},
+                        'data': {
+                            'type': 'object',
+                            'properties': {
+                                'answer': {'type': 'string', 'description': 'Natural language response'},
+                                'action': {'type': 'object'},
+                                'raw_data': {
+                                    'type': 'array',
+                                    'items': {'type': 'object'},
+                                },
+                            },
+                        },
+                    },
+                },
+                description='Natural language query result',
+            ),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Bad request or prompt injection detected'
+            ),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            500: OpenApiResponse(response=ErrorResponseSerializer, description='AI pipeline error'),
+            504: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Gateway timeout — AI pipeline took too long',
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                'NL Query Request',
+                value={'query': 'show me products with low stock'},
+                request_only=True,
+            ),
+            OpenApiExample(
+                'NL Query Response',
+                value={
+                    'status': 'success',
+                    'data': {
+                        'answer': 'There are 3 products with low stock: Widget A (5 units), Gadget B (3 units)',
+                        'action': {'type': 'get_low_stock', 'filters': {}},
+                        'raw_data': [
+                            {
+                                'sku_code': 'SKU001',
+                                'sku__product__name': 'Widget A',
+                                'quantity_on_hand': 5,
+                                'reorder_point': 10,
+                            }
+                        ],
+                    },
+                },
+                response_only=True,
+            ),
+        ],
+        tags=['ai'],
     )
     def post(self, request, *args, **kwargs):
         serializer = NLQuerySerializer(data=request.data)
@@ -672,83 +1236,59 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # Step E: Langfuse tracing (audit log fallback)
-        latency_ms = round((time.time() - pipeline_start) * 1000)
-        self._trace_query(user, query, action_type, filters, latency_ms)
+        # Step E: Tracing
+        try:
+            langfuse = get_langfuse()
+            if langfuse:
+                langfuse.trace(
+                    name='nlquery',
+                    input=query,
+                    output=natural_language_answer,
+                    metadata={
+                        'user': str(user.id),
+                        'action': action_type,
+                        'pipeline_time': time.time() - pipeline_start,
+                    },
+                )
+        except Exception:
+            pass
 
-        # Step F: Return structured backend JSON payload
+        AuditLog.objects.create(
+            user=user,
+            event='AI_NL_QUERY',
+            data_snapshot={
+                'query': query,
+                'action': action_type,
+                'response_length': len(natural_language_answer),
+                'pipeline_time_ms': int((time.time() - pipeline_start) * 1000),
+            },
+        )
+
         return Response(
             {
                 'status': 'success',
                 'data': {
                     'answer': natural_language_answer,
-                    'action': chain_result.to_dict(),
+                    'action': {'type': action_type, 'filters': filters},
                     'raw_data': raw_data,
                 },
-            },
-            status=status.HTTP_200_OK,
+            }
         )
 
-    # -- Action handlers --------------------------------------------------------
+    def _handle_get_inventory(self, filters):
+        return _handle_get_inventory(NLQueryFilters(**filters) if isinstance(filters, dict) else filters)
 
-    def _handle_get_inventory(self, filters: NLQueryFilters):
-        qs = InventoryService().get_all_products()
-        if filters.conditions:
-            q = conditions_to_q(filters.conditions, model=Product)
-            qs = qs.filter(q)
-        data = list(qs.values('id', 'name', 'category__name', 'description'))
-        return data
+    def _handle_get_sales_report(self, filters):
+        return _handle_get_sales_report(NLQueryFilters(**filters) if isinstance(filters, dict) else filters)
 
-    def _handle_get_sales_report(self, filters: NLQueryFilters):
-        qs = SalesRecord.objects.select_related('sku__product').all()
-        if filters.conditions:
-            q = conditions_to_q(filters.conditions, model=SalesRecord)
-            qs = qs.filter(q)
-        data = list(qs.values('sku__code', 'date', 'quantity_sold'))
-        return data
+    def _handle_get_low_stock(self, filters):
+        return _handle_get_low_stock(filters if isinstance(filters, dict) else filters)
 
-    def _handle_get_low_stock(self, filters: NLQueryFilters):
-        return InventoryService().get_low_stock_items()
+    def _handle_forecast_demand(self, filters):
+        return _handle_forecast_demand(filters if isinstance(filters, dict) else filters)
 
-    def _handle_forecast_demand(self, filters: NLQueryFilters):
-        sku_id = None
-        for cond in filters.conditions:
-            if cond.field == 'sku_code' and cond.op == 'eq':
-                try:
-                    sku = SKU.objects.get(code=cond.value)
-                    sku_id = sku.id
-                except SKU.DoesNotExist:
-                    pass
-            elif cond.field == 'product_name' and cond.op in ('eq', 'contains'):
-                try:
-                    if cond.op == 'eq':
-                        product = Product.objects.get(name=cond.value)
-                    else:
-                        product = Product.objects.filter(name__icontains=cond.value).first()
-                    if product:
-                        sku = product.skus.first()
-                        if sku:
-                            sku_id = sku.id
-                except Product.DoesNotExist:
-                    pass
-        return ForecastingService().run_forecast(sku_id=sku_id)
-
-    def _handle_get_supplier_info(self, filters: NLQueryFilters):
-        qs = Supplier.objects.all()
-        if filters.conditions:
-            q = conditions_to_q(filters.conditions, model=Supplier)
-            qs = qs.filter(q)
-        data = list(
-            qs.values(
-                'id',
-                'name',
-                'contact_email',
-                'contact_phone',
-                'default_lead_time_days',
-                'is_active',
-            )
-        )
-        return data
+    def _handle_get_supplier_info(self, filters):
+        return _handle_get_supplier_info(NLQueryFilters(**filters) if isinstance(filters, dict) else filters)
 
     def _handle_get_total_value(self, filters: NLQueryFilters):
         qs = Product.objects.filter(is_active=True).select_related('category')
