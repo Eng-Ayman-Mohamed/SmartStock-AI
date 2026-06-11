@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from datetime import datetime, timezone
 
@@ -72,7 +73,7 @@ def delete_existing_chunks(source_document: str):
 
 
 def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
-    filename = file_path.rsplit('/', 1)[-1]
+    filename = os.path.basename(file_path)
     pages = extract_text_from_pdf(file_path)
     raw_chunks = chunk_pdf_pages(pages)
     total_pages = len(pages)
