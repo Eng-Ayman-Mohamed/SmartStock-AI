@@ -43,19 +43,26 @@ class PurchasingService:
         po = self.repo.get_by_id(po_id)
         if po.status != 'approved':
             raise ValidationError('Only approved orders can be sent.')
-        po = self.repo.update(po_id, {
-            'status': 'sent',
-            'sent_at': timezone.now(),
-        })
+        po = self.repo.update(
+            po_id,
+            {
+                'status': 'sent',
+                'sent_at': timezone.now(),
+            },
+        )
         po_sent.send(sender=self.__class__, po=po)
         return po
 
     def get_overdue_suppliers(self):
         now = timezone.now()
-        sent_pos = self.repo.get_all().filter(
-            status='sent',
-            sent_at__isnull=False,
-        ).select_related('supplier')
+        sent_pos = (
+            self.repo.get_all()
+            .filter(
+                status='sent',
+                sent_at__isnull=False,
+            )
+            .select_related('supplier')
+        )
 
         overdue = {}
         for po in sent_pos:
@@ -70,10 +77,12 @@ class PurchasingService:
                         'overdue_pos': [],
                         'days_overdue': (now - deadline).days,
                     }
-                overdue[sid]['overdue_pos'].append({
-                    'po_id': po.id,
-                    'po_number': f'PO-{po.id}',
-                    'sent_at': po.sent_at.isoformat(),
-                    'deadline': deadline.isoformat(),
-                })
+                overdue[sid]['overdue_pos'].append(
+                    {
+                        'po_id': po.id,
+                        'po_number': f'PO-{po.id}',
+                        'sent_at': po.sent_at.isoformat(),
+                        'deadline': deadline.isoformat(),
+                    }
+                )
         return list(overdue.values())

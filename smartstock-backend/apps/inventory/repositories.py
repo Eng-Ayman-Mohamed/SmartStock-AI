@@ -111,11 +111,11 @@ class StockLevelRepository(BaseRepository):
 
     def get_low_stock(self):
         """Return all stock levels where quantity is at or below reorder point."""
-        return StockLevel.objects.select_related(
-            'sku__product', 'sku__product__supplier'
-        ).filter(
-            quantity_on_hand__lte=models.F('reorder_point')
-        ).order_by('quantity_on_hand')
+        return (
+            StockLevel.objects.select_related('sku__product', 'sku__product__supplier')
+            .filter(quantity_on_hand__lte=models.F('reorder_point'))
+            .order_by('quantity_on_hand')
+        )
 
     def get_by_product_id(self, product_id: int):
         """Get the StockLevel for a given product_id. Returns None if not found."""
