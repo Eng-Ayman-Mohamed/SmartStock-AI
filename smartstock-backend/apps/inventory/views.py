@@ -4,7 +4,13 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 from django.core.cache import cache
 from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
-from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
