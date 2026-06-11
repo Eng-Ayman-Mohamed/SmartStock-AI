@@ -224,10 +224,11 @@ class AuditLogEndpointTests(APITestCase):
     def test_filter_by_created_after_excludes_old_entries(self):
         """Filtering with a future created_after returns no results."""
         from datetime import datetime, timedelta, timezone
+        from urllib.parse import quote
 
         future = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
         resp = self.client.get(
-            f'/api/audit/logs/?created_after={future}',
+            f'/api/audit/logs/?created_after={quote(future)}',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)

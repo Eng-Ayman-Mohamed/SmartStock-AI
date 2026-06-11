@@ -41,3 +41,6 @@ class PurchaseOrder(models.Model):
 
     def __str__(self):
         return f'PO-{self.id}: {self.sku.code} x{self.quantity}'
+
+    class Meta:
+        ordering = ['-created_at']
