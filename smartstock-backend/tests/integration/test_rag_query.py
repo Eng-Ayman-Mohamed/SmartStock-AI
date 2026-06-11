@@ -172,7 +172,8 @@ class RAGQueryEndpointTests(APITestCase):
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_successful_query_creates_audit_log(self, mock_execute, mock_filter):
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
+    def test_successful_query_creates_audit_log(self, mock_executor_cls, mock_execute, mock_filter):
         self._auth(self.manager)
         mock_execute.return_value = {
             'answer': 'Test answer',
@@ -190,6 +191,18 @@ class RAGQueryEndpointTests(APITestCase):
             ],
             'token_usage': {'prompt_tokens': 100, 'completion_tokens': 50},
         }
+
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        def run_sync(fn, *args, **kwargs):
+            result = fn(*args, **kwargs)
+            future = MagicMock()
+            future.result.return_value = result
+            return future
+
+        mock_executor.submit.side_effect = run_sync
+
         self.client.post(
             self._url(),
             {'query': 'What is the reorder point?'},
@@ -314,57 +327,63 @@ class RAGQueryFullPipelineTests(APITestCase):
     @patch('ai.rag.retrieval.connection')
     def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_chat_cls, mock_emb_cls, mock_filter):
         """Test full pipeline with mocked DB and LLM calls."""
+        import os
+
         from langchain_core.messages import AIMessage
 
         self._auth(self.manager)
 
-        # Mock embeddings
-        mock_embeddings = MagicMock()
-        mock_embeddings.embed_query.return_value = [0.1] * 1536
-        mock_emb_cls.return_value = mock_embeddings
-        mock_emb_model.return_value = mock_embeddings
+        os.environ['OPENAI_API_KEY'] = 'test-key'
+        try:
+            # Mock embeddings
+            mock_embeddings = MagicMock()
+            mock_embeddings.embed_query.return_value = [0.1] * 1536
+            mock_emb_cls.return_value = mock_embeddings
+            mock_emb_model.return_value = mock_embeddings
 
-        # Mock DB cursor for hybrid search
-        mock_cursor = MagicMock()
-        mock_cursor.fetchall.return_value = [
-            (1, 'Return policy text', 'supplier_policy.pdf', 3, {}, 0.85),
-            (2, 'Warranty terms', 'warranty.pdf', 1, {}, 0.72),
-        ]
-        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
-        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
-
-        # Mock ChatOpenAI for LLM call — must return AIMessage for StrOutputParser
-        mock_llm = MagicMock()
-        mock_llm.invoke.return_value = AIMessage(
-            content='You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
-        )
-        mock_chat_cls.return_value = mock_llm
-
-        # Mock Cohere reranker
-        with patch('apps.ingestion.services.RAGQueryService.rerank') as mock_rerank:
-            mock_rerank.return_value = [
-                {
-                    'id': 1,
-                    'content': 'Return policy text',
-                    'source_document': 'supplier_policy.pdf',
-                    'page_number': 3,
-                    'score': 0.85,
-                    'rerank_score': 0.92,
-                },
+            # Mock DB cursor for hybrid search
+            mock_cursor = MagicMock()
+            mock_cursor.fetchall.return_value = [
+                (1, 'Return policy text', 'supplier_policy.pdf', 3, {}, 0.85),
+                (2, 'Warranty terms', 'warranty.pdf', 1, {}, 0.72),
             ]
+            mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+            mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
-            response = self.client.post(
-                self._url(),
-                {'query': 'What is the return policy?'},
-                format='json',
+            # Mock ChatOpenAI for LLM call — must return AIMessage for StrOutputParser
+            mock_llm = MagicMock()
+            mock_llm.invoke.return_value = AIMessage(
+                content='You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
             )
+            mock_chat_cls.return_value = mock_llm
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['status'], 'success')
-        self.assertIn('answer', response.data['data'])
-        self.assertIn('sources', response.data['data'])
-        self.assertEqual(len(response.data['data']['sources']), 1)
-        self.assertEqual(response.data['data']['sources'][0]['document'], 'supplier_policy.pdf')
+            # Mock Cohere reranker
+            with patch('apps.ingestion.services.RAGQueryService.rerank') as mock_rerank:
+                mock_rerank.return_value = [
+                    {
+                        'id': 1,
+                        'content': 'Return policy text',
+                        'source_document': 'supplier_policy.pdf',
+                        'page_number': 3,
+                        'score': 0.85,
+                        'rerank_score': 0.92,
+                    },
+                ]
+
+                response = self.client.post(
+                    self._url(),
+                    {'query': 'What is the return policy?'},
+                    format='json',
+                )
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data['status'], 'success')
+            self.assertIn('answer', response.data['data'])
+            self.assertIn('sources', response.data['data'])
+            self.assertEqual(len(response.data['data']['sources']), 1)
+            self.assertEqual(response.data['data']['sources'][0]['document'], 'supplier_policy.pdf')
+        finally:
+            os.environ.pop('OPENAI_API_KEY', None)
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
     @patch('apps.ingestion.services.RAGQueryService.execute')
