@@ -67,7 +67,17 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python manage.py migrate --noinput
       - run: pytest tests/ --cov --cov-fail-under=80 -v
-
+      - name: Validate OpenAPI schema
+        run: |
+          python manage.py spectacular --file schema.yaml --validate
+          python -c "
+          import yaml
+          from openapi_spec_validator import validate
+          with open('schema.yaml') as f:
+              schema = yaml.safe_load(f)
+          validate(schema)
+          print('OpenAPI 3.0 schema validation passed')
+          "
   frontend-lint:
     runs-on: ubuntu-latest
     defaults:
