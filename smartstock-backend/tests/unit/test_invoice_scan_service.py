@@ -118,7 +118,9 @@ def test_scan_invoice_returns_partial_and_audits_missing_fields():
     audits = []
     repo = FakeInvoiceRepo()
     extractor = FakeExtractor(response={'product_name': {'value': 'Mouse', 'confidence': 0.91}})
-    service = InvoiceScanService(repo=repo, extractor=extractor, audit_logger=lambda *args, **kwargs: audits.append(args))
+    service = InvoiceScanService(
+        repo=repo, extractor=extractor, audit_logger=lambda *args, **kwargs: audits.append(args)
+    )
 
     result = service.scan_invoice(FakeFile(), user(1))
 

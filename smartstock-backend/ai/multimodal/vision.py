@@ -33,8 +33,7 @@ class VisionExtractor:
                     'role': 'system',
                     'content': (
                         'Extract supplier invoice data as strict JSON only. '
-                        'Do not include markdown. Use this schema: '
-                        + json.dumps(schema)
+                        'Do not include markdown. Use this schema: ' + json.dumps(schema)
                     ),
                 },
                 {
