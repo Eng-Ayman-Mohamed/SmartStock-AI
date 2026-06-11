@@ -51,7 +51,6 @@ class PurchasingService:
         return po
 
     def get_overdue_suppliers(self):
-        from django.db.models import F
         now = timezone.now()
         sent_pos = self.repo.get_all().filter(
             status='sent',
