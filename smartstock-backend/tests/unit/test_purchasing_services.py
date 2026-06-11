@@ -16,16 +16,16 @@ class PurchasingServiceDraftPoTest(TestCase):
 
     def test_draft_po_creates_with_draft_status(self):
         self.repo.create.return_value = MagicMock(id=10, status='draft')
-        result = self.service.draft_po(
-            sku_id=5, quantity=100, supplier_id=3, user=self.user
+        result = self.service.draft_po(sku_id=5, quantity=100, supplier_id=3, user=self.user)
+        self.repo.create.assert_called_once_with(
+            {
+                'sku_id': 5,
+                'quantity': 100,
+                'supplier_id': 3,
+                'requested_by': self.user,
+                'status': 'draft',
+            }
         )
-        self.repo.create.assert_called_once_with({
-            'sku_id': 5,
-            'quantity': 100,
-            'supplier_id': 3,
-            'requested_by': self.user,
-            'status': 'draft',
-        })
         self.assertEqual(result.status, 'draft')
 
     def test_draft_po_passes_correct_args(self):
@@ -60,9 +60,7 @@ class PurchasingServiceApprovePoTest(TestCase):
         result = self.service.approve_po(po_id=1, user=self.user)
 
         self.repo.get_by_id.assert_called_once_with(1)
-        self.repo.update.assert_called_once_with(
-            1, {'status': 'approved', 'approved_by_id': 10}
-        )
+        self.repo.update.assert_called_once_with(1, {'status': 'approved', 'approved_by_id': 10})
         self.assertEqual(result.status, 'approved')
 
     def test_approve_pending_approval_po(self):

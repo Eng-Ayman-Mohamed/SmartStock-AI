@@ -48,6 +48,7 @@ class ForecastingRepositoryGetByIdTest(ForecastingRepositoryTest):
 
     def test_get_by_id_nonexistent_raises(self):
         from django.core.exceptions import ObjectDoesNotExist
+
         with self.assertRaises(ObjectDoesNotExist):
             self.repo.get_by_id(99999)
 
@@ -175,11 +176,14 @@ class ForecastingRepositoryUpdateTest(ForecastingRepositoryTest):
 
     def test_update_multiple_fields(self):
         fc = self._create_forecast()
-        result = self.repo.update(fc.id, {
-            'predicted_quantity': 99.0,
-            'mape': 0.05,
-            'model_version': 'v2',
-        })
+        result = self.repo.update(
+            fc.id,
+            {
+                'predicted_quantity': 99.0,
+                'mape': 0.05,
+                'model_version': 'v2',
+            },
+        )
         self.assertEqual(result.predicted_quantity, 99.0)
         self.assertEqual(result.mape, 0.05)
         self.assertEqual(result.model_version, 'v2')
@@ -226,6 +230,7 @@ class ForecastingRepositoryGetSkuTest(ForecastingRepositoryTest):
 
     def test_get_sku_nonexistent_raises(self):
         from django.core.exceptions import ObjectDoesNotExist
+
         with self.assertRaises(ObjectDoesNotExist):
             self.repo.get_sku(99999)
 
@@ -257,6 +262,7 @@ class ForecastingRepositoryGetSkuByCodeTest(ForecastingRepositoryTest):
 
     def test_get_sku_by_code_nonexistent_raises(self):
         from django.core.exceptions import ObjectDoesNotExist
+
         with self.assertRaises(ObjectDoesNotExist):
             self.repo.get_sku_by_code('NONEXISTENT')
 
@@ -466,12 +472,20 @@ class ForecastingRepositoryForecastResultOrderingTest(ForecastingRepositoryTest)
 class ForecastingRepositoryReorderFlagOrderingTest(ForecastingRepositoryTest):
     def test_ordered_by_created_at_desc(self):
         flag1 = ReorderFlag.objects.create(
-            sku=self.sku, quantity_available=1, total_predicted_demand=10.0,
-            safety_stock=5, reorder_required=True, reasoning='first',
+            sku=self.sku,
+            quantity_available=1,
+            total_predicted_demand=10.0,
+            safety_stock=5,
+            reorder_required=True,
+            reasoning='first',
         )
         flag2 = ReorderFlag.objects.create(
-            sku=self.sku, quantity_available=2, total_predicted_demand=20.0,
-            safety_stock=5, reorder_required=True, reasoning='second',
+            sku=self.sku,
+            quantity_available=2,
+            total_predicted_demand=20.0,
+            safety_stock=5,
+            reorder_required=True,
+            reasoning='second',
         )
         result = list(ReorderFlag.objects.all())
         self.assertEqual(result[0].id, flag2.id)

@@ -26,14 +26,21 @@ class InventoryTestBase(APITestCase):
             name='Acme Corp', contact_email='acme@test.com', default_lead_time_days=7
         )
         cls.product = Product.objects.create(
-            name='Widget', category=cls.category, supplier=cls.supplier,
-            unit_price=Decimal('29.99'), unit_of_measure='pcs',
-            reorder_point=10, safety_stock=5,
+            name='Widget',
+            category=cls.category,
+            supplier=cls.supplier,
+            unit_price=Decimal('29.99'),
+            unit_of_measure='pcs',
+            reorder_point=10,
+            safety_stock=5,
         )
         cls.sku = SKU.objects.create(product=cls.product, code='WDG-001')
         cls.stock_level = StockLevel.objects.create(
-            sku=cls.sku, quantity_on_hand=50, quantity_reserved=0,
-            reorder_point=10, reorder_quantity=25,
+            sku=cls.sku,
+            quantity_on_hand=50,
+            quantity_reserved=0,
+            reorder_point=10,
+            reorder_quantity=25,
         )
         cls.sales_record = SalesRecord.objects.create(
             sku=cls.sku, date='2026-01-15', quantity_sold=20
@@ -89,7 +96,9 @@ class ProductViewSetCRUDTests(InventoryTestBase):
             {'name': '', 'category': self.category.id},
             format='json',
         )
-        self.assertIn(resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY])
+        self.assertIn(
+            resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        )
 
     def test_create_product_validation_error_short_name(self):
         self._auth(self.manager)
@@ -98,7 +107,9 @@ class ProductViewSetCRUDTests(InventoryTestBase):
             {'name': 'A', 'category': self.category.id},
             format='json',
         )
-        self.assertIn(resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY])
+        self.assertIn(
+            resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        )
 
     def test_create_product_validation_error_negative_price(self):
         self._auth(self.manager)
@@ -107,7 +118,9 @@ class ProductViewSetCRUDTests(InventoryTestBase):
             {'name': 'Bad Price', 'category': self.category.id, 'unit_price': '-5.00'},
             format='json',
         )
-        self.assertIn(resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY])
+        self.assertIn(
+            resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        )
 
     def test_update_product(self):
         self._auth(self.manager)
@@ -177,7 +190,9 @@ class SKUViewSetCRUDTests(InventoryTestBase):
             {'product': self.product.id, 'code': 'invalid code!@#'},
             format='json',
         )
-        self.assertIn(resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY])
+        self.assertIn(
+            resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        )
 
     def test_create_sku_code_normalized_uppercase(self):
         self._auth(self.manager)
@@ -298,7 +313,9 @@ class StockAdjustViewTests(InventoryTestBase):
 
     def test_adjust_stock_not_found(self):
         self._auth(self.manager)
-        resp = self.client.patch('/api/inventory/stock/99999/', {'quantity_delta': 1}, format='json')
+        resp = self.client.patch(
+            '/api/inventory/stock/99999/', {'quantity_delta': 1}, format='json'
+        )
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_adjust_stock_as_viewer_fails(self):
@@ -375,7 +392,9 @@ class SupplierViewSetCRUDTests(InventoryTestBase):
             {'contact_email': 'test@test.com', 'default_lead_time_days': 5},
             format='json',
         )
-        self.assertIn(resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY])
+        self.assertIn(
+            resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        )
 
     def test_create_supplier_validation_error_missing_email(self):
         self._auth(self.manager)
@@ -384,7 +403,9 @@ class SupplierViewSetCRUDTests(InventoryTestBase):
             {'name': 'No Email', 'default_lead_time_days': 5},
             format='json',
         )
-        self.assertIn(resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY])
+        self.assertIn(
+            resp.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        )
 
     def test_update_supplier(self):
         self._auth(self.manager)
@@ -397,7 +418,9 @@ class SupplierViewSetCRUDTests(InventoryTestBase):
 
     def test_destroy_supplier(self):
         self._auth(self.admin)
-        supplier = Supplier.objects.create(name='To Delete', contact_email='del@test.com', default_lead_time_days=3)
+        supplier = Supplier.objects.create(
+            name='To Delete', contact_email='del@test.com', default_lead_time_days=3
+        )
         resp = self.client.delete(f'/api/inventory/suppliers/{supplier.id}/')
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
 

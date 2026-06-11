@@ -52,6 +52,7 @@ class PurchasingRepositoryGetByIdTest(PurchasingRepositoryTest):
 
     def test_get_by_id_nonexistent_raises(self):
         from django.core.exceptions import ObjectDoesNotExist
+
         with self.assertRaises(ObjectDoesNotExist):
             self.repo.get_by_id(99999)
 
@@ -72,6 +73,7 @@ class PurchasingRepositoryGetAllTest(PurchasingRepositoryTest):
 
     def test_get_all_returns_queryset(self):
         from django.db.models import QuerySet
+
         result = self.repo.get_all()
         self.assertIsInstance(result, QuerySet)
 
@@ -204,10 +206,13 @@ class PurchasingRepositoryUpdateTest(PurchasingRepositoryTest):
 
     def test_update_multiple_fields(self):
         po = self._create_po()
-        result = self.repo.update(po.id, {
-            'status': 'sent',
-            'notes': 'Shipped today',
-        })
+        result = self.repo.update(
+            po.id,
+            {
+                'status': 'sent',
+                'notes': 'Shipped today',
+            },
+        )
         self.assertEqual(result.status, 'sent')
         self.assertEqual(result.notes, 'Shipped today')
 
