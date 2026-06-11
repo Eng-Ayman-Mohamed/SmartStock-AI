@@ -475,9 +475,7 @@ class StockLevelViewSet(viewsets.ModelViewSet):
         request=inline_serializer(
             'AdjustStockInput',
             {
-                'quantity_delta': serializers.IntegerField(
-                    help_text='Positive to add stock, negative to remove'
-                ),
+                'quantity_delta': serializers.IntegerField(help_text='Positive to add stock, negative to remove'),
                 'reason': serializers.CharField(required=False, allow_blank=True),
             },
         ),
@@ -812,9 +810,7 @@ class StockAdjustView(APIView):
         request=inline_serializer(
             'StockAdjustInput',
             {
-                'quantity_delta': serializers.IntegerField(
-                    help_text='Positive to add stock, negative to remove'
-                ),
+                'quantity_delta': serializers.IntegerField(help_text='Positive to add stock, negative to remove'),
                 'reason': serializers.CharField(required=False, allow_blank=True),
             },
         ),
@@ -950,10 +946,33 @@ def _build_q_from_filters(filters: NLQueryFilters) -> Q:
     return result
 
 
+def conditions_to_q(conditions, model=Product):
+    """Convert a list of Condition objects into a Django Q expression."""
+    combined = Q()
+    for cond in conditions:
+        orm_field = FIELD_ALIASES.get(cond.field, cond.field)
+        if orm_field is None:
+            continue
+        op_suffix = OP_MAP.get(cond.op, '')
+        lookup = f'{orm_field}{op_suffix}'
+        if cond.op == 'eq':
+            q = Q(**{lookup: cond.value})
+        elif cond.op == 'neq':
+            q = ~Q(**{orm_field: cond.value})
+        elif cond.op in ('in', 'not_in'):
+            q = Q(**{lookup: cond.value})
+            if cond.op == 'not_in':
+                q = ~Q(**{lookup: cond.value})
+        else:
+            q = Q(**{lookup: cond.value})
+        combined &= q
+    return combined
+
+
 def _apply_pagination(qs, page: int = 1, per_page: int = 20):
     offset = (page - 1) * per_page
     total = qs.count() if hasattr(qs, 'count') else len(qs)
-    return list(qs[offset: offset + per_page]), total
+    return list(qs[offset : offset + per_page]), total
 
 
 # --- 3. HANDLER FUNCTIONS ---
@@ -1014,7 +1033,6 @@ def _handle_get_low_stock(filters: NLQueryFilters) -> list:
 
 def _handle_forecast_demand(filters: NLQueryFilters) -> list:
     sku_code = filters.get('sku_code')
-    days = filters.get('days', 30)
     service = ForecastingService()
     result = service.run_forecast(sku_code=sku_code)
     return result if result else []
@@ -1089,7 +1107,9 @@ class NLQueryEndpointView(APIView):
                 },
                 description='Natural language query result',
             ),
-            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request or prompt injection detected'),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Bad request or prompt injection detected'
+            ),
             422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
             500: OpenApiResponse(response=ErrorResponseSerializer, description='AI pipeline error'),
             504: OpenApiResponse(

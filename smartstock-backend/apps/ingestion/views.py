@@ -248,7 +248,9 @@ class RAGQueryView(APIView):
                     ),
                 },
             ),
-            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request or prompt injection detected'),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Bad request or prompt injection detected'
+            ),
             503: OpenApiResponse(response=ErrorResponseSerializer, description='RAG service unavailable'),
             504: OpenApiResponse(response=ErrorResponseSerializer, description='Gateway timeout'),
         },

@@ -121,7 +121,6 @@ SPECTACULAR_SETTINGS = {
     'SECURITY': [
         {'BearerJWT': []},
     ],
-
     'APPEND_COMPONENTS': {
         'securitySchemes': {
             'BearerJWT': {
