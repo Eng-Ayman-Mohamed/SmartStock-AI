@@ -50,18 +50,18 @@ class IsViewer(BasePermission):
     message = 'Viewer role required.'
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'viewer'
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'viewer')
 
 
 class IsManager(BasePermission):
     message = 'Manager role required.'
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'manager'
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'manager')
 
 
 class IsAdmin(BasePermission):
     message = 'Admin role required.'
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'admin'
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'admin')

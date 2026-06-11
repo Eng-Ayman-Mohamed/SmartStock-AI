@@ -283,6 +283,21 @@ class StockLevelViewSet(viewsets.ModelViewSet):
                 {'quantity_delta': ['Must be a valid integer.']},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
+        new_quantity = stock.quantity_on_hand + delta
+        if new_quantity < 0:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'ValidationError',
+                    'message': 'Validation failed.',
+                    'fields': {
+                        'quantity_delta': [
+                            f'Adjusting by {delta} would make quantity_on_hand ({stock.quantity_on_hand}) negative.'
+                        ]
+                    },
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         reason = request.data.get('reason', '')
         stock = InventoryService().adjust_stock(
             stock.id,
@@ -748,7 +763,7 @@ class NLQueryEndpointView(APIView):
         total = qs.aggregate(
             total_value=Sum(
                 ExpressionWrapper(
-                    F('unit_price') * 1,
+                    F('unit_price') * F('skus__stock_level__quantity_on_hand'),
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 )
             )
@@ -790,7 +805,7 @@ class NLQueryEndpointView(APIView):
         AuditLog.objects.create(
             user=user,
             event='AI_NL_QUERY',
-            data=trace_data,
+            data_snapshot=trace_data,
         )
 
         # Langfuse tracing (optional — only if configured)
