@@ -9,7 +9,7 @@ import POApprovalCard from '../components/POApprovalCard';
 import { usePendingPOs } from '../hooks/usePurchasing';
 import type { PendingPO } from '../types';
 
-const pendingPOs: PendingPO[] = [
+const mockPendingPOs: PendingPO[] = [
   {
     id: 'PO-1042', product: 'Wireless Mouse', sku: 'WM-2024-001',
     supplier: 'TechSupply Co.',
@@ -55,8 +55,8 @@ const historyColumns: Column<POHistory>[] = [
 ];
 
 export default function PurchasingPage() {
-  // Ready for API integration:
-  usePendingPOs();
+  const { data: pendingPOsData, isLoading: isPendingLoading, isError } = usePendingPOs();
+  const pendingPOs = isPendingLoading ? mockPendingPOs : (pendingPOsData ?? []);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -68,9 +68,15 @@ export default function PurchasingPage() {
         <Button variant="primary" size="md"><Plus className="w-4 h-4" /> New Order</Button>
       </div>
 
+      {isError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+          Failed to load pending purchase orders.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Pending Approval" subtitle={`${pendingPOs.length} orders awaiting review`}>
-          {pendingPOs.length === 0 ? (
+          {pendingPOs.length === 0 && !isError ? (
             <EmptyState
               icon={ShoppingCart}
               heading="All caught up on approvals"
@@ -94,7 +100,7 @@ export default function PurchasingPage() {
           )}
         </Card>
 
-        {pendingPOs[0] && <POApprovalCard key={pendingPOs[0].id} po={pendingPOs[0]} />}
+        {pendingPOs[0] && <POApprovalCard key={pendingPOs[0].id} po={pendingPOs[0]} readOnly={isPendingLoading} />}
       </div>
 
       <Card title="PO History">

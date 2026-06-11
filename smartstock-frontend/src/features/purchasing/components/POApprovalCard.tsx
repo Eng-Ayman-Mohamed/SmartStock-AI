@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, X, Pencil, AlertTriangle, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Check, X, RotateCcw, AlertTriangle, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import Button from '../../../shared/components/Button';
 import Badge from '../../../shared/components/Badge';
 import { useApprovePO, useRejectPO } from '../hooks/usePurchasing';
@@ -7,14 +7,17 @@ import type { PendingPO } from '../types';
 
 interface POApprovalCardProps {
   po: PendingPO;
+  readOnly?: boolean;
   onApproved?: () => void;
   onRejected?: () => void;
 }
 
-export default function POApprovalCard({ po, onApproved, onRejected }: POApprovalCardProps) {
+export default function POApprovalCard({ po, readOnly = false, onApproved, onRejected }: POApprovalCardProps) {
   const [editableQty, setEditableQty] = useState(po.recommended_qty);
   const [pendingConfirm, setPendingConfirm] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [showRejectReason, setShowRejectReason] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const approveMutation = useApprovePO();
   const rejectMutation = useRejectPO();
@@ -25,9 +28,18 @@ export default function POApprovalCard({ po, onApproved, onRejected }: POApprova
   const isSettled = isApproved || isRejected;
 
   const computedTotal = `$${(editableQty * po.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const qtyAlreadyEdited = editableQty !== po.recommended_qty;
+
+  const handleResetQty = () => {
+    if (readOnly) return;
+    setEditableQty(po.recommended_qty);
+    setPendingConfirm(false);
+  };
 
   const handleApprove = async () => {
-    if (isLoading) return;
+    if (isLoading || readOnly) return;
+    setShowRejectReason(false);
+    setRejectReason('');
 
     if (!pendingConfirm) {
       setPendingConfirm(true);
@@ -45,22 +57,30 @@ export default function POApprovalCard({ po, onApproved, onRejected }: POApprova
     }
   };
 
-  const handleReject = async () => {
-    if (isLoading) return;
-
+  const handleRejectClick = () => {
+    if (isLoading || readOnly) return;
+    setLocalError(null);
+    setShowRejectReason(true);
     setPendingConfirm(false);
+  };
+
+  const handleRejectCancel = () => {
+    setLocalError(null);
+    setShowRejectReason(false);
+    setRejectReason('');
+  };
+
+  const handleRejectConfirm = async () => {
+    if (isLoading || readOnly) return;
     setLocalError(null);
     try {
-      await rejectMutation.mutateAsync({ id: po.id });
+      await rejectMutation.mutateAsync({ id: po.id, reason: rejectReason });
+      setShowRejectReason(false);
+      setRejectReason('');
       onRejected?.();
     } catch {
       setLocalError('Failed to submit. Please try again.');
     }
-  };
-
-  const handleEditQty = () => {
-    setEditableQty(po.recommended_qty);
-    setPendingConfirm(false);
   };
 
   return (
@@ -70,11 +90,12 @@ export default function POApprovalCard({ po, onApproved, onRejected }: POApprova
       className="bg-canvas border-l-[3px] border-l-amber-600 rounded-lg shadow-elevated overflow-hidden"
     >
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-hairline">
-        <div className="flex items-center justify-between">
-          <h3 className="text-card-title text-ink">Purchase Order Draft</h3>
-          <Badge variant="AI Generated" />
+      <div className="px-6 pt-6 pb-4 border-b border-hairline flex items-start justify-between">
+        <div>
+          <h3 className="text-card-title text-ink">{po.product}</h3>
+          <p className="text-caption text-ink-muted mt-0.5">Purchase Order {po.id}</p>
         </div>
+        <Badge variant="AI Generated">AI Generated</Badge>
       </div>
 
       {/* Error banner */}
@@ -112,6 +133,10 @@ export default function POApprovalCard({ po, onApproved, onRejected }: POApprova
               <p className="text-body text-ink mt-0.5">{po.supplier}</p>
             </div>
             <div>
+              <p className="text-caption text-ink-muted">Unit cost</p>
+              <p className="text-body text-ink mt-0.5 tabular-nums">${po.unit_cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
               <p className="text-caption text-ink-muted flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3 text-red-600" /> Predicted stockout
               </p>
@@ -129,9 +154,10 @@ export default function POApprovalCard({ po, onApproved, onRejected }: POApprova
             <input
               type="number"
               value={editableQty}
-              onChange={(e) => setEditableQty(Math.max(0, parseInt(e.target.value) || 0))}
+              onChange={(e) => setEditableQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              disabled={readOnly}
               aria-label="Purchase order quantity"
-              className="w-20 h-8 px-2 rounded-md border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
+              className="w-20 h-8 px-2 rounded-md border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -141,8 +167,8 @@ export default function POApprovalCard({ po, onApproved, onRejected }: POApprova
               <summary className="text-caption text-ink-muted cursor-pointer hover:text-ink transition-colors">
                 Why did the AI flag this?
               </summary>
-              <div className="mt-2 p-3 rounded-md bg-purple-50 border-l-2 border-purple-100">
-                <p className="text-caption text-ink-muted italic leading-relaxed">{po.agent_reasoning}</p>
+              <div className="mt-2 p-3 rounded-md bg-purple-50 border-l-2 border-purple-500">
+                <p className="text-caption text-ink-muted italic leading-relaxed whitespace-pre-line">{po.agent_reasoning}</p>
               </div>
             </details>
           )}
@@ -151,46 +177,75 @@ export default function POApprovalCard({ po, onApproved, onRejected }: POApprova
 
       {/* Actions bar — hidden on success */}
       {!isSettled && (
-        <div className="flex items-center gap-3 px-6 pt-4 pb-6 border-t border-hairline">
-          <Button
-            variant="ghost"
-            size="md"
-            className="text-red-600 hover:bg-red-50"
-            disabled={isLoading}
-            onClick={handleReject}
-          >
-            {rejectMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
+        <div>
+          {/* Reject reason panel */}
+          {showRejectReason && (
+            <div className="px-6 pt-4 border-t border-hairline space-y-3">
+              <label className="block text-caption text-ink-muted" htmlFor="reject-reason">
+                Reason for rejection <span className="text-ink-muted">(optional)</span>
+              </label>
+              <textarea
+                id="reject-reason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 rounded-md border border-hairline bg-canvas text-body text-ink resize-none hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
+                placeholder="Enter reason..."
+              />
+              <div className="flex items-center gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={handleRejectCancel}>Cancel</Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-800 text-white"
+                  disabled={isLoading}
+                  onClick={handleRejectConfirm}
+                >
+                  {rejectMutation.isPending ? 'Rejecting...' : 'Confirm reject'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className={`flex items-center gap-3 px-6 pt-4 pb-6 ${!showRejectReason ? 'border-t border-hairline' : ''}`}>
+            <Button
+              variant="ghost"
+              size="md"
+              className="text-red-600 hover:bg-red-50"
+              disabled={isLoading || showRejectReason}
+              onClick={handleRejectClick}
+            >
               <X className="w-4 h-4" />
-            )}
-            {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
-          </Button>
+              Reject
+            </Button>
 
-          <Button
-            variant="utility"
-            size="md"
-            disabled={isLoading}
-            onClick={handleEditQty}
-          >
-            <Pencil className="w-4 h-4" /> Edit Qty
-          </Button>
-
-          <Button
-            variant="primary"
-            size="md"
-            className={`flex-1 ${pendingConfirm ? 'bg-green-800 hover:bg-green-900' : 'bg-green-600 hover:bg-green-800'} text-white`}
-            disabled={isLoading}
-            aria-disabled={isLoading}
-            onClick={handleApprove}
-          >
-            {approveMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Check className="w-4 h-4" />
+            {qtyAlreadyEdited && (
+              <Button
+                variant="ghost"
+                size="md"
+                disabled={isLoading}
+                onClick={handleResetQty}
+              >
+                <RotateCcw className="w-4 h-4" /> Reset qty
+              </Button>
             )}
-            {approveMutation.isPending ? 'Approving...' : pendingConfirm ? 'Confirm approve?' : 'Approve'}
-          </Button>
+
+            <Button
+              variant="primary"
+              size="md"
+              className={`flex-1 ${pendingConfirm ? 'bg-green-800 hover:bg-green-900' : 'bg-green-600 hover:bg-green-800'} text-white`}
+              disabled={isLoading || showRejectReason}
+              aria-disabled={isLoading || showRejectReason}
+              onClick={handleApprove}
+            >
+              {approveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              {approveMutation.isPending ? 'Approving...' : pendingConfirm ? 'Confirm approve?' : 'Approve'}
+            </Button>
+          </div>
         </div>
       )}
     </div>

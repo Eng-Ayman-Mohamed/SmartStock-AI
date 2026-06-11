@@ -32,6 +32,7 @@ export async function approvePO(id: string, approvedQty: number): Promise<void> 
 }
 
 export async function rejectPO(id: string, reason?: string): Promise<void> {
-  const { data } = await api.patch(`/purchasing/purchase-orders/${id}/reject/`, { reason: reason || '' });
+  const payload = reason ? { reason } : {};
+  const { data } = await api.patch(`/purchasing/purchase-orders/${id}/reject/`, payload);
   return data;
 }
