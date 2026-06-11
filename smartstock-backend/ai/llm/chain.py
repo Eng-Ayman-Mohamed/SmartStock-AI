@@ -26,6 +26,7 @@ from ai.llm.few_shots import FEW_SHOT_EXAMPLES
 from ai.llm.output_parser import NLQueryOutputParser, NLQueryParseError
 from ai.llm.prompts import SYSTEM_PROMPT
 from ai.llm.schemas import NLQueryAction, NLQueryFilters, NLQueryResult
+from ai.observability.langfuse import invoke_with_langfuse
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +137,11 @@ class NLQueryChain:
     def run(self, query: str) -> NLQueryResult:
         try:
             logger.info('Running NL query chain with tool_choice=required')
-            response = self._chain.invoke(
+            response = invoke_with_langfuse(
+                self._chain,
                 {
                     'few_shot_query': _FEW_SHOT_PROMPT.format(query=query),
-                }
+                },
             )
             return self._parse_tool_call(response)
         except NLQueryParseError as exc:
@@ -176,7 +178,7 @@ def prompt_injection_filter(query: str) -> bool:
     chain = prompt | llm | StrOutputParser()
     try:
         logger.info('Running prompt injection filter')
-        return chain.invoke({'user_input': query}).strip().upper() == 'SAFE'
+        return invoke_with_langfuse(chain, {'user_input': query}).strip().upper() == 'SAFE'
     except Exception:
         logger.exception('Prompt injection filter failed')
         return True  # fail open so a network blip doesn't block all queries
@@ -205,11 +207,12 @@ def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
     chain = prompt | llm | StrOutputParser()
     try:
         logger.info('Running GPT-4o formatter')
-        return chain.invoke(
+        return invoke_with_langfuse(
+            chain,
             {
                 'query': original_query,
                 'data': json.dumps(raw_data, default=str),
-            }
+            },
         ).strip()
     except Exception as exc:
         logger.warning('GPT-4o formatter failed: %s', exc)
