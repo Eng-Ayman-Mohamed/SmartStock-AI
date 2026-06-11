@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error
 
 logger = logging.getLogger(__name__)
 

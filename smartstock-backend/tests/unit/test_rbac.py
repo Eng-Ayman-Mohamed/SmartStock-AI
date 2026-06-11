@@ -1,16 +1,15 @@
 import unittest
-
 from unittest.mock import MagicMock
 
 from apps.authentication.models import CustomUser
 from apps.authentication.permissions import (
+    ROLE_HIERARCHY,
     IsAdmin,
     IsAdminOnly,
     IsManager,
     IsManagerOrAbove,
     IsViewer,
     IsViewerOrAbove,
-    ROLE_HIERARCHY,
     _user_role_level,
 )
 

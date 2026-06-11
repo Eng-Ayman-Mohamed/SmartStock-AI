@@ -5,7 +5,6 @@ Combines both result sets, deduplicates, and returns chunks with scores.
 """
 
 import logging
-import os
 
 from django.db import connection
 

@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.authentication.models import CustomUser
 from apps.audit.models import AuditLog
+from apps.authentication.models import CustomUser
 
 
 class RAGQueryEndpointTests(APITestCase):
@@ -225,6 +225,7 @@ class RAGQueryServiceTests(APITestCase):
     @patch('apps.ingestion.services.ChatOpenAI')
     def test_rerank_raises_connection_error_without_cohere(self, mock_llm_cls, mock_emb_cls):
         import os
+
         from apps.ingestion.services import RAGQueryService
 
         os.environ.pop('COHERE_API_KEY', None)

@@ -1,7 +1,8 @@
 import logging
 import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 
 import cloudinary.uploader
 from django.utils import timezone
@@ -190,7 +191,7 @@ class RAGQueryView(APIView):
         # --- Prompt injection check (Task A10) ---
         try:
             is_safe = prompt_injection_filter(query)
-        except Exception as e:
+        except Exception:
             logger.exception('Prompt injection filter failed')
             is_safe = True
 
