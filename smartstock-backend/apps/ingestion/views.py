@@ -6,7 +6,7 @@ from concurrent.futures import TimeoutError as FuturesTimeout
 
 import cloudinary.uploader
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,6 +17,7 @@ from ai.llm.chain import prompt_injection_filter
 from ai.rag.ingestion import ingest_pdf
 from apps.audit.models import AuditLog
 from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
+from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 
 from .models import Document
 from .serializers import DocumentSerializer, DocumentUploadSerializer, RAGQuerySerializer
@@ -32,6 +33,80 @@ class RAGServiceUnavailable(Exception):
         super().__init__(self.message)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: DocumentSerializer(many=True),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+        },
+        tags=['ai'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: DocumentSerializer,
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
+        },
+        tags=['ai'],
+    ),
+    create=extend_schema(
+        request=DocumentUploadSerializer,
+        responses={
+            201: DocumentSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Viewer or above only'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Invalid file or metadata'),
+            429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
+            500: OpenApiResponse(response=ErrorResponseSerializer, description='Upload or ingestion failed'),
+        },
+        examples=[
+            OpenApiExample(
+                'Upload PDF Document',
+                value={
+                    'file': '(binary PDF file)',
+                    'doc_type': 'invoice',
+                },
+                request_only=True,
+            ),
+        ],
+        tags=['ai'],
+    ),
+    update=extend_schema(
+        request=DocumentUploadSerializer,
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Invalid file or metadata'),
+        },
+        tags=['ai'],
+    ),
+    partial_update=extend_schema(
+        request=DocumentUploadSerializer,
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
+            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Invalid file or metadata'),
+        },
+        tags=['ai'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
+        },
+        tags=['ai'],
+    ),
+)
 class DocumentViewSet(viewsets.ModelViewSet):
     """CRUD for RAG documents.
 
@@ -173,10 +248,31 @@ class RAGQueryView(APIView):
                     ),
                 },
             ),
-            400: None,
-            503: None,
-            504: None,
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Bad request or prompt injection detected'
+            ),
+            503: OpenApiResponse(response=ErrorResponseSerializer, description='RAG service unavailable'),
+            504: OpenApiResponse(response=ErrorResponseSerializer, description='Gateway timeout'),
         },
+        examples=[
+            OpenApiExample(
+                'RAG Query Request',
+                value={'query': 'What are our top selling products this month?'},
+                request_only=True,
+            ),
+            OpenApiExample(
+                'RAG Query Response',
+                value={
+                    'status': 'success',
+                    'data': {
+                        'answer': 'Based on the sales data, your top selling products are...',
+                        'sources': [{'document': 'sales_report.pdf', 'page': 1}],
+                    },
+                },
+                response_only=True,
+            ),
+        ],
+        tags=['ai'],
     )
     def post(self, request, *args, **kwargs):
         serializer = RAGQuerySerializer(data=request.data)
