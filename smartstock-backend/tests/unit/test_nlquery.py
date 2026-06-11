@@ -37,13 +37,13 @@ class TestNLQueryAction:
         """schemas.py must declare all 7 action values."""
         values = {a.value for a in NLQueryAction}
         assert values == {
-            "get_inventory",
-            "get_sales_report",
-            "get_low_stock",
-            "forecast_demand",
-            "get_supplier_info",
-            "get_total_value",
-            "get_top_products",
+            'get_inventory',
+            'get_sales_report',
+            'get_low_stock',
+            'forecast_demand',
+            'get_supplier_info',
+            'get_total_value',
+            'get_top_products',
         }
 
     def test_action_is_string_enum(self):
@@ -57,14 +57,12 @@ class TestNLQueryAction:
         assert schema_values == class_values, 'NL_QUERY_JSON_SCHEMA enum out of sync with NLQueryAction'
 
     def test_json_schema_action_is_required(self):
-        assert "action" in NL_QUERY_JSON_SCHEMA["required"]
+        assert 'action' in NL_QUERY_JSON_SCHEMA['required']
 
     def test_action_allowed_fields_covers_all_actions(self):
         """Every action in the enum must have an entry in ACTION_ALLOWED_FIELDS."""
         for action in NLQueryAction:
-            assert action.value in ACTION_ALLOWED_FIELDS, (
-                f"ACTION_ALLOWED_FIELDS missing entry for '{action.value}'"
-            )
+            assert action.value in ACTION_ALLOWED_FIELDS, f"ACTION_ALLOWED_FIELDS missing entry for '{action.value}'"
 
     def test_action_allowed_fields_are_non_empty(self):
         for action_val, fields in ACTION_ALLOWED_FIELDS.items():
@@ -80,48 +78,48 @@ class TestNLQueryFilters:
         assert f.to_dict() == {}
 
     def test_conditions_round_trip(self):
-        c = Condition(field="sku_code", op="eq", value="ABC-001")
+        c = Condition(field='sku_code', op='eq', value='ABC-001')
         f = NLQueryFilters(conditions=[c])
         d = f.to_dict()
-        assert d == {"conditions": [{"field": "sku_code", "op": "eq", "value": "ABC-001"}]}
+        assert d == {'conditions': [{'field': 'sku_code', 'op': 'eq', 'value': 'ABC-001'}]}
 
     def test_from_dict_with_conditions(self):
         raw = {
-            "conditions": [
-                {"field": "category", "op": "eq", "value": "Electronics"},
-                {"field": "is_active", "op": "eq", "value": True},
+            'conditions': [
+                {'field': 'category', 'op': 'eq', 'value': 'Electronics'},
+                {'field': 'is_active', 'op': 'eq', 'value': True},
             ],
-            "sort": "quantity_available",
-            "sort_order": "asc",
-            "limit": 10,
-            "offset": 10,
+            'sort': 'quantity_available',
+            'sort_order': 'asc',
+            'limit': 10,
+            'offset': 10,
         }
         f = NLQueryFilters.from_dict(raw)
         assert len(f.conditions) == 2
-        assert f.conditions[0].field == "category"
-        assert f.conditions[0].value == "Electronics"
-        assert f.conditions[1].field == "is_active"
-        assert f.sort == "quantity_available"
-        assert f.sort_order == "asc"
+        assert f.conditions[0].field == 'category'
+        assert f.conditions[0].value == 'Electronics'
+        assert f.conditions[1].field == 'is_active'
+        assert f.sort == 'quantity_available'
+        assert f.sort_order == 'asc'
         assert f.limit == 10
         assert f.offset == 10
 
     def test_to_dict_omits_empty_conditions(self):
-        f = NLQueryFilters(sort="quantity_on_hand", sort_order="desc")
+        f = NLQueryFilters(sort='quantity_on_hand', sort_order='desc')
         d = f.to_dict()
-        assert "conditions" not in d
-        assert d["sort"] == "quantity_on_hand"
-        assert d["sort_order"] == "desc"
+        assert 'conditions' not in d
+        assert d['sort'] == 'quantity_on_hand'
+        assert d['sort_order'] == 'desc'
 
     def test_condition_to_dict(self):
-        c = Condition(field="quantity_on_hand", op="lt", value=5)
-        assert c.to_dict() == {"field": "quantity_on_hand", "op": "lt", "value": 5}
+        c = Condition(field='quantity_on_hand', op='lt', value=5)
+        assert c.to_dict() == {'field': 'quantity_on_hand', 'op': 'lt', 'value': 5}
 
     def test_condition_from_dict(self):
-        c = Condition.from_dict({"field": "category", "op": "eq", "value": "Furniture"})
-        assert c.field == "category"
-        assert c.op == "eq"
-        assert c.value == "Furniture"
+        c = Condition.from_dict({'field': 'category', 'op': 'eq', 'value': 'Furniture'})
+        assert c.field == 'category'
+        assert c.op == 'eq'
+        assert c.value == 'Furniture'
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -138,27 +136,29 @@ class TestNLQueryOutputParser:
         result = self.parser.parse(raw)
         assert result.action == NLQueryAction.GET_INVENTORY
         assert len(result.filters.conditions) == 1
-        assert result.filters.conditions[0].field == "sku_code"
-        assert result.filters.conditions[0].value == "ABC-001"
+        assert result.filters.conditions[0].field == 'sku_code'
+        assert result.filters.conditions[0].value == 'ABC-001'
 
     def test_parses_multi_condition_with_sort_and_pagination(self):
-        raw = json.dumps({
-            "action": "get_inventory",
-            "filters": {
-                "conditions": [
-                    {"field": "category", "op": "eq", "value": "Electronics"},
-                    {"field": "is_active", "op": "eq", "value": True},
-                ],
-                "sort": "quantity_available",
-                "sort_order": "asc",
-                "limit": 10,
-                "offset": 10,
+        raw = json.dumps(
+            {
+                'action': 'get_inventory',
+                'filters': {
+                    'conditions': [
+                        {'field': 'category', 'op': 'eq', 'value': 'Electronics'},
+                        {'field': 'is_active', 'op': 'eq', 'value': True},
+                    ],
+                    'sort': 'quantity_available',
+                    'sort_order': 'asc',
+                    'limit': 10,
+                    'offset': 10,
+                },
             }
-        })
+        )
         result = self.parser.parse(raw)
         assert result.action == NLQueryAction.GET_INVENTORY
         assert len(result.filters.conditions) == 2
-        assert result.filters.sort == "quantity_available"
+        assert result.filters.sort == 'quantity_available'
         assert result.filters.limit == 10
         assert result.filters.offset == 10
 
@@ -199,59 +199,57 @@ class TestNLQueryOutputParser:
 
     def test_raises_when_filters_not_dict(self):
         raw = '{"action": "get_inventory", "filters": "bad"}'
-        with pytest.raises(NLQueryParseError, match="must be an object"):
+        with pytest.raises(NLQueryParseError, match='must be an object'):
             self.parser.parse(raw)
 
     def test_raises_on_invalid_operator(self):
-        raw = json.dumps({
-            "action": "get_inventory",
-            "filters": {
-                "conditions": [{"field": "sku_code", "op": "LIKE", "value": "A%"}]
-            }
-        })
-        with pytest.raises(NLQueryParseError, match="Invalid operator"):
+        raw = json.dumps(
+            {'action': 'get_inventory', 'filters': {'conditions': [{'field': 'sku_code', 'op': 'LIKE', 'value': 'A%'}]}}
+        )
+        with pytest.raises(NLQueryParseError, match='Invalid operator'):
             self.parser.parse(raw)
 
     def test_raises_on_disallowed_field_for_action(self):
         # contact_email is only allowed for get_supplier_info, not get_inventory
-        raw = json.dumps({
-            "action": "get_inventory",
-            "filters": {
-                "conditions": [{"field": "contact_email", "op": "eq", "value": "x@y.com"}]
+        raw = json.dumps(
+            {
+                'action': 'get_inventory',
+                'filters': {'conditions': [{'field': 'contact_email', 'op': 'eq', 'value': 'x@y.com'}]},
             }
-        })
-        with pytest.raises(NLQueryParseError, match="not allowed for action"):
+        )
+        with pytest.raises(NLQueryParseError, match='not allowed for action'):
             self.parser.parse(raw)
 
     def test_raises_on_conditions_not_list(self):
-        raw = json.dumps({
-            "action": "get_inventory",
-            "filters": {"conditions": "sku_code=ABC"}
-        })
-        with pytest.raises(NLQueryParseError, match="must be an array"):
+        raw = json.dumps({'action': 'get_inventory', 'filters': {'conditions': 'sku_code=ABC'}})
+        with pytest.raises(NLQueryParseError, match='must be an array'):
             self.parser.parse(raw)
 
     def test_raises_on_invalid_sort_order(self):
-        raw = json.dumps({
-            "action": "get_inventory",
-            "filters": {
-                "conditions": [{"field": "category", "op": "eq", "value": "Electronics"}],
-                "sort": "quantity_on_hand",
-                "sort_order": "random",
+        raw = json.dumps(
+            {
+                'action': 'get_inventory',
+                'filters': {
+                    'conditions': [{'field': 'category', 'op': 'eq', 'value': 'Electronics'}],
+                    'sort': 'quantity_on_hand',
+                    'sort_order': 'random',
+                },
             }
-        })
-        with pytest.raises(NLQueryParseError, match="Invalid sort_order"):
+        )
+        with pytest.raises(NLQueryParseError, match='Invalid sort_order'):
             self.parser.parse(raw)
 
     def test_raises_on_negative_limit(self):
-        raw = json.dumps({
-            "action": "get_inventory",
-            "filters": {
-                "conditions": [],
-                "limit": -5,
+        raw = json.dumps(
+            {
+                'action': 'get_inventory',
+                'filters': {
+                    'conditions': [],
+                    'limit': -5,
+                },
             }
-        })
-        with pytest.raises(NLQueryParseError, match="non-negative integer"):
+        )
+        with pytest.raises(NLQueryParseError, match='non-negative integer'):
             self.parser.parse(raw)
 
 
@@ -265,10 +263,7 @@ class TestFewShotExamples:
         self.parser = NLQueryOutputParser()
 
     def test_at_least_five_examples_defined(self):
-        assert len(FEW_SHOT_EXAMPLES) >= 5, (
-            f"Expected at least 5 few-shot examples, "
-            f"got {len(FEW_SHOT_EXAMPLES)}"
-        )
+        assert len(FEW_SHOT_EXAMPLES) >= 5, f'Expected at least 5 few-shot examples, got {len(FEW_SHOT_EXAMPLES)}'
 
     def test_covers_the_five_required_action_types(self):
         """
@@ -283,33 +278,31 @@ class TestFewShotExamples:
             NLQueryAction.FORECAST_DEMAND,
             NLQueryAction.GET_SUPPLIER_INFO,
         }
-        actions = {ex["action"] for ex in FEW_SHOT_EXAMPLES}
-        assert actions == required, (
-            f"Few-shot examples cover {actions}, expected {required}"
-        )
+        actions = {ex['action'] for ex in FEW_SHOT_EXAMPLES}
+        assert actions == required, f'Few-shot examples cover {actions}, expected {required}'
 
-    @pytest.mark.parametrize("example", FEW_SHOT_EXAMPLES)
+    @pytest.mark.parametrize('example', FEW_SHOT_EXAMPLES)
     def test_each_output_is_parseable(self, example):
         """Every 'output' string must parse cleanly through the output parser."""
-        result = self.parser.parse(example["output"])
-        assert result.action == example["action"]
+        result = self.parser.parse(example['output'])
+        assert result.action == example['action']
 
-    @pytest.mark.parametrize("example", FEW_SHOT_EXAMPLES)
+    @pytest.mark.parametrize('example', FEW_SHOT_EXAMPLES)
     def test_each_example_uses_conditions_array(self, example):
         """All examples must use the conditions-based format (not legacy flat keys)."""
-        data = json.loads(example["output"])
-        filters = data.get("filters", {})
+        data = json.loads(example['output'])
+        filters = data.get('filters', {})
         # Either no filters at all, or filters contains a conditions array
         if filters:
-            assert "conditions" in filters, (
+            assert 'conditions' in filters, (
                 f"Example for action '{example['action']}' uses legacy flat filters. "
-                "All examples must use the conditions array format."
+                'All examples must use the conditions array format.'
             )
 
     def test_build_few_shot_block_contains_all_examples(self):
         block = build_few_shot_block()
         for i in range(1, len(FEW_SHOT_EXAMPLES) + 1):
-            assert f"Example {i}:" in block, f"build_few_shot_block missing 'Example {i}:'"
+            assert f'Example {i}:' in block, f"build_few_shot_block missing 'Example {i}:'"
 
     def test_few_shot_block_embedded_in_system_prompt(self):
         assert 'Example 1:' in SYSTEM_PROMPT
@@ -317,15 +310,11 @@ class TestFewShotExamples:
 
     def test_system_prompt_contains_all_action_values(self):
         for action in NLQueryAction:
-            assert action.value in SYSTEM_PROMPT, (
-                f"Action '{action.value}' missing from system prompt"
-            )
+            assert action.value in SYSTEM_PROMPT, f"Action '{action.value}' missing from system prompt"
 
     def test_system_prompt_contains_all_valid_operators(self):
         for op in VALID_OPERATORS:
-            assert op in SYSTEM_PROMPT, (
-                f"Operator '{op}' missing from system prompt"
-            )
+            assert op in SYSTEM_PROMPT, f"Operator '{op}' missing from system prompt"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -341,136 +330,133 @@ class TestFewShotExamples:
 END_TO_END_CASES = [
     # 1. get_inventory — multi-condition: supplier + category + active flag + pagination
     (
-        "get_inventory",
-        (
-            "List all active widgets supplied by Acme Corp in the Hardware "
-            "category, 20 per page, second page"
+        'get_inventory',
+        ('List all active widgets supplied by Acme Corp in the Hardware category, 20 per page, second page'),
+        json.dumps(
+            {
+                'action': 'get_inventory',
+                'filters': {
+                    'conditions': [
+                        {'field': 'supplier_name', 'op': 'eq', 'value': 'Acme Corp'},
+                        {'field': 'category', 'op': 'eq', 'value': 'Hardware'},
+                        {'field': 'is_active', 'op': 'eq', 'value': True},
+                    ],
+                },
+                'sort': 'product_name',
+                'sort_order': 'asc',
+                'limit': 20,
+                'offset': 20,
+            }
         ),
-        json.dumps({
-            "action": "get_inventory",
-            "filters": {
-                "conditions": [
-                    {"field": "supplier_name", "op": "eq",  "value": "Acme Corp"},
-                    {"field": "category",      "op": "eq",  "value": "Hardware"},
-                    {"field": "is_active",     "op": "eq",  "value": True},
-                ],
-            },
-            "sort": "product_name",
-            "sort_order": "asc",
-            "limit": 20,
-            "offset": 20,
-        }),
         NLQueryAction.GET_INVENTORY,
         # verify first condition
         lambda r: (
-            r.filters.conditions[0].field == "supplier_name"
-            and r.filters.conditions[0].value == "Acme Corp"
+            r.filters.conditions[0].field == 'supplier_name'
+            and r.filters.conditions[0].value == 'Acme Corp'
             and len(r.filters.conditions) == 3
             and r.filters.limit == 20
             and r.filters.offset == 20
         ),
         "supplier_name='Acme Corp', 3 conditions, limit=20, offset=20",
     ),
-
     # 2. get_sales_report — date range + specific SKU + sort by qty sold desc
     (
-        "get_sales_report",
-        (
-            "Show Q1 2026 sales for SKU WGT-500, sorted by quantity sold "
-            "from highest to lowest"
+        'get_sales_report',
+        ('Show Q1 2026 sales for SKU WGT-500, sorted by quantity sold from highest to lowest'),
+        json.dumps(
+            {
+                'action': 'get_sales_report',
+                'filters': {
+                    'conditions': [
+                        {'field': 'sku_code', 'op': 'eq', 'value': 'WGT-500'},
+                        {'field': 'date_from', 'op': 'gte', 'value': '2026-01-01'},
+                        {'field': 'date_to', 'op': 'lte', 'value': '2026-03-31'},
+                    ],
+                },
+                'sort': 'quantity_sold',
+                'sort_order': 'desc',
+            }
         ),
-        json.dumps({
-            "action": "get_sales_report",
-            "filters": {
-                "conditions": [
-                    {"field": "sku_code",   "op": "eq",  "value": "WGT-500"},
-                    {"field": "date_from",  "op": "gte", "value": "2026-01-01"},
-                    {"field": "date_to",    "op": "lte", "value": "2026-03-31"},
-                ],
-            },
-            "sort": "quantity_sold",
-            "sort_order": "desc",
-        }),
         NLQueryAction.GET_SALES_REPORT,
         lambda r: (
-            r.filters.conditions[0].field == "sku_code"
-            and r.filters.conditions[0].value == "WGT-500"
-            and r.filters.conditions[1].op == "gte"
-            and r.filters.conditions[2].value == "2026-03-31"
-            and r.filters.sort == "quantity_sold"
-            and r.filters.sort_order == "desc"
+            r.filters.conditions[0].field == 'sku_code'
+            and r.filters.conditions[0].value == 'WGT-500'
+            and r.filters.conditions[1].op == 'gte'
+            and r.filters.conditions[2].value == '2026-03-31'
+            and r.filters.sort == 'quantity_sold'
+            and r.filters.sort_order == 'desc'
         ),
-        "sku=WGT-500, date range Q1 2026, sort qty_sold desc",
+        'sku=WGT-500, date range Q1 2026, sort qty_sold desc',
     ),
-
     # 3. get_low_stock — category + quantity threshold + reorder_point check
     (
-        "get_low_stock",
-        (
-            "Which Furniture items have fewer than 10 units on hand "
-            "and are below their reorder point?"
+        'get_low_stock',
+        ('Which Furniture items have fewer than 10 units on hand and are below their reorder point?'),
+        json.dumps(
+            {
+                'action': 'get_low_stock',
+                'filters': {
+                    'conditions': [
+                        {'field': 'category', 'op': 'eq', 'value': 'Furniture'},
+                        {'field': 'quantity_on_hand', 'op': 'lt', 'value': 10},
+                        {'field': 'reorder_point', 'op': 'gt', 'value': 0},
+                    ],
+                },
+            }
         ),
-        json.dumps({
-            "action": "get_low_stock",
-            "filters": {
-                "conditions": [
-                    {"field": "category",        "op": "eq",  "value": "Furniture"},
-                    {"field": "quantity_on_hand", "op": "lt",  "value": 10},
-                    {"field": "reorder_point",    "op": "gt",  "value": 0},
-                ],
-            },
-        }),
         NLQueryAction.GET_LOW_STOCK,
         lambda r: (
             len(r.filters.conditions) == 3
-            and r.filters.conditions[0].value == "Furniture"
-            and r.filters.conditions[1].op == "lt"
+            and r.filters.conditions[0].value == 'Furniture'
+            and r.filters.conditions[1].op == 'lt'
             and r.filters.conditions[1].value == 10
-            and r.filters.conditions[2].field == "reorder_point"
+            and r.filters.conditions[2].field == 'reorder_point'
         ),
-        "Furniture + qty<10 + reorder_point>0, 3 conditions",
+        'Furniture + qty<10 + reorder_point>0, 3 conditions',
     ),
-
     # 4. forecast_demand — by SKU (more precise than product_name)
     (
-        "forecast_demand",
-        "What is the 30-day demand forecast for SKU CHAIR-PRO-2?",
-        json.dumps({
-            "action": "forecast_demand",
-            "filters": {
-                "conditions": [
-                    {"field": "sku_code", "op": "eq", "value": "CHAIR-PRO-2"},
-                ],
-            },
-        }),
+        'forecast_demand',
+        'What is the 30-day demand forecast for SKU CHAIR-PRO-2?',
+        json.dumps(
+            {
+                'action': 'forecast_demand',
+                'filters': {
+                    'conditions': [
+                        {'field': 'sku_code', 'op': 'eq', 'value': 'CHAIR-PRO-2'},
+                    ],
+                },
+            }
+        ),
         NLQueryAction.FORECAST_DEMAND,
         lambda r: (
             len(r.filters.conditions) == 1
-            and r.filters.conditions[0].field == "sku_code"
-            and r.filters.conditions[0].value == "CHAIR-PRO-2"
+            and r.filters.conditions[0].field == 'sku_code'
+            and r.filters.conditions[0].value == 'CHAIR-PRO-2'
         ),
-        "sku_code=CHAIR-PRO-2",
+        'sku_code=CHAIR-PRO-2',
     ),
-
     # 5. get_supplier_info — starts_with + active flag, 2 conditions
     (
-        "get_supplier_info",
+        'get_supplier_info',
         "Find all active suppliers whose name starts with 'Tech'",
-        json.dumps({
-            "action": "get_supplier_info",
-            "filters": {
-                "conditions": [
-                    {"field": "supplier_name", "op": "starts_with", "value": "Tech"},
-                    {"field": "is_active",     "op": "eq",          "value": True},
-                ],
-            },
-        }),
+        json.dumps(
+            {
+                'action': 'get_supplier_info',
+                'filters': {
+                    'conditions': [
+                        {'field': 'supplier_name', 'op': 'starts_with', 'value': 'Tech'},
+                        {'field': 'is_active', 'op': 'eq', 'value': True},
+                    ],
+                },
+            }
+        ),
         NLQueryAction.GET_SUPPLIER_INFO,
         lambda r: (
             len(r.filters.conditions) == 2
-            and r.filters.conditions[0].op == "starts_with"
-            and r.filters.conditions[0].value == "Tech"
-            and r.filters.conditions[1].field == "is_active"
+            and r.filters.conditions[0].op == 'starts_with'
+            and r.filters.conditions[0].value == 'Tech'
+            and r.filters.conditions[1].field == 'is_active'
             and r.filters.conditions[1].value is True
         ),
         "supplier starts_with 'Tech' AND is_active=True",
@@ -497,7 +483,7 @@ class TestNLQueryChainEndToEnd:
     """
 
     @pytest.mark.parametrize(
-        "query_type, user_input, mocked_output, expected_action, assertions, assertion_desc",
+        'query_type, user_input, mocked_output, expected_action, assertions, assertion_desc',
         END_TO_END_CASES,
         ids=[c[0] for c in END_TO_END_CASES],
     )
@@ -523,13 +509,13 @@ class TestNLQueryChainEndToEnd:
             f'[{query_type}] Expected action {expected_action}, got {result.action}'
         )
         assert assertions(result), (
-            f"[{query_type}] Assertion failed: {assertion_desc}\n"
-            f"Got filters: {result.filters.to_dict()}"
+            f'[{query_type}] Assertion failed: {assertion_desc}\nGot filters: {result.filters.to_dict()}'
         )
 
     def test_chain_falls_back_on_parse_error(self):
         """If the LLM returns garbage, run() should fall back to get_inventory."""
         from ai.llm.chain import NLQueryChain
+
         chain = NLQueryChain.__new__(NLQueryChain)
         mock_lcel_chain = MagicMock()
         mock_msg = MagicMock()
@@ -551,7 +537,12 @@ class TestNLQueryChainEndToEnd:
         mock_msg = MagicMock()
         mock_msg.content = '{"action": "hack_the_planet", "filters": {}}'
         mock_msg.tool_calls = [
-            {'name': 'nl_query', 'args': {'action': 'hack_the_planet', 'filters': {}}, 'id': 'call_1', 'type': 'tool_call'},
+            {
+                'name': 'nl_query',
+                'args': {'action': 'hack_the_planet', 'filters': {}},
+                'id': 'call_1',
+                'type': 'tool_call',
+            },
         ]
         mock_lcel_chain.invoke.return_value = mock_msg
         chain._chain = mock_lcel_chain
@@ -567,12 +558,12 @@ class TestNLQueryChainEndToEnd:
         """
         from ai.llm.chain import NLQueryChain
 
-        payload = json.dumps({
-            "action": "get_inventory",
-            "filters": {
-                "conditions": [{"field": "contact_email", "op": "eq", "value": "x@y.com"}]
+        payload = json.dumps(
+            {
+                'action': 'get_inventory',
+                'filters': {'conditions': [{'field': 'contact_email', 'op': 'eq', 'value': 'x@y.com'}]},
             }
-        })
+        )
 
         chain = NLQueryChain.__new__(NLQueryChain)
         mock_lcel_chain = MagicMock()
@@ -582,7 +573,7 @@ class TestNLQueryChainEndToEnd:
         mock_lcel_chain.invoke.return_value = mock_msg
         chain._chain = mock_lcel_chain
 
-        result = chain.run("find supplier contact")
+        result = chain.run('find supplier contact')
         assert result.action == NLQueryAction.GET_INVENTORY
         assert result.filters.to_dict() == {}
 
@@ -590,29 +581,31 @@ class TestNLQueryChainEndToEnd:
         """NLQueryResult.to_dict() must faithfully reflect all parsed conditions."""
         from ai.llm.chain import NLQueryChain
 
-        payload = json.dumps({
-            "action": "get_low_stock",
-            "filters": {
-                "conditions": [
-                    {"field": "category",        "op": "eq",  "value": "Furniture"},
-                    {"field": "quantity_on_hand", "op": "lt",  "value": 10},
-                    {"field": "reorder_point",    "op": "gt",  "value": 0},
-                ],
-            },
-        })
+        payload = json.dumps(
+            {
+                'action': 'get_low_stock',
+                'filters': {
+                    'conditions': [
+                        {'field': 'category', 'op': 'eq', 'value': 'Furniture'},
+                        {'field': 'quantity_on_hand', 'op': 'lt', 'value': 10},
+                        {'field': 'reorder_point', 'op': 'gt', 'value': 0},
+                    ],
+                },
+            }
+        )
 
         chain = NLQueryChain.__new__(NLQueryChain)
         mock_lcel_chain = MagicMock()
         mock_lcel_chain.invoke.return_value = _mock_tool_call_response(payload)
         chain._chain = mock_lcel_chain
 
-        result = chain.run("Furniture items below reorder point")
+        result = chain.run('Furniture items below reorder point')
         d = result.to_dict()
 
-        assert d["action"] == "get_low_stock"
-        conds = d["filters"]["conditions"]
+        assert d['action'] == 'get_low_stock'
+        conds = d['filters']['conditions']
         assert len(conds) == 3
-        assert conds[1] == {"field": "quantity_on_hand", "op": "lt", "value": 10}
+        assert conds[1] == {'field': 'quantity_on_hand', 'op': 'lt', 'value': 10}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -634,4 +627,4 @@ class TestOutOfScope:
 
     def test_system_prompt_restricts_to_inventory_scope(self):
         """System prompt must mention the domain boundary."""
-        assert "inventory" in SYSTEM_PROMPT.lower()
+        assert 'inventory' in SYSTEM_PROMPT.lower()

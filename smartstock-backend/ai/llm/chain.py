@@ -31,7 +31,9 @@ logger = logging.getLogger(__name__)
 
 
 class NLQueryToolSchema(BaseModel):
-    action: str = Field(description='Action enum value (get_inventory, get_sales_report, get_low_stock, forecast_demand, get_supplier_info, get_total_value, get_top_products)')
+    action: str = Field(
+        description='Action enum value (get_inventory, get_sales_report, get_low_stock, forecast_demand, get_supplier_info, get_total_value, get_top_products)'
+    )
     filters: Optional[dict] = Field(default=None, description='Filter conditions, sort, limit, offset')
     sort: Optional[str] = Field(default=None, description='Field name to sort by')
     limit: Optional[int] = Field(default=None, description='Maximum number of results')
@@ -123,10 +125,8 @@ class NLQueryChain:
             if raw_filters and isinstance(raw_filters, dict):
                 raw_conditions = raw_filters.get('conditions', [])
                 from ai.llm.schemas import Condition
-                filters.conditions = [
-                    Condition(field=c['field'], op=c['op'], value=c['value'])
-                    for c in raw_conditions
-                ]
+
+                filters.conditions = [Condition(field=c['field'], op=c['op'], value=c['value']) for c in raw_conditions]
             return NLQueryResult(action=action, filters=filters)
         content = getattr(response, 'content', '') or ''
         if content:

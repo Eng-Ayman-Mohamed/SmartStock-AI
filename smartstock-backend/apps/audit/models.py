@@ -19,7 +19,9 @@ class AuditEvent(models.TextChoices):
 
 class AuditLog(models.Model):
     # What happened
-    event = models.CharField(max_length=100, choices=AuditEvent.choices)  # e.g. "USER_LOGIN", "PO_APPROVED", "AI_NL_QUERY"
+    event = models.CharField(
+        max_length=100, choices=AuditEvent.choices
+    )  # e.g. "USER_LOGIN", "PO_APPROVED", "AI_NL_QUERY"
     entity_type = models.CharField(max_length=100, blank=True)  # e.g. "PurchaseOrder", "User"
     entity_id = models.IntegerField(null=True, blank=True)
 

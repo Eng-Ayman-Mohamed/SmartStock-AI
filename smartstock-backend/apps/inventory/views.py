@@ -38,6 +38,7 @@ def get_nl_chain():
     global _nl_chain
     if _nl_chain is None:
         from ai.llm.chain import NLQueryChain
+
         _nl_chain = NLQueryChain()
     return _nl_chain
 
@@ -48,6 +49,7 @@ def get_langfuse():
         try:
             from django.conf import settings
             from langfuse import Langfuse
+
             public_key = getattr(settings, 'LANGFUSE_PUBLIC_KEY', None)
             secret_key = getattr(settings, 'LANGFUSE_SECRET_KEY', None)
             if public_key and secret_key:
