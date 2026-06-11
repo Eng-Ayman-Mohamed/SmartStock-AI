@@ -153,7 +153,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
     'AUTH_COOKIE_HTTP_ONLY': True,
-    'AUTH_COOKIE_SECURE': False,
+    'AUTH_COOKIE_SECURE': os.environ.get('DJANGO_DEBUG', 'True') != 'True',
     'AUTH_COOKIE_SAMESITE': 'Strict',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }

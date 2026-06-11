@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +32,18 @@ def _moving_average_forecast(df: pd.DataFrame, periods: int = 30) -> pd.DataFram
 def _compute_accuracy(df: pd.DataFrame, model) -> tuple:
     if len(df) < 2:
         return None, None
-    split_idx = max(1, int(len(df) * 0.9))
-    test = df.iloc[split_idx:]
-    if len(test) < 1:
-        return None, None
-    forecast = model.predict(test[['ds']])
-    y_true = test['y'].values
+    forecast = model.predict(df[['ds']])
+    y_true = df['y'].values
     y_pred = forecast['yhat'].values
     y_true = np.maximum(y_true, 0)
     y_pred = np.maximum(y_pred, 0)
     mae = mean_absolute_error(y_true, y_pred)
-    mape = mean_absolute_percentage_error(y_true, y_pred)
-    return float(mae), float(mape)
+    nonzero_mask = y_true > 0
+    if nonzero_mask.sum() > 0:
+        mape = float(np.mean(np.abs((y_true[nonzero_mask] - y_pred[nonzero_mask]) / y_true[nonzero_mask])))
+    else:
+        mape = float('inf')
+    return float(mae), mape
 
 
 class ProphetEngine:

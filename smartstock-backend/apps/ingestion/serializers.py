@@ -64,3 +64,13 @@ class DocumentChunkSerializer(serializers.ModelSerializer):
             'document',
         ]
         read_only_fields = ['id']
+
+
+class RAGQuerySerializer(serializers.Serializer):
+    query = serializers.CharField(required=True, max_length=500)
+
+    def validate_query(self, value):
+        cleaned = value.strip()
+        if len(cleaned) < 3:
+            raise serializers.ValidationError('Query must be at least 3 characters long.')
+        return cleaned
