@@ -1,5 +1,6 @@
 from django.core.cache import cache
 from django.db import connections
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -31,6 +32,23 @@ class HealthCheckView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {
+                        'status': {'type': 'string', 'example': 'ok'},
+                        'database': {'type': 'string', 'example': 'connected'},
+                        'redis': {'type': 'string', 'example': 'connected'},
+                    },
+                },
+                description='Service is healthy',
+            ),
+        },
+        tags=['health'],
+        auth=[],
+    )
     def get(self, request):
         db_ok = _check_database()
         redis_ok = _check_redis()
@@ -55,6 +73,34 @@ class ReadinessView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {
+                        'status': {'type': 'string', 'example': 'ok'},
+                        'database': {'type': 'string', 'example': 'connected'},
+                        'redis': {'type': 'string', 'example': 'connected'},
+                    },
+                },
+                description='All dependencies available',
+            ),
+            503: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {
+                        'status': {'type': 'string', 'example': 'degraded'},
+                        'database': {'type': 'string'},
+                        'redis': {'type': 'string'},
+                    },
+                },
+                description='One or more dependencies unavailable',
+            ),
+        },
+        tags=['health'],
+        auth=[],
+    )
     def get(self, request):
         db_ok = _check_database()
         redis_ok = _check_redis()
