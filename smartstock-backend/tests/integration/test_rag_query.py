@@ -90,8 +90,9 @@ class RAGQueryEndpointTests(APITestCase):
     # --- Successful RAG query ---
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_successful_rag_query(self, mock_execute, mock_filter):
+    def test_successful_rag_query(self, mock_execute, mock_executor_cls, mock_filter):
         self._auth(self.manager)
         mock_execute.return_value = {
             'answer': 'The supplier return policy allows returns within 30 days. [Source: supplier_policy.pdf, Page: 3]',
@@ -99,6 +100,18 @@ class RAGQueryEndpointTests(APITestCase):
             'chunks_retrieved': 5,
             'chunks_reranked': 3,
         }
+
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        def run_sync(fn, *args, **kwargs):
+            result = fn(*args, **kwargs)
+            future = MagicMock()
+            future.result.return_value = result
+            return future
+
+        mock_executor.submit.side_effect = run_sync
+
         response = self.client.post(
             self._url(),
             {'query': 'What is the supplier return policy?'},
@@ -115,8 +128,9 @@ class RAGQueryEndpointTests(APITestCase):
     # --- No relevant context found ---
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_no_relevant_context_returns_explicit_message(self, mock_execute, mock_filter):
+    def test_no_relevant_context_returns_explicit_message(self, mock_execute, mock_executor_cls, mock_filter):
         self._auth(self.manager)
         mock_execute.return_value = {
             'answer': 'I cannot find this information in the provided records.',
@@ -124,6 +138,18 @@ class RAGQueryEndpointTests(APITestCase):
             'chunks_retrieved': 0,
             'chunks_reranked': 0,
         }
+
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        def run_sync(fn, *args, **kwargs):
+            result = fn(*args, **kwargs)
+            future = MagicMock()
+            future.result.return_value = result
+            return future
+
+        mock_executor.submit.side_effect = run_sync
+
         response = self.client.post(
             self._url(),
             {'query': 'What is the weather today?'},
@@ -167,10 +193,23 @@ class RAGQueryEndpointTests(APITestCase):
     # --- Service failure ---
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_service_error_returns_500(self, mock_execute, mock_filter):
+    def test_service_error_returns_500(self, mock_execute, mock_executor_cls, mock_filter):
         self._auth(self.manager)
         mock_execute.side_effect = ValueError('OPENAI_API_KEY is missing.')
+
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        def run_sync(fn, *args, **kwargs):
+            result = fn(*args, **kwargs)
+            future = MagicMock()
+            future.result.return_value = result
+            return future
+
+        mock_executor.submit.side_effect = run_sync
+
         response = self.client.post(
             self._url(),
             {'query': 'What is the forecast?'},
@@ -395,11 +434,24 @@ class RAGQueryFullPipelineTests(APITestCase):
         self.assertEqual(response.data['data']['sources'][0]['document'], 'supplier_policy.pdf')
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_cohere_unavailable_returns_503(self, mock_execute, mock_filter):
+    def test_cohere_unavailable_returns_503(self, mock_execute, mock_executor_cls, mock_filter):
         """When Cohere API fails, view returns 503."""
         self._auth(self.manager)
         mock_execute.side_effect = ConnectionError('COHERE_API_KEY is not set.')
+
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        def run_sync(fn, *args, **kwargs):
+            result = fn(*args, **kwargs)
+            future = MagicMock()
+            future.result.return_value = result
+            return future
+
+        mock_executor.submit.side_effect = run_sync
+
         response = self.client.post(
             self._url(),
             {'query': 'test query'},
