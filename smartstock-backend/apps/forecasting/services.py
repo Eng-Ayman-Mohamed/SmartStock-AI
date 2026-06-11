@@ -98,6 +98,24 @@ class ForecastingService:
             'total_predicted_demand': total_predicted,
         }
 
+    def persist_reorder_flag(self, decision: dict):
+        sku = self.repo.get_sku_by_code(decision['sku_code'])
+        flag = self.repo.upsert_open_reorder_flag(
+            sku_id=sku.id,
+            data={
+                'quantity_available': decision['quantity_available'],
+                'total_predicted_demand': decision['total_predicted_demand'],
+                'safety_stock': decision['safety_stock'],
+                'lead_time_days': decision['lead_time_days'],
+                'forecast_days': decision['forecast_days'],
+                'reorder_required': decision['reorder_required'],
+                'has_open_po': decision['has_open_po'],
+                'open_po_id': decision.get('open_po_id'),
+                'reasoning': decision['reasoning'],
+            },
+        )
+        return flag
+
     def run_forecast(self, sku_id: int = None):
         if sku_id:
             skus = [self.repo.get_sku(sku_id)]
