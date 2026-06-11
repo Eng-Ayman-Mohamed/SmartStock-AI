@@ -112,6 +112,43 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Inventory forecasting and management API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'SWAGGER_UI_SETTINGS': {
+        'persistAuthorization': True,
+    },
+    'AUTHENTICATION_WHITELIST': [],
+    'SECURITY': [
+        {'BearerJWT': []},
+    ],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'BearerJWT': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+                'description': 'Enter your JWT access token obtained from /api/auth/login/',
+            },
+        },
+        'schemas': {
+            'AuthSuccessResponse': {
+                'type': 'object',
+                'properties': {
+                    'access': {'type': 'string', 'description': 'JWT access token'},
+                    'refresh': {'type': 'string', 'description': 'JWT refresh token (also set as HttpOnly cookie)'},
+                },
+            },
+        },
+    },
+    'TAGS': [
+        {'name': 'auth', 'description': 'Authentication and user management'},
+        {'name': 'inventory', 'description': 'Products, SKUs, stock levels, suppliers, categories'},
+        {'name': 'forecasting', 'description': 'Demand forecasting and predictions'},
+        {'name': 'purchasing', 'description': 'Purchase orders and supplier management'},
+        {'name': 'ai', 'description': 'AI-powered NL queries and document ingestion'},
+        {'name': 'health', 'description': 'Service health and readiness probes'},
+        {'name': 'audit', 'description': 'Audit logs and activity tracking'},
+    ],
 }
 
 REST_FRAMEWORK = {
