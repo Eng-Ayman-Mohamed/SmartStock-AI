@@ -40,6 +40,7 @@ class ForecastingService:
 
     def _compute_dashboard(self):
         import datetime
+
         from .models import ForecastResult
 
         today = datetime.date.today()

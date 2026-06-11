@@ -46,8 +46,8 @@ def get_langfuse():
     global _langfuse_client
     if _langfuse_client is None:
         try:
-            from langfuse import Langfuse
             from django.conf import settings
+            from langfuse import Langfuse
             public_key = getattr(settings, 'LANGFUSE_PUBLIC_KEY', None)
             secret_key = getattr(settings, 'LANGFUSE_SECRET_KEY', None)
             if public_key and secret_key:

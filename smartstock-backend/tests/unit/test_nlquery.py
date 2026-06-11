@@ -10,21 +10,22 @@ Covers:
 """
 
 import json
-import pytest
 from unittest.mock import MagicMock
 
-from ai.llm.schemas import (
-    NLQueryAction,
-    NLQueryFilters,
-    NLQueryResult,
-    NL_QUERY_JSON_SCHEMA,
-    ACTION_ALLOWED_FIELDS,
-    VALID_OPERATORS,
-    Condition,
-)
+import pytest
+
 from ai.llm.few_shots import FEW_SHOT_EXAMPLES, build_few_shot_block
 from ai.llm.output_parser import NLQueryOutputParser, NLQueryParseError
 from ai.llm.prompts import SYSTEM_PROMPT
+from ai.llm.schemas import (
+    ACTION_ALLOWED_FIELDS,
+    NL_QUERY_JSON_SCHEMA,
+    VALID_OPERATORS,
+    Condition,
+    NLQueryAction,
+    NLQueryFilters,
+    NLQueryResult,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. Schema integrity
