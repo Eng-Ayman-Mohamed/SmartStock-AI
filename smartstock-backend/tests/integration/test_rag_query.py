@@ -179,6 +179,16 @@ class RAGQueryEndpointTests(APITestCase):
             'sources': [{'document': 'test.pdf', 'page': 1}],
             'chunks_retrieved': 3,
             'chunks_reranked': 2,
+            'retrieved_chunks': [
+                {
+                    'content': 'chunk1',
+                    'source_document': 'test.pdf',
+                    'page_number': 1,
+                    'score': 0.9,
+                    'rerank_score': 0.95,
+                },
+            ],
+            'token_usage': {'prompt_tokens': 100, 'completion_tokens': 50},
         }
         self.client.post(
             self._url(),
@@ -304,6 +314,8 @@ class RAGQueryFullPipelineTests(APITestCase):
     @patch('ai.rag.retrieval.connection')
     def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_chat_cls, mock_emb_cls, mock_filter):
         """Test full pipeline with mocked DB and LLM calls."""
+        from langchain_core.messages import AIMessage
+
         self._auth(self.manager)
 
         # Mock embeddings
@@ -321,11 +333,11 @@ class RAGQueryFullPipelineTests(APITestCase):
         mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
         mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
-        # Mock ChatOpenAI for LLM call
+        # Mock ChatOpenAI for LLM call — must return AIMessage for StrOutputParser
         mock_llm = MagicMock()
-        mock_llm_response = MagicMock()
-        mock_llm_response.content = 'You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
-        mock_llm.invoke.return_value = mock_llm_response
+        mock_llm.invoke.return_value = AIMessage(
+            content='You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
+        )
         mock_chat_cls.return_value = mock_llm
 
         # Mock Cohere reranker
