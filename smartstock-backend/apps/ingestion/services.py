@@ -7,6 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+from ai.observability.langfuse import invoke_with_langfuse
 from ai.rag.ingestion import EMBEDDING_MODEL, ingest_pdf
 
 from .models import Document, DocumentChunk
@@ -196,7 +197,7 @@ class RAGQueryService:
             ]
         )
         chain = prompt | llm | StrOutputParser()
-        return chain.invoke({'context': context, 'query': query}).strip()
+        return invoke_with_langfuse(chain, {'context': context, 'query': query}).strip()
 
     def extract_sources(self, chunks: list[dict]) -> list[dict]:
         seen = set()
