@@ -1,5 +1,7 @@
 # SmartStock AI
 
+[![CI](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/ci.yml)
+
 > AI-powered Inventory Management Platform — proactive demand planning, LLM-powered analytics, and autonomous purchasing agents.
 
 **Team:** Horizonte Infinito — Ayman Mohamed · Omar Wael · Mostafa Abdel Aziz · Mostafa Abdel Qawy · Mawada Alexander
