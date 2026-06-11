@@ -1,15 +1,13 @@
-from datetime import date, timedelta
-from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.inventory.models import Category, Product, SKU, SalesRecord, StockLevel, Supplier
+from ai.llm.schemas import NLQueryFilters
+from apps.inventory.models import SKU, Category, Product, StockLevel, Supplier
 from apps.inventory.views import (
     NLQuerySerializer,
     _parse_condition,
 )
-from ai.llm.schemas import NLQueryFilters
 
 
 class NLQuerySerializerTests(TestCase):
@@ -114,16 +112,18 @@ class ParseConditionTests(TestCase):
 
 class BuildQFromFiltersTests(TestCase):
     def test_empty_conditions(self):
-        from apps.inventory.views import _build_q_from_filters
         from django.db.models import Q
+
+        from apps.inventory.views import _build_q_from_filters
 
         filters = NLQueryFilters(conditions=[])
         q = _build_q_from_filters(filters)
         self.assertEqual(q, Q())
 
     def test_single_condition(self):
-        from apps.inventory.views import _build_q_from_filters
         from django.db.models import Q
+
+        from apps.inventory.views import _build_q_from_filters
 
         filters = NLQueryFilters(
             conditions=[{'field': 'name', 'operator': 'eq', 'value': 'Widget'}],
@@ -132,8 +132,9 @@ class BuildQFromFiltersTests(TestCase):
         self.assertEqual(q, Q(name='Widget'))
 
     def test_and_conjunction(self):
-        from apps.inventory.views import _build_q_from_filters
         from django.db.models import Q
+
+        from apps.inventory.views import _build_q_from_filters
 
         filters = NLQueryFilters(
             conditions=[
@@ -282,16 +283,16 @@ class InventoryServiceMethodTests(TestCase):
         self.assertEqual(result.quantity_on_hand, 60)
 
     def test_filter_by_stock_status_in_stock(self):
-        from apps.inventory.services import InventoryService
         from apps.inventory.models import Product
+        from apps.inventory.services import InventoryService
 
         qs = Product.objects.filter(id=self.product.id)
         result = InventoryService.filter_by_stock_status(qs, 'in_stock')
         self.assertTrue(result.exists())
 
     def test_filter_by_stock_status_low_stock(self):
-        from apps.inventory.services import InventoryService
         from apps.inventory.models import Product
+        from apps.inventory.services import InventoryService
 
         self.stock_level.quantity_on_hand = 5
         self.stock_level.save()
@@ -300,8 +301,8 @@ class InventoryServiceMethodTests(TestCase):
         self.assertTrue(result.exists())
 
     def test_filter_by_stock_status_out_of_stock(self):
-        from apps.inventory.services import InventoryService
         from apps.inventory.models import Product
+        from apps.inventory.services import InventoryService
 
         self.stock_level.quantity_on_hand = 0
         self.stock_level.save()
@@ -310,8 +311,8 @@ class InventoryServiceMethodTests(TestCase):
         self.assertTrue(result.exists())
 
     def test_filter_by_stock_status_unknown(self):
-        from apps.inventory.services import InventoryService
         from apps.inventory.models import Product
+        from apps.inventory.services import InventoryService
 
         qs = Product.objects.filter(id=self.product.id)
         result = InventoryService.filter_by_stock_status(qs, 'unknown')

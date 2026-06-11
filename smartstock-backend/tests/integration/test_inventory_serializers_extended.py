@@ -2,11 +2,11 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from apps.inventory.models import Category, Product, SKU, SalesRecord, StockLevel, Supplier
+from apps.inventory.models import SKU, Category, Product, Supplier
 from apps.inventory.serializers import (
     ProductWriteSerializer,
-    SKUSerializer,
     SalesRecordSerializer,
+    SKUSerializer,
     StockLevelSerializer,
     SupplierSerializer,
 )

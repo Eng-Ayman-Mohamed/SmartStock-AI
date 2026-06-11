@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from apps.forecasting.models import ForecastResult, ReorderFlag
 from apps.forecasting.repositories import ForecastingRepository
-from apps.inventory.models import Category, Product, SalesRecord, SKU
+from apps.inventory.models import SKU, Category, Product, SalesRecord
 
 
 class ForecastingRepositoryTest(TestCase):
