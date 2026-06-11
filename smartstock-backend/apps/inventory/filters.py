@@ -40,7 +40,9 @@ class ProductFilter(django_filters.FilterSet):
         return InventoryService.filter_by_stock_status(queryset, value)
 
     def filter_search(self, queryset, name, value):
-        return queryset.filter(db_models.Q(name__icontains=value) | db_models.Q(skus__code__icontains=value)).distinct()
+        return queryset.filter(
+            db_models.Q(name__icontains=value) | db_models.Q(skus__code__icontains=value)
+        ).distinct()
 
 
 class SKUFilter(django_filters.FilterSet):
@@ -53,8 +55,12 @@ class SKUFilter(django_filters.FilterSet):
 
 
 class StockLevelFilter(django_filters.FilterSet):
-    quantity_on_hand_lte = django_filters.NumberFilter(field_name='quantity_on_hand', lookup_expr='lte')
-    quantity_on_hand_gte = django_filters.NumberFilter(field_name='quantity_on_hand', lookup_expr='gte')
+    quantity_on_hand_lte = django_filters.NumberFilter(
+        field_name='quantity_on_hand', lookup_expr='lte'
+    )
+    quantity_on_hand_gte = django_filters.NumberFilter(
+        field_name='quantity_on_hand', lookup_expr='gte'
+    )
     product = django_filters.NumberFilter(field_name='sku__product_id')
 
     class Meta:

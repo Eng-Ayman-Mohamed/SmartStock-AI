@@ -54,7 +54,9 @@ class TestNLQueryAction:
     def test_json_schema_enum_matches_action_class(self):
         schema_values = set(NL_QUERY_JSON_SCHEMA['properties']['action']['enum'])
         class_values = {a.value for a in NLQueryAction}
-        assert schema_values == class_values, 'NL_QUERY_JSON_SCHEMA enum out of sync with NLQueryAction'
+        assert schema_values == class_values, (
+            'NL_QUERY_JSON_SCHEMA enum out of sync with NLQueryAction'
+        )
 
     def test_json_schema_action_is_required(self):
         assert 'action' in NL_QUERY_JSON_SCHEMA['required']
@@ -62,7 +64,9 @@ class TestNLQueryAction:
     def test_action_allowed_fields_covers_all_actions(self):
         """Every action in the enum must have an entry in ACTION_ALLOWED_FIELDS."""
         for action in NLQueryAction:
-            assert action.value in ACTION_ALLOWED_FIELDS, f"ACTION_ALLOWED_FIELDS missing entry for '{action.value}'"
+            assert action.value in ACTION_ALLOWED_FIELDS, (
+                f"ACTION_ALLOWED_FIELDS missing entry for '{action.value}'"
+            )
 
     def test_action_allowed_fields_are_non_empty(self):
         for action_val, fields in ACTION_ALLOWED_FIELDS.items():
@@ -204,7 +208,10 @@ class TestNLQueryOutputParser:
 
     def test_raises_on_invalid_operator(self):
         raw = json.dumps(
-            {'action': 'get_inventory', 'filters': {'conditions': [{'field': 'sku_code', 'op': 'LIKE', 'value': 'A%'}]}}
+            {
+                'action': 'get_inventory',
+                'filters': {'conditions': [{'field': 'sku_code', 'op': 'LIKE', 'value': 'A%'}]},
+            }
         )
         with pytest.raises(NLQueryParseError, match='Invalid operator'):
             self.parser.parse(raw)
@@ -214,7 +221,9 @@ class TestNLQueryOutputParser:
         raw = json.dumps(
             {
                 'action': 'get_inventory',
-                'filters': {'conditions': [{'field': 'contact_email', 'op': 'eq', 'value': 'x@y.com'}]},
+                'filters': {
+                    'conditions': [{'field': 'contact_email', 'op': 'eq', 'value': 'x@y.com'}]
+                },
             }
         )
         with pytest.raises(NLQueryParseError, match='not allowed for action'):
@@ -263,7 +272,9 @@ class TestFewShotExamples:
         self.parser = NLQueryOutputParser()
 
     def test_at_least_five_examples_defined(self):
-        assert len(FEW_SHOT_EXAMPLES) >= 5, f'Expected at least 5 few-shot examples, got {len(FEW_SHOT_EXAMPLES)}'
+        assert len(FEW_SHOT_EXAMPLES) >= 5, (
+            f'Expected at least 5 few-shot examples, got {len(FEW_SHOT_EXAMPLES)}'
+        )
 
     def test_covers_the_five_required_action_types(self):
         """
@@ -310,7 +321,9 @@ class TestFewShotExamples:
 
     def test_system_prompt_contains_all_action_values(self):
         for action in NLQueryAction:
-            assert action.value in SYSTEM_PROMPT, f"Action '{action.value}' missing from system prompt"
+            assert action.value in SYSTEM_PROMPT, (
+                f"Action '{action.value}' missing from system prompt"
+            )
 
     def test_system_prompt_contains_all_valid_operators(self):
         for op in VALID_OPERATORS:
@@ -331,7 +344,9 @@ END_TO_END_CASES = [
     # 1. get_inventory — multi-condition: supplier + category + active flag + pagination
     (
         'get_inventory',
-        ('List all active widgets supplied by Acme Corp in the Hardware category, 20 per page, second page'),
+        (
+            'List all active widgets supplied by Acme Corp in the Hardware category, 20 per page, second page'
+        ),
         json.dumps(
             {
                 'action': 'get_inventory',
@@ -391,7 +406,9 @@ END_TO_END_CASES = [
     # 3. get_low_stock — category + quantity threshold + reorder_point check
     (
         'get_low_stock',
-        ('Which Furniture items have fewer than 10 units on hand and are below their reorder point?'),
+        (
+            'Which Furniture items have fewer than 10 units on hand and are below their reorder point?'
+        ),
         json.dumps(
             {
                 'action': 'get_low_stock',
@@ -469,7 +486,12 @@ def _mock_tool_call_response(mocked_output: str) -> MagicMock:
     mock_msg = MagicMock()
     mock_msg.content = mocked_output
     mock_msg.tool_calls = [
-        {'name': 'nl_query', 'args': json.loads(mocked_output), 'id': 'call_1', 'type': 'tool_call'},
+        {
+            'name': 'nl_query',
+            'args': json.loads(mocked_output),
+            'id': 'call_1',
+            'type': 'tool_call',
+        },
     ]
     return mock_msg
 
@@ -561,7 +583,9 @@ class TestNLQueryChainEndToEnd:
         payload = json.dumps(
             {
                 'action': 'get_inventory',
-                'filters': {'conditions': [{'field': 'contact_email', 'op': 'eq', 'value': 'x@y.com'}]},
+                'filters': {
+                    'conditions': [{'field': 'contact_email', 'op': 'eq', 'value': 'x@y.com'}]
+                },
             }
         )
 

@@ -130,7 +130,9 @@ class RAGQueryEndpointTests(APITestCase):
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_no_relevant_context_returns_explicit_message(self, mock_execute, mock_executor_cls, mock_filter):
+    def test_no_relevant_context_returns_explicit_message(
+        self, mock_execute, mock_executor_cls, mock_filter
+    ):
         self._auth(self.manager)
         mock_execute.return_value = {
             'answer': 'I cannot find this information in the provided records.',
@@ -288,7 +290,11 @@ class RAGQueryServiceTests(APITestCase):
 
         service = RAGQueryService()
         chunks = [
-            {'source_document': 'policy.pdf', 'page_number': 3, 'content': 'Return within 30 days.'},
+            {
+                'source_document': 'policy.pdf',
+                'page_number': 3,
+                'content': 'Return within 30 days.',
+            },
         ]
         context = service.build_context(chunks)
         self.assertIn('[Source: policy.pdf, Page: 3]', context)
@@ -325,7 +331,13 @@ class RAGQueryServiceTests(APITestCase):
             patch('apps.ingestion.services.RAGQueryService.call_llm') as mock_llm,
         ):
             mock_search.return_value = [
-                {'id': 1, 'content': 'chunk text', 'source_document': 'doc.pdf', 'page_number': 1, 'score': 0.8},
+                {
+                    'id': 1,
+                    'content': 'chunk text',
+                    'source_document': 'doc.pdf',
+                    'page_number': 1,
+                    'score': 0.8,
+                },
             ]
             mock_rerank.return_value = [
                 {
@@ -373,7 +385,9 @@ class RAGQueryFullPipelineTests(APITestCase):
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('ai.rag.retrieval._get_embedding_model')
     @patch('ai.rag.retrieval.connection')
-    def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_executor_cls, mock_filter):
+    def test_full_pipeline_mocked_apis(
+        self, mock_conn, mock_emb_model, mock_executor_cls, mock_filter
+    ):
         """Test full pipeline with mocked DB and LLM calls."""
         self._auth(self.manager)
 
@@ -418,7 +432,9 @@ class RAGQueryFullPipelineTests(APITestCase):
                     'rerank_score': 0.92,
                 },
             ]
-            mock_call_llm.return_value = 'You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
+            mock_call_llm.return_value = (
+                'You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
+            )
 
             response = self.client.post(
                 self._url(),
@@ -463,7 +479,9 @@ class RAGQueryFullPipelineTests(APITestCase):
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.views._get_langfuse')
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_langfuse_trace_contains_chunk_scores(self, mock_execute, mock_langfuse, mock_executor_cls, mock_filter):
+    def test_langfuse_trace_contains_chunk_scores(
+        self, mock_execute, mock_langfuse, mock_executor_cls, mock_filter
+    ):
         """Verify Langfuse trace is created with chunk-level data."""
         self._auth(self.manager)
         mock_execute.return_value = {

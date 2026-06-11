@@ -28,7 +28,11 @@ class AuditLog(models.Model):
 
     # Who did it
     user = models.ForeignKey(
-        'authentication.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs'
+        'authentication.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_logs',
     )
     ip_address = models.GenericIPAddressField(null=True, blank=True)
 
