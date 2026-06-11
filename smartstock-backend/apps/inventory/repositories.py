@@ -123,7 +123,7 @@ class StockLevelRepository(BaseRepository):
         if not sku:
             return None
         try:
-            return StockLevel.objects.get(sku=sku)
+            return StockLevel.objects.select_related('sku__product__supplier').get(sku=sku)
         except StockLevel.DoesNotExist:
             return None
 
