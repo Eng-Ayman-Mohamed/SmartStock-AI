@@ -117,13 +117,13 @@ class RAGQueryService:
     """
 
     RAG_SYSTEM_PROMPT = (
-        "You are SmartStock AI, a warehouse inventory assistant. "
+        'You are SmartStock AI, a warehouse inventory assistant. '
         "Answer the user's question using ONLY the context provided below. "
-        "If the context does not contain enough information to answer, "
+        'If the context does not contain enough information to answer, '
         "say exactly: 'I cannot find this information in the provided records.' "
-        "Never fabricate information.\n\n"
-        "When citing a source, use the format: [Source: <document>, Page: <page>]\n\n"
-        "Context:\n{context}"
+        'Never fabricate information.\n\n'
+        'When citing a source, use the format: [Source: <document>, Page: <page>]\n\n'
+        'Context:\n{context}'
     )
 
     def __init__(self):
@@ -149,6 +149,7 @@ class RAGQueryService:
 
     def hybrid_search(self, query: str, top_k: int = 10) -> list[dict]:
         from ai.rag.retrieval import hybrid_search
+
         return hybrid_search(query, top_k=top_k)
 
     def rerank(self, query: str, chunks: list[dict], top_n: int = 3) -> list[dict]:
@@ -179,15 +180,17 @@ class RAGQueryService:
             doc = chunk.get('source_document', 'unknown')
             page = chunk.get('page_number', '?')
             text = chunk.get('content', '')
-            parts.append(f"[Source: {doc}, Page: {page}]\n{text}")
+            parts.append(f'[Source: {doc}, Page: {page}]\n{text}')
         return '\n\n---\n\n'.join(parts)
 
     def call_llm(self, query: str, context: str) -> str:
         llm = self._get_llm()
-        prompt = ChatPromptTemplate.from_messages([
-            ('system', self.RAG_SYSTEM_PROMPT),
-            ('user', '{query}'),
-        ])
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', self.RAG_SYSTEM_PROMPT),
+                ('user', '{query}'),
+            ]
+        )
         chain = prompt | llm | StrOutputParser()
         return chain.invoke({'context': context, 'query': query}).strip()
 
