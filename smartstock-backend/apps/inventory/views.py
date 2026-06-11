@@ -570,7 +570,8 @@ class NLQueryEndpointView(APIView):
         serializer = NLQuerySerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
-                {'status': 'error', 'errors': serializer.errors}, status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                {'status': 'error', 'errors': serializer.errors},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         query = serializer.validated_data['query']
@@ -585,7 +586,9 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except Exception as e:
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _run_pipeline(self, query, user):
         from ai.llm.chain import call_gpt4o_formatter, prompt_injection_filter
@@ -601,7 +604,8 @@ class NLQueryEndpointView(APIView):
                 data_snapshot={'query': query},
             )
             return Response(
-                {'status': 'error', 'message': 'Malicious query detected.'}, status=status.HTTP_400_BAD_REQUEST
+                {'status': 'error', 'message': 'Malicious query detected.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Step B: LangChain Processing
@@ -615,7 +619,8 @@ class NLQueryEndpointView(APIView):
             filters = chain_dict.get('filters', {})
         except Exception as chain_err:
             return Response(
-                {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'}, status=status.HTTP_400_BAD_REQUEST
+                {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Step C: Dispatch to the correct service

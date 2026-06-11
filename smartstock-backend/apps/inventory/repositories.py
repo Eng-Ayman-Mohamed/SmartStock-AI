@@ -111,7 +111,9 @@ class StockLevelRepository(BaseRepository):
 
     def get_low_stock(self):
         """Return all stock levels where quantity is below reorder point."""
-        return StockLevel.objects.select_related('sku__product').filter(quantity_on_hand__lt=models.F('reorder_point'))
+        return StockLevel.objects.select_related('sku__product').filter(
+            quantity_on_hand__lt=models.F('reorder_point')
+        )
 
     def get_by_product_id(self, product_id: int):
         """Get the StockLevel for a given product_id. Returns None if not found."""
@@ -147,7 +149,9 @@ class SalesRecordRepository(BaseRepository):
         return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
 
     def bulk_create(self, records: list):
-        return SalesRecord.objects.bulk_create([SalesRecord(**r) for r in records], ignore_conflicts=True)
+        return SalesRecord.objects.bulk_create(
+            [SalesRecord(**r) for r in records], ignore_conflicts=True
+        )
 
 
 class SupplierRepository(BaseRepository):

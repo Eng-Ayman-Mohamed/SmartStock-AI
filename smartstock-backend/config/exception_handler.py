@@ -37,10 +37,17 @@ def custom_exception_handler(exc, context):
                     else any('cookie' in str(item).lower() for item in v if isinstance(item, str))
                     for v in detail.values()
                 )
-                if ('refresh' in detail and has_cookie_msg) or ('non_field_errors' in detail and has_cookie_msg):
+                if ('refresh' in detail and has_cookie_msg) or (
+                    'non_field_errors' in detail and has_cookie_msg
+                ):
                     msg = 'Refresh token not found in cookies.'
                     return Response(
-                        {'status': 'error', 'error': 'AuthenticationFailed', 'message': msg, 'code': 401},
+                        {
+                            'status': 'error',
+                            'error': 'AuthenticationFailed',
+                            'message': msg,
+                            'code': 401,
+                        },
                         status=401,
                     )
 
@@ -70,7 +77,9 @@ def custom_exception_handler(exc, context):
             is_duplicate = False
             if isinstance(detail, dict):
                 for val in detail.values():
-                    if isinstance(val, list) and any('already exists' in str(v).lower() for v in val):
+                    if isinstance(val, list) and any(
+                        'already exists' in str(v).lower() for v in val
+                    ):
                         is_duplicate = True
                         break
                     if isinstance(val, str) and 'already exists' in val.lower():

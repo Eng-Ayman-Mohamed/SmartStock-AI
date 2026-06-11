@@ -39,7 +39,9 @@ class TestFillMissingDates(unittest.TestCase):
         )
 
     def test_empty_df_passes_through(self):
-        df = pd.DataFrame({'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')})
+        df = pd.DataFrame(
+            {'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')}
+        )
         result = self.fill_missing_dates(df)
         self.assertTrue(result.empty)
 
@@ -85,7 +87,9 @@ class TestCapOutliers(unittest.TestCase):
         pd.testing.assert_series_equal(result['y'], df['y'], check_names=False)
 
     def test_empty_df_passes_through(self):
-        df = pd.DataFrame({'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')})
+        df = pd.DataFrame(
+            {'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')}
+        )
         result = self.cap_outliers(df)
         self.assertTrue(result.empty)
 
@@ -146,7 +150,9 @@ class TestValidateMinimumData(unittest.TestCase):
         self.assertTrue(self.validate_minimum_data(df, min_records=30))
 
     def test_empty_df_fails(self):
-        df = pd.DataFrame({'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')})
+        df = pd.DataFrame(
+            {'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')}
+        )
         self.assertFalse(self.validate_minimum_data(df))
 
 
@@ -237,7 +243,9 @@ class TestPrepareForecastDataframe(unittest.TestCase):
         mock_repo.get_sku.return_value = mock_sku
 
         base = date.today() - timedelta(days=60)
-        mock_sales = [MagicMock(date=base + timedelta(days=i), quantity_sold=10 + (i % 5)) for i in range(60)]
+        mock_sales = [
+            MagicMock(date=base + timedelta(days=i), quantity_sold=10 + (i % 5)) for i in range(60)
+        ]
         mock_repo.get_sales_for_sku.return_value = mock_sales
 
         result = self.prepare_forecast_dataframe(1)

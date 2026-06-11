@@ -32,7 +32,9 @@ def validate_required_env_vars():
     missing = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
 
     if missing:
-        raise ImproperlyConfigured('Missing required environment variables: ' + ', '.join(sorted(missing)))
+        raise ImproperlyConfigured(
+            'Missing required environment variables: ' + ', '.join(sorted(missing))
+        )
 
     for var in REQUIRED_ENV_VARS:
         logger.info('[CONFIG] %s: %s', var, _mask_value(os.getenv(var)))

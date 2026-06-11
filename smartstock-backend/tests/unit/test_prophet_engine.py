@@ -193,7 +193,9 @@ class TestProphetEngine(unittest.TestCase):
             self.assertEqual(len(result['results']), 30)
 
     def test_empty_df_handling(self):
-        df = pd.DataFrame({'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')})
+        df = pd.DataFrame(
+            {'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')}
+        )
         result = self.engine.predict(df, periods=30)
         self.assertEqual(result['model_version'], 'moving_average_fallback')
         self.assertEqual(len(result['results']), 30)

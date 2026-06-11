@@ -25,7 +25,9 @@ class ForecastBySKUView(APIView):
             filters = {'sku_id': int(sku)}
 
         rows = list(
-            ForecastResult.objects.filter(**filters).select_related('sku__product').order_by('forecast_date')[:30]
+            ForecastResult.objects.filter(**filters)
+            .select_related('sku__product')
+            .order_by('forecast_date')[:30]
         )
         if not rows:
             return Response(
