@@ -1,45 +1,66 @@
 from rest_framework import serializers
 
-from .models import DOC_TYPES, Document, DocumentChunk
+from .models import Document, DocumentChunk
 
 
-class DocumentListSerializer(serializers.ModelSerializer):
-    chunk_count = serializers.SerializerMethodField()
-    uploaded_by_name = serializers.SerializerMethodField()
+class DocumentSerializer(serializers.ModelSerializer):
+    uploaded_by_username = serializers.CharField(
+        source='uploaded_by.username',
+        read_only=True,
+        allow_null=True,
+    )
 
     class Meta:
         model = Document
-        fields = (
+        fields = [
             'id',
             'filename',
             'original_filename',
             'doc_type',
             'file_size',
-            'total_chunks',
-            'chunk_count',
+            'cloudinary_url',
             'uploaded_by',
-            'uploaded_by_name',
+            'uploaded_by_username',
             'ingested_at',
             'is_active',
-            'cloudinary_url',
-        )
-        read_only_fields = fields
-
-    def get_chunk_count(self, obj):
-        return obj.total_chunks
-
-    def get_uploaded_by_name(self, obj):
-        if obj.uploaded_by:
-            return obj.uploaded_by.email
-        return None
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'uploaded_by', 'ingested_at', 'created_at', 'updated_at']
 
 
 class DocumentUploadSerializer(serializers.Serializer):
-    file = serializers.FileField(required=True)
-    doc_type = serializers.ChoiceField(choices=DOC_TYPES, required=False)
+    file = serializers.FileField()
+    doc_type = serializers.ChoiceField(choices=Document.DocType.choices)
+
+    def validate_file(self, file):
+        if not file.name.lower().endswith('.pdf'):
+            raise serializers.ValidationError('Only PDF files are accepted.')
+
+        content_type = getattr(file, 'content_type', None)
+        if content_type and content_type != 'application/pdf':
+            raise serializers.ValidationError('File content type must be application/pdf.')
+
+        header = file.read(5)
+        file.seek(0)
+        if not header.startswith(b'%PDF'):
+            raise serializers.ValidationError('File is not a valid PDF (bad magic bytes).')
+
+        if file.size > 10 * 1024 * 1024:
+            raise serializers.ValidationError('File size must be less than 10 MB.')
+
+        return file
 
 
 class DocumentChunkSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentChunk
-        fields = '__all__'
+        fields = [
+            'id',
+            'chunk_text',
+            'source_document',
+            'page_number',
+            'metadata',
+            'document',
+        ]
+        read_only_fields = ['id']

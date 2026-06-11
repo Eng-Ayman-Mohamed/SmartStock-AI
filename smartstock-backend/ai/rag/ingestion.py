@@ -71,7 +71,7 @@ def delete_existing_chunks(source_document: str):
     return deleted
 
 
-def ingest_pdf(file_path: str) -> dict:
+def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
     filename = file_path.rsplit('/', 1)[-1]
     pages = extract_text_from_pdf(file_path)
     raw_chunks = chunk_pdf_pages(pages)
@@ -91,6 +91,7 @@ def ingest_pdf(file_path: str) -> dict:
                     embedding=embedding,
                     source_document=filename,
                     page_number=chunk_data['page_number'],
+                    document_id=document_id,
                     metadata={
                         'doc_type': 'pdf',
                         'ingested_at': now,
