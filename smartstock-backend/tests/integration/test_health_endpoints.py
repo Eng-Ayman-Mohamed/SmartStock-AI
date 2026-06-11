@@ -50,7 +50,9 @@ class HealthEndpointTests(APITestCase):
         response = self.client.get(self._readiness_url())
         # In the test environment both services should be connected.
         # If they are, status is 200; otherwise 503. Either is valid behaviour.
-        self.assertIn(response.status_code, (status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE))
+        self.assertIn(
+            response.status_code, (status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE)
+        )
         self.assertIn(response.data['status'], ('ok', 'degraded'))
 
     def test_readiness_response_structure(self):
@@ -64,7 +66,9 @@ class HealthEndpointTests(APITestCase):
         """Readiness endpoint should be accessible without auth credentials."""
         self.client.credentials()
         response = self.client.get(self._readiness_url())
-        self.assertIn(response.status_code, (status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE))
+        self.assertIn(
+            response.status_code, (status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE)
+        )
 
     def test_health_and_readiness_return_same_diagnostics(self):
         """Both endpoints should report consistent diagnostic values."""

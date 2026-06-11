@@ -202,7 +202,11 @@ class RAGQueryView(APIView):
                 data_snapshot={'query': query[:200]},
             )
             return Response(
-                {'status': 'error', 'error': 'InvalidQueryError', 'message': 'Query contains disallowed content.'},
+                {
+                    'status': 'error',
+                    'error': 'InvalidQueryError',
+                    'message': 'Query contains disallowed content.',
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -240,7 +244,9 @@ class RAGQueryView(APIView):
             result = service.execute(query, user=user)
         except ConnectionError as e:
             if 'COHERE' in str(e).upper():
-                raise RAGServiceUnavailable('Cohere reranking service is unavailable. Please try again later.')
+                raise RAGServiceUnavailable(
+                    'Cohere reranking service is unavailable. Please try again later.'
+                )
             raise ValueError(f'Service unavailable: {e}')
         except Exception as e:
             raise ValueError(f'Pipeline error: {e}')
