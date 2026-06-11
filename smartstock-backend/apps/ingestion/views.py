@@ -43,7 +43,9 @@ class RAGServiceUnavailable(Exception):
     list=extend_schema(
         responses={
             200: DocumentSerializer(many=True),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
@@ -52,9 +54,13 @@ class RAGServiceUnavailable(Exception):
     retrieve=extend_schema(
         responses={
             200: DocumentSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Document not found'
+            ),
         },
         tags=['ai'],
     ),
@@ -62,11 +68,19 @@ class RAGServiceUnavailable(Exception):
         request=DocumentUploadSerializer,
         responses={
             201: DocumentSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Viewer or above only'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Invalid file or metadata'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Viewer or above only'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Invalid file or metadata'
+            ),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
-            500: OpenApiResponse(response=ErrorResponseSerializer, description='Upload or ingestion failed'),
+            500: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Upload or ingestion failed'
+            ),
         },
         examples=[
             OpenApiExample(
@@ -84,11 +98,19 @@ class RAGServiceUnavailable(Exception):
         request=DocumentUploadSerializer,
         responses={
             200: DocumentSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Invalid file or metadata'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Document not found'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Invalid file or metadata'
+            ),
         },
         tags=['ai'],
     ),
@@ -96,11 +118,19 @@ class RAGServiceUnavailable(Exception):
         request=DocumentUploadSerializer,
         responses={
             200: DocumentSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Invalid file or metadata'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Document not found'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Invalid file or metadata'
+            ),
         },
         tags=['ai'],
     ),
@@ -108,7 +138,9 @@ class RAGServiceUnavailable(Exception):
         responses={
             204: None,
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Document not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Document not found'
+            ),
         },
         tags=['ai'],
     ),
@@ -255,9 +287,12 @@ class RAGQueryView(APIView):
                 },
             ),
             400: OpenApiResponse(
-                response=ErrorResponseSerializer, description='Bad request or prompt injection detected'
+                response=ErrorResponseSerializer,
+                description='Bad request or prompt injection detected',
             ),
-            503: OpenApiResponse(response=ErrorResponseSerializer, description='RAG service unavailable'),
+            503: OpenApiResponse(
+                response=ErrorResponseSerializer, description='RAG service unavailable'
+            ),
             504: OpenApiResponse(response=ErrorResponseSerializer, description='Gateway timeout'),
         },
         examples=[
