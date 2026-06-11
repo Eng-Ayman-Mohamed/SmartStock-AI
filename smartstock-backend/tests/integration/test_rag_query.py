@@ -1,3 +1,4 @@
+from concurrent.futures import TimeoutError as FuturesTimeout
 from unittest.mock import MagicMock, patch
 
 from rest_framework import status
@@ -137,7 +138,8 @@ class RAGQueryEndpointTests(APITestCase):
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_pipeline_timeout_returns_504(self, mock_execute, mock_filter):
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
+    def test_pipeline_timeout_returns_504(self, mock_executor_cls, mock_execute, mock_filter):
         self._auth(self.manager)
 
         def slow_execute(*args, **kwargs):
@@ -147,6 +149,14 @@ class RAGQueryEndpointTests(APITestCase):
             return {'answer': '', 'sources': []}
 
         mock_execute.side_effect = slow_execute
+
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        future = MagicMock()
+        future.result.side_effect = FuturesTimeout()
+        mock_executor.submit.return_value = future
+
         response = self.client.post(
             self._url(),
             {'query': 'Tell me about slow queries'},
@@ -321,11 +331,24 @@ class RAGQueryFullPipelineTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('ai.rag.retrieval._get_embedding_model')
     @patch('ai.rag.retrieval.connection')
-    def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_filter):
+    def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_executor_cls, mock_filter):
         """Test full pipeline with mocked DB and LLM calls."""
         self._auth(self.manager)
+
+        # Run _run_pipeline synchronously to avoid lingering thread DB connections
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        def run_sync(fn, *args, **kwargs):
+            result = fn(*args, **kwargs)
+            future = MagicMock()
+            future.result.return_value = result
+            return future
+
+        mock_executor.submit.side_effect = run_sync
 
         # Mock embeddings
         mock_embeddings = MagicMock()
@@ -385,9 +408,10 @@ class RAGQueryFullPipelineTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.views._get_langfuse')
     @patch('apps.ingestion.services.RAGQueryService.execute')
-    def test_langfuse_trace_contains_chunk_scores(self, mock_execute, mock_langfuse, mock_filter):
+    def test_langfuse_trace_contains_chunk_scores(self, mock_execute, mock_langfuse, mock_executor_cls, mock_filter):
         """Verify Langfuse trace is created with chunk-level data."""
         self._auth(self.manager)
         mock_execute.return_value = {
@@ -418,6 +442,17 @@ class RAGQueryFullPipelineTests(APITestCase):
         mock_trace = MagicMock()
         mock_lf.trace.return_value = mock_trace
         mock_langfuse.return_value = mock_lf
+
+        mock_executor = MagicMock()
+        mock_executor_cls.return_value.__enter__.return_value = mock_executor
+
+        def run_sync(fn, *args, **kwargs):
+            result = fn(*args, **kwargs)
+            future = MagicMock()
+            future.result.return_value = result
+            return future
+
+        mock_executor.submit.side_effect = run_sync
 
         self.client.post(
             self._url(),
