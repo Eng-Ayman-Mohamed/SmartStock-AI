@@ -321,69 +321,55 @@ class RAGQueryFullPipelineTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
-    @patch('apps.ingestion.services.OpenAIEmbeddings')
-    @patch('apps.ingestion.services.ChatOpenAI')
     @patch('ai.rag.retrieval._get_embedding_model')
     @patch('ai.rag.retrieval.connection')
-    def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_chat_cls, mock_emb_cls, mock_filter):
+    def test_full_pipeline_mocked_apis(self, mock_conn, mock_emb_model, mock_filter):
         """Test full pipeline with mocked DB and LLM calls."""
-        import os
-
-        from langchain_core.messages import AIMessage
-
         self._auth(self.manager)
 
-        os.environ['OPENAI_API_KEY'] = 'test-key'
-        try:
-            # Mock embeddings
-            mock_embeddings = MagicMock()
-            mock_embeddings.embed_query.return_value = [0.1] * 1536
-            mock_emb_cls.return_value = mock_embeddings
-            mock_emb_model.return_value = mock_embeddings
+        # Mock embeddings
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1] * 1536
+        mock_emb_model.return_value = mock_embeddings
 
-            # Mock DB cursor for hybrid search
-            mock_cursor = MagicMock()
-            mock_cursor.fetchall.return_value = [
-                (1, 'Return policy text', 'supplier_policy.pdf', 3, {}, 0.85),
-                (2, 'Warranty terms', 'warranty.pdf', 1, {}, 0.72),
+        # Mock DB cursor for hybrid search
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = [
+            (1, 'Return policy text', 'supplier_policy.pdf', 3, {}, 0.85),
+            (2, 'Warranty terms', 'warranty.pdf', 1, {}, 0.72),
+        ]
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        # Mock Cohere reranker and LLM call directly
+        with (
+            patch('apps.ingestion.services.RAGQueryService.rerank') as mock_rerank,
+            patch('apps.ingestion.services.RAGQueryService.call_llm') as mock_call_llm,
+        ):
+            mock_rerank.return_value = [
+                {
+                    'id': 1,
+                    'content': 'Return policy text',
+                    'source_document': 'supplier_policy.pdf',
+                    'page_number': 3,
+                    'score': 0.85,
+                    'rerank_score': 0.92,
+                },
             ]
-            mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
-            mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+            mock_call_llm.return_value = 'You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
 
-            # Mock ChatOpenAI for LLM call — must return AIMessage for StrOutputParser
-            mock_llm = MagicMock()
-            mock_llm.invoke.return_value = AIMessage(
-                content='You can return items within 30 days. [Source: supplier_policy.pdf, Page: 3]'
+            response = self.client.post(
+                self._url(),
+                {'query': 'What is the return policy?'},
+                format='json',
             )
-            mock_chat_cls.return_value = mock_llm
 
-            # Mock Cohere reranker
-            with patch('apps.ingestion.services.RAGQueryService.rerank') as mock_rerank:
-                mock_rerank.return_value = [
-                    {
-                        'id': 1,
-                        'content': 'Return policy text',
-                        'source_document': 'supplier_policy.pdf',
-                        'page_number': 3,
-                        'score': 0.85,
-                        'rerank_score': 0.92,
-                    },
-                ]
-
-                response = self.client.post(
-                    self._url(),
-                    {'query': 'What is the return policy?'},
-                    format='json',
-                )
-
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(response.data['status'], 'success')
-            self.assertIn('answer', response.data['data'])
-            self.assertIn('sources', response.data['data'])
-            self.assertEqual(len(response.data['data']['sources']), 1)
-            self.assertEqual(response.data['data']['sources'][0]['document'], 'supplier_policy.pdf')
-        finally:
-            os.environ.pop('OPENAI_API_KEY', None)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertIn('answer', response.data['data'])
+        self.assertIn('sources', response.data['data'])
+        self.assertEqual(len(response.data['data']['sources']), 1)
+        self.assertEqual(response.data['data']['sources'][0]['document'], 'supplier_policy.pdf')
 
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
     @patch('apps.ingestion.services.RAGQueryService.execute')
