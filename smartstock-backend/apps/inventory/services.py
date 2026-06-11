@@ -65,6 +65,7 @@ class InventoryService:
                 'quantity': sl.quantity_on_hand,
                 'reorder_point': sl.reorder_point,
                 'reorder_quantity': sl.reorder_quantity,
+                'supplier_name': sl.sku.product.supplier.name if sl.sku.product.supplier else None,
             }
             for sl in low_stock
         ]
