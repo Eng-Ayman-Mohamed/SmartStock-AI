@@ -21,7 +21,9 @@ class AuditLogView(ListAPIView):
     @extend_schema(
         responses={
             200: AuditLogSerializer(many=True),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
@@ -48,7 +50,9 @@ class AuditLogView(ListAPIView):
     list=extend_schema(
         responses={
             200: AgentRunSerializer(many=True),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
         },
         tags=['audit'],
@@ -56,44 +60,70 @@ class AuditLogView(ListAPIView):
     retrieve=extend_schema(
         responses={
             200: AgentRunSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Agent run not found'
+            ),
         },
         tags=['audit'],
     ),
     create=extend_schema(
         responses={
             201: AgentRunSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
         },
         tags=['audit'],
     ),
     update=extend_schema(
         responses={
             200: AgentRunSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Agent run not found'
+            ),
         },
         tags=['audit'],
     ),
     partial_update=extend_schema(
         responses={
             200: AgentRunSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Agent run not found'
+            ),
         },
         tags=['audit'],
     ),
     destroy=extend_schema(
         responses={
             204: None,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Agent run not found'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Agent run not found'
+            ),
         },
         tags=['audit'],
     ),

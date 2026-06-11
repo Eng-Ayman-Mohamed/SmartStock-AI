@@ -22,7 +22,9 @@ from .services import ForecastingService
     list=extend_schema(
         responses={
             200: ForecastResultSerializer(many=True),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
@@ -31,9 +33,13 @@ from .services import ForecastingService
     retrieve=extend_schema(
         responses={
             200: ForecastResultSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Forecast not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Forecast not found'
+            ),
         },
         tags=['forecasting'],
     ),
@@ -75,9 +81,13 @@ class ForecastBySKUView(APIView):
                 },
                 description='Forecast for a specific SKU',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='No forecast found for SKU'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='No forecast found for SKU'
+            ),
         },
         examples=[
             OpenApiExample(
@@ -165,7 +175,9 @@ class TriggerForecastView(APIView):
                 },
                 description='Forecast triggered successfully',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
         },
         examples=[
@@ -194,7 +206,9 @@ class ForecastDashboardView(APIView):
                 response={'type': 'object'},
                 description='Dashboard data with aggregated forecast metrics',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
         },
         tags=['forecasting'],

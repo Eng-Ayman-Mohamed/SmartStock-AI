@@ -135,7 +135,10 @@ SPECTACULAR_SETTINGS = {
                 'type': 'object',
                 'properties': {
                     'access': {'type': 'string', 'description': 'JWT access token'},
-                    'refresh': {'type': 'string', 'description': 'JWT refresh token (also set as HttpOnly cookie)'},
+                    'refresh': {
+                        'type': 'string',
+                        'description': 'JWT refresh token (also set as HttpOnly cookie)',
+                    },
                 },
             },
         },

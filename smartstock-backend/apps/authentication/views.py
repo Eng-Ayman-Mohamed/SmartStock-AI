@@ -34,7 +34,9 @@ class TokenRefreshView(BaseTokenRefreshView):
                 response={'type': 'object', 'properties': {'access': {'type': 'string'}}},
                 description='Token refreshed successfully',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Refresh token missing or invalid'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Refresh token missing or invalid'
+            ),
         },
         tags=['auth'],
         auth=[],
@@ -68,14 +70,22 @@ class RegisterView(generics.CreateAPIView):
                 },
                 description='User registered successfully',
             ),
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
         examples=[
             OpenApiExample(
                 'Register Request',
-                value={'email': 'user@example.com', 'name': 'John Doe', 'password': 'securePass123'},
+                value={
+                    'email': 'user@example.com',
+                    'name': 'John Doe',
+                    'password': 'securePass123',
+                },
                 request_only=True,
             ),
         ],
@@ -127,7 +137,9 @@ class LoginView(TokenObtainPairView):
                 },
                 description='Login successful',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Invalid credentials'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Invalid credentials'
+            ),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
         examples=[
@@ -185,7 +197,9 @@ class LogoutView(APIView):
                 response={'type': 'object', 'properties': {'detail': {'type': 'string'}}},
                 description='Logged out successfully',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
         },
         tags=['auth'],
     )
@@ -203,7 +217,9 @@ class MeView(APIView):
     @extend_schema(
         responses={
             200: MeSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
         },
         tags=['auth'],
@@ -226,7 +242,9 @@ class UserListCreateView(generics.ListCreateAPIView):
     @extend_schema(
         responses={
             200: UserSerializer(many=True),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
         },
         tags=['auth'],
@@ -238,9 +256,13 @@ class UserListCreateView(generics.ListCreateAPIView):
         request=UserCreateSerializer,
         responses={
             201: UserSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
         },
         tags=['auth'],
     )
@@ -265,7 +287,9 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     @extend_schema(
         responses={
             200: UserSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
             404: OpenApiResponse(response=ErrorResponseSerializer, description='User not found'),
         },
@@ -278,10 +302,14 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         request=RoleUpdateSerializer,
         responses={
             200: UserSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
             404: OpenApiResponse(response=ErrorResponseSerializer, description='User not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
         },
         tags=['auth'],
     )
@@ -292,10 +320,14 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         request=RoleUpdateSerializer,
         responses={
             200: UserSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
             404: OpenApiResponse(response=ErrorResponseSerializer, description='User not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
         },
         tags=['auth'],
     )
@@ -317,7 +349,9 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     @extend_schema(
         responses={
             200: UserSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='User already deactivated'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='User already deactivated'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
             404: OpenApiResponse(response=ErrorResponseSerializer, description='User not found'),
         },
@@ -333,7 +367,9 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     @extend_schema(
         responses={
             200: UserSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='User already deactivated'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='User already deactivated'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
             404: OpenApiResponse(response=ErrorResponseSerializer, description='User not found'),
         },
