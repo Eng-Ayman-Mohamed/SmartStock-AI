@@ -91,7 +91,7 @@ class InventoryService:
 
     def adjust_stock(self, stock_level_id: int, quantity_delta: int, user=None, reason: str = ''):
         stock = self.repo.adjust_stock(stock_level_id, quantity_delta)
-        cache.delete('low_stock_items')
+        _invalidate_product_cache()
         stock_adjusted.send(
             sender=self,
             stock_level=stock,
@@ -161,13 +161,18 @@ class SKUService:
         return self.repo.get_by_id(sku_id)
 
     def create_sku(self, data: dict):
-        return self.repo.create(data)
+        sku = self.repo.create(data)
+        _invalidate_product_cache()
+        return sku
 
     def update_sku(self, sku_id: int, data: dict):
-        return self.repo.update(sku_id, data)
+        sku = self.repo.update(sku_id, data)
+        _invalidate_product_cache()
+        return sku
 
     def delete_sku(self, sku_id: int):
         self.repo.delete(sku_id)
+        _invalidate_product_cache()
 
 
 class SalesRecordService:

@@ -4,6 +4,7 @@ import { Bell, LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../features/auth/hooks/useAuth';
+import RoleBadge from '../../features/users/components/RoleBadge';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -117,6 +118,7 @@ export default function Header() {
                 {getInitials(user.name)}
               </div>
               <span className="hidden sm:inline text-caption font-medium text-ink-muted">{user.name}</span>
+              {user.role && <RoleBadge role={user.role} className="hidden sm:inline-flex" />}
             </button>
 
             {menuOpen && (
@@ -134,6 +136,7 @@ export default function Header() {
                   <div className="px-3 py-2 border-b border-hairline">
                     <p className="text-caption font-medium text-ink truncate">{user.name}</p>
                     <p className="text-caption text-ink-muted truncate">{user.email}</p>
+                    {user.role && <RoleBadge role={user.role} className="mt-1" />}
                   </div>
                   <button
                     type="button"
