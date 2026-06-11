@@ -23,7 +23,7 @@ interface SkuChartProps {
 
 export default function SkuChart({ sku, allSkus, colorIdx, hasAlert }: SkuChartProps) {
   const [selectedSkuId, setSelectedSkuId] = useState(sku.id);
-  const skus = allSkus ?? [sku];
+  const skus = useMemo(() => allSkus ?? [sku], [allSkus, sku]);
   const activeSku = useMemo(
     () => skus.find((s) => s.id === selectedSkuId) ?? sku,
     [skus, selectedSkuId, sku],
