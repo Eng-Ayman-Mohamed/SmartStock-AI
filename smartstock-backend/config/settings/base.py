@@ -231,6 +231,16 @@ CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '')
 
 cloudinary.config(cloudinary_url=CLOUDINARY_URL)
 
+LANGFUSE_PUBLIC_KEY = os.environ.get('LANGFUSE_PUBLIC_KEY', '')
+LANGFUSE_SECRET_KEY = os.environ.get('LANGFUSE_SECRET_KEY', '')
+LANGFUSE_HOST = os.environ.get('LANGFUSE_HOST', 'https://cloud.langfuse.com')
+LANGFUSE_ALERT_THRESHOLDS = {
+    'llm_latency_p95_ms_warning': 3000,
+    'llm_api_error_rate_critical': 0.01,
+    'daily_token_budget_alert': int(os.environ.get('LANGFUSE_DAILY_TOKEN_BUDGET', '1000000')),
+    'agent_success_rate_minimum': 0.80,
+}
+
 # Validate required env vars at module level (not in AppConfig.ready) to catch
 # missing configuration early, before any app attempts to use them.
 if not os.environ.get('CI'):

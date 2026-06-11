@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,6 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from ai.agents.tools.forecast_read import ForecastReadTool
 from ai.agents.tools.po_status_check import POStatusCheckTool
 from ai.agents.tools.stock_level_read import StockLevelReadTool
+from ai.observability.langfuse import invoke_with_langfuse, trace_agent_run
 from apps.forecasting.services import ForecastingService
 
 logger = logging.getLogger(__name__)
@@ -40,7 +42,7 @@ class DecisionReasoner:
                 ]
             )
             chain = prompt | llm | StrOutputParser()
-            return chain.invoke({'payload': json.dumps(payload, default=str)}).strip()
+            return invoke_with_langfuse(chain, {'payload': json.dumps(payload, default=str)}).strip()
         except Exception:
             logger.exception('Decision reasoning generation failed')
             return (
@@ -67,24 +69,33 @@ class DecisionAgent:
 
     def run(self, context: dict) -> dict:
         product_ids = self._extract_product_ids(context)
-        results = [self.evaluate_product(product_id) for product_id in product_ids]
-        return {
+        trace_spans = []
+        results = [self.evaluate_product(product_id, trace_spans=trace_spans) for product_id in product_ids]
+        output = {
             'agent': 'decision_agent',
             'results': results,
             'flags_created': sum(1 for item in results if item.get('reorder_flag_id')),
         }
+        trace_agent_run('decision_agent', context, output, trace_spans)
+        return output
 
-    def evaluate_product(self, product_id: int) -> dict:
+    def evaluate_product(self, product_id: int, trace_spans: list | None = None) -> dict:
         plan = f'Read stock, forecast demand, and open PO status for product {product_id}.'
-        stock = self.stock_tool.run({'product_id': product_id})
+        stock = self._run_tool(
+            self.stock_tool,
+            {'product_id': product_id},
+            trace_spans,
+        )
         lead_time_days = stock.get('lead_time_days') or 7
-        forecast = self.forecast_tool.run(
+        forecast = self._run_tool(
+            self.forecast_tool,
             {
                 'product_id': product_id,
                 'forecast_days': lead_time_days,
-            }
+            },
+            trace_spans,
         )
-        po_status = self.po_status_tool.run({'product_id': product_id})
+        po_status = self._run_tool(self.po_status_tool, {'product_id': product_id}, trace_spans)
 
         total_predicted = float(forecast.get('total_predicted_demand') or 0)
         safety_stock = int(stock.get('safety_stock') or 0)
@@ -138,3 +149,17 @@ class DecisionAgent:
             if isinstance(product, dict) and 'product_id' in product:
                 product_ids.append(int(product['product_id']))
         return product_ids
+
+    def _run_tool(self, tool, tool_input: dict, trace_spans: list | None):
+        started_at = time.time()
+        output = tool.run(tool_input)
+        if trace_spans is not None:
+            trace_spans.append(
+                {
+                    'name': getattr(tool, 'name', tool.__class__.__name__),
+                    'input': tool_input,
+                    'output': output,
+                    'duration_ms': round((time.time() - started_at) * 1000),
+                }
+            )
+        return output
