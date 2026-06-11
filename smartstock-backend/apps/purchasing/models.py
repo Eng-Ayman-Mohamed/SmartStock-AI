@@ -24,6 +24,7 @@ class PurchaseOrder(models.Model):
     )
     agent_reasoning = models.TextField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
