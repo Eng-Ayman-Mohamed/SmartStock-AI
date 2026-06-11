@@ -3,11 +3,11 @@ import os
 import time
 
 import magic
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from ai.rag.ingestion import ingest_pdf, EMBEDDING_MODEL
+from ai.rag.ingestion import EMBEDDING_MODEL, ingest_pdf
 
 from .models import Document, DocumentChunk
 
@@ -64,8 +64,8 @@ class IngestionService:
 
         if actual_doc_type == 'pdf':
             try:
-                import tempfile
                 import os
+                import tempfile
 
                 file.seek(0)
                 with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
