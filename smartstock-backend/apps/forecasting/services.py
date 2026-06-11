@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class ForecastingService:
-    def __init__(self):
-        self.repo = ForecastingRepository()
-        self.engine = ProphetEngine()
+    def __init__(self, repo=None, engine=None):
+        self.repo = repo or ForecastingRepository()
+        self.engine = engine or ProphetEngine()
 
     def calculate_stockout_risk(self, sku_code: str) -> bool:
         try:
@@ -82,6 +82,21 @@ class ForecastingService:
 
     def get_forecast(self, sku_id: int):
         return self.repo.get_by_sku(sku_id)
+
+    def get_decision_forecast_data(self, product_id: int, forecast_days: int = 7) -> dict:
+        forecast_days = max(1, int(forecast_days or 7))
+        forecasts = list(self.repo.get_next_for_product(product_id, forecast_days))
+        sku_code = forecasts[0].sku.code if forecasts else ''
+        if not sku_code:
+            sku = self.repo.get_primary_sku_for_product(product_id)
+            sku_code = sku.code if sku else ''
+
+        total_predicted = sum(float(f.predicted_quantity or 0) for f in forecasts)
+        return {
+            'sku_code': sku_code,
+            'forecast_days': forecast_days,
+            'total_predicted_demand': total_predicted,
+        }
 
     def run_forecast(self, sku_id: int = None):
         if sku_id:

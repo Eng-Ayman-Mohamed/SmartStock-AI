@@ -20,10 +20,10 @@ def _invalidate_product_cache():
 
 
 class InventoryService:
-    def __init__(self):
-        self.repo = InventoryRepository()
-        self.stock_repo = StockLevelRepository()
-        self.cat_repo = CategoryRepository()
+    def __init__(self, repo=None, stock_repo=None, cat_repo=None):
+        self.repo = repo or InventoryRepository()
+        self.stock_repo = stock_repo or StockLevelRepository()
+        self.cat_repo = cat_repo or CategoryRepository()
 
     def get_all_products(self, include_inactive: bool = False):
         return self.repo.get_all(include_inactive=include_inactive)
@@ -47,6 +47,26 @@ class InventoryService:
 
     def find_stock_for_product(self, product_id: int):
         return self.stock_repo.get_by_product_id(product_id)
+
+    def get_decision_stock_data(self, product_id: int) -> dict:
+        stock = self.find_stock_for_product(product_id)
+        if stock is None:
+            from core.exceptions import StockNotFoundException
+
+            raise StockNotFoundException(f'No stock level found for product {product_id}.')
+
+        product = stock.sku.product
+        supplier = product.supplier
+        lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
+        reorder_point = stock.reorder_point or product.reorder_point
+        return {
+            'product_id': product.id,
+            'sku_code': stock.sku.code,
+            'quantity_available': stock.quantity_available,
+            'reorder_point': reorder_point,
+            'lead_time_days': lead_time_days,
+            'safety_stock': product.safety_stock,
+        }
 
     def get_low_stock_items(self):
         """Get low stock items (cached 5 min)."""

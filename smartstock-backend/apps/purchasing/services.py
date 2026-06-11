@@ -10,8 +10,8 @@ po_sent = Signal()
 
 
 class PurchasingService:
-    def __init__(self):
-        self.repo = PurchasingRepository()
+    def __init__(self, repo=None):
+        self.repo = repo or PurchasingRepository()
 
     def draft_po(self, sku_id: int, quantity: int, supplier_id: int, user):
         data = {
@@ -52,6 +52,13 @@ class PurchasingService:
         )
         po_sent.send(sender=self.__class__, po=po)
         return po
+
+    def get_open_po_status(self, product_id: int) -> dict:
+        open_po = self.repo.get_open_for_product(product_id)
+        return {
+            'has_open_po': open_po is not None,
+            'open_po_id': open_po.id if open_po else None,
+        }
 
     def get_overdue_suppliers(self):
         now = timezone.now()
