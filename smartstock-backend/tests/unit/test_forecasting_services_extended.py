@@ -19,12 +19,18 @@ class ForecastingServiceTestBase(TestCase):
         )
         cls.category = Category.objects.create(name='Test Category')
         cls.product = Product.objects.create(
-            name='Test Product', category=cls.category, supplier=cls.supplier, safety_stock=5,
+            name='Test Product',
+            category=cls.category,
+            supplier=cls.supplier,
+            safety_stock=5,
         )
         cls.sku = SKU.objects.create(product=cls.product, code='FRC-SKU-001')
         cls.stock_level = StockLevel.objects.create(
-            sku=cls.sku, quantity_on_hand=50, quantity_reserved=0,
-            reorder_point=10, reorder_quantity=25,
+            sku=cls.sku,
+            quantity_on_hand=50,
+            quantity_reserved=0,
+            reorder_point=10,
+            reorder_quantity=25,
         )
 
 
@@ -49,7 +55,9 @@ class ForecastingServiceGetDecisionForecastDataTest(ForecastingServiceTestBase):
     def test_with_forecasts(self):
         forecast = MagicMock(sku=MagicMock(code='SKU-1'), predicted_quantity=10.0)
         self.repo.get_next_for_product.return_value = [forecast]
-        result = self.service.get_decision_forecast_data(product_id=self.product.id, forecast_days=7)
+        result = self.service.get_decision_forecast_data(
+            product_id=self.product.id, forecast_days=7
+        )
         self.assertEqual(result['sku_code'], 'SKU-1')
         self.assertEqual(result['total_predicted_demand'], 10.0)
         self.assertEqual(result['forecast_days'], 7)
@@ -70,13 +78,17 @@ class ForecastingServiceGetDecisionForecastDataTest(ForecastingServiceTestBase):
     def test_forecast_days_zero_defaults_to_seven(self):
         self.repo.get_next_for_product.return_value = []
         self.repo.get_primary_sku_for_product.return_value = None
-        result = self.service.get_decision_forecast_data(product_id=self.product.id, forecast_days=0)
+        result = self.service.get_decision_forecast_data(
+            product_id=self.product.id, forecast_days=0
+        )
         self.assertEqual(result['forecast_days'], 7)
 
     def test_forecast_days_none_defaults_to_seven(self):
         self.repo.get_next_for_product.return_value = []
         self.repo.get_primary_sku_for_product.return_value = None
-        result = self.service.get_decision_forecast_data(product_id=self.product.id, forecast_days=None)
+        result = self.service.get_decision_forecast_data(
+            product_id=self.product.id, forecast_days=None
+        )
         self.assertEqual(result['forecast_days'], 7)
 
 
@@ -89,9 +101,15 @@ class ForecastingServicePersistReorderFlagTest(ForecastingServiceTestBase):
         self.repo.get_sku_by_code.return_value = MagicMock(id=1)
         self.repo.upsert_open_reorder_flag.return_value = MagicMock(id=10)
         decision = {
-            'sku_code': 'SKU-1', 'quantity_available': 50, 'total_predicted_demand': 100.0,
-            'safety_stock': 10, 'lead_time_days': 7, 'forecast_days': 30,
-            'reorder_required': True, 'has_open_po': False, 'reasoning': 'Low stock',
+            'sku_code': 'SKU-1',
+            'quantity_available': 50,
+            'total_predicted_demand': 100.0,
+            'safety_stock': 10,
+            'lead_time_days': 7,
+            'forecast_days': 30,
+            'reorder_required': True,
+            'has_open_po': False,
+            'reasoning': 'Low stock',
         }
         result = self.service.persist_reorder_flag(decision)
         self.repo.get_sku_by_code.assert_called_once_with('SKU-1')
@@ -157,9 +175,14 @@ class ForecastingServiceComputeDashboardTest(ForecastingServiceTestBase):
         today = date.today()
         for i in range(5):
             ForecastResult.objects.create(
-                sku=cls.sku, forecast_date=today + timedelta(days=i),
-                predicted_quantity=10.0 + i, lower_bound=5.0, upper_bound=15.0,
-                mae=1.0, mape=0.1, model_version='v1',
+                sku=cls.sku,
+                forecast_date=today + timedelta(days=i),
+                predicted_quantity=10.0 + i,
+                lower_bound=5.0,
+                upper_bound=15.0,
+                mae=1.0,
+                mape=0.1,
+                model_version='v1',
             )
 
     def setUp(self):

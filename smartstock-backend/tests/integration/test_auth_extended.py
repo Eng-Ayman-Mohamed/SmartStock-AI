@@ -13,7 +13,10 @@ class AuthTestBase(TestCase):
             username='auth_admin', email='auth_admin@test.com', password='pass123', role='admin'
         )
         cls.manager = CustomUser.objects.create_user(
-            username='auth_manager', email='auth_manager@test.com', password='pass123', role='manager'
+            username='auth_manager',
+            email='auth_manager@test.com',
+            password='pass123',
+            role='manager',
         )
         cls.viewer = CustomUser.objects.create_user(
             username='auth_viewer', email='auth_viewer@test.com', password='pass123', role='viewer'
