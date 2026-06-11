@@ -44,9 +44,9 @@ class DecisionReasoner:
         except Exception:
             logger.exception('Decision reasoning generation failed')
             return (
-                f"Current stock of {payload['quantity_available']} units was compared with "
-                f"predicted demand of {payload['total_predicted_demand']} units over "
-                f"{payload['lead_time_days']} days plus safety stock of {payload['safety_stock']} units."
+                f'Current stock of {payload["quantity_available"]} units was compared with '
+                f'predicted demand of {payload["total_predicted_demand"]} units over '
+                f'{payload["lead_time_days"]} days plus safety stock of {payload["safety_stock"]} units.'
             )
 
 
