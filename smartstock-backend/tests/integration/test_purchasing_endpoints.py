@@ -473,7 +473,7 @@ class PurchasingEndpointTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
         body = resp.json()
         self.assertEqual(body['status'], 'error')
-        self.assertIn('Only draft orders can be approved', str(body))
+        self.assertIn('Only draft or pending approval orders can be approved', str(body))
 
     def test_approve_po_already_approved_fails(self):
         """Approving an already-approved PO returns 409."""
