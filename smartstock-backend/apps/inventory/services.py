@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.dispatch import Signal
@@ -20,10 +22,12 @@ def _invalidate_product_cache():
 
 
 class InventoryService:
-    def __init__(self, repo=None, stock_repo=None, cat_repo=None):
+    def __init__(self, repo=None, stock_repo=None, cat_repo=None, sku_repo=None, supplier_repo=None):
         self.repo = repo or InventoryRepository()
         self.stock_repo = stock_repo or StockLevelRepository()
         self.cat_repo = cat_repo or CategoryRepository()
+        self.sku_repo = sku_repo or SKURepository()
+        self.supplier_repo = supplier_repo or SupplierRepository()
 
     def get_all_products(self, include_inactive: bool = False):
         return self.repo.get_all(include_inactive=include_inactive)
@@ -124,6 +128,53 @@ class InventoryService:
         )
         return stock
 
+    def apply_confirmed_invoice(self, confirmed_data: dict, user=None) -> dict:
+        sku_code = str(confirmed_data['sku_code']).strip().upper()
+        product_name = str(confirmed_data['product_name']).strip()
+        supplier_name = str(confirmed_data.get('supplier_name') or '').strip()
+        quantity = self._parse_invoice_quantity(confirmed_data)
+        unit_price = self._parse_invoice_price(confirmed_data.get('unit_price'))
+
+        supplier = self.supplier_repo.get_by_name(supplier_name) if supplier_name else None
+        sku = self.sku_repo.get_by_code(sku_code)
+
+        if sku:
+            product = sku.product
+            stock = self.stock_repo.get_by_sku_id(sku.id)
+            if stock:
+                stock = self.stock_repo.update(
+                    stock.id,
+                    {'quantity_on_hand': stock.quantity_on_hand + quantity},
+                )
+            else:
+                stock = self.stock_repo.create({'sku': sku, 'quantity_on_hand': quantity})
+            updates = {}
+            if unit_price is not None:
+                updates['unit_price'] = unit_price
+            if supplier is not None:
+                updates['supplier'] = supplier
+            if updates:
+                product = self.repo.update(product.id, updates)
+        else:
+            product = self.repo.create(
+                {
+                    'name': product_name,
+                    'supplier': supplier,
+                    'unit_price': unit_price,
+                }
+            )
+            sku = self.sku_repo.create({'product': product, 'code': sku_code})
+            stock = self.stock_repo.create({'sku': sku, 'quantity_on_hand': quantity})
+
+        _invalidate_product_cache()
+        return {
+            'product_id': product.id,
+            'sku_id': sku.id,
+            'stock_level_id': stock.id,
+            'quantity_added': quantity,
+            'quantity_on_hand': stock.quantity_on_hand,
+        }
+
     def get_all_categories(self):
         return self.cat_repo.get_all()
 
@@ -146,16 +197,16 @@ class InventoryService:
         self.stock_repo.delete(stock_level_id)
 
     def get_all_suppliers(self):
-        return SupplierRepository().get_all()
+        return self.supplier_repo.get_all()
 
     def get_supplier(self, supplier_id: int):
-        return SupplierRepository().get_by_id(supplier_id)
+        return self.supplier_repo.get_by_id(supplier_id)
 
     def create_supplier(self, data: dict):
-        return SupplierRepository().create(data)
+        return self.supplier_repo.create(data)
 
     def update_supplier(self, supplier_id: int, data: dict):
-        return SupplierRepository().update(supplier_id, data)
+        return self.supplier_repo.update(supplier_id, data)
 
     def delete_supplier(self, supplier_id: int):
         from apps.purchasing.models import PurchaseOrder
@@ -170,7 +221,26 @@ class InventoryService:
             raise ValidationError(
                 'Cannot delete supplier with open purchase orders. Cancel or complete the pending POs first.'
             )
-        SupplierRepository().soft_delete(supplier_id)
+        self.supplier_repo.soft_delete(supplier_id)
+
+    def _parse_invoice_quantity(self, confirmed_data: dict) -> int:
+        raw = confirmed_data.get('quantity_received', confirmed_data.get('quantity'))
+        quantity = int(raw)
+        if quantity < 1:
+            raise ValidationError('Quantity received must be at least 1.')
+        return quantity
+
+    def _parse_invoice_price(self, raw):
+        if raw in (None, ''):
+            return None
+        cleaned = str(raw).replace('$', '').replace(',', '').strip()
+        try:
+            value = Decimal(cleaned)
+        except (InvalidOperation, ValueError) as exc:
+            raise ValidationError('Unit price must be a valid decimal.') from exc
+        if value < 0:
+            raise ValidationError('Unit price cannot be negative.')
+        return value.quantize(Decimal('0.01'))
 
 
 class SKUService:

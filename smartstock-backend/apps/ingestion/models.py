@@ -61,3 +61,43 @@ class DocumentChunk(models.Model):
 
     def __str__(self):
         return f'{self.source_document} (page {self.page_number})'
+
+
+class InvoiceScan(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        EXTRACTED = 'extracted', 'Extracted'
+        PARTIAL = 'partial', 'Partial'
+        FAILED = 'failed', 'Failed'
+        CONFIRMED = 'confirmed', 'Confirmed'
+        REJECTED = 'rejected', 'Rejected'
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='invoice_scans',
+    )
+    original_filename = models.CharField(max_length=500)
+    content_type = models.CharField(max_length=100)
+    file_size = models.BigIntegerField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    extracted_data = models.JSONField(default=dict)
+    confidence = models.JSONField(default=dict)
+    missing_fields = models.JSONField(default=list)
+    failure_reason = models.TextField(blank=True)
+    confirmed_data = models.JSONField(default=dict)
+    is_confirmed = models.BooleanField(default=False)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['uploaded_by', 'status']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.original_filename}: {self.status}'

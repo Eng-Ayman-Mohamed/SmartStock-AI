@@ -1,16 +1,23 @@
 import logging
 import os
+import base64
 import time
 
-import magic
+from django.core.exceptions import ValidationError
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from openai import APITimeoutError
 
+from ai.multimodal.vision import VisionExtractor
 from ai.observability.langfuse import invoke_with_langfuse
 from ai.rag.ingestion import EMBEDDING_MODEL, ingest_pdf
+from apps.audit.models import AuditEvent
+from apps.audit.utils import log_ai_action
+from apps.inventory.services import InventoryService
 
 from .models import Document, DocumentChunk
+from .repositories import InvoiceScanRepository
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +31,215 @@ ALLOWED_MIME_TYPES = {
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+INVOICE_REQUIRED_FIELDS = [
+    'product_name',
+    'sku_code',
+    'quantity_received',
+    'unit_price',
+    'supplier_name',
+]
+
+
+class InvoiceExtractionMalformed(Exception):
+    pass
+
+
+class InvoiceExtractionTimeout(Exception):
+    pass
+
+
+class InvoiceAlreadyConfirmed(Exception):
+    pass
+
+
+class InvoiceScanService:
+    def __init__(self, repo=None, extractor=None, inventory_service=None, audit_logger=None):
+        self.repo = repo or InvoiceScanRepository()
+        self.extractor = extractor or VisionExtractor()
+        self.inventory_service = inventory_service or InventoryService()
+        self.audit_logger = audit_logger or log_ai_action
+
+    def scan_invoice(self, file, user) -> dict:
+        raw = file.read()
+        file.seek(0)
+        scan = self.repo.create(
+            {
+                'uploaded_by': user,
+                'original_filename': getattr(file, 'name', 'invoice'),
+                'content_type': getattr(file, 'content_type', '') or 'application/octet-stream',
+                'file_size': len(raw),
+            }
+        )
+        file_data_url = self._to_data_url(raw, scan.content_type)
+
+        try:
+            extracted = self.extractor.extract(file_data_url)
+        except (TimeoutError, APITimeoutError) as exc:
+            self._mark_failed(scan, user, 'timeout', str(exc))
+            raise InvoiceExtractionTimeout('Invoice processing timed out. Please try again or enter the data manually.')
+        except ValueError as exc:
+            self._mark_failed(scan, user, 'malformed_json', str(exc))
+            raise InvoiceExtractionMalformed('Vision response was not valid JSON.')
+
+        if not isinstance(extracted, dict):
+            self._mark_failed(scan, user, 'malformed_json', 'Vision response was not a JSON object.')
+            raise InvoiceExtractionMalformed('Vision response was not a JSON object.')
+
+        extracted_data, confidence = self._normalize_extraction(extracted)
+        missing_fields = [field for field in INVOICE_REQUIRED_FIELDS if not extracted_data.get(field)]
+        status_value = 'partial' if missing_fields else 'extracted'
+        scan = self.repo.update(
+            scan.id,
+            {
+                'status': status_value,
+                'extracted_data': extracted_data,
+                'confidence': confidence,
+                'missing_fields': missing_fields,
+                'failure_reason': 'missing required fields' if missing_fields else '',
+            },
+        )
+
+        if missing_fields:
+            self._audit_failure(
+                user=user,
+                scan=scan,
+                reason='partial_extraction',
+                details={'missing_fields': missing_fields, 'extracted_data': extracted_data},
+            )
+
+        return self._scan_payload(scan)
+
+    def confirm_scan(self, scan_id: int, user, confirmed_data: dict) -> dict:
+        scan = self.repo.get_by_id(scan_id)
+        self._validate_scan_owner(scan, user)
+        if scan.is_confirmed or scan.status == 'confirmed':
+            raise InvoiceAlreadyConfirmed('Invoice scan has already been confirmed.')
+        if scan.status == 'rejected':
+            raise ValidationError('Rejected invoice scans cannot be confirmed.')
+
+        missing = [field for field in INVOICE_REQUIRED_FIELDS if not confirmed_data.get(field)]
+        if missing:
+            raise ValidationError(f'Missing confirmed invoice fields: {", ".join(missing)}')
+
+        inventory_result = self.inventory_service.apply_confirmed_invoice(confirmed_data, user=user)
+        final_data = dict(confirmed_data)
+        final_data['inventory_result'] = inventory_result
+        scan = self.repo.mark_confirmed(scan.id, final_data)
+
+        changed_fields = {
+            field: {'original': scan.extracted_data.get(field), 'confirmed': confirmed_data.get(field)}
+            for field in INVOICE_REQUIRED_FIELDS
+            if scan.extracted_data.get(field) != confirmed_data.get(field)
+        }
+        self.audit_logger(
+            AuditEvent.INVOICE_CONFIRMED,
+            user,
+            entity_type='InvoiceScan',
+            entity_id=scan.id,
+            data={
+                'original': scan.extracted_data,
+                'confirmed': confirmed_data,
+                'changed_fields': changed_fields,
+                'inventory_result': inventory_result,
+            },
+        )
+        payload = self._scan_payload(scan)
+        payload['inventory_result'] = inventory_result
+        return payload
+
+    def reject_scan(self, scan_id: int, user) -> dict:
+        scan = self.repo.get_by_id(scan_id)
+        self._validate_scan_owner(scan, user)
+        if scan.is_confirmed or scan.status == 'confirmed':
+            raise InvoiceAlreadyConfirmed('Confirmed invoice scans cannot be rejected.')
+        scan = self.repo.mark_rejected(scan.id)
+        self.audit_logger(
+            AuditEvent.INVOICE_REJECTED,
+            user,
+            entity_type='InvoiceScan',
+            entity_id=scan.id,
+            data={'extracted_data': scan.extracted_data},
+        )
+        return self._scan_payload(scan)
+
+    def _to_data_url(self, raw: bytes, content_type: str) -> str:
+        encoded = base64.b64encode(raw).decode('ascii')
+        return f'data:{content_type};base64,{encoded}'
+
+    def _normalize_extraction(self, extracted: dict) -> tuple[dict, dict]:
+        data = {}
+        confidence = {}
+        confidence_blob = extracted.get('confidence') if isinstance(extracted.get('confidence'), dict) else {}
+        fields_blob = extracted.get('fields') if isinstance(extracted.get('fields'), dict) else extracted
+        for field in INVOICE_REQUIRED_FIELDS:
+            raw_value = fields_blob.get(field)
+            raw_confidence = confidence_blob.get(field)
+            if isinstance(raw_value, dict):
+                raw_confidence = raw_value.get('confidence', raw_confidence)
+                raw_value = raw_value.get('value')
+            data[field] = raw_value
+            confidence[field] = self._normalize_confidence(raw_confidence)
+        return data, confidence
+
+    def _normalize_confidence(self, value) -> float:
+        if value is None:
+            return 0.0
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+        if value > 1:
+            value = value / 100
+        return max(0.0, min(value, 1.0))
+
+    def _validate_scan_owner(self, scan, user):
+        if scan.uploaded_by_id != user.id:
+            raise PermissionError('You cannot access another user invoice scan.')
+
+    def _mark_failed(self, scan, user, reason: str, detail: str):
+        scan = self.repo.update(
+            scan.id,
+            {
+                'status': 'failed',
+                'failure_reason': detail,
+                'missing_fields': INVOICE_REQUIRED_FIELDS,
+            },
+        )
+        self._audit_failure(user=user, scan=scan, reason=reason, details={'detail': detail})
+
+    def _audit_failure(self, user, scan, reason: str, details: dict):
+        self.audit_logger(
+            AuditEvent.VISION_EXTRACTION_FAILED,
+            user,
+            entity_type='InvoiceScan',
+            entity_id=scan.id if scan else None,
+            data={'reason': reason, **details},
+        )
+
+    def _scan_payload(self, scan) -> dict:
+        return {
+            'scan_id': scan.id,
+            'status': scan.status,
+            'extracted_data': scan.extracted_data,
+            'confidence': scan.confidence,
+            'missing_fields': scan.missing_fields,
+            'failure_reason': scan.failure_reason,
+            'confirmed_data': scan.confirmed_data,
+            'is_confirmed': scan.is_confirmed,
+        }
+
 
 class IngestionService:
     def upload_document(self, file, user, doc_type=None):
         raw = file.read()
         file.seek(0)
 
-        mime_type = magic.from_buffer(raw[:2048], mime=True)
+        try:
+            import magic
+
+            mime_type = magic.from_buffer(raw[:2048], mime=True)
+        except ImportError:
+            mime_type = getattr(file, 'content_type', '') or ''
         detected_type = ALLOWED_MIME_TYPES.get(mime_type)
         if not detected_type:
             raise ValueError(f'Unsupported file type: {mime_type}')
