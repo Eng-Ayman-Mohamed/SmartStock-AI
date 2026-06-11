@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Edit3, Package, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Edit3, Package, Plus, Search, Trash2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axios';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
@@ -71,6 +71,9 @@ export default function InventoryPage() {
 
   const [editingProduct, setEditingProduct] = useState<Product | 'new' | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [adjustingStock, setAdjustingStock] = useState<{ stockId: number; skuCode: string } | null>(null);
+  const [stockDelta, setStockDelta] = useState('');
+  const [stockReason, setStockReason] = useState('');
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formReorder, setFormReorder] = useState(10);
@@ -124,6 +127,22 @@ export default function InventoryPage() {
     },
   });
 
+  const adjustStock = useMutation({
+    mutationFn: async ({ stockId, delta, reason }: { stockId: number; delta: number; reason: string }) => {
+      await api.patch(`/inventory/stock-levels/${stockId}/adjust-stock/`, { quantity_delta: delta, reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setAdjustingStock(null);
+      setStockDelta('');
+      setStockReason('');
+      addToast('Stock adjusted', 'success');
+    },
+    onError: () => {
+      addToast('Failed to adjust stock', 'error');
+    },
+  });
+
   const deleteProduct = useMutation({
     mutationFn: async (product: Product) => {
       await api.delete(`/inventory/products/${product.id}/`);
@@ -167,7 +186,7 @@ export default function InventoryPage() {
           const quantity = stock?.quantity ?? stock?.quantity_on_hand ?? 0;
           const reorderPoint = stock?.reorder_point ?? product.reorder_point;
           const status = statusFor(quantity, reorderPoint);
-          return { product, sku, quantity, quantity_reserved: stock?.quantity_reserved ?? 0, reorderPoint, status };
+          return { product, sku, quantity, quantity_reserved: stock?.quantity_reserved ?? 0, reorderPoint, status, stockId: stock?.id ?? 0 };
         });
       })
       .filter((row) => !statusFilter || row.status === statusFilter);
@@ -244,11 +263,14 @@ export default function InventoryPage() {
     {
       key: 'actions',
       label: 'Actions',
-      width: '80px',
+      width: '120px',
       render: (r) => (
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => openEditForm(r.product)} disabled={!canManage} aria-label="Edit product">
             <Edit3 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => setAdjustingStock({ stockId: r.stockId, skuCode: r.sku.code })} disabled={!canManage} aria-label="Adjust stock">
+            <ArrowUpDown className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => setDeletingProduct(r.product)} disabled={!canDelete} aria-label="Delete product">
             <Trash2 className="w-4 h-4" />
@@ -429,6 +451,55 @@ export default function InventoryPage() {
         <p className="text-body text-ink-secondary">
           Are you sure you want to delete <strong>{deletingProduct?.name}</strong>? This action cannot be undone.
         </p>
+      </Modal>
+
+      <Modal
+        open={adjustingStock !== null}
+        onClose={() => { setAdjustingStock(null); setStockDelta(''); setStockReason(''); }}
+        title={`Adjust Stock — ${adjustingStock?.skuCode ?? ''}`}
+        footer={
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" size="md" onClick={() => { setAdjustingStock(null); setStockDelta(''); setStockReason(''); }}>
+              <X className="w-4 h-4" /> Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                if (adjustingStock && stockDelta) {
+                  adjustStock.mutate({ stockId: adjustingStock.stockId, delta: Number(stockDelta), reason: stockReason });
+                }
+              }}
+              disabled={adjustStock.isPending || !stockDelta}
+            >
+              <ArrowUpDown className="w-4 h-4" /> Adjust
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-caption font-medium text-ink-secondary mb-1">Quantity Delta</label>
+            <input
+              type="number"
+              value={stockDelta}
+              onChange={(e) => setStockDelta(e.target.value)}
+              className="w-full h-9 px-3 rounded-md border border-gray-200 bg-white text-body text-gray-800 focus:border-brand-600 focus:outline-none"
+              placeholder="e.g. 10 or -5"
+            />
+            <p className="text-caption text-ink-muted mt-1">Positive to add stock, negative to remove.</p>
+          </div>
+          <div>
+            <label className="block text-caption font-medium text-ink-secondary mb-1">Reason (optional)</label>
+            <input
+              type="text"
+              value={stockReason}
+              onChange={(e) => setStockReason(e.target.value)}
+              className="w-full h-9 px-3 rounded-md border border-gray-200 bg-white text-body text-gray-800 focus:border-brand-600 focus:outline-none"
+              placeholder="e.g. Received shipment"
+            />
+          </div>
+        </div>
       </Modal>
     </div>
   );

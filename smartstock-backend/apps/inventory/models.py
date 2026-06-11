@@ -35,6 +35,7 @@ class Product(models.Model):
     unit_of_measure = models.CharField(max_length=50, blank=True, default='units')
     reorder_point = models.IntegerField(default=10)
     safety_stock = models.IntegerField(default=0)
+    max_warehouse_capacity = models.IntegerField(default=1000)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -87,6 +88,7 @@ class SalesRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ['-date', 'sku']
         indexes = [
             models.Index(fields=['sku', 'date']),
         ]

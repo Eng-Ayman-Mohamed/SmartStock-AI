@@ -131,8 +131,8 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'EXCEPTION_HANDLER': 'config.exception_handler.custom_exception_handler',
     'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
+        'core.throttles.SAFEAnonRateThrottle',
+        'core.throttles.SAFEUserRateThrottle',
         'core.throttles.AIRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
