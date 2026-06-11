@@ -20,3 +20,15 @@ export interface CreateSupplierPayload {
 }
 
 export type UpdateSupplierPayload = Partial<CreateSupplierPayload>;
+
+export interface PendingPO {
+  id: string;
+  product: string;
+  sku: string;
+  supplier: string;
+  predicted_stockout: string;
+  recommended_qty: number;
+  unit_cost: number;
+  estimated_total_cost: string;
+  agent_reasoning: string | null;
+}

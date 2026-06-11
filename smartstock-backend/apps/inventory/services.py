@@ -105,7 +105,9 @@ class InventoryService:
         if value == 'in_stock':
             return queryset.filter(_available__gte=F('skus__stock_level__reorder_point'))
         if value == 'low_stock':
-            return queryset.filter(_available__lt=F('skus__stock_level__reorder_point'), _available__gt=0)
+            return queryset.filter(
+                _available__lt=F('skus__stock_level__reorder_point'), _available__gt=0
+            )
         if value == 'out_of_stock':
             return queryset.filter(_available=0)
         return queryset

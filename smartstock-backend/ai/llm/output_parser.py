@@ -61,7 +61,9 @@ class NLQueryOutputParser(BaseOutputParser[NLQueryResult]):
         try:
             data = json.loads(cleaned)
         except json.JSONDecodeError as exc:
-            raise NLQueryParseError(f'LLM returned invalid JSON: {exc}\nRaw output: {text!r}') from exc
+            raise NLQueryParseError(
+                f'LLM returned invalid JSON: {exc}\nRaw output: {text!r}'
+            ) from exc
 
         # Out-of-scope signal from the LLM
         if 'error' in data:
@@ -81,7 +83,9 @@ class NLQueryOutputParser(BaseOutputParser[NLQueryResult]):
         # Build conditions-based filters
         raw_filters = data.get('filters', {})
         if not isinstance(raw_filters, dict):
-            raise NLQueryParseError(f"'filters' must be an object, got {type(raw_filters).__name__}")
+            raise NLQueryParseError(
+                f"'filters' must be an object, got {type(raw_filters).__name__}"
+            )
 
         filters = self._parse_filters(raw_filters, action)
         return NLQueryResult(action=action, filters=filters)
@@ -92,23 +96,31 @@ class NLQueryOutputParser(BaseOutputParser[NLQueryResult]):
         raw_conditions = raw.get('conditions', [])
 
         if not isinstance(raw_conditions, list):
-            raise NLQueryParseError(f"'conditions' must be an array, got {type(raw_conditions).__name__}")
+            raise NLQueryParseError(
+                f"'conditions' must be an array, got {type(raw_conditions).__name__}"
+            )
 
         allowed = ACTION_ALLOWED_FIELDS.get(action.value, [])
 
         for i, rc in enumerate(raw_conditions):
             if not isinstance(rc, dict):
-                raise NLQueryParseError(f'Condition at index {i} must be an object, got {type(rc).__name__}')
+                raise NLQueryParseError(
+                    f'Condition at index {i} must be an object, got {type(rc).__name__}'
+                )
 
             field = rc.get('field')
             op = rc.get('op')
             value = rc.get('value')
 
             if not field or not op:
-                raise NLQueryParseError(f"Condition at index {i} missing required 'field' or 'op'. Got: {rc}")
+                raise NLQueryParseError(
+                    f"Condition at index {i} missing required 'field' or 'op'. Got: {rc}"
+                )
 
             if op not in VALID_OPERATORS:
-                raise NLQueryParseError(f"Invalid operator '{op}' at condition {i}. Valid operators: {VALID_OPERATORS}")
+                raise NLQueryParseError(
+                    f"Invalid operator '{op}' at condition {i}. Valid operators: {VALID_OPERATORS}"
+                )
 
             if field not in allowed:
                 raise NLQueryParseError(

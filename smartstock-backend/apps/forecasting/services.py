@@ -20,7 +20,11 @@ class ForecastingService:
         try:
             stock = StockLevel.objects.get(sku__code=sku_code)
             lead_time = stock.sku.product.supplier.default_lead_time_days or 7
-            forecasts = self.repo.get_all().filter(sku__code=sku_code).order_by('-forecast_date')[:lead_time]
+            forecasts = (
+                self.repo.get_all()
+                .filter(sku__code=sku_code)
+                .order_by('-forecast_date')[:lead_time]
+            )
             total_predicted = sum(f.predicted_quantity for f in forecasts)
             return stock.quantity_available < total_predicted + stock.sku.product.safety_stock
         except Exception:

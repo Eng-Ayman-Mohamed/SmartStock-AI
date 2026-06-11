@@ -1,32 +1,28 @@
-import { ShoppingCart, Plus, Check, X, Pencil, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Plus } from 'lucide-react';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 import Badge from '../../../shared/components/Badge';
 import EmptyState from '../../../shared/components/EmptyState';
 import DataTable from '../../../shared/components/DataTable';
 import type { Column } from '../../../shared/components/DataTable';
+import POApprovalCard from '../components/POApprovalCard';
+import { usePendingPOs } from '../hooks/usePurchasing';
+import type { PendingPO } from '../types';
 
-interface PendingPO {
-  id: string;
-  product: string;
-  sku: string;
-  qty: number;
-  supplier: string;
-  predictedStockout: string;
-  recommendedQty: number;
-  estimatedCost: string;
-}
-
-const pendingPOs: PendingPO[] = [
+const mockPendingPOs: PendingPO[] = [
   {
     id: 'PO-1042', product: 'Wireless Mouse', sku: 'WM-2024-001',
-    qty: 200, supplier: 'TechSupply Co.',
-    predictedStockout: '15 Jun 2025', recommendedQty: 250, estimatedCost: '$5,312.50',
+    supplier: 'TechSupply Co.',
+    predicted_stockout: '15 Jun 2025', recommended_qty: 250,
+    unit_cost: 21.25, estimated_total_cost: '$5,312.50',
+    agent_reasoning: 'Wireless Mouse has a 30-day moving average of 185 units. Current stock of 28 units will last approximately 5 days based on current velocity. The AI recommends ordering 250 units to maintain 30 days of buffer stock.',
   },
   {
     id: 'PO-1044', product: 'Mechanical Keyboard', sku: 'MK-2024-017',
-    qty: 75, supplier: 'Global Parts Inc.',
-    predictedStockout: '22 Jun 2025', recommendedQty: 100, estimatedCost: '$4,200.00',
+    supplier: 'Global Parts Inc.',
+    predicted_stockout: '22 Jun 2025', recommended_qty: 100,
+    unit_cost: 42.00, estimated_total_cost: '$4,200.00',
+    agent_reasoning: null,
   },
 ];
 
@@ -58,73 +54,10 @@ const historyColumns: Column<POHistory>[] = [
   { key: 'approvedBy', label: 'Approved By', width: '120px', render: (r) => <span className="text-caption text-ink-muted">{r.approvedBy}</span> },
 ];
 
-function POApprovalCard({ po }: { po: PendingPO }) {
-  return (
-    <div className="bg-canvas border-l-[3px] border-l-orange-600 rounded-lg shadow-elevated overflow-hidden">
-      <div className="p-6 pb-4 border-b border-hairline">
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="text-card-title text-ink">Purchase Order Draft</h3>
-            <Badge variant="AI Generated" />
-        </div>
-        <p className="text-caption text-ink-muted">{po.id} — {po.product}</p>
-      </div>
-
-      <div className="p-6 space-y-3">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-caption text-ink-muted">SKU</p>
-            <p className="text-mono text-ink mt-0.5">{po.sku}</p>
-          </div>
-          <div>
-            <p className="text-caption text-ink-muted">Supplier</p>
-            <p className="text-body text-ink mt-0.5">{po.supplier}</p>
-          </div>
-          <div>
-            <p className="text-caption text-ink-muted flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-red-600" /> Predicted stockout
-            </p>
-            <p className="text-body text-red-600 mt-0.5 tabular-nums">{po.predictedStockout}</p>
-          </div>
-          <div>
-            <p className="text-caption text-ink-muted">Estimated cost</p>
-            <p className="text-[16px] font-medium text-ink mt-0.5 tabular-nums">{po.estimatedCost}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 pt-2">
-          <p className="text-caption text-ink-muted">Recommended qty:</p>
-          <input
-            type="number"
-            defaultValue={po.recommendedQty}
-            className="w-20 h-8 px-2 rounded-md border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-            aria-label="Recommended quantity"
-          />
-        </div>
-
-        <details className="group">
-          <summary className="text-caption text-ink-muted cursor-pointer hover:text-ink transition-colors">
-            Why did the AI flag this?
-          </summary>
-          <div className="mt-2 p-3 rounded-md bg-purple-50 border-l-2 border-purple-100">
-            <p className="text-caption text-ink-muted italic leading-relaxed">
-              {po.product} has a 30-day moving average of 185 units. Current stock of 28 units will last approximately 5 days based on current velocity. The AI recommends ordering {po.recommendedQty} units to maintain 30 days of buffer stock.
-            </p>
-          </div>
-        </details>
-      </div>
-
-      <div className="flex items-center gap-3 p-6 pt-4 border-t border-hairline">
-        <Button variant="primary" size="md" className="flex-1 bg-green-600 hover:bg-green-800">
-          <Check className="w-4 h-4" /> Approve
-        </Button>
-        <Button variant="utility" size="md"><Pencil className="w-4 h-4" /> Edit Qty</Button>
-        <Button variant="ghost" size="md" className="text-red-600 hover:bg-red-50"><X className="w-4 h-4" /> Reject</Button>
-      </div>
-    </div>
-  );
-}
-
 export default function PurchasingPage() {
+  const { data: pendingPOsData, isLoading: isPendingLoading, isError } = usePendingPOs();
+  const pendingPOs = isPendingLoading ? mockPendingPOs : (pendingPOsData ?? []);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
@@ -135,9 +68,15 @@ export default function PurchasingPage() {
         <Button variant="primary" size="md"><Plus className="w-4 h-4" /> New Order</Button>
       </div>
 
+      {isError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+          Failed to load pending purchase orders.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Pending Approval" subtitle={`${pendingPOs.length} orders awaiting review`}>
-          {pendingPOs.length === 0 ? (
+          {pendingPOs.length === 0 && !isError ? (
             <EmptyState
               icon={ShoppingCart}
               heading="All caught up on approvals"
@@ -152,7 +91,7 @@ export default function PurchasingPage() {
                       <span className="text-body font-medium text-ink truncate">{po.product}</span>
                       <Badge variant="AI Generated" />
                     </div>
-                    <p className="text-caption text-ink-muted mt-0.5 tabular-nums">{po.qty} units — {po.supplier}</p>
+                    <p className="text-caption text-ink-muted mt-0.5 tabular-nums">{po.recommended_qty} units — {po.supplier}</p>
                   </div>
                   <span className="text-mono text-ink-muted shrink-0">{po.id}</span>
                 </div>
@@ -161,7 +100,7 @@ export default function PurchasingPage() {
           )}
         </Card>
 
-        {pendingPOs[0] && <POApprovalCard po={pendingPOs[0]} />}
+        {pendingPOs[0] && <POApprovalCard key={pendingPOs[0].id} po={pendingPOs[0]} readOnly={isPendingLoading} />}
       </div>
 
       <Card title="PO History">

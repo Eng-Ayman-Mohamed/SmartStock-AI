@@ -80,7 +80,9 @@ class TestReadOnly:
         assert ReadOnly().has_permission(_request(method='GET', user=_mock_user('viewer')), None)
 
     def test_viewer_denied_unsafe(self):
-        assert not ReadOnly().has_permission(_request(method='POST', user=_mock_user('viewer')), None)
+        assert not ReadOnly().has_permission(
+            _request(method='POST', user=_mock_user('viewer')), None
+        )
 
     def test_manager_allowed_safe(self):
         assert ReadOnly().has_permission(_request(method='GET', user=_mock_user('manager')), None)

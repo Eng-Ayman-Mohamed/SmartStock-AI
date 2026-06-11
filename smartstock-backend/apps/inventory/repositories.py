@@ -151,7 +151,9 @@ class SalesRecordRepository(BaseRepository):
         return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
 
     def bulk_create(self, records: list):
-        return SalesRecord.objects.bulk_create([SalesRecord(**r) for r in records], ignore_conflicts=True)
+        return SalesRecord.objects.bulk_create(
+            [SalesRecord(**r) for r in records], ignore_conflicts=True
+        )
 
 
 class SupplierRepository(BaseRepository):

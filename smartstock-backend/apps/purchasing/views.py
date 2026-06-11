@@ -18,7 +18,9 @@ from .services import PurchasingService
     list=extend_schema(
         responses={
             200: SupplierSerializer(many=True),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
@@ -27,9 +29,13 @@ from .services import PurchasingService
     retrieve=extend_schema(
         responses={
             200: SupplierSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Supplier not found'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -37,9 +43,15 @@ from .services import PurchasingService
         request=SupplierSerializer,
         responses={
             201: SupplierSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
         tags=['purchasing'],
@@ -48,10 +60,18 @@ from .services import PurchasingService
         request=SupplierSerializer,
         responses={
             200: SupplierSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Supplier not found'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -59,10 +79,18 @@ from .services import PurchasingService
         request=SupplierSerializer,
         responses={
             200: SupplierSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Supplier not found'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -70,7 +98,9 @@ from .services import PurchasingService
         responses={
             204: None,
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Supplier not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Supplier not found'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -94,7 +124,9 @@ class SupplierViewSet(viewsets.ModelViewSet):
     list=extend_schema(
         responses={
             200: PurchaseOrderSerializer(many=True),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
@@ -103,9 +135,13 @@ class SupplierViewSet(viewsets.ModelViewSet):
     retrieve=extend_schema(
         responses={
             200: PurchaseOrderSerializer,
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Purchase order not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Purchase order not found'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -113,9 +149,15 @@ class SupplierViewSet(viewsets.ModelViewSet):
         request=PurchaseOrderSerializer,
         responses={
             201: PurchaseOrderSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
         tags=['purchasing'],
@@ -124,10 +166,18 @@ class SupplierViewSet(viewsets.ModelViewSet):
         request=PurchaseOrderSerializer,
         responses={
             200: PurchaseOrderSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Purchase order not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Purchase order not found'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -135,10 +185,18 @@ class SupplierViewSet(viewsets.ModelViewSet):
         request=PurchaseOrderSerializer,
         responses={
             200: PurchaseOrderSerializer,
-            400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Purchase order not found'),
-            422: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Validation error'),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Purchase order not found'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -146,7 +204,9 @@ class SupplierViewSet(viewsets.ModelViewSet):
         responses={
             204: None,
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Purchase order not found'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Purchase order not found'
+            ),
         },
         tags=['purchasing'],
     ),
@@ -179,9 +239,15 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 },
                 description='Purchase order approved',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Purchase order not found'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Purchase order not found'
+            ),
         },
         tags=['purchasing'],
     )
@@ -204,9 +270,15 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 },
                 description='Purchase order rejected',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-            404: OpenApiResponse(response=ErrorResponseSerializer, description='Purchase order not found'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Purchase order not found'
+            ),
         },
         tags=['purchasing'],
     )
@@ -232,8 +304,12 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 },
                 description='List of suppliers with overdue purchase orders',
             ),
-            401: OpenApiResponse(response=ErrorResponseSerializer, description='Authentication required'),
-            403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
         },
         tags=['purchasing'],
     )

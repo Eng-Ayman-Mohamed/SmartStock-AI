@@ -40,7 +40,9 @@ def _compute_accuracy(df: pd.DataFrame, model) -> tuple:
     mae = mean_absolute_error(y_true, y_pred)
     nonzero_mask = y_true > 0
     if nonzero_mask.sum() > 0:
-        mape = float(np.mean(np.abs((y_true[nonzero_mask] - y_pred[nonzero_mask]) / y_true[nonzero_mask])))
+        mape = float(
+            np.mean(np.abs((y_true[nonzero_mask] - y_pred[nonzero_mask]) / y_true[nonzero_mask]))
+        )
     else:
         mape = float('inf')
     return float(mae), mape

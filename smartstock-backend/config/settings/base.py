@@ -135,7 +135,10 @@ SPECTACULAR_SETTINGS = {
                 'type': 'object',
                 'properties': {
                     'access': {'type': 'string', 'description': 'JWT access token'},
-                    'refresh': {'type': 'string', 'description': 'JWT refresh token (also set as HttpOnly cookie)'},
+                    'refresh': {
+                        'type': 'string',
+                        'description': 'JWT refresh token (also set as HttpOnly cookie)',
+                    },
                 },
             },
         },
@@ -152,7 +155,9 @@ SPECTACULAR_SETTINGS = {
 }
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -250,3 +255,11 @@ if not os.environ.get('CI'):
         validate_required_env_vars()
     except Exception:
         logger.warning('Environment validation skipped — settings may be incomplete.')
+
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
+CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get(
+    'CELERY_BROKER_URL', 'redis://localhost:6379/0'
+)
+CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
+    'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'
+)

@@ -14,6 +14,7 @@ class ForecastResult(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        ordering = ['-created_at']
         indexes = [
             models.Index(fields=['sku', 'forecast_date']),
         ]
