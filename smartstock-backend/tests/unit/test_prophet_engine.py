@@ -56,7 +56,7 @@ class TestComputeAccuracy(unittest.TestCase):
             }
         )
         model = MagicMock()
-        model.predict.return_value = pd.DataFrame({'yhat': [10.0] * 10})
+        model.predict.return_value = pd.DataFrame({'yhat': [10.0] * 100})
         mae, mape = self._compute_accuracy(df, model)
         self.assertIsInstance(mae, float)
         self.assertIsInstance(mape, float)
