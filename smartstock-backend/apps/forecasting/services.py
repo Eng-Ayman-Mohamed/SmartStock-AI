@@ -18,7 +18,7 @@ class ForecastingService:
 
     def calculate_stockout_risk(self, sku_code: str) -> bool:
         try:
-            stock = StockLevel.objects.get(sku__sku_code=sku_code)
+            stock = StockLevel.objects.get(sku__code=sku_code)
             lead_time = stock.sku.product.supplier.default_lead_time_days or 7
             forecasts = (
                 self.repo.get_all()

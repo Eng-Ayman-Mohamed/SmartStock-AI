@@ -1,11 +1,12 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 
-from apps.authentication.permissions import IsAdminOnly
+from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
 
-from .models import AuditLog
-from .serializers import AuditLogSerializer
+from .models import AgentRun, AuditLog
+from .serializers import AgentRunSerializer, AuditLogSerializer
 
 
 class AuditLogView(ListAPIView):
@@ -27,3 +28,14 @@ class AuditLogView(ListAPIView):
         if created_before:
             qs = qs.filter(timestamp__lte=created_before)
         return qs
+
+
+class AgentRunViewSet(viewsets.ModelViewSet):
+    queryset = AgentRun.objects.all()
+    serializer_class = AgentRunSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsViewerOrAbove()]
+        return [IsManagerOrAbove()]

@@ -7,5 +7,6 @@ router = DefaultRouter()
 router.register(r'documents', views.DocumentViewSet, basename='document')
 
 urlpatterns = [
+    path('rag-query/', views.RAGQueryView.as_view(), name='rag-query'),
     path('', include(router.urls)),
 ]
