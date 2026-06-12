@@ -1,6 +1,6 @@
+import base64
 import logging
 import os
-import base64
 import time
 
 from django.core.exceptions import ValidationError
