@@ -63,13 +63,13 @@ class PurchasingAgent:
         try:
             result = self._execute_workflow(context, trace_spans)
         except Exception as e:
-            logger.exception("PurchasingAgent workflow failed")
+            logger.exception('PurchasingAgent workflow failed')
             result = {
-                "agent": "purchasing_agent",
-                "status": "failed",
-                "error": str(e),
+                'agent': 'purchasing_agent',
+                'status': 'failed',
+                'error': str(e),
             }
-        trace_agent_run("purchasing_agent", context, result, trace_spans)
+        trace_agent_run('purchasing_agent', context, result, trace_spans)
         return result
 
     def _execute_workflow(self, context: dict, trace_spans: list) -> dict:
@@ -77,33 +77,31 @@ class PurchasingAgent:
         draft_result = self._run_tool(
             self.po_draft_tool,
             {
-                "sku_id": context["sku_id"],
-                "quantity": context["quantity"],
-                "supplier_id": context["supplier_id"],
-                "user_id": context.get("user_id"),
-                "agent_reasoning": context.get("agent_reasoning", ""),
-                "total_cost": context.get("total_cost", "0.00"),
+                'sku_id': context['sku_id'],
+                'quantity': context['quantity'],
+                'supplier_id': context['supplier_id'],
+                'user_id': context.get('user_id'),
+                'agent_reasoning': context.get('agent_reasoning', ''),
+                'total_cost': context.get('total_cost', '0.00'),
             },
             trace_spans,
         )
 
-        if draft_result.get("status") == "failed" or not draft_result.get("po_id"):
+        if draft_result.get('status') == 'failed' or not draft_result.get('po_id'):
             return {
-                "agent": "purchasing_agent",
-                "status": "failed",
-                "error": draft_result.get("error", "Failed to create draft PO"),
-                "step": "draft",
+                'agent': 'purchasing_agent',
+                'status': 'failed',
+                'error': draft_result.get('error', 'Failed to create draft PO'),
+                'step': 'draft',
             }
 
-        po_id = draft_result["po_id"]
+        po_id = draft_result['po_id']
 
         # Create workflow record
         workflow = self.workflow_service.create_workflow(po_id)
 
         # Step 2: HITL Approval Gate
-        approval_result = self._handle_approval_gate(
-            po_id, workflow.id, context, trace_spans
-        )
+        approval_result = self._handle_approval_gate(po_id, workflow.id, context, trace_spans)
         if approval_result is not None:
             return approval_result
 
@@ -128,17 +126,15 @@ class PurchasingAgent:
             workflow_id, PurchaseOrderWorkflow.Status.PENDING_APPROVAL
         )
 
-        user = context.get("user")
+        user = context.get('user')
 
-        if context.get("auto_approve"):
+        if context.get('auto_approve'):
             if user is not None:
                 self.purchasing_service.approve_po(po_id, user)
-            self.workflow_service.update_status(
-                workflow_id, PurchaseOrderWorkflow.Status.APPROVED
-            )
+            self.workflow_service.update_status(workflow_id, PurchaseOrderWorkflow.Status.APPROVED)
             return None
 
-        approval_callback = context.get("approval_callback")
+        approval_callback = context.get('approval_callback')
         if approval_callback:
             approved = approval_callback(po_id)
             if not approved:
@@ -148,61 +144,57 @@ class PurchasingAgent:
                 )
                 self._run_tool(
                     self.po_draft_tool,
-                    {"action": "trace", "step": "approval_rejected"},
+                    {'action': 'trace', 'step': 'approval_rejected'},
                     trace_spans,
                 )
                 return {
-                    "agent": "purchasing_agent",
-                    "status": "rejected",
-                    "po_id": po_id,
-                    "workflow_id": workflow_id,
-                    "message": "Human approval rejected. PO not sent.",
+                    'agent': 'purchasing_agent',
+                    'status': 'rejected',
+                    'po_id': po_id,
+                    'workflow_id': workflow_id,
+                    'message': 'Human approval rejected. PO not sent.',
                 }
             if user is not None:
                 self.purchasing_service.approve_po(po_id, user)
-            self.workflow_service.update_status(
-                workflow_id, PurchaseOrderWorkflow.Status.APPROVED
-            )
+            self.workflow_service.update_status(workflow_id, PurchaseOrderWorkflow.Status.APPROVED)
             return None
 
         # No auto_approve and no callback: return pending status for caller to handle
         return {
-            "agent": "purchasing_agent",
-            "status": "pending_approval",
-            "po_id": po_id,
-            "workflow_id": workflow_id,
-            "message": "PO requires human approval before sending.",
+            'agent': 'purchasing_agent',
+            'status': 'pending_approval',
+            'po_id': po_id,
+            'workflow_id': workflow_id,
+            'message': 'PO requires human approval before sending.',
         }
 
-    def _send_email(
-        self, po_id: int, workflow_id: int, trace_spans: list
-    ) -> dict | None:
+    def _send_email(self, po_id: int, workflow_id: int, trace_spans: list) -> dict | None:
         """Send the PO email. Returns None on success, or a result dict on failure."""
         email_result = self._run_tool(
             self.email_send_tool,
-            {"po_id": po_id},
+            {'po_id': po_id},
             trace_spans,
         )
 
-        if email_result.get("status") == "failed":
+        if email_result.get('status') == 'failed':
             self.purchasing_service.mark_failed(
-                po_id, email_result.get("error", "Email dispatch failed")
+                po_id, email_result.get('error', 'Email dispatch failed')
             )
             self.workflow_service.update_status(
                 workflow_id,
                 PurchaseOrderWorkflow.Status.FAILED,
-                error_message=email_result.get("error", "Email dispatch failed"),
+                error_message=email_result.get('error', 'Email dispatch failed'),
             )
             return {
-                "agent": "purchasing_agent",
-                "status": "failed",
-                "po_id": po_id,
-                "workflow_id": workflow_id,
-                "error": email_result.get("error", "Email dispatch failed"),
-                "step": "email_send",
+                'agent': 'purchasing_agent',
+                'status': 'failed',
+                'po_id': po_id,
+                'workflow_id': workflow_id,
+                'error': email_result.get('error', 'Email dispatch failed'),
+                'step': 'email_send',
             }
 
-        message_id = email_result.get("message_id")
+        message_id = email_result.get('message_id')
         self.purchasing_service.mark_email_sent(po_id, message_id=message_id)
         self.workflow_service.update_status(
             workflow_id,
@@ -215,9 +207,7 @@ class PurchasingAgent:
         )
         return None
 
-    def _poll_for_confirmation(
-        self, po_id: int, workflow_id: int, trace_spans: list
-    ) -> dict:
+    def _poll_for_confirmation(self, po_id: int, workflow_id: int, trace_spans: list) -> dict:
         """Poll for supplier confirmation using exponential backoff.
 
         Backoff schedule:
@@ -236,54 +226,52 @@ class PurchasingAgent:
 
             poll_result = self._run_tool(
                 self.confirmation_tool,
-                {"po_id": po_id},
+                {'po_id': po_id},
                 trace_spans,
             )
 
-            if poll_result.get("confirmed"):
+            if poll_result.get('confirmed'):
                 self.purchasing_service.mark_confirmed(po_id)
                 self.workflow_service.mark_confirmed(workflow_id)
                 return {
-                    "agent": "purchasing_agent",
-                    "status": "confirmed",
-                    "po_id": po_id,
-                    "workflow_id": workflow_id,
-                    "polling_attempts": attempt + 1,
+                    'agent': 'purchasing_agent',
+                    'status': 'confirmed',
+                    'po_id': po_id,
+                    'workflow_id': workflow_id,
+                    'polling_attempts': attempt + 1,
                 }
 
-            if poll_result.get("terminal"):
-                terminal_status = poll_result.get("status", "failed")
+            if poll_result.get('terminal'):
+                terminal_status = poll_result.get('status', 'failed')
                 self.purchasing_service.mark_failed(
-                    po_id, f"PO reached terminal status: {terminal_status}"
+                    po_id, f'PO reached terminal status: {terminal_status}'
                 )
                 self.workflow_service.update_status(
                     workflow_id,
                     PurchaseOrderWorkflow.Status.FAILED,
-                    error_message=f"PO reached terminal status: {terminal_status}",
+                    error_message=f'PO reached terminal status: {terminal_status}',
                 )
                 return {
-                    "agent": "purchasing_agent",
-                    "status": "failed",
-                    "po_id": po_id,
-                    "workflow_id": workflow_id,
-                    "error": f"PO reached terminal status: {terminal_status}",
-                    "polling_attempts": attempt + 1,
+                    'agent': 'purchasing_agent',
+                    'status': 'failed',
+                    'po_id': po_id,
+                    'workflow_id': workflow_id,
+                    'error': f'PO reached terminal status: {terminal_status}',
+                    'polling_attempts': attempt + 1,
                 }
 
             delay = min(delay * 2, self.max_delay)
 
         # Max attempts exhausted
         self.purchasing_service.mark_timeout(po_id)
-        self.workflow_service.update_status(
-            workflow_id, PurchaseOrderWorkflow.Status.TIMEOUT
-        )
+        self.workflow_service.update_status(workflow_id, PurchaseOrderWorkflow.Status.TIMEOUT)
         return {
-            "agent": "purchasing_agent",
-            "status": "timeout",
-            "po_id": po_id,
-            "workflow_id": workflow_id,
-            "polling_attempts": self.max_attempts,
-            "error": f"Confirmation not received after {self.max_attempts} attempts",
+            'agent': 'purchasing_agent',
+            'status': 'timeout',
+            'po_id': po_id,
+            'workflow_id': workflow_id,
+            'polling_attempts': self.max_attempts,
+            'error': f'Confirmation not received after {self.max_attempts} attempts',
         }
 
     def _run_tool(self, tool, tool_input: dict, trace_spans: list) -> dict:
@@ -291,10 +279,10 @@ class PurchasingAgent:
         output = tool.run(tool_input)
         trace_spans.append(
             {
-                "name": getattr(tool, "name", tool.__class__.__name__),
-                "input": tool_input,
-                "output": output,
-                "duration_ms": round((time.time() - started_at) * 1000),
+                'name': getattr(tool, 'name', tool.__class__.__name__),
+                'input': tool_input,
+                'output': output,
+                'duration_ms': round((time.time() - started_at) * 1000),
             }
         )
         return output
