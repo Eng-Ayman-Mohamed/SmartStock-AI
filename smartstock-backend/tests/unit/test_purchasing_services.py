@@ -352,7 +352,7 @@ class PurchasingServiceMarkEmailSentTest(TestCase):
         self.repo.get_by_id.return_value = MagicMock(status='approved')
         self.repo.update.return_value = MagicMock(id=1, status='email_sent')
 
-        result = self.service.mark_email_sent(po_id=1, message_id='msg-001')
+        self.service.mark_email_sent(po_id=1, message_id='msg-001')
 
         self.repo.update.assert_called_once()
         update_data = self.repo.update.call_args[0][1]
@@ -414,7 +414,7 @@ class PurchasingServiceMarkConfirmedTest(TestCase):
         self.repo.get_by_id.return_value = MagicMock(status='waiting_confirmation')
         self.repo.update.return_value = MagicMock(id=1, status='confirmed')
 
-        result = self.service.mark_confirmed(po_id=1)
+        self.service.mark_confirmed(po_id=1)
 
         self.repo.update.assert_called_once()
         update_data = self.repo.update.call_args[0][1]
@@ -441,7 +441,7 @@ class PurchasingServiceMarkFailedTest(TestCase):
         self.repo.get_by_id.return_value = MagicMock(status='email_sent', notes='')
         self.repo.update.return_value = MagicMock(id=1, status='failed')
 
-        result = self.service.mark_failed(po_id=1, error_message='SMTP error')
+        self.service.mark_failed(po_id=1, error_message='SMTP error')
 
         self.repo.update.assert_called_once()
         update_data = self.repo.update.call_args[0][1]
