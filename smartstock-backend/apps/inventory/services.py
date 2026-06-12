@@ -22,7 +22,9 @@ def _invalidate_product_cache():
 
 
 class InventoryService:
-    def __init__(self, repo=None, stock_repo=None, cat_repo=None, sku_repo=None, supplier_repo=None):
+    def __init__(
+        self, repo=None, stock_repo=None, cat_repo=None, sku_repo=None, supplier_repo=None
+    ):
         self.repo = repo or InventoryRepository()
         self.stock_repo = stock_repo or StockLevelRepository()
         self.cat_repo = cat_repo or CategoryRepository()
