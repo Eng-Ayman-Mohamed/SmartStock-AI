@@ -166,12 +166,31 @@ class RAGQueryService:
 
         co = cohere.Client(cohere_key)
         documents = [c.get('content', '') for c in chunks]
-        response = co.rerank(
-            query=query,
-            documents=documents,
-            top_n=top_n,
-            model='rerank-english-v3.0',
-        )
+
+        last_error = None
+        for attempt in range(3):
+            try:
+                response = co.rerank(
+                    query=query,
+                    documents=documents,
+                    top_n=top_n,
+                    model='rerank-english-v3.0',
+                )
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < 2:
+                    wait = 2**attempt
+                    logger.warning(
+                        'Cohere rerank attempt %d failed (%s), retrying in %ds...',
+                        attempt + 1,
+                        e,
+                        wait,
+                    )
+                    time.sleep(wait)
+        else:
+            raise last_error
+
         reranked = []
         for result in response.results:
             chunk = chunks[result.index].copy()

@@ -74,3 +74,12 @@ class RAGQuerySerializer(serializers.Serializer):
         if len(cleaned) < 3:
             raise serializers.ValidationError('Query must be at least 3 characters long.')
         return cleaned
+
+
+class TranscriptionSerializer(serializers.Serializer):
+    audio = serializers.FileField()
+
+    def validate_audio(self, file):
+        if file.size > 25 * 1024 * 1024:
+            raise serializers.ValidationError('Audio file must be less than 25 MB.')
+        return file

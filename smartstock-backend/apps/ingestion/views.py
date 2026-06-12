@@ -26,7 +26,12 @@ from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsVie
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 
 from .models import Document
-from .serializers import DocumentSerializer, DocumentUploadSerializer, RAGQuerySerializer
+from .serializers import (
+    DocumentSerializer,
+    DocumentUploadSerializer,
+    RAGQuerySerializer,
+    TranscriptionSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -449,3 +454,67 @@ class RAGQueryView(APIView):
                 lf.flush()
         except Exception as lf_err:
             logger.debug('Langfuse trace skipped: %s', lf_err)
+
+
+# ---------------------------------------------------------------------------
+# Transcription Endpoint  — POST /api/ai/transcribe/
+# ---------------------------------------------------------------------------
+
+
+class TranscribeView(APIView):
+    permission_classes = [IsManagerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
+
+    @extend_schema(
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'audio': {'type': 'string', 'format': 'binary'},
+                },
+                'required': ['audio'],
+            }
+        },
+        responses={
+            200: inline_serializer(
+                'TranscriptionResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': inline_serializer(
+                        'TranscriptionData',
+                        {'text': serializers.CharField()},
+                    ),
+                },
+            ),
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
+            500: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Transcription failed'
+            ),
+        },
+        tags=['ai'],
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = TranscriptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        audio_file = serializer.validated_data['audio']
+        audio_data = audio_file.read()
+
+        try:
+            from ai.multimodal.whisper import SpeechTranscriber
+
+            transcriber = SpeechTranscriber()
+            text = transcriber.transcribe(audio_data, filename=audio_file.name)
+            return Response({'status': 'success', 'data': {'text': text}})
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception as e:
+            logger.exception('Transcription failed')
+            return Response(
+                {'status': 'error', 'message': f'Transcription failed: {e}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
