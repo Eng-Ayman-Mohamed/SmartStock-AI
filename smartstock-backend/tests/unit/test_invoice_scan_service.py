@@ -164,7 +164,9 @@ def test_scan_invoice_timeout_marks_failed_and_raises_timeout_error():
 def test_confirm_scan_rejects_other_users_scan():
     owner = user(1)
     scan = SimpleNamespace(id=1, uploaded_by_id=owner.id, is_confirmed=False, status='extracted')
-    service = InvoiceScanService(repo=FakeInvoiceRepo(scan=scan), audit_logger=lambda *args, **kwargs: None)
+    service = InvoiceScanService(
+        repo=FakeInvoiceRepo(scan=scan), audit_logger=lambda *args, **kwargs: None
+    )
 
     with pytest.raises(PermissionError):
         service.confirm_scan(1, user(2), complete_extraction_payload())
@@ -173,7 +175,9 @@ def test_confirm_scan_rejects_other_users_scan():
 def test_confirm_scan_rejects_already_confirmed_scan():
     owner = user(1)
     scan = SimpleNamespace(id=1, uploaded_by_id=owner.id, is_confirmed=True, status='confirmed')
-    service = InvoiceScanService(repo=FakeInvoiceRepo(scan=scan), audit_logger=lambda *args, **kwargs: None)
+    service = InvoiceScanService(
+        repo=FakeInvoiceRepo(scan=scan), audit_logger=lambda *args, **kwargs: None
+    )
 
     with pytest.raises(InvoiceAlreadyConfirmed):
         service.confirm_scan(1, owner, complete_extraction_payload())

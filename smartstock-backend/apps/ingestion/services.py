@@ -76,17 +76,23 @@ class InvoiceScanService:
             extracted = self.extractor.extract(file_data_url)
         except (TimeoutError, APITimeoutError) as exc:
             self._mark_failed(scan, user, 'timeout', str(exc))
-            raise InvoiceExtractionTimeout('Invoice processing timed out. Please try again or enter the data manually.')
+            raise InvoiceExtractionTimeout(
+                'Invoice processing timed out. Please try again or enter the data manually.'
+            )
         except ValueError as exc:
             self._mark_failed(scan, user, 'malformed_json', str(exc))
             raise InvoiceExtractionMalformed('Vision response was not valid JSON.')
 
         if not isinstance(extracted, dict):
-            self._mark_failed(scan, user, 'malformed_json', 'Vision response was not a JSON object.')
+            self._mark_failed(
+                scan, user, 'malformed_json', 'Vision response was not a JSON object.'
+            )
             raise InvoiceExtractionMalformed('Vision response was not a JSON object.')
 
         extracted_data, confidence = self._normalize_extraction(extracted)
-        missing_fields = [field for field in INVOICE_REQUIRED_FIELDS if not extracted_data.get(field)]
+        missing_fields = [
+            field for field in INVOICE_REQUIRED_FIELDS if not extracted_data.get(field)
+        ]
         status_value = 'partial' if missing_fields else 'extracted'
         scan = self.repo.update(
             scan.id,
@@ -127,7 +133,10 @@ class InvoiceScanService:
         scan = self.repo.mark_confirmed(scan.id, final_data)
 
         changed_fields = {
-            field: {'original': scan.extracted_data.get(field), 'confirmed': confirmed_data.get(field)}
+            field: {
+                'original': scan.extracted_data.get(field),
+                'confirmed': confirmed_data.get(field),
+            }
             for field in INVOICE_REQUIRED_FIELDS
             if scan.extracted_data.get(field) != confirmed_data.get(field)
         }
@@ -169,8 +178,12 @@ class InvoiceScanService:
     def _normalize_extraction(self, extracted: dict) -> tuple[dict, dict]:
         data = {}
         confidence = {}
-        confidence_blob = extracted.get('confidence') if isinstance(extracted.get('confidence'), dict) else {}
-        fields_blob = extracted.get('fields') if isinstance(extracted.get('fields'), dict) else extracted
+        confidence_blob = (
+            extracted.get('confidence') if isinstance(extracted.get('confidence'), dict) else {}
+        )
+        fields_blob = (
+            extracted.get('fields') if isinstance(extracted.get('fields'), dict) else extracted
+        )
         for field in INVOICE_REQUIRED_FIELDS:
             raw_value = fields_blob.get(field)
             raw_confidence = confidence_blob.get(field)
