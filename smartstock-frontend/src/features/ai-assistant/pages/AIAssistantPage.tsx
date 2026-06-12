@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, User, Package, AlertTriangle, FileText, TrendingUp } from 'lucide-react';
 import Card from '../../../shared/components/Card';
+import VoiceButton from '../components/VoiceButton';
+import { sendRAGQuery } from '../api';
 
 interface Message {
   role: 'user' | 'ai';
@@ -20,19 +22,24 @@ export default function AIAssistantPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!input.trim() || isThinking) return;
-    const userMsg: Message = { role: 'user', text: input.trim() };
+  const handleSend = async (query?: string) => {
+    const text = (query ?? input).trim();
+    if (!text || isThinking) return;
+    const userMsg: Message = { role: 'user', text };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsThinking(true);
-    setTimeout(() => {
-      setMessages((prev) => [...prev, {
-        role: 'ai',
-        text: 'I\'ve analyzed your inventory data. Here\'s what I found: your top 3 slow-moving items this month are the "USB-C Hub" (12 units sold), "Webcam HD" (8 units), and "Monitor Stand" (5 units). Would you like me to suggest reorder adjustments or flag any items for discount?',
-      }]);
+    try {
+      const result = await sendRAGQuery(text);
+      setMessages((prev) => [...prev, { role: 'ai', text: result.answer }]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'ai', text: 'Sorry, something went wrong. Please try again.' },
+      ]);
+    } finally {
       setIsThinking(false);
-    }, 1500);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -93,6 +100,7 @@ export default function AIAssistantPage() {
 
           <div className="px-6 py-3 border-t border-hairline">
             <div className="flex items-center gap-2">
+              <VoiceButton onTranscript={(text) => handleSend(text)} />
               <input
                 ref={inputRef}
                 type="text"
@@ -105,7 +113,7 @@ export default function AIAssistantPage() {
                 disabled={isThinking}
               />
               <button
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 disabled={isThinking || !input.trim()}
                 className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint transition-colors shrink-0"
                 aria-label="Send message"
