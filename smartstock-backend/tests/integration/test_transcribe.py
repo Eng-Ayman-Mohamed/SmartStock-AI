@@ -91,13 +91,13 @@ class TranscribeEndpointTests(APITestCase):
         response = self.client.post(self._url(), {'audio': self._audio_file()})
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def test_missing_audio_returns_400(self):
+    def test_missing_audio_returns_422(self):
         self._auth(self.manager)
         response = self.client.post(self._url(), {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
     @patch('ai.multimodal.whisper.SpeechTranscriber.transcribe')
-    def test_file_too_large_returns_400(self, mock_transcribe):
+    def test_file_too_large_returns_422(self, mock_transcribe):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
         large_file = SimpleUploadedFile(
@@ -105,5 +105,5 @@ class TranscribeEndpointTests(APITestCase):
         )
         self._auth(self.manager)
         response = self.client.post(self._url(), {'audio': large_file})
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
         mock_transcribe.assert_not_called()
