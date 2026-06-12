@@ -17,10 +17,10 @@ def run_purchasing_workflow(context: dict) -> dict:
     """
     from ai.agents.purchasing_agent import PurchasingAgent
 
-    logger.info('Starting purchasing workflow for context: %s', context)
+    logger.info("Starting purchasing workflow for context: %s", context)
     agent = PurchasingAgent()
     result = agent.run(context)
-    logger.info('Purchasing workflow completed: %s', result.get('status'))
+    logger.info("Purchasing workflow completed: %s", result.get("status"))
     return result
 
 
@@ -32,5 +32,5 @@ def run_purchasing_workflow_with_approval(
 
     Used for testing or integration scenarios where automatic approval is needed.
     """
-    ctx = {**context, 'auto_approve': auto_approve}
+    ctx = {**context, "auto_approve": auto_approve}
     return run_purchasing_workflow(ctx)
