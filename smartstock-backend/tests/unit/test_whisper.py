@@ -7,7 +7,7 @@ from ai.multimodal.whisper import SpeechTranscriber
 
 class SpeechTranscriberTest(TestCase):
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('ai.multimodal.whisper.OpenAI')
+    @patch('openai.OpenAI')
     def test_transcribe_calls_whisper_api(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -27,7 +27,7 @@ class SpeechTranscriberTest(TestCase):
         self.assertIn('OPENAI_API_KEY', str(ctx.exception))
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('ai.multimodal.whisper.OpenAI')
+    @patch('openai.OpenAI')
     def test_transcribe_passes_filename(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -40,7 +40,7 @@ class SpeechTranscriberTest(TestCase):
         self.assertEqual(call_kwargs.kwargs['file'].name, 'my-audio.mp3')
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('ai.multimodal.whisper.OpenAI')
+    @patch('openai.OpenAI')
     def test_client_is_lazily_initialized(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -53,7 +53,7 @@ class SpeechTranscriberTest(TestCase):
         mock_openai_cls.assert_called_once()
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('ai.multimodal.whisper.OpenAI')
+    @patch('openai.OpenAI')
     def test_transcribe_api_error_propagates(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
