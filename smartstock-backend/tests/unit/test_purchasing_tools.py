@@ -12,35 +12,38 @@ from core.exceptions import IllegalPOTransitionError
 class PODraftToolTest(TestCase):
     def test_creates_po_and_returns_id_and_number(self):
         mock_service = MagicMock()
-        mock_service.repo.create.return_value = MagicMock(id=10, po_number='PO-2026-001')
+        mock_service.draft_po.return_value = MagicMock(id=10)
+        mock_sku = MagicMock()
+        mock_sku.product.unit_price = 2.50
 
-        with patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-001'):
+        with patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-001'), \
+             patch('ai.agents.tools.po_draft.SKU') as mock_sku_cls:
+            mock_sku_cls.objects.select_related.return_value.get.return_value = mock_sku
             tool = PODraftTool(service=mock_service)
             result = tool.run({'sku_id': '5', 'quantity': '100', 'supplier_id': '3'})
 
         self.assertEqual(result['po_id'], 10)
         self.assertEqual(result['po_number'], 'PO-2026-001')
         self.assertEqual(result['status'], 'draft')
-        mock_service.repo.create.assert_called_once_with({
-            'sku_id': 5,
-            'quantity': 100,
-            'supplier_id': 3,
-            'status': 'draft',
-            'po_number': 'PO-2026-001',
-        })
+        mock_service.draft_po.assert_called_once_with(
+            sku_id=5, quantity=100, supplier_id=3, user=None,
+            po_number='PO-2026-001', total_cost=250.0,
+        )
 
-    def test_converts_string_inputs_to_int(self):
+    def test_computes_total_cost_from_quantity_times_unit_price(self):
         mock_service = MagicMock()
-        mock_service.repo.create.return_value = MagicMock(id=1)
+        mock_service.draft_po.return_value = MagicMock(id=1)
+        mock_sku = MagicMock()
+        mock_sku.product.unit_price = 9.99
 
-        with patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-002'):
+        with patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-002'), \
+             patch('ai.agents.tools.po_draft.SKU') as mock_sku_cls:
+            mock_sku_cls.objects.select_related.return_value.get.return_value = mock_sku
             tool = PODraftTool(service=mock_service)
             tool.run({'sku_id': '7', 'quantity': '25', 'supplier_id': '4'})
 
-        call_args = mock_service.repo.create.call_args[0][0]
-        self.assertIsInstance(call_args['sku_id'], int)
-        self.assertIsInstance(call_args['quantity'], int)
-        self.assertIsInstance(call_args['supplier_id'], int)
+        call_kwargs = mock_service.draft_po.call_args[1]
+        self.assertEqual(call_kwargs['total_cost'], 249.75)
 
 
 class EmailSendToolTest(TestCase):

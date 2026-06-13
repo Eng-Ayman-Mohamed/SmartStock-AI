@@ -27,7 +27,7 @@ class PurchasingService:
     def __init__(self, repo=None):
         self.repo = repo or PurchasingRepository()
 
-    def draft_po(self, sku_id: int, quantity: int, supplier_id: int, user):
+    def draft_po(self, sku_id: int, quantity: int, supplier_id: int, user, po_number: str = None, total_cost=None):
         data = {
             'sku_id': sku_id,
             'quantity': quantity,
@@ -35,6 +35,10 @@ class PurchasingService:
             'requested_by': user,
             'status': 'draft',
         }
+        if po_number:
+            data['po_number'] = po_number
+        if total_cost is not None:
+            data['total_cost'] = total_cost
         return self.repo.create(data)
 
     def approve_po(self, po_id: int, user):
