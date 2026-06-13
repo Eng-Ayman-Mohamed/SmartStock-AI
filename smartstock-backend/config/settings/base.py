@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'apps.purchasing',
     'apps.audit.apps.AuditConfig',
     'apps.ingestion.apps.IngestionConfig',
+    'apps.notifications',
 ]
 
 MIDDLEWARE = [
@@ -270,3 +271,16 @@ CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get(
 CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
     'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'
 )
+
+CELERY_BEAT_SCHEDULE = {
+    'check-supplier-timeouts': {
+        'task': 'apps.purchasing.timeout_tasks.check_supplier_timeouts',
+        'schedule': 3600,  # every hour
+    },
+}
+
+ESCALATION_RECIPIENT_EMAILS = [
+    email.strip()
+    for email in os.environ.get('ESCALATION_RECIPIENT_EMAILS', '').split(',')
+    if email.strip()
+]

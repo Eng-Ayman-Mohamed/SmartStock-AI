@@ -10,6 +10,11 @@ MIN_DATA_POINTS = 30
 
 
 def _moving_average_forecast(df: pd.DataFrame, periods: int = 30) -> pd.DataFrame:
+    """Produce a simple moving-average forecast as a fallback.
+
+    Uses a rolling window of ``min(7, len(df))`` periods.
+    Bounds are set to ±20 % of the point estimate.
+    """
     if df.empty:
         forecast_dates = pd.date_range(start=pd.Timestamp.today(), periods=periods)
         forecast = pd.DataFrame({'ds': forecast_dates})
@@ -30,6 +35,7 @@ def _moving_average_forecast(df: pd.DataFrame, periods: int = 30) -> pd.DataFram
 
 
 def _compute_accuracy(df: pd.DataFrame, model) -> tuple:
+    """Compute MAE and MAPE for a fitted model against a test set."""
     if len(df) < 2:
         return None, None
     forecast = model.predict(df[['ds']])
@@ -49,7 +55,24 @@ def _compute_accuracy(df: pd.DataFrame, model) -> tuple:
 
 
 class ProphetEngine:
+    """Forecast engine that uses Prophet when data is sufficient and
+    falls back to a moving average otherwise.
+
+    The returned schema is identical regardless of the underlying method.
+    ``forecast_method`` is included in the response metadata so callers
+    can distinguish which algorithm was used.
+    """
+
     def predict(self, df: pd.DataFrame, periods: int = 30) -> dict:
+        """Generate a forecast for the given time-series.
+
+        Args:
+            df: DataFrame with ``ds`` (date) and ``y`` (quantity) columns.
+            periods: Number of future periods to forecast.
+
+        Returns:
+            dict with keys: results, mae, mape, model_version, forecast_method.
+        """
         if len(df) < MIN_DATA_POINTS:
             return self._fallback_predict(df, periods)
 
@@ -110,11 +133,16 @@ class ProphetEngine:
             'mae': mae,
             'mape': mape,
             'model_version': 'prophet_1.1',
+            'forecast_method': 'prophet',
         }
 
     def _fallback_predict(self, df: pd.DataFrame, periods: int = 30) -> dict:
+        """Produce a forecast using the moving average fallback.
+
+        Logged at INFO level so operators can monitor fallback frequency.
+        """
         logger.info(
-            'Insufficient data (%d points); using moving average fallback',
+            'Fallback forecast used due to insufficient historical data (%d data points)',
             len(df),
         )
         forecast = _moving_average_forecast(df, periods)
@@ -133,4 +161,5 @@ class ProphetEngine:
             'mae': None,
             'mape': None,
             'model_version': 'moving_average_fallback',
+            'forecast_method': 'moving_average',
         }
