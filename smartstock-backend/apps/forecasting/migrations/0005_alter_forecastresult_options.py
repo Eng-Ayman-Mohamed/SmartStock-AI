@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('forecasting', '0004_alter_forecastresult_options_and_more'),
     ]
