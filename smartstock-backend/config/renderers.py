@@ -22,10 +22,15 @@ class ResponseEnvelopeRenderer(JSONRenderer):
 
         request = renderer_context.get('request') if renderer_context else None
         page_param = request.query_params.get('page', 1) if request else 1
+        per_page_param = request.query_params.get('page_size', 20) if request else 20
         try:
             page_param = int(page_param)
         except (TypeError, ValueError):
             page_param = 1
+        try:
+            per_page_param = int(per_page_param)
+        except (TypeError, ValueError):
+            per_page_param = 20
 
         if isinstance(data, dict) and 'results' in data and 'count' in data:
             wrapped = {
@@ -34,7 +39,7 @@ class ResponseEnvelopeRenderer(JSONRenderer):
                 'meta': {
                     'page': page_param,
                     'total': data.get('count', 0),
-                    'per_page': 20,
+                    'per_page': per_page_param,
                     **{k: v for k, v in data.items() if k != 'count'},
                 },
             }

@@ -28,6 +28,7 @@ class Migration(migrations.Migration):
                 ('sku', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='forecasts', to='inventory.sku')),
             ],
             options={
+                'ordering': ['-created_at', '-id'],
                 'indexes': [models.Index(fields=['sku', 'forecast_date'], name='forecasting_sku_id_7efcbd_idx')],
                 'unique_together': {('sku', 'forecast_date')},
             },

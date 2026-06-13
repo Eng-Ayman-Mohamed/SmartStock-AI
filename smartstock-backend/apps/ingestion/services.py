@@ -356,6 +356,7 @@ class RAGQueryService:
     def __init__(self):
         self._llm = None
         self._embeddings = None
+        self._last_token_usage = {}
 
     def _get_llm(self):
         if self._llm is None:
@@ -388,12 +389,31 @@ class RAGQueryService:
 
         co = cohere.Client(cohere_key)
         documents = [c.get('content', '') for c in chunks]
-        response = co.rerank(
-            query=query,
-            documents=documents,
-            top_n=top_n,
-            model='rerank-english-v3.0',
-        )
+
+        last_error = None
+        for attempt in range(3):
+            try:
+                response = co.rerank(
+                    query=query,
+                    documents=documents,
+                    top_n=top_n,
+                    model='rerank-english-v3.0',
+                )
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < 2:
+                    wait = 2**attempt
+                    logger.warning(
+                        'Cohere rerank attempt %d failed (%s), retrying in %ds...',
+                        attempt + 1,
+                        e,
+                        wait,
+                    )
+                    time.sleep(wait)
+        else:
+            raise last_error
+
         reranked = []
         for result in response.results:
             chunk = chunks[result.index].copy()
@@ -411,6 +431,11 @@ class RAGQueryService:
         return '\n\n---\n\n'.join(parts)
 
     def call_llm(self, query: str, context: str) -> str:
+        answer, token_usage = self.call_llm_with_usage(query, context)
+        self._last_token_usage = token_usage
+        return answer
+
+    def call_llm_with_usage(self, query: str, context: str) -> tuple[str, dict]:
         llm = self._get_llm()
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -418,8 +443,13 @@ class RAGQueryService:
                 ('user', '{query}'),
             ]
         )
-        chain = prompt | llm | StrOutputParser()
-        return invoke_with_langfuse(chain, {'context': context, 'query': query}).strip()
+        chain = prompt | llm
+        response, token_usage = invoke_with_langfuse(
+            chain,
+            {'context': context, 'query': query},
+            include_token_usage=True,
+        )
+        return StrOutputParser().invoke(response).strip(), token_usage
 
     def extract_sources(self, chunks: list[dict]) -> list[dict]:
         seen = set()
@@ -471,7 +501,9 @@ class RAGQueryService:
 
         # Step 5: Build context and call LLM
         context = self.build_context(top_chunks)
+        self._last_token_usage = {}
         llm_response = self.call_llm(query, context)
+        token_usage = self._last_token_usage
 
         # Step 6: Extract sources from chunks
         sources = self.extract_sources(top_chunks)
@@ -493,5 +525,5 @@ class RAGQueryService:
                 }
                 for c in top_chunks
             ],
-            'token_usage': {},
+            'token_usage': token_usage,
         }

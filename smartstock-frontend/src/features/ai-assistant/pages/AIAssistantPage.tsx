@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, Send, User, Package, AlertTriangle, FileText, TrendingUp } from 'lucide-react';
 import Card from '../../../shared/components/Card';
+import VoiceButton from '../components/VoiceButton';
 import { useChat } from '../hooks/useChat';
 import type { ChatResponse } from '../api';
 
@@ -24,15 +25,15 @@ export default function AIAssistantPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isThinking) return;
-    const userMsg: Message = { role: 'user', text: input.trim() };
-    const query = input.trim();
+  const handleSend = useCallback(async (query?: string) => {
+    const text = (query ?? input).trim();
+    if (!text || isThinking) return;
+    const userMsg: Message = { role: 'user', text };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsThinking(true);
     try {
-      const result: ChatResponse = await send(query);
+      const result: ChatResponse = await send(text);
       setMessages((prev) => [...prev, { role: 'ai', text: result.answer }]);
     } catch {
       setMessages((prev) => [...prev, { role: 'ai', text: 'Sorry, I encountered an error. Please try again.' }]);
@@ -99,6 +100,7 @@ export default function AIAssistantPage() {
 
           <div className="px-6 py-3 border-t border-hairline">
             <div className="flex items-center gap-2">
+              <VoiceButton onTranscript={(text) => handleSend(text)} />
               <input
                 ref={inputRef}
                 type="text"
@@ -111,7 +113,7 @@ export default function AIAssistantPage() {
                 disabled={isThinking}
               />
               <button
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 disabled={isThinking || !input.trim()}
                 className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint transition-colors shrink-0"
                 aria-label="Send message"
