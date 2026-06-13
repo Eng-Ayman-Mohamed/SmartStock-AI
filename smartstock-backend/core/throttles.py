@@ -13,12 +13,3 @@ class SAFEUserRateThrottle(UserRateThrottle):
         if request.method == 'OPTIONS':
             return True
         return super().allow_request(request, view)
-
-
-class AIRateThrottle(UserRateThrottle):
-    scope = 'ai'
-
-    def allow_request(self, request, view):
-        if request.method == 'OPTIONS':
-            return True
-        return super().allow_request(request, view)
