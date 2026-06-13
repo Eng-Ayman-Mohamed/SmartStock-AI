@@ -247,6 +247,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
 # RAG Query Endpoint  — POST /api/ai/rag-query/
 # ---------------------------------------------------------------------------
 
+
 def _get_langfuse():
     return get_langfuse_client()
 
