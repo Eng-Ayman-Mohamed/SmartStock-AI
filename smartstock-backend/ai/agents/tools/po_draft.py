@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class PODraftTool(BaseTool):
     name = 'po_draft_tool'
-    description = 'Generates a formal Purchase Order for a given SKU and quantity.'
+    description = 'Creates a draft Purchase Order for a given product, quantity, and supplier.'
 
     def __init__(self, service=None):
         self.service = service or PurchasingService()

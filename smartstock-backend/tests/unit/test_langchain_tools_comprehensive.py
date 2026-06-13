@@ -134,14 +134,17 @@ class DBWriteToolTest(TestCase):
 
 class DBUpdateToolTest(TestCase):
     def test_returns_updated_status(self):
-        tool = DBUpdateTool()
-        result = tool.run({'table': 'products', 'id': 1, 'data': {}})
-        self.assertEqual(result, {'status': 'updated'})
+        mock_service = MagicMock()
+        mock_service.transition_po_status.return_value = MagicMock(id=1, status='approved')
+        tool = DBUpdateTool(service=mock_service)
+        result = tool.run({'po_id': '1', 'status': 'approved'})
+        self.assertEqual(result, {'po_id': 1, 'status': 'approved'})
 
     def test_empty_input(self):
-        tool = DBUpdateTool()
-        result = tool.run({})
-        self.assertEqual(result, {'status': 'updated'})
+        mock_service = MagicMock()
+        tool = DBUpdateTool(service=mock_service)
+        with self.assertRaises(KeyError):
+            tool.run({})
 
 
 class StockLevelReadToolTest(TestCase):

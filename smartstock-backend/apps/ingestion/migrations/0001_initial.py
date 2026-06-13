@@ -9,7 +9,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -17,36 +16,87 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL('CREATE EXTENSION IF NOT EXISTS vector', reverse_sql=migrations.RunSQL.noop),
+        migrations.RunSQL(
+            'CREATE EXTENSION IF NOT EXISTS vector', reverse_sql=migrations.RunSQL.noop
+        ),
         migrations.CreateModel(
             name='Document',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('filename', models.CharField(max_length=500)),
                 ('original_filename', models.CharField(max_length=500)),
-                ('doc_type', models.CharField(choices=[('pdf', 'PDF'), ('csv', 'CSV'), ('xlsx', 'Excel'), ('docx', 'Word'), ('txt', 'Plain Text')], max_length=50)),
+                (
+                    'doc_type',
+                    models.CharField(
+                        choices=[
+                            ('pdf', 'PDF'),
+                            ('csv', 'CSV'),
+                            ('xlsx', 'Excel'),
+                            ('docx', 'Word'),
+                            ('txt', 'Plain Text'),
+                        ],
+                        max_length=50,
+                    ),
+                ),
                 ('file_size', models.IntegerField()),
                 ('total_chunks', models.IntegerField(default=0)),
                 ('ingested_at', models.DateTimeField(auto_now_add=True)),
                 ('is_active', models.BooleanField(default=True)),
                 ('cloudinary_url', models.URLField(max_length=1000)),
-                ('uploaded_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
+                (
+                    'uploaded_by',
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
             name='DocumentChunk',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('chunk_text', models.TextField()),
-                ('embedding', pgvector.django.vector.VectorField(blank=True, dimensions=1536, null=True)),
-                ('tsvector', django.contrib.postgres.search.SearchVectorField(blank=True, null=True)),
+                (
+                    'embedding',
+                    pgvector.django.vector.VectorField(blank=True, dimensions=1536, null=True),
+                ),
+                (
+                    'tsvector',
+                    django.contrib.postgres.search.SearchVectorField(blank=True, null=True),
+                ),
                 ('source_document', models.CharField(max_length=500)),
                 ('page_number', models.IntegerField(blank=True, null=True)),
                 ('metadata', models.JSONField(default=dict)),
-                ('document', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='chunks', to='ingestion.document')),
+                (
+                    'document',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='chunks',
+                        to='ingestion.document',
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['source_document'], name='ingestion_d_source__e0c16e_idx'), django.contrib.postgres.indexes.GinIndex(fields=['tsvector'], name='document_chunk_gin_idx')],
+                'indexes': [
+                    models.Index(fields=['source_document'], name='ingestion_d_source__e0c16e_idx'),
+                    django.contrib.postgres.indexes.GinIndex(
+                        fields=['tsvector'], name='document_chunk_gin_idx'
+                    ),
+                ],
             },
         ),
     ]

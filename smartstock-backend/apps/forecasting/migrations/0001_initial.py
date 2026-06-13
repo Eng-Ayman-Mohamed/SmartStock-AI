@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,7 +15,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ForecastResult',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('forecast_date', models.DateField()),
                 ('predicted_quantity', models.FloatField()),
                 ('lower_bound', models.FloatField(blank=True, null=True)),
@@ -25,11 +29,22 @@ class Migration(migrations.Migration):
                 ('mape', models.FloatField(blank=True, null=True)),
                 ('model_version', models.CharField(blank=True, max_length=50)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('sku', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='forecasts', to='inventory.sku')),
+                (
+                    'sku',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='forecasts',
+                        to='inventory.sku',
+                    ),
+                ),
             ],
             options={
                 'ordering': ['-created_at', '-id'],
-                'indexes': [models.Index(fields=['sku', 'forecast_date'], name='forecasting_sku_id_7efcbd_idx')],
+                'indexes': [
+                    models.Index(
+                        fields=['sku', 'forecast_date'], name='forecasting_sku_id_7efcbd_idx'
+                    )
+                ],
                 'unique_together': {('sku', 'forecast_date')},
             },
         ),

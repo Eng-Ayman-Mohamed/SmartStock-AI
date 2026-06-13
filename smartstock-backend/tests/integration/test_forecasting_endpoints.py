@@ -214,10 +214,13 @@ class ForecastingEndpointTests(APITestCase):
         self.assertEqual(len(data['skus']), 1)
         sku_data = data['skus'][0]
         self.assertEqual(sku_data['id'], 'FRC-TST')
-        self.assertEqual(sku_data['name'], 'Forecast Product')
+        self.assertEqual(sku_data['sku_code'], 'FRC-TST')
+        self.assertEqual(sku_data['product_name'], 'Forecast Product')
         self.assertEqual(sku_data['current_stock'], 50)
-        self.assertEqual(sku_data['threshold'], 10)
-        self.assertEqual(len(sku_data['days']), 30)
+        self.assertEqual(sku_data['reorder_point'], 10)
+        self.assertEqual(len(sku_data['forecast']), 30)
+        self.assertIn('predicted_demand_30d', sku_data)
+        self.assertIn('confidence_score', sku_data)
 
     # === TRIGGER WITH NO SALES DATA ===
 

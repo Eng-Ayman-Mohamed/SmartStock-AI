@@ -1,0 +1,14 @@
+Dear {{ supplier_name }},
+
+Please find below the details of Purchase Order {{ po_number }}:
+
+  Product:    {{ product_name }}
+  SKU:        {{ sku_code }}
+  Quantity:   {{ quantity }}
+  Unit Cost:  ${{ unit_cost }}
+  Total Cost: ${{ total_cost }}
+
+Please confirm receipt of this order by replying to this email.
+
+Best regards,
+SmartStock AI — Automated Purchasing System

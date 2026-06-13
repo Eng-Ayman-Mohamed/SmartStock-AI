@@ -36,6 +36,9 @@ class PurchasingRepository(BaseRepository):
     def delete(self, id: int):
         PurchaseOrder.objects.filter(pk=id).delete()
 
+    def get_by_po_number(self, po_number: str):
+        return PurchaseOrder.objects.get(po_number=po_number)
+
 
 class PurchaseOrderWorkflowRepository(BaseRepository):
     def get_by_id(self, id: int):

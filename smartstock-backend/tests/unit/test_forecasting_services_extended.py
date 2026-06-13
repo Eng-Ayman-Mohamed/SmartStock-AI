@@ -153,7 +153,7 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
         mock_cache.get.return_value = cached_data
         result = self.service.get_dashboard_data()
         self.assertEqual(result, cached_data)
-        mock_cache.get.assert_called_once_with('forecast_dashboard_data')
+        mock_cache.get.assert_called_once_with('forecast_dashboard_data_v2')
 
     @patch('apps.forecasting.services.cache')
     def test_computes_when_not_cached(self, mock_cache):
@@ -162,7 +162,7 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
             result = self.service.get_dashboard_data()
             self.assertEqual(result, {'skus': []})
             mock_cache.set.assert_called_once_with(
-                'forecast_dashboard_data', {'skus': []}, timeout=3600
+                'forecast_dashboard_data_v2', {'skus': []}, timeout=3600
             )
 
 
@@ -193,7 +193,10 @@ class ForecastingServiceComputeDashboardTest(ForecastingServiceTestBase):
         self.assertEqual(len(result['skus']), 1)
         sku_data = result['skus'][0]
         self.assertEqual(sku_data['id'], 'FRC-SKU-001')
-        self.assertEqual(sku_data['name'], 'Test Product')
-        self.assertEqual(len(sku_data['days']), 5)
-        self.assertIn('date', sku_data['days'][0])
-        self.assertIn('demand', sku_data['days'][0])
+        self.assertEqual(sku_data['product_name'], 'Test Product')
+        self.assertEqual(sku_data['sku_code'], 'FRC-SKU-001')
+        self.assertEqual(len(sku_data['forecast']), 5)
+        self.assertIn('date', sku_data['forecast'][0])
+        self.assertIn('demand', sku_data['forecast'][0])
+        self.assertIn('predicted_demand_30d', sku_data)
+        self.assertIn('confidence_score', sku_data)

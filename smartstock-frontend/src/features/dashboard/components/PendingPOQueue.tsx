@@ -1,19 +1,24 @@
-import { ShoppingCart, Check, X } from 'lucide-react';
+import { ShoppingCart, Check, X, Eye } from 'lucide-react';
 import Card from '../../../shared/components/Card';
 import Badge from '../../../shared/components/Badge';
 import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
 import Skeleton from '../../../shared/components/Skeleton';
 import { useApprovePO, usePendingPOs, useRejectPO } from '../hooks/usePendingPOs';
+import { useAuthStore } from '../../../store/authStore';
 import { useToastStore } from '../../../store/toastStore';
 import { formatCurrency } from '../../../shared/utils/formatters';
 import type { PurchaseOrder } from '../types';
+import type { Role } from '../../../store/authStore';
 
-function PendingPOItem({ po, onApprove, onReject, isMutating }: {
+const MANAGER_ROLES: Role[] = ['manager', 'admin'];
+
+function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
   po: PurchaseOrder;
   onApprove: () => void;
   onReject: () => void;
   isMutating: boolean;
+  canAct: boolean;
 }) {
   return (
     <div className="flex items-start gap-3 p-3 rounded-md border border-hairline hover:bg-canvas-soft transition-colors">
@@ -30,24 +35,33 @@ function PendingPOItem({ po, onApprove, onReject, isMutating }: {
         </p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        <Button
-          variant="primary"
-          size="sm"
-          className="bg-green-600 hover:bg-green-800"
-          onClick={onApprove}
-          disabled={isMutating}
-        >
-          <Check className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-red-600 hover:bg-red-50"
-          onClick={onReject}
-          disabled={isMutating}
-        >
-          <X className="w-3.5 h-3.5" />
-        </Button>
+        {canAct ? (
+          <>
+            <Button
+              variant="primary"
+              size="sm"
+              className="bg-green-600 hover:bg-green-800"
+              onClick={onApprove}
+              disabled={isMutating}
+            >
+              <Check className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-600 hover:bg-red-50"
+              onClick={onReject}
+              disabled={isMutating}
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        ) : (
+          <span className="text-caption text-ink-muted flex items-center gap-1">
+            <Eye className="w-3.5 h-3.5" />
+            View only
+          </span>
+        )}
       </div>
     </div>
   );
@@ -55,6 +69,8 @@ function PendingPOItem({ po, onApprove, onReject, isMutating }: {
 
 export default function PendingPOQueue() {
   const { data: pos, isLoading, error } = usePendingPOs();
+  const user = useAuthStore((s) => s.user);
+  const canAct = user ? MANAGER_ROLES.includes(user.role) : false;
   const approvePO = useApprovePO();
   const rejectPO = useRejectPO();
   const addToast = useToastStore((s) => s.addToast);
@@ -99,6 +115,7 @@ export default function PendingPOQueue() {
               onApprove={() => handleApprove(po)}
               onReject={() => handleReject(po)}
               isMutating={approvePO.isPending || rejectPO.isPending}
+              canAct={canAct}
             />
           ))}
         </div>
