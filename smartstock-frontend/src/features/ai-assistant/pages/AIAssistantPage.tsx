@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, Send, User, Package, AlertTriangle, FileText, TrendingUp } from 'lucide-react';
 import Card from '../../../shared/components/Card';
+import { useChat } from '../hooks/useChat';
+import type { ChatResponse } from '../api';
 
 interface Message {
   role: 'user' | 'ai';
@@ -16,24 +18,28 @@ export default function AIAssistantPage() {
   const [isThinking, setIsThinking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const { send } = useChat();
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(async () => {
     if (!input.trim() || isThinking) return;
     const userMsg: Message = { role: 'user', text: input.trim() };
+    const query = input.trim();
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsThinking(true);
-    setTimeout(() => {
-      setMessages((prev) => [...prev, {
-        role: 'ai',
-        text: 'I\'ve analyzed your inventory data. Here\'s what I found: your top 3 slow-moving items this month are the "USB-C Hub" (12 units sold), "Webcam HD" (8 units), and "Monitor Stand" (5 units). Would you like me to suggest reorder adjustments or flag any items for discount?',
-      }]);
+    try {
+      const result: ChatResponse = await send(query);
+      setMessages((prev) => [...prev, { role: 'ai', text: result.answer }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: 'ai', text: 'Sorry, I encountered an error. Please try again.' }]);
+    } finally {
       setIsThinking(false);
-    }, 1500);
-  };
+    }
+  }, [input, isThinking, send]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

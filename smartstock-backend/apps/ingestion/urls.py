@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register(r'documents', views.DocumentViewSet, basename='document')
 
 urlpatterns = [
+    path('chat/', views.ChatView.as_view(), name='chat'),
     path('rag-query/', views.RAGQueryView.as_view(), name='rag-query'),
     path('invoice-scan/', views.InvoiceScanView.as_view(), name='invoice-scan'),
     path(

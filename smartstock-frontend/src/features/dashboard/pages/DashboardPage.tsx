@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -13,22 +14,22 @@ import Card from '../../../shared/components/Card';
 import { Package, AlertTriangle, ShoppingCart, TrendingUp } from 'lucide-react';
 import { useReorderAlerts } from '../hooks/useReorderAlerts';
 import { usePendingPOs } from '../hooks/usePendingPOs';
+import { useForecastDashboard } from '../../forecasting/hooks/useForecastDashboard';
 import ReorderAlertList from '../components/ReorderAlertList';
 import AgentRunStatus from '../components/AgentRunStatus';
 import PendingPOQueue from '../components/PendingPOQueue';
 import SupplierWarningBadge from '../components/SupplierWarningBadge';
 
-const chartData = [
-  { date: '01 Jun', demand: 120, actual: 115, upper: 140, lower: 100 },
-  { date: '05 Jun', demand: 145, actual: 138, upper: 170, lower: 120 },
-  { date: '10 Jun', demand: 130, actual: null, upper: 160, lower: 105 },
-  { date: '15 Jun', demand: 160, actual: null, upper: 190, lower: 130 },
-  { date: '20 Jun', demand: 150, actual: null, upper: 180, lower: 120 },
-  { date: '25 Jun', demand: 175, actual: null, upper: 205, lower: 145 },
-  { date: '30 Jun', demand: 165, actual: null, upper: 195, lower: 135 },
-];
+interface ChartPoint {
+  date: string;
+  demand: number;
+  actual: number | null;
+  upper: number;
+  lower: number;
+}
 
-function ForecastChart() {
+function ForecastChart({ data: allSkus }: { data: ChartPoint[] | null }) {
+  const chartData = allSkus ?? [];
   return (
     <div className="h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
@@ -126,9 +127,35 @@ function ForecastChart() {
 export default function DashboardPage() {
   const { data: alerts } = useReorderAlerts();
   const { data: pendingPOs } = usePendingPOs();
+  const { data: forecastData } = useForecastDashboard();
 
   const lowStockCount = alerts?.length ?? 0;
   const pendingPOCount = pendingPOs?.length ?? 0;
+
+  const chartData = useMemo(() => {
+    if (!forecastData?.skus?.length) return null;
+    const dateMap = new Map<string, { demand: number; upper: number; lower: number }>();
+    for (const sku of forecastData.skus) {
+      for (const day of sku.forecast ?? []) {
+        const existing = dateMap.get(day.date) ?? { demand: 0, upper: 0, lower: 0 };
+        existing.demand += day.demand;
+        existing.upper = Math.max(existing.upper, day.upper_bound ?? 0);
+        existing.lower = existing.lower === 0
+          ? (day.lower_bound ?? 0)
+          : Math.min(existing.lower, day.lower_bound ?? 0);
+        dateMap.set(day.date, existing);
+      }
+    }
+    return Array.from(dateMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        date: new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        demand: Math.round(vals.demand),
+        actual: null,
+        upper: Math.round(vals.upper),
+        lower: Math.round(vals.lower),
+      } satisfies ChartPoint));
+  }, [forecastData]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -158,7 +185,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <Card title="30-Day Demand Forecast">
-          <ForecastChart />
+          <ForecastChart data={chartData} />
         </Card>
 
         <ReorderAlertList />

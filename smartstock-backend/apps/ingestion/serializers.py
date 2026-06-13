@@ -77,6 +77,21 @@ class RAGQuerySerializer(serializers.Serializer):
         return cleaned
 
 
+class ChatSerializer(serializers.Serializer):
+    query = serializers.CharField(required=True, min_length=1, max_length=2000)
+    mode = serializers.ChoiceField(
+        choices=['auto', 'nl', 'rag'],
+        default='auto',
+        required=False,
+    )
+
+    def validate_query(self, value):
+        cleaned = value.strip()
+        if len(cleaned) < 1:
+            raise serializers.ValidationError('Query must not be empty.')
+        return cleaned
+
+
 class InvoiceScanSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceScan
