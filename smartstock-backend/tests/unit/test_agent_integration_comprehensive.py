@@ -173,12 +173,34 @@ class DecisionAgentComprehensiveTest(TestCase):
     def _build_agent(self, quantity_available=50, total_predicted_demand=30.0, has_open_po=False):
         service = FakeForecastingService()
         forecast_tool = FakeForecastTool(total_predicted_demand)
+
+        class _FakeAgent:
+            def __init__(self, tools):
+                self._tools = tools
+
+            def invoke(self, agent_input, config=None):
+                for tool in self._tools:
+                    if tool.name == 'stock_level_read_tool':
+                        tool.invoke({'product_id': 1})
+                    elif tool.name == 'forecast_read_tool':
+                        tool.invoke({'product_id': 1, 'forecast_days': 7})
+                    elif tool.name == 'po_status_check_tool':
+                        tool.invoke({'product_id': 1})
+                    else:
+                        tool.invoke({})
+                return {'messages': [{'content': 'done'}]}
+
+        def _fake_agent_factory(model, tools, system_prompt=''):
+            return _FakeAgent(tools)
+
         agent = DecisionAgent(
             stock_tool=FakeStockTool(quantity_available=quantity_available),
             forecast_tool=forecast_tool,
             po_status_tool=FakePOStatusTool(has_open_po=has_open_po),
             forecasting_service=service,
             reasoner=FakeReasoner(),
+            agent_factory=_fake_agent_factory,
+            llm=object(),
         )
         return agent, service, forecast_tool
 
