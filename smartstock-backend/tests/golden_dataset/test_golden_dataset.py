@@ -22,11 +22,13 @@ def _make_mock_response(entry):
             args[key] = ef[key]
     return AIMessage(
         content='',
-        tool_calls=[{
-            'name': 'NLQueryToolSchema',
-            'args': args,
-            'id': f'call_{uuid.uuid4().hex[:8]}',
-        }],
+        tool_calls=[
+            {
+                'name': 'NLQueryToolSchema',
+                'args': args,
+                'id': f'call_{uuid.uuid4().hex[:8]}',
+            }
+        ],
     )
 
 

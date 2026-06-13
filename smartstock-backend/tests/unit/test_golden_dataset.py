@@ -10,7 +10,14 @@ def test_golden_dataset_contains_30_annotated_queries():
 
     assert len(rows) == 30
 
-    required_keys = {'id', 'category', 'nl_input', 'expected_action', 'expected_filters', 'description'}
+    required_keys = {
+        'id',
+        'category',
+        'nl_input',
+        'expected_action',
+        'expected_filters',
+        'description',
+    }
     for row in rows:
         assert required_keys.issubset(row.keys()), f'{row["id"]} missing keys'
 
