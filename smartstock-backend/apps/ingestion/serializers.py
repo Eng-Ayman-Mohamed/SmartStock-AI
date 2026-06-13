@@ -77,6 +77,17 @@ class RAGQuerySerializer(serializers.Serializer):
         return cleaned
 
 
+class ChatSerializer(serializers.Serializer):
+    query = serializers.CharField(required=True, max_length=500)
+    mode = serializers.ChoiceField(choices=['auto', 'nl_query', 'rag'], default='auto')
+
+    def validate_query(self, value):
+        cleaned = value.strip()
+        if len(cleaned) < 3:
+            raise serializers.ValidationError('Query must be at least 3 characters long.')
+        return cleaned
+
+
 class TranscriptionSerializer(serializers.Serializer):
     audio = serializers.FileField()
 

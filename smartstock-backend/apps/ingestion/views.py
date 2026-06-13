@@ -28,6 +28,7 @@ from config.schema_serializers import ErrorResponseSerializer, ValidationErrorRe
 
 from .models import Document
 from .serializers import (
+    ChatSerializer,
     DocumentSerializer,
     DocumentUploadSerializer,
     InvoiceScanConfirmSerializer,
@@ -40,6 +41,7 @@ from .services import (
     InvoiceExtractionMalformed,
     InvoiceExtractionTimeout,
     InvoiceScanService,
+    RAGQueryService,
 )
 
 logger = logging.getLogger(__name__)
@@ -621,3 +623,316 @@ class InvoiceScanRejectView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# Unified Chat Endpoint  — POST /api/ai/chat/
+# ---------------------------------------------------------------------------
+
+
+class ChatEndpointView(APIView):
+    """
+    POST /api/ai/chat/
+    Unified endpoint that routes queries to NL Query or RAG engine
+    based on mode parameter or automatic intent classification.
+    """
+
+    permission_classes = [IsViewerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
+
+    CHAT_TIMEOUT_SECONDS = 15
+
+    @extend_schema(
+        request=ChatSerializer,
+        responses={
+            200: inline_serializer(
+                'ChatResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': inline_serializer(
+                        'ChatData',
+                        {
+                            'engine': serializers.CharField(),
+                            'mode': serializers.CharField(),
+                            'answer': serializers.CharField(),
+                            'action': serializers.DictField(required=False),
+                            'sources': serializers.ListField(
+                                child=serializers.DictField(), required=False
+                            ),
+                        },
+                    ),
+                },
+            ),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Bad request or prompt injection detected',
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
+            504: OpenApiResponse(response=ErrorResponseSerializer, description='Gateway timeout'),
+        },
+        examples=[
+            OpenApiExample(
+                'Chat Request (auto)',
+                value={'query': 'How many Widget-001 do we have?'},
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Chat Request (explicit mode)',
+                value={'query': 'What is our return policy?', 'mode': 'rag'},
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Chat Response',
+                value={
+                    'status': 'success',
+                    'data': {
+                        'engine': 'nl_query',
+                        'mode': 'auto',
+                        'answer': 'You have 42 units of Widget-001 in stock.',
+                        'action': {'type': 'get_inventory', 'filters': {}},
+                    },
+                },
+                response_only=True,
+            ),
+        ],
+        tags=['ai'],
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = ChatSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'status': 'error', 'errors': serializer.errors},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        query = serializer.validated_data['query']
+        mode = serializer.validated_data['mode']
+
+        # --- Prompt injection check (Task A10) ---
+        try:
+            is_safe = prompt_injection_filter(query)
+        except Exception:
+            logger.exception('Prompt injection filter failed')
+            is_safe = True
+
+        if not is_safe:
+            AuditLog.objects.create(
+                user=request.user,
+                event='PROMPT_INJECTION_ATTEMPT',
+                data_snapshot={'query': query[:200], 'endpoint': 'chat'},
+            )
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'InvalidQueryError',
+                    'message': 'Query contains disallowed content.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # --- Intent classification (only for auto mode) ---
+        classifier_decision = None
+        if mode == 'auto':
+            from ai.llm.intent_classifier import classify_intent
+
+            classification = classify_intent(query)
+            classifier_decision = classification.intent
+
+            # If confidence is below 0.7, default to nl_query (safer for operational queries)
+            if classification.confidence < 0.7:
+                engine = 'nl_query'
+            elif classification.intent == 'out_of_scope':
+                # For out_of_scope with high confidence, still try nl_query as fallback
+                engine = 'nl_query'
+            else:
+                engine = classification.intent
+        else:
+            engine = mode
+
+        # --- Execute pipeline with timeout ---
+        pipeline_start = time.time()
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(self._run_engine, engine, query, request.user)
+                result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
+        except FuturesTimeout:
+            return Response(
+                {'status': 'error', 'message': 'Request timed out. Please try a simpler question.'},
+                status=status.HTTP_504_GATEWAY_TIMEOUT,
+            )
+        except RAGServiceUnavailable as exc:
+            return Response(
+                {'status': 'error', 'message': exc.message},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as exc:
+            logger.exception('Chat pipeline failed')
+            return Response(
+                {'status': 'error', 'message': str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        latency_ms = round((time.time() - pipeline_start) * 1000)
+
+        # --- Build response ---
+        response_data = {
+            'engine': engine,
+            'mode': mode,
+            'answer': result.get('answer', ''),
+        }
+        if 'action' in result:
+            response_data['action'] = result['action']
+        if 'sources' in result:
+            response_data['sources'] = result['sources']
+
+        # --- Tracing and audit ---
+        self._trace_chat(
+            user=request.user,
+            query=query,
+            mode=mode,
+            engine=engine,
+            classifier_decision=classifier_decision,
+            result=result,
+            latency_ms=latency_ms,
+        )
+
+        return Response({'status': 'success', 'data': response_data}, status=status.HTTP_200_OK)
+
+    def _run_engine(self, engine: str, query: str, user) -> dict:
+        """Dispatch to the appropriate engine and return a normalized result dict."""
+        if engine == 'rag':
+            return self._run_rag(query, user)
+        return self._run_nl_query(query, user)
+
+    def _run_rag(self, query: str, user) -> dict:
+        """Execute the RAG pipeline via RAGQueryService."""
+        service = RAGQueryService()
+        try:
+            result = service.execute(query, user=user)
+        except ConnectionError as exc:
+            if 'COHERE' in str(exc).upper():
+                raise RAGServiceUnavailable(
+                    'Cohere reranking service is unavailable. Please try again later.'
+                )
+            raise ValueError(f'Service unavailable: {exc}')
+
+        return {
+            'answer': result['answer'],
+            'sources': result['sources'],
+        }
+
+    def _run_nl_query(self, query: str, user) -> dict:
+        """Execute the NL Query pipeline — mirrors NLQueryEndpointView._run_pipeline."""
+        from ai.llm.chain import NLQueryChain, call_gpt4o_formatter
+        from apps.inventory.views import (
+            _handle_forecast_demand,
+            _handle_get_inventory,
+            _handle_get_low_stock,
+            _handle_get_sales_report,
+            _handle_get_supplier_info,
+            _handle_get_top_products,
+            _handle_get_total_value,
+        )
+
+        # Step B: LangChain Processing
+        try:
+            chain_instance = NLQueryChain()
+            chain_result = chain_instance.run(query)
+            chain_dict = chain_result.to_dict()
+            action_type = chain_dict.get('action')
+            filters = chain_dict.get('filters', {})
+        except Exception as exc:
+            raise ValueError(f'LLM Chain failure: {exc}')
+
+        # Step C: Dispatch to handler
+        handler_map = {
+            'get_inventory': _handle_get_inventory,
+            'get_sales_report': _handle_get_sales_report,
+            'get_low_stock': _handle_get_low_stock,
+            'forecast_demand': _handle_forecast_demand,
+            'get_supplier_info': _handle_get_supplier_info,
+            'get_total_value': _handle_get_total_value,
+            'get_top_products': _handle_get_top_products,
+        }
+        handler = handler_map.get(action_type)
+        if not handler:
+            raise ValueError(f'Unknown action type: {action_type}')
+
+        try:
+            from ai.llm.schemas import NLQueryFilters
+
+            nl_filters = NLQueryFilters(**filters) if isinstance(filters, dict) else filters
+            raw_data = handler(nl_filters)
+        except Exception as exc:
+            raise ValueError(f'Database execution error: {exc}')
+
+        # Step D: Format to natural language
+        try:
+            answer = call_gpt4o_formatter(original_query=query, raw_data=raw_data)
+        except Exception as exc:
+            logger.exception('Formatter failed: %s', exc)
+            answer = f'Here is the requested information: {raw_data}'
+
+        return {
+            'answer': answer,
+            'action': {'type': action_type, 'filters': filters},
+        }
+
+    def _trace_chat(self, user, query, mode, engine, classifier_decision, result, latency_ms):
+        """Log chat query to audit system and Langfuse."""
+        trace_data = {
+            'query': query,
+            'mode': mode,
+            'engine': engine,
+            'classifier_decision': classifier_decision,
+            'answer_length': len(result.get('answer', '')),
+            'latency_ms': latency_ms,
+        }
+
+        try:
+            AuditLog.objects.create(
+                user=user,
+                event='AI_CHAT_QUERY',
+                data_snapshot=trace_data,
+            )
+        except Exception as exc:
+            logger.debug('Audit log failed: %s', exc)
+
+        try:
+            lf = _get_langfuse()
+            if lf is not None:
+                trace = lf.trace(
+                    name='chat_query',
+                    user_id=str(user.id) if user else 'anonymous',
+                    metadata={
+                        'mode': mode,
+                        'engine': engine,
+                        'classifier_decision': classifier_decision,
+                        'latency_ms': latency_ms,
+                        'alert_thresholds': get_langfuse_alert_thresholds(),
+                    },
+                )
+                if classifier_decision:
+                    trace.span(
+                        name='intent_classification',
+                        input={'query': query},
+                        output={
+                            'decision': classifier_decision,
+                            'engine_selected': engine,
+                        },
+                    )
+                trace.span(
+                    name=f'{engine}_execution',
+                    input={'query': query},
+                    output={
+                        'answer': result.get('answer', ''),
+                        'sources': result.get('sources', []),
+                        'action': result.get('action'),
+                    },
+                )
+                lf.flush()
+        except Exception as lf_err:
+            logger.debug('Langfuse trace skipped: %s', lf_err)
