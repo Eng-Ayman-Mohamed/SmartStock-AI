@@ -16,8 +16,10 @@ class PODraftToolTest(TestCase):
         mock_sku = MagicMock()
         mock_sku.product.unit_price = 2.50
 
-        with patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-001'), \
-             patch('ai.agents.tools.po_draft.SKU') as mock_sku_cls:
+        with (
+            patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-001'),
+            patch('ai.agents.tools.po_draft.SKU') as mock_sku_cls,
+        ):
             mock_sku_cls.objects.select_related.return_value.get.return_value = mock_sku
             tool = PODraftTool(service=mock_service)
             result = tool.run({'sku_id': '5', 'quantity': '100', 'supplier_id': '3'})
@@ -26,8 +28,12 @@ class PODraftToolTest(TestCase):
         self.assertEqual(result['po_number'], 'PO-2026-001')
         self.assertEqual(result['status'], 'draft')
         mock_service.draft_po.assert_called_once_with(
-            sku_id=5, quantity=100, supplier_id=3, user=None,
-            po_number='PO-2026-001', total_cost=250.0,
+            sku_id=5,
+            quantity=100,
+            supplier_id=3,
+            user=None,
+            po_number='PO-2026-001',
+            total_cost=250.0,
         )
 
     def test_computes_total_cost_from_quantity_times_unit_price(self):
@@ -36,8 +42,10 @@ class PODraftToolTest(TestCase):
         mock_sku = MagicMock()
         mock_sku.product.unit_price = 9.99
 
-        with patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-002'), \
-             patch('ai.agents.tools.po_draft.SKU') as mock_sku_cls:
+        with (
+            patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-2026-002'),
+            patch('ai.agents.tools.po_draft.SKU') as mock_sku_cls,
+        ):
             mock_sku_cls.objects.select_related.return_value.get.return_value = mock_sku
             tool = PODraftTool(service=mock_service)
             tool.run({'sku_id': '7', 'quantity': '25', 'supplier_id': '4'})
@@ -49,7 +57,10 @@ class PODraftToolTest(TestCase):
 class EmailSendToolTest(TestCase):
     def test_sends_email_and_returns_recipient(self):
         mock_service = MagicMock()
-        mock_service.send_po_email.return_value = {'sent': True, 'recipient': 'supplier@example.com'}
+        mock_service.send_po_email.return_value = {
+            'sent': True,
+            'recipient': 'supplier@example.com',
+        }
 
         tool = EmailSendTool(service=mock_service)
         result = tool.run({'po_id': '1'})

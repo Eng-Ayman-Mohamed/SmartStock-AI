@@ -555,13 +555,29 @@ AUDIT_EVENTS_POOL = [
     'AGENT_RUN_COMPLETED',
 ]
 AUDIT_EVENT_WEIGHTS = [
-    0.25, 0.08, 0.06, 0.04, 0.04, 0.1, 0.08, 0.08,
-    0.05, 0.03, 0.12, 0.07,
+    0.25,
+    0.08,
+    0.06,
+    0.04,
+    0.04,
+    0.1,
+    0.08,
+    0.08,
+    0.05,
+    0.03,
+    0.12,
+    0.07,
 ]
 
 ENTITY_TYPES = [
-    'PurchaseOrder', 'User', 'Product', 'SKU', 'StockLevel',
-    'InvoiceScan', 'ReorderFlag', 'AgentRun',
+    'PurchaseOrder',
+    'User',
+    'Product',
+    'SKU',
+    'StockLevel',
+    'InvoiceScan',
+    'ReorderFlag',
+    'AgentRun',
 ]
 
 
@@ -747,9 +763,21 @@ class Command(BaseCommand):
         self.stdout.write('Validating seed data integrity...')
         checks = []
         all_models = [
-            CustomUser, Category, Supplier, Product, SKU, StockLevel,
-            SalesRecord, PurchasingPurchaseOrder, ForecastResult, ReorderFlag,
-            Document, DocumentChunk, InvoiceScan, AgentRun, AuditLog,
+            CustomUser,
+            Category,
+            Supplier,
+            Product,
+            SKU,
+            StockLevel,
+            SalesRecord,
+            PurchasingPurchaseOrder,
+            ForecastResult,
+            ReorderFlag,
+            Document,
+            DocumentChunk,
+            InvoiceScan,
+            AgentRun,
+            AuditLog,
         ]
 
         for model in all_models:
@@ -758,7 +786,7 @@ class Command(BaseCommand):
             status = '✓' if count > 0 else '✗'
             checks.append((model.__name__, count, expected, status))
 
-        header = f'{'Model':<25} {'Count':>8} {'Expected':>10}  Status'
+        header = f'{"Model":<25} {"Count":>8} {"Expected":>10}  Status'
         self.stdout.write(header)
         self.stdout.write('-' * len(header))
         all_ok = True
@@ -782,11 +810,11 @@ class Command(BaseCommand):
         self.stdout.write()
         self.stdout.write('Foreign key integrity checks:')
         for label, child_model, fk_field, parent_model in fk_checks:
-            orphans = child_model.objects.filter(
-                **{f'{fk_field}__isnull': False}
-            ).exclude(
-                **{f'{fk_field}__in': parent_model.objects.values_list('pk', flat=True)}
-            ).count()
+            orphans = (
+                child_model.objects.filter(**{f'{fk_field}__isnull': False})
+                .exclude(**{f'{fk_field}__in': parent_model.objects.values_list('pk', flat=True)})
+                .count()
+            )
             status = '✓' if orphans == 0 else '✗'
             self.stdout.write(f'  {status} {label}: {orphans} orphans')
             if orphans > 0:
