@@ -1,9 +1,25 @@
 from ai.agents.base_agent import BaseTool
+from apps.purchasing.po_number import generate_po_number
+from apps.purchasing.services import PurchasingService
 
 
 class PODraftTool(BaseTool):
     name = 'po_draft_tool'
-    description = 'Generates a formal Purchase Order for a given SKU and quantity.'
+    description = 'Creates a draft Purchase Order for a given product, quantity, and supplier.'
+
+    def __init__(self, service=None):
+        self.service = service or PurchasingService()
 
     def run(self, input: dict) -> dict:
-        return {'po_id': None, 'status': 'draft'}
+        sku_id = int(input['sku_id'])
+        quantity = int(input['quantity'])
+        supplier_id = int(input['supplier_id'])
+        po_number = generate_po_number()
+        po = self.service.repo.create({
+            'sku_id': sku_id,
+            'quantity': quantity,
+            'supplier_id': supplier_id,
+            'status': 'draft',
+            'po_number': po_number,
+        })
+        return {'po_id': po.id, 'po_number': po_number, 'status': 'draft'}
