@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('inventory', '0002_product_max_warehouse_capacity'),
     ]

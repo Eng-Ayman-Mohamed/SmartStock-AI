@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('forecasting', '0002_forecastresult_updated_at'),
         ('inventory', '0003_alter_salesrecord_options'),
@@ -15,7 +14,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ReorderFlag',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('quantity_available', models.IntegerField()),
                 ('total_predicted_demand', models.FloatField()),
                 ('safety_stock', models.IntegerField(default=0)),
@@ -28,7 +32,11 @@ class Migration(migrations.Migration):
                 (
                     'status',
                     models.CharField(
-                        choices=[('open', 'Open'), ('consumed', 'Consumed'), ('dismissed', 'Dismissed')],
+                        choices=[
+                            ('open', 'Open'),
+                            ('consumed', 'Consumed'),
+                            ('dismissed', 'Dismissed'),
+                        ],
                         default='open',
                         max_length=20,
                     ),

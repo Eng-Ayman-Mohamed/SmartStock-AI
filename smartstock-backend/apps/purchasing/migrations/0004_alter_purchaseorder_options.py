@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('purchasing', '0003_purchaseorder_confirmed_at_purchaseorder_po_number'),
     ]
