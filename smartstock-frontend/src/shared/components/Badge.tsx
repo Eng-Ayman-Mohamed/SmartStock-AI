@@ -15,6 +15,8 @@ const statusStyles: Record<string, string> = {
   Viewer: 'bg-canvas-soft text-ink-muted',
   Manager: 'bg-brand-50 text-brand-800',
   Admin: 'bg-purple-50 text-purple-800',
+  Active: 'bg-green-50 text-green-800 before:bg-green-600',
+  Inactive: 'bg-canvas-soft text-ink-muted',
 };
 
 interface BadgeProps {
