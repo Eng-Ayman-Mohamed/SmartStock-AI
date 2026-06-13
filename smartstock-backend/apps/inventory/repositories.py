@@ -29,9 +29,11 @@ class InventoryRepository(BaseRepository):
     """Repository for Product model."""
 
     def get_by_id(self, id: int):
-        return Product.objects.select_related('category', 'supplier').prefetch_related(
-            'skus__stock_level'
-        ).get(pk=id)
+        return (
+            Product.objects.select_related('category', 'supplier')
+            .prefetch_related('skus__stock_level')
+            .get(pk=id)
+        )
 
     def get_all(self, include_inactive: bool = False):
         qs = Product.objects.select_related('category', 'supplier').prefetch_related(

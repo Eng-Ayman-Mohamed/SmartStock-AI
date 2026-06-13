@@ -14,11 +14,7 @@ class FakeLangChainDecisionAgent:
         self.tools = {tool.name: tool for tool in tools}
 
     def invoke(self, input, config=None):
-        product_id = int(
-            input['messages'][0]['content']
-            .split('product_id=')[1]
-            .split('.')[0]
-        )
+        product_id = int(input['messages'][0]['content'].split('product_id=')[1].split('.')[0])
         stock = self.tools['stock_level_read_tool'].invoke({'product_id': product_id})
         self.tools['forecast_read_tool'].invoke(
             {'product_id': product_id, 'forecast_days': stock['lead_time_days']}

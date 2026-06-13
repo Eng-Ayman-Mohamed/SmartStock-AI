@@ -101,7 +101,9 @@ def extract_token_usage(response) -> dict:
             return usage
 
     if isinstance(response, dict):
-        usage = response.get('token_usage') or response.get('usage') or response.get('usage_metadata')
+        usage = (
+            response.get('token_usage') or response.get('usage') or response.get('usage_metadata')
+        )
         if isinstance(usage, dict):
             return usage
 

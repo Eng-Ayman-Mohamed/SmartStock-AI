@@ -324,7 +324,9 @@ class DecisionAgent:
         last_error = None
         for attempt in range(self.tool_retries + 1):
             try:
-                output = tool.invoke(tool_input) if hasattr(tool, 'invoke') else tool.run(tool_input)
+                output = (
+                    tool.invoke(tool_input) if hasattr(tool, 'invoke') else tool.run(tool_input)
+                )
                 if trace_spans is not None:
                     trace_spans.append(
                         {
