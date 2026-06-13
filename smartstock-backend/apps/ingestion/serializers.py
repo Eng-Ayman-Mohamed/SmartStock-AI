@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from .models import Document, DocumentChunk
+from .models import Document, DocumentChunk, InvoiceScan
+from .services import INVOICE_REQUIRED_FIELDS
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -74,3 +75,74 @@ class RAGQuerySerializer(serializers.Serializer):
         if len(cleaned) < 3:
             raise serializers.ValidationError('Query must be at least 3 characters long.')
         return cleaned
+
+
+class ChatSerializer(serializers.Serializer):
+    query = serializers.CharField(required=True, max_length=500)
+    mode = serializers.ChoiceField(choices=['auto', 'nl_query', 'rag'], default='auto')
+
+    def validate_query(self, value):
+        cleaned = value.strip()
+        if len(cleaned) < 3:
+            raise serializers.ValidationError('Query must be at least 3 characters long.')
+        return cleaned
+
+
+class TranscriptionSerializer(serializers.Serializer):
+    audio = serializers.FileField()
+
+    def validate_audio(self, file):
+        if file.size > 25 * 1024 * 1024:
+            raise serializers.ValidationError('Audio file must be less than 25 MB.')
+        return file
+
+
+class InvoiceScanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceScan
+        fields = [
+            'id',
+            'original_filename',
+            'content_type',
+            'file_size',
+            'status',
+            'extracted_data',
+            'confidence',
+            'missing_fields',
+            'failure_reason',
+            'confirmed_data',
+            'is_confirmed',
+            'confirmed_at',
+            'rejected_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+
+class InvoiceScanUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+    def validate_file(self, file):
+        allowed_content_types = {
+            'image/jpeg',
+            'image/png',
+            'application/pdf',
+        }
+        content_type = getattr(file, 'content_type', None)
+        if content_type not in allowed_content_types:
+            raise serializers.ValidationError('Accepted invoice formats are JPEG, PNG, and PDF.')
+        if file.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError('File size must be 5 MB or less.')
+        return file
+
+
+class InvoiceScanConfirmSerializer(serializers.Serializer):
+    scan_id = serializers.IntegerField()
+    confirmed_data = serializers.DictField()
+
+    def validate_confirmed_data(self, value):
+        missing = [field for field in INVOICE_REQUIRED_FIELDS if not value.get(field)]
+        if missing:
+            raise serializers.ValidationError(f'Missing required fields: {", ".join(missing)}')
+        return value

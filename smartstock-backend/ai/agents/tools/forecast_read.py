@@ -1,10 +1,18 @@
+from pydantic import BaseModel, Field
+
 from ai.agents.base_agent import BaseTool
 from apps.forecasting.services import ForecastingService
+
+
+class ForecastReadInput(BaseModel):
+    product_id: int = Field(..., description='Product ID to forecast.')
+    forecast_days: int = Field(7, description='Forecast horizon in days.')
 
 
 class ForecastReadTool(BaseTool):
     name = 'forecast_read_tool'
     description = 'Reads forecast predictions.'
+    args_schema = ForecastReadInput
 
     def __init__(self, service=None):
         self.service = service or ForecastingService()

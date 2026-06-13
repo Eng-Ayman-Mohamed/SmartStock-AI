@@ -29,16 +29,24 @@ class InventoryRepository(BaseRepository):
     """Repository for Product model."""
 
     def get_by_id(self, id: int):
-        return Product.objects.prefetch_related('skus').get(pk=id)
+        return (
+            Product.objects.select_related('category', 'supplier')
+            .prefetch_related('skus__stock_level')
+            .get(pk=id)
+        )
 
     def get_all(self, include_inactive: bool = False):
-        qs = Product.objects.prefetch_related('skus')
+        qs = Product.objects.select_related('category', 'supplier').prefetch_related(
+            'skus__stock_level'
+        )
         if not include_inactive:
             qs = qs.filter(is_active=True)
         return qs.all()
 
     def get_all_queryset(self, include_inactive: bool = False):
-        qs = Product.objects.prefetch_related('skus')
+        qs = Product.objects.select_related('category', 'supplier').prefetch_related(
+            'skus__stock_level'
+        )
         if not include_inactive:
             qs = qs.filter(is_active=True)
         return qs.order_by('-created_at')
@@ -75,6 +83,9 @@ class SKURepository(BaseRepository):
 
     def get_by_id(self, id: int):
         return SKU.objects.select_related('product').get(pk=id)
+
+    def get_by_code(self, code: str):
+        return SKU.objects.select_related('product').filter(code=code).first()
 
     def get_all(self):
         return SKU.objects.select_related('product').all()
@@ -127,6 +138,9 @@ class StockLevelRepository(BaseRepository):
         except StockLevel.DoesNotExist:
             return None
 
+    def get_by_sku_id(self, sku_id: int):
+        return StockLevel.objects.filter(sku_id=sku_id).first()
+
 
 class SalesRecordRepository(BaseRepository):
     """Repository for SalesRecord model."""
@@ -161,6 +175,9 @@ class SupplierRepository(BaseRepository):
 
     def get_by_id(self, id: int):
         return Supplier.objects.get(pk=id)
+
+    def get_by_name(self, name: str):
+        return Supplier.objects.filter(name__iexact=name).first()
 
     def get_all(self):
         return Supplier.objects.all()

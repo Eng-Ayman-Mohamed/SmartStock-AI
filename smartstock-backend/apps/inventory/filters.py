@@ -41,7 +41,10 @@ class ProductFilter(django_filters.FilterSet):
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
-            db_models.Q(name__icontains=value) | db_models.Q(skus__code__icontains=value)
+            db_models.Q(name__icontains=value)
+            | db_models.Q(category__name__icontains=value)
+            | db_models.Q(supplier__name__icontains=value)
+            | db_models.Q(skus__code__icontains=value)
         ).distinct()
 
 
