@@ -3,7 +3,7 @@ import logging
 from django.dispatch import receiver
 
 from apps.inventory.services import stock_adjusted
-from apps.purchasing.services import po_approved
+from apps.purchasing.services import po_approved, po_confirmed, po_rejected, po_sent
 
 from .models import AuditLog
 
@@ -28,6 +28,54 @@ def log_po_approval(sender, po, user, **kwargs):
         )
     except Exception as e:
         logger.exception('Failed to log PO approval audit entry: %s', e)
+
+
+@receiver(po_rejected)
+def log_po_rejection(sender, po, user, **kwargs):
+    try:
+        AuditLog.objects.create(
+            event='PO_REJECTED',
+            user=user,
+            entity_id=po.id,
+            data_snapshot={
+                'supplier': po.supplier.name,
+                'amount': str(po.total_cost),
+            },
+        )
+    except Exception as e:
+        logger.exception('Failed to log PO rejection audit entry: %s', e)
+
+
+@receiver(po_sent)
+def log_po_sent(sender, po, **kwargs):
+    try:
+        AuditLog.objects.create(
+            event='PO_SENT',
+            entity_id=po.id,
+            data_snapshot={
+                'supplier': po.supplier.name,
+                'sku': po.sku.code,
+                'amount': str(po.total_cost),
+            },
+        )
+    except Exception as e:
+        logger.exception('Failed to log PO sent audit entry: %s', e)
+
+
+@receiver(po_confirmed)
+def log_po_confirmed(sender, po, **kwargs):
+    try:
+        AuditLog.objects.create(
+            event='INVOICE_CONFIRMED',
+            entity_id=po.id,
+            data_snapshot={
+                'supplier': po.supplier.name,
+                'sku': po.sku.code,
+                'amount': str(po.total_cost),
+            },
+        )
+    except Exception as e:
+        logger.exception('Failed to log PO confirmed audit entry: %s', e)
 
 
 @receiver(stock_adjusted)
