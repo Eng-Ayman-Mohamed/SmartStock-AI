@@ -14,6 +14,8 @@ class PODraftTool(BaseTool):
         self.service = service or PurchasingService()
 
     def run(self, input: dict) -> dict:
+        if input.get('action') == 'trace':
+            return {'status': 'traced', 'action': 'trace', 'step': input.get('step', '')}
         try:
             sku_id = int(input['sku_id'])
             quantity = int(input['quantity'])

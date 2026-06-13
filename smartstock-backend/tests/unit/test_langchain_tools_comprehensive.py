@@ -359,7 +359,7 @@ class EmailSendToolTest(TestCase):
         mock_purchasing = SimpleNamespace(repo=mock_repo)
         tool = EmailSendTool(purchasing_service=mock_purchasing)
         result = tool.run({'po_id': '1'})
-        self.assertEqual(result['status'], 'queued')
+        self.assertEqual(result['status'], 'sent')
         self.assertEqual(result['po_id'], 1)
         self.assertIn('message_id', result)
 

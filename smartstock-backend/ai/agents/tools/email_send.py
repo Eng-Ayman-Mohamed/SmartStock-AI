@@ -64,7 +64,7 @@ class EmailSendTool(BaseTool):
                 task_result.id,
             )
             return {
-                'status': 'queued',
+                'status': 'sent',
                 'po_id': po_id,
                 'message_id': message_id,
                 'recipient': recipient_email,

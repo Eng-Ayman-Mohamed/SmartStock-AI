@@ -8,6 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from ai.agents.tools.forecast_read import ForecastReadTool
 from ai.agents.tools.po_status_check import POStatusCheckTool
 from ai.agents.tools.stock_level_read import StockLevelReadTool
+from ai.llm.chain import get_llm
 from ai.observability.langfuse import invoke_with_langfuse, trace_agent_run
 from apps.forecasting.services import ForecastingService
 
@@ -24,8 +25,6 @@ class DecisionReasoner:
         try:
             llm = self.llm
             if llm is None:
-                from ai.llm.chain import get_llm
-
                 llm = get_llm()
 
             prompt = ChatPromptTemplate.from_messages(
