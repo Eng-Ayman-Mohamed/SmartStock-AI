@@ -1,6 +1,5 @@
 import unittest
-from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
@@ -197,9 +196,7 @@ class PurgeOldAuditLogsTests(TestCase):
     @patch('apps.audit.models.AuditLog')
     @patch('apps.audit.tasks.timezone')
     def test_purge_deletes_old_logs(self, mock_timezone, mock_audit_model):
-        mock_timezone.now.return_value = SimpleNamespace(
-            __sub__=lambda self, other: SimpleNamespace()
-        )
+        mock_timezone.now.return_value = MagicMock()
         mock_audit_model.objects.filter.return_value.delete.return_value = (5, {})
         from apps.audit.tasks import purge_old_audit_logs
 
@@ -209,9 +206,7 @@ class PurgeOldAuditLogsTests(TestCase):
     @patch('apps.audit.models.AuditLog')
     @patch('apps.audit.tasks.timezone')
     def test_purge_no_old_logs(self, mock_timezone, mock_audit_model):
-        mock_timezone.now.return_value = SimpleNamespace(
-            __sub__=lambda self, other: SimpleNamespace()
-        )
+        mock_timezone.now.return_value = MagicMock()
         mock_audit_model.objects.filter.return_value.delete.return_value = (0, {})
         from apps.audit.tasks import purge_old_audit_logs
 
