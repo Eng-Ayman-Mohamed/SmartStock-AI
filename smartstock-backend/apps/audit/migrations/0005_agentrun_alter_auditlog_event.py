@@ -4,67 +4,66 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("audit", "0004_remove_auditlog_data_auditlog_data_snapshot"),
+        ('audit', '0004_remove_auditlog_data_auditlog_data_snapshot'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name="AgentRun",
+            name='AgentRun',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
-                ("agent_name", models.CharField(max_length=100)),
+                ('agent_name', models.CharField(max_length=100)),
                 (
-                    "status",
+                    'status',
                     models.CharField(
                         choices=[
-                            ("pending", "Pending"),
-                            ("running", "Running"),
-                            ("completed", "Completed"),
-                            ("failed", "Failed"),
+                            ('pending', 'Pending'),
+                            ('running', 'Running'),
+                            ('completed', 'Completed'),
+                            ('failed', 'Failed'),
                         ],
-                        default="pending",
+                        default='pending',
                         max_length=20,
                     ),
                 ),
-                ("started_at", models.DateTimeField(blank=True, null=True)),
-                ("completed_at", models.DateTimeField(blank=True, null=True)),
-                ("error_message", models.TextField(blank=True)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
+                ('started_at', models.DateTimeField(blank=True, null=True)),
+                ('completed_at', models.DateTimeField(blank=True, null=True)),
+                ('error_message', models.TextField(blank=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
             ],
             options={
-                "ordering": ["-created_at"],
+                'ordering': ['-created_at'],
             },
         ),
         migrations.AlterField(
-            model_name="auditlog",
-            name="event",
+            model_name='auditlog',
+            name='event',
             field=models.CharField(
                 choices=[
-                    ("USER_LOGIN", "User Login"),
-                    ("PO_CREATED", "Po Created"),
-                    ("PO_APPROVED", "Po Approved"),
-                    ("PO_REJECTED", "Po Rejected"),
-                    ("PO_SENT", "Po Sent"),
-                    ("STOCK_ADJUSTED", "Stock Adjusted"),
-                    ("PRODUCT_CREATED", "Product Created"),
-                    ("PRODUCT_UPDATED", "Product Updated"),
-                    ("INVOICE_CONFIRMED", "Invoice Confirmed"),
-                    ("INVOICE_REJECTED", "Invoice Rejected"),
-                    ("PROMPT_INJECTION_ATTEMPT", "Prompt Injection Attempt"),
-                    ("AI_RAG_QUERY", "Ai Rag Query"),
-                    ("VISION_EXTRACTION_FAILED", "Vision Extraction Failed"),
-                    ("AGENT_RUN_COMPLETED", "Agent Run Completed"),
+                    ('USER_LOGIN', 'User Login'),
+                    ('PO_CREATED', 'Po Created'),
+                    ('PO_APPROVED', 'Po Approved'),
+                    ('PO_REJECTED', 'Po Rejected'),
+                    ('PO_SENT', 'Po Sent'),
+                    ('STOCK_ADJUSTED', 'Stock Adjusted'),
+                    ('PRODUCT_CREATED', 'Product Created'),
+                    ('PRODUCT_UPDATED', 'Product Updated'),
+                    ('INVOICE_CONFIRMED', 'Invoice Confirmed'),
+                    ('INVOICE_REJECTED', 'Invoice Rejected'),
+                    ('PROMPT_INJECTION_ATTEMPT', 'Prompt Injection Attempt'),
+                    ('AI_RAG_QUERY', 'Ai Rag Query'),
+                    ('VISION_EXTRACTION_FAILED', 'Vision Extraction Failed'),
+                    ('AGENT_RUN_COMPLETED', 'Agent Run Completed'),
                 ],
                 max_length=100,
             ),
