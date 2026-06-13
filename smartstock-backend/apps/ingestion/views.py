@@ -823,12 +823,11 @@ class ChatView(APIView):
         }
 
     def _run_nl_pipeline(self, query: str, user) -> dict:
+        from ai.llm.chain import call_gpt4o_formatter
         from apps.inventory.views import (
             _handler_map,
             get_nl_chain,
-            get_langfuse,
         )
-        from ai.llm.chain import call_gpt4o_formatter
 
         pipeline_start = time.time()
 
