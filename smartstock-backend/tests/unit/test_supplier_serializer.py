@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from django.test import TestCase, RequestFactory
+from django.test import RequestFactory, TestCase
 
 from apps.inventory.models import Supplier
 from apps.purchasing.serializers import SupplierSerializer
