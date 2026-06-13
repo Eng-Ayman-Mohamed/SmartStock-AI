@@ -4,26 +4,26 @@ Problem 1: DecisionAgent tests (9) — must work without live LLM API.
 Problem 2: StubToolTests (2) — EmailSendTool, PODraftTool response formats.
 Problem 3: PurchasingAgentTests (1) — tool must handle 'action' trace key.
 """
+
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import TestCase
 
 from ai.agents.decision_agent import DecisionAgent, DecisionReasoner
+from ai.agents.purchasing_agent import PurchasingAgent
 from ai.agents.tools.email_send import EmailSendTool
 from ai.agents.tools.po_draft import PODraftTool
-from ai.agents.purchasing_agent import PurchasingAgent
-
 
 # ---------------------------------------------------------------------------
 # Fakes (same style as test_agent_integration_comprehensive.py)
 # ---------------------------------------------------------------------------
 
+
 class _FakeStockTool:
     name = 'stock_level_read_tool'
 
-    def __init__(self, quantity_available=50, reorder_point=20,
-                 lead_time_days=7, safety_stock=10):
+    def __init__(self, quantity_available=50, reorder_point=20, lead_time_days=7, safety_stock=10):
         self.quantity_available = quantity_available
         self.reorder_point = reorder_point
         self.lead_time_days = lead_time_days
@@ -77,8 +77,7 @@ class _FakeForecastingService:
 class _FakeReasoner:
     def generate(self, payload):
         return (
-            f'Stock {payload["quantity_available"]} vs demand '
-            f'{payload["total_predicted_demand"]}.'
+            f'Stock {payload["quantity_available"]} vs demand {payload["total_predicted_demand"]}.'
         )
 
 
@@ -90,8 +89,7 @@ class _FakePODraftTool:
         self.calls.append(input)
         if input.get('action') == 'trace':
             return {'status': 'traced'}
-        return {'po_id': 100, 'status': 'draft',
-                'sku_id': 1, 'supplier_id': 1, 'quantity': 10}
+        return {'po_id': 100, 'status': 'draft', 'sku_id': 1, 'supplier_id': 1, 'quantity': 10}
 
 
 class _FakeEmailSendTool:
@@ -100,8 +98,7 @@ class _FakeEmailSendTool:
 
     def run(self, input):
         if self.succeed:
-            return {'status': 'sent', 'po_id': input['po_id'],
-                    'message_id': 'msg-123'}
+            return {'status': 'sent', 'po_id': input['po_id'], 'message_id': 'msg-123'}
         return {'status': 'failed', 'error': 'SMTP error'}
 
 
@@ -114,8 +111,7 @@ class _FakeConfirmationTool:
         self.call_count += 1
         if self.call_count > self.confirm_after:
             return {'confirmed': True, 'po_id': input['po_id']}
-        return {'confirmed': False, 'po_id': input['po_id'],
-                'status': 'waiting_confirmation'}
+        return {'confirmed': False, 'po_id': input['po_id'], 'status': 'waiting_confirmation'}
 
 
 class _FakePurchasingService:
@@ -158,13 +154,11 @@ class _FakeWorkflowService:
         self.poll_increments = []
 
     def create_workflow(self, po_id):
-        wf = SimpleNamespace(id=self.workflow_id_counter,
-                             purchase_order_id=po_id, status='draft')
+        wf = SimpleNamespace(id=self.workflow_id_counter, purchase_order_id=po_id, status='draft')
         self.workflow_id_counter += 1
         return wf
 
-    def update_status(self, workflow_id, status,
-                      message_id=None, error_message=None):
+    def update_status(self, workflow_id, status, message_id=None, error_message=None):
         self.statuses.append((workflow_id, status))
 
     def increment_polling_attempt(self, workflow_id):
@@ -178,6 +172,7 @@ class _FakeWorkflowService:
 # Problem 1 — DecisionAgent / DecisionReasoner (9 tests)
 # ===================================================================
 
+
 class DecisionReasonerOfflineTest(TestCase):
     """Verify DecisionReasoner works without a live LLM API call."""
 
@@ -189,8 +184,7 @@ class DecisionReasonerOfflineTest(TestCase):
             'lead_time_days': 7,
             'safety_stock': 5,
         }
-        with patch('ai.agents.decision_agent.get_llm',
-                   side_effect=Exception('no live API')):
+        with patch('ai.llm.chain.get_llm', side_effect=Exception('no live API')):
             result = reasoner.generate(payload)
         self.assertIsInstance(result, str)
         self.assertTrue(len(result) > 0)
@@ -203,8 +197,7 @@ class DecisionReasonerOfflineTest(TestCase):
             'lead_time_days': 7,
             'safety_stock': 5,
         }
-        with patch('ai.agents.decision_agent.get_llm',
-                   side_effect=Exception('no live API')):
+        with patch('ai.llm.chain.get_llm', side_effect=Exception('no live API')):
             result = reasoner.generate(payload)
         self.assertIn('10', result)
         self.assertIn('50', result)
@@ -234,8 +227,7 @@ class DecisionReasonerOfflineTest(TestCase):
 class DecisionAgentOfflineTest(TestCase):
     """Verify DecisionAgent works with default tools and offline reasoner."""
 
-    def _build_agent(self, quantity_available=50, total_predicted_demand=30.0,
-                     has_open_po=False):
+    def _build_agent(self, quantity_available=50, total_predicted_demand=30.0, has_open_po=False):
         service = _FakeForecastingService()
         return DecisionAgent(
             stock_tool=_FakeStockTool(quantity_available=quantity_available),
@@ -246,8 +238,7 @@ class DecisionAgentOfflineTest(TestCase):
         ), service
 
     def test_single_product_low_stock(self):
-        agent, service = self._build_agent(
-            quantity_available=5, total_predicted_demand=62)
+        agent, service = self._build_agent(quantity_available=5, total_predicted_demand=62)
         result = agent.run({'product_id': 1})
         decision = result['results'][0]
         self.assertTrue(decision['reorder_required'])
@@ -255,8 +246,7 @@ class DecisionAgentOfflineTest(TestCase):
         self.assertTrue(len(service.persisted) > 0)
 
     def test_single_product_sufficient_stock(self):
-        agent, service = self._build_agent(
-            quantity_available=200, total_predicted_demand=30)
+        agent, service = self._build_agent(quantity_available=200, total_predicted_demand=30)
         result = agent.run({'product_id': 1})
         decision = result['results'][0]
         self.assertFalse(decision['reorder_required'])
@@ -264,8 +254,7 @@ class DecisionAgentOfflineTest(TestCase):
         self.assertEqual(service.persisted, [])
 
     def test_multiple_products(self):
-        agent, _ = self._build_agent(
-            quantity_available=5, total_predicted_demand=62)
+        agent, _ = self._build_agent(quantity_available=5, total_predicted_demand=62)
         result = agent.run({'product_ids': [1, 2, 3]})
         self.assertEqual(len(result['results']), 3)
         self.assertEqual(result['flags_created'], 3)
@@ -290,8 +279,8 @@ class DecisionAgentOfflineTest(TestCase):
 # Problem 2 — StubToolTests (2 tests)
 # ===================================================================
 
-class StubToolTests(TestCase):
 
+class StubToolTests(TestCase):
     def test_email_send_returns_sent(self):
         """EmailSendTool must return status 'sent' after dispatch."""
 
@@ -300,13 +289,13 @@ class StubToolTests(TestCase):
                 get_by_id=lambda po_id: SimpleNamespace(
                     id=po_id,
                     status='approved',
-                    sku=SimpleNamespace(
-                        code='SKU-1',
-                        product=SimpleNamespace(name='Widget')),
-                    supplier=SimpleNamespace(
-                        name='Acme', contact_email='a@b.com'),
-                    quantity=10, total_cost='100.00',
-                    requested_by=SimpleNamespace(name='Test')))
+                    sku=SimpleNamespace(code='SKU-1', product=SimpleNamespace(name='Widget')),
+                    supplier=SimpleNamespace(name='Acme', contact_email='a@b.com'),
+                    quantity=10,
+                    total_cost='100.00',
+                    requested_by=SimpleNamespace(name='Test'),
+                )
+            )
 
         tool = EmailSendTool(purchasing_service=_FakeService())
 
@@ -327,15 +316,18 @@ class StubToolTests(TestCase):
         class _FakeService:
             repo = SimpleNamespace(
                 create=lambda data: SimpleNamespace(
-                    id=42, status='draft', sku_id=1,
-                    supplier_id=5, quantity=100))
+                    id=42, status='draft', sku_id=1, supplier_id=5, quantity=100
+                )
+            )
 
         tool = PODraftTool(service=_FakeService())
-        result = tool.run({
-            'sku_id': '1',
-            'quantity': '100',
-            'supplier_id': '5',
-        })
+        result = tool.run(
+            {
+                'sku_id': '1',
+                'quantity': '100',
+                'supplier_id': '5',
+            }
+        )
         self.assertEqual(result['status'], 'draft')
         self.assertEqual(result['po_id'], 42)
 
@@ -343,6 +335,7 @@ class StubToolTests(TestCase):
 # ===================================================================
 # Problem 3 — PurchasingAgent (1 test)
 # ===================================================================
+
 
 class PurchasingAgentTraceActionTest(TestCase):
     """PurchasingAgent must not crash when a tool receives an 'action' key."""
@@ -363,16 +356,20 @@ class PurchasingAgentTraceActionTest(TestCase):
             confirmation_tool=_FakeConfirmationTool(),
             purchasing_service=purchasing_service,
             workflow_service=workflow_service,
-            initial_delay=0.0, max_delay=0.0, max_attempts=1,
+            initial_delay=0.0,
+            max_delay=0.0,
+            max_attempts=1,
             sleep_fn=lambda x: None,
         )
         user = SimpleNamespace(id=1)
-        result = agent.run({
-            'sku_id': 1,
-            'quantity': 10,
-            'supplier_id': 1,
-            'user': user,
-            'approval_callback': lambda po_id: False,
-        })
+        result = agent.run(
+            {
+                'sku_id': 1,
+                'quantity': 10,
+                'supplier_id': 1,
+                'user': user,
+                'approval_callback': lambda po_id: False,
+            }
+        )
         self.assertEqual(result['status'], 'rejected')
         self.assertIn('po_id', result)
