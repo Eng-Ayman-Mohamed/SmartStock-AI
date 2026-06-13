@@ -10,6 +10,8 @@ from .repositories import ForecastingRepository
 
 logger = logging.getLogger(__name__)
 
+DASHBOARD_CACHE_VERSION = '2'
+
 
 class ForecastingService:
     def __init__(self, repo=None, engine=None):
@@ -32,7 +34,7 @@ class ForecastingService:
             return False
 
     def get_dashboard_data(self):
-        cache_key = 'forecast_dashboard_data'
+        cache_key = f'forecast_dashboard_data_v{DASHBOARD_CACHE_VERSION}'
         data = cache.get(cache_key)
         if data is not None:
             return data
