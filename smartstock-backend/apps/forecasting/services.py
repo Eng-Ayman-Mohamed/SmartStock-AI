@@ -21,14 +21,19 @@ class ForecastingService:
     def calculate_stockout_risk(self, sku_code: str) -> bool:
         try:
             stock = StockLevel.objects.get(sku__code=sku_code)
-            lead_time = stock.sku.product.supplier.default_lead_time_days or 7
+            supplier = stock.sku.product.supplier
+            if supplier is None:
+                lead_time = 7
+            else:
+                lead_time = supplier.default_lead_time_days or 7
             forecasts = (
                 self.repo.get_all()
                 .filter(sku__code=sku_code)
                 .order_by('-forecast_date')[:lead_time]
             )
             total_predicted = sum(f.predicted_quantity for f in forecasts)
-            return stock.quantity_available < total_predicted + stock.sku.product.safety_stock
+            safety_stock = stock.sku.product.safety_stock or 0
+            return stock.quantity_available < total_predicted + safety_stock
         except Exception:
             logger.exception('Failed to calculate stockout risk for SKU %s', sku_code)
             return False
