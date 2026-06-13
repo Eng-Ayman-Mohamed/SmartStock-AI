@@ -14,9 +14,45 @@ class CategorySerializer(serializers.ModelSerializer):
 class SKUCompactSerializer(serializers.ModelSerializer):
     """Compact SKU serializer for nesting inside ProductSerializer."""
 
+    stock_level_id = serializers.SerializerMethodField()
+    quantity_on_hand = serializers.SerializerMethodField()
+    quantity_reserved = serializers.SerializerMethodField()
+    stock_reorder_point = serializers.SerializerMethodField()
+
     class Meta:
         model = SKU
-        fields = ('id', 'code', 'attributes', 'created_at')
+        fields = (
+            'id',
+            'code',
+            'attributes',
+            'created_at',
+            'stock_level_id',
+            'quantity_on_hand',
+            'quantity_reserved',
+            'stock_reorder_point',
+        )
+
+    def _stock_level(self, obj):
+        try:
+            return obj.stock_level
+        except StockLevel.DoesNotExist:
+            return None
+
+    def get_stock_level_id(self, obj):
+        stock = self._stock_level(obj)
+        return stock.id if stock else None
+
+    def get_quantity_on_hand(self, obj):
+        stock = self._stock_level(obj)
+        return stock.quantity_on_hand if stock else 0
+
+    def get_quantity_reserved(self, obj):
+        stock = self._stock_level(obj)
+        return stock.quantity_reserved if stock else 0
+
+    def get_stock_reorder_point(self, obj):
+        stock = self._stock_level(obj)
+        return stock.reorder_point if stock else None
 
 
 class ProductSerializer(serializers.ModelSerializer):
