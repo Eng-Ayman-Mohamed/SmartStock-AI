@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
@@ -341,7 +342,10 @@ class PODraftToolTest(TestCase):
 
 
 class EmailSendToolTest(TestCase):
-    def test_successful_send(self):
+    @patch('ai.agents.tools.email_send.send_email_with_retry')
+    def test_successful_send(self, mock_task):
+        mock_result = MagicMock(id='task-123')
+        mock_task.delay.return_value = mock_result
         mock_po = SimpleNamespace(
             id=1,
             status='approved',
@@ -353,10 +357,9 @@ class EmailSendToolTest(TestCase):
         )
         mock_repo = SimpleNamespace(get_by_id=lambda po_id: mock_po)
         mock_purchasing = SimpleNamespace(repo=mock_repo)
-        mock_email = SimpleNamespace(send=lambda **kwargs: None)
-        tool = EmailSendTool(purchasing_service=mock_purchasing, email_service=mock_email)
+        tool = EmailSendTool(purchasing_service=mock_purchasing)
         result = tool.run({'po_id': '1'})
-        self.assertEqual(result['status'], 'sent')
+        self.assertEqual(result['status'], 'queued')
         self.assertEqual(result['po_id'], 1)
         self.assertIn('message_id', result)
 
@@ -365,7 +368,6 @@ class EmailSendToolTest(TestCase):
         mock_repo = SimpleNamespace(get_by_id=lambda po_id: mock_po)
         tool = EmailSendTool(
             purchasing_service=SimpleNamespace(repo=mock_repo),
-            email_service=SimpleNamespace(send=lambda **kwargs: None),
         )
         result = tool.run({'po_id': '1'})
         self.assertEqual(result['status'], 'failed')
@@ -374,7 +376,6 @@ class EmailSendToolTest(TestCase):
     def test_missing_po_id_fails(self):
         tool = EmailSendTool(
             purchasing_service=SimpleNamespace(repo=SimpleNamespace(get_by_id=lambda x: None)),
-            email_service=SimpleNamespace(send=lambda **kwargs: None),
         )
         result = tool.run({})
         self.assertEqual(result['status'], 'failed')
@@ -382,7 +383,6 @@ class EmailSendToolTest(TestCase):
     def test_invalid_po_id_string(self):
         tool = EmailSendTool(
             purchasing_service=SimpleNamespace(repo=SimpleNamespace(get_by_id=lambda x: None)),
-            email_service=SimpleNamespace(send=lambda **kwargs: None),
         )
         result = tool.run({'po_id': 'not_a_number'})
         self.assertEqual(result['status'], 'failed')

@@ -2,6 +2,7 @@ import logging
 import uuid
 
 from ai.agents.base_agent import BaseTool
+from apps.purchasing.email_tasks import send_email_with_retry
 from apps.purchasing.services import PurchasingService
 
 logger = logging.getLogger(__name__)
@@ -13,15 +14,6 @@ class EmailSendTool(BaseTool):
 
     def __init__(self, purchasing_service=None, email_service=None):
         self.purchasing_service = purchasing_service or PurchasingService()
-        self._email_service = email_service
-
-    @property
-    def email_service(self):
-        if self._email_service is None:
-            from infrastructure.email import EmailService
-
-            self._email_service = EmailService()
-        return self._email_service
 
     def run(self, input: dict) -> dict:
         try:
@@ -56,23 +48,27 @@ class EmailSendTool(BaseTool):
 
             message_id = f'po-{po_id}-{uuid.uuid4().hex[:8]}'
 
-            self.email_service.send(
+            task_result = send_email_with_retry.delay(
                 subject=subject,
-                message=body,
+                body=body,
                 recipient=recipient_email,
+                po_id=po_id,
+                message_id=message_id,
             )
 
             logger.info(
-                'PO email sent: PO-%s to %s (message_id=%s)',
+                'PO email dispatch queued: PO-%s to %s (message_id=%s, task_id=%s)',
                 po_id,
                 recipient_email,
                 message_id,
+                task_result.id,
             )
             return {
-                'status': 'sent',
+                'status': 'queued',
                 'po_id': po_id,
                 'message_id': message_id,
                 'recipient': recipient_email,
+                'task_id': task_result.id,
             }
         except Exception as e:
             logger.exception('EmailSendTool failed for PO-%s', input.get('po_id'))
