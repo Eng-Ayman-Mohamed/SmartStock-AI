@@ -150,6 +150,7 @@ class ForecastingService:
                 'reason': 'no_data',
                 'forecast_days': 0,
                 'model_version': None,
+                'forecast_method': None,
                 'mae': None,
                 'mape': None,
             }
@@ -175,6 +176,7 @@ class ForecastingService:
             'status': 'success',
             'forecast_days': created,
             'model_version': result['model_version'],
+            'forecast_method': result.get('forecast_method', 'unknown'),
             'mae': result['mae'],
             'mape': result['mape'],
         }

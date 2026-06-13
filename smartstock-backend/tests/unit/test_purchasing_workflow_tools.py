@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
@@ -82,13 +82,14 @@ class PODraftToolTest(TestCase):
 class EmailSendToolTest(TestCase):
     def setUp(self):
         self.purchasing_service = FakePurchasingServiceForTools(po_status='approved')
-        self.email_service = MagicMock()
         self.tool = EmailSendTool(
             purchasing_service=self.purchasing_service,
-            email_service=self.email_service,
         )
 
-    def test_sends_email_to_supplier(self):
+    @patch('ai.agents.tools.email_send.send_email_with_retry')
+    def test_sends_email_to_supplier(self, mock_task):
+        mock_result = MagicMock(id='task-123')
+        mock_task.delay.return_value = mock_result
         result = self.tool.run(
             {
                 'po_id': 42,
@@ -97,13 +98,16 @@ class EmailSendToolTest(TestCase):
             }
         )
 
-        self.assertEqual(result['status'], 'sent')
+        self.assertEqual(result['status'], 'queued')
         self.assertEqual(result['po_id'], 42)
         self.assertIn('message_id', result)
         self.assertEqual(result['recipient'], 'supplier@example.com')
-        self.email_service.send.assert_called_once()
+        mock_task.delay.assert_called_once()
 
-    def test_includes_po_details_in_email(self):
+    @patch('ai.agents.tools.email_send.send_email_with_retry')
+    def test_includes_po_details_in_email(self, mock_task):
+        mock_result = MagicMock(id='task-123')
+        mock_task.delay.return_value = mock_result
         self.tool.run(
             {
                 'po_id': 42,
@@ -112,24 +116,22 @@ class EmailSendToolTest(TestCase):
             }
         )
 
-        call_kwargs = self.email_service.send.call_args
-        subject = call_kwargs[1]['subject'] if 'subject' in call_kwargs[1] else call_kwargs[0][0]
-        self.assertIn('PO-42', subject)
-        self.assertIn('SKU-001', subject)
+        call_kwargs = mock_task.delay.call_args
+        self.assertIn('PO-42', call_kwargs.kwargs['subject'])
 
     def test_returns_failed_for_non_approved_po(self):
         self.purchasing_service = FakePurchasingServiceForTools(po_status='draft')
         tool = EmailSendTool(
             purchasing_service=self.purchasing_service,
-            email_service=self.email_service,
         )
         result = tool.run({'po_id': 42})
 
         self.assertEqual(result['status'], 'failed')
         self.assertIn('not in approved/sent status', result['error'])
 
-    def test_handles_email_service_exception(self):
-        self.email_service.send.side_effect = Exception('SMTP timeout')
+    @patch('ai.agents.tools.email_send.send_email_with_retry')
+    def test_handles_task_dispatch_exception(self, mock_task):
+        mock_task.delay.side_effect = Exception('Broker unavailable')
         result = self.tool.run(
             {
                 'po_id': 42,
@@ -139,9 +141,12 @@ class EmailSendToolTest(TestCase):
         )
 
         self.assertEqual(result['status'], 'failed')
-        self.assertIn('SMTP timeout', result['error'])
+        self.assertIn('Broker unavailable', result['error'])
 
-    def test_generates_message_id(self):
+    @patch('ai.agents.tools.email_send.send_email_with_retry')
+    def test_generates_message_id(self, mock_task):
+        mock_result = MagicMock(id='task-123')
+        mock_task.delay.return_value = mock_result
         result = self.tool.run(
             {
                 'po_id': 42,
