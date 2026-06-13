@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
+
 from django.test import TestCase
+
 from apps.purchasing.services import PurchasingService
 from core.exceptions import IllegalPOTransitionError
 

@@ -1,10 +1,11 @@
 from unittest.mock import MagicMock, patch
+
 from django.test import TestCase
 
-from ai.agents.tools.po_draft import PODraftTool
-from ai.agents.tools.email_send import EmailSendTool
 from ai.agents.tools.confirmation_listener import ConfirmationListenerTool
 from ai.agents.tools.db_update import DBUpdateTool
+from ai.agents.tools.email_send import EmailSendTool
+from ai.agents.tools.po_draft import PODraftTool
 from core.exceptions import IllegalPOTransitionError
 
 
