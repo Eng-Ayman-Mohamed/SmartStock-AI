@@ -194,7 +194,7 @@ class IntentClassifierTests(unittest.TestCase):
 
 
 class PurgeOldAuditLogsTests(TestCase):
-    @patch('apps.audit.tasks.AuditLog')
+    @patch('apps.audit.models.AuditLog')
     @patch('apps.audit.tasks.timezone')
     def test_purge_deletes_old_logs(self, mock_timezone, mock_audit_model):
         mock_timezone.now.return_value = SimpleNamespace(
@@ -206,7 +206,7 @@ class PurgeOldAuditLogsTests(TestCase):
         result = purge_old_audit_logs()
         self.assertEqual(result['deleted'], 5)
 
-    @patch('apps.audit.tasks.AuditLog')
+    @patch('apps.audit.models.AuditLog')
     @patch('apps.audit.tasks.timezone')
     def test_purge_no_old_logs(self, mock_timezone, mock_audit_model):
         mock_timezone.now.return_value = SimpleNamespace(
