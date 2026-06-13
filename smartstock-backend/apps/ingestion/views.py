@@ -20,6 +20,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from ai.llm.chain import prompt_injection_filter
+from ai.observability.langfuse import get_langfuse_alert_thresholds, get_langfuse_client
 from ai.rag.ingestion import ingest_pdf
 from apps.audit.models import AuditLog
 from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
@@ -247,27 +248,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
 # RAG Query Endpoint  — POST /api/ai/rag-query/
 # ---------------------------------------------------------------------------
 
-_langfuse_client = None
-
 
 def _get_langfuse():
-    global _langfuse_client
-    if _langfuse_client is None:
-        try:
-            from django.conf import settings
-            from langfuse import Langfuse
-
-            public_key = getattr(settings, 'LANGFUSE_PUBLIC_KEY', None)
-            secret_key = getattr(settings, 'LANGFUSE_SECRET_KEY', None)
-            if public_key and secret_key:
-                _langfuse_client = Langfuse(
-                    public_key=public_key,
-                    secret_key=secret_key,
-                    host=getattr(settings, 'LANGFUSE_HOST', 'https://cloud.langfuse.com'),
-                )
-        except Exception:
-            _langfuse_client = None
-    return _langfuse_client
+    return get_langfuse_client()
 
 
 class RAGQueryView(APIView):
@@ -439,7 +422,10 @@ class RAGQueryView(APIView):
                 trace = lf.trace(
                     name='rag_query',
                     user_id=str(user.id) if user else 'anonymous',
-                    metadata={'latency_ms': latency_ms},
+                    metadata={
+                        'latency_ms': latency_ms,
+                        'alert_thresholds': get_langfuse_alert_thresholds(),
+                    },
                 )
                 trace.span(
                     name='retrieval',
