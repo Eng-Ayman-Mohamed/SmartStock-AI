@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('ingestion', '0003_pgvector_extension'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -16,7 +15,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='InvoiceScan',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('original_filename', models.CharField(max_length=500)),
                 ('content_type', models.CharField(max_length=100)),
                 ('file_size', models.BigIntegerField()),
@@ -57,7 +61,9 @@ class Migration(migrations.Migration):
             options={
                 'ordering': ['-created_at'],
                 'indexes': [
-                    models.Index(fields=['uploaded_by', 'status'], name='ingestion_i_uploade_bda6d0_idx'),
+                    models.Index(
+                        fields=['uploaded_by', 'status'], name='ingestion_i_uploade_bda6d0_idx'
+                    ),
                     models.Index(fields=['created_at'], name='ingestion_i_created_f37035_idx'),
                 ],
             },

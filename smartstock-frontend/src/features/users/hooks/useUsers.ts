@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '../../../store/authStore';
 import * as usersApi from '../api';
 import type { CreateUserPayload, UpdateUserRolePayload } from '../types';
 
 export const usersQueryKey = ['users'] as const;
 
 export function useUsers() {
+  const token = useAuthStore((s) => s.token);
   return useQuery({
     queryKey: usersQueryKey,
     queryFn: usersApi.listUsers,
+    enabled: !!token,
+    retry: false,
   });
 }
 

@@ -18,6 +18,16 @@ class ForecastingRepository(BaseRepository):
     def get_by_sku(self, sku_id: int):
         return ForecastResult.objects.filter(sku_id=sku_id).order_by('forecast_date')
 
+    def get_by_sku_code_or_id(self, sku: str):
+        filters = {'sku__code__iexact': sku}
+        if str(sku).isdigit():
+            filters = {'sku_id': int(sku)}
+        return (
+            ForecastResult.objects.filter(**filters)
+            .select_related('sku__product')
+            .order_by('forecast_date')[:30]
+        )
+
     def get_next_for_product(self, product_id: int, forecast_days: int = 7):
         today = timezone.localdate()
         return (

@@ -16,3 +16,7 @@ class ForecastingModelError(Exception):
 
 class SupplierNotFoundException(Exception):
     pass
+
+
+class IllegalPOTransitionError(Exception):
+    pass

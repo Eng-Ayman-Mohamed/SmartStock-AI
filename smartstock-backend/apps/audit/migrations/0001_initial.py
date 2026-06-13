@@ -4,18 +4,41 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
             name='AuditLog',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('event', models.CharField(choices=[('USER_LOGIN', 'User Login'), ('PO_CREATED', 'Po Created'), ('PO_APPROVED', 'Po Approved'), ('PO_REJECTED', 'Po Rejected'), ('PO_SENT', 'Po Sent'), ('STOCK_ADJUSTED', 'Stock Adjusted'), ('PRODUCT_CREATED', 'Product Created'), ('PRODUCT_UPDATED', 'Product Updated'), ('INVOICE_CONFIRMED', 'Invoice Confirmed'), ('INVOICE_REJECTED', 'Invoice Rejected'), ('PROMPT_INJECTION_ATTEMPT', 'Prompt Injection Attempt'), ('VISION_EXTRACTION_FAILED', 'Vision Extraction Failed'), ('AGENT_RUN_COMPLETED', 'Agent Run Completed')], max_length=100)),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
+                (
+                    'event',
+                    models.CharField(
+                        choices=[
+                            ('USER_LOGIN', 'User Login'),
+                            ('PO_CREATED', 'Po Created'),
+                            ('PO_APPROVED', 'Po Approved'),
+                            ('PO_REJECTED', 'Po Rejected'),
+                            ('PO_SENT', 'Po Sent'),
+                            ('STOCK_ADJUSTED', 'Stock Adjusted'),
+                            ('PRODUCT_CREATED', 'Product Created'),
+                            ('PRODUCT_UPDATED', 'Product Updated'),
+                            ('INVOICE_CONFIRMED', 'Invoice Confirmed'),
+                            ('INVOICE_REJECTED', 'Invoice Rejected'),
+                            ('PROMPT_INJECTION_ATTEMPT', 'Prompt Injection Attempt'),
+                            ('VISION_EXTRACTION_FAILED', 'Vision Extraction Failed'),
+                            ('AGENT_RUN_COMPLETED', 'Agent Run Completed'),
+                        ],
+                        max_length=100,
+                    ),
+                ),
                 ('entity_type', models.CharField(blank=True, max_length=100)),
                 ('entity_id', models.IntegerField(blank=True, null=True)),
                 ('ip_address', models.GenericIPAddressField(blank=True, null=True)),

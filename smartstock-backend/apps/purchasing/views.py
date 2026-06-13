@@ -1,13 +1,20 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
+from apps.authentication.permissions import (
+    IsAdminOnly,
+    IsManagerOrAbove,
+    IsViewerOrAbove,
+)
 from apps.inventory.models import Supplier
 from apps.inventory.serializers import SupplierSerializer
-from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
+from config.schema_serializers import (
+    ErrorResponseSerializer,
+    ValidationErrorResponseSerializer,
+)
 
 from .models import PurchaseOrder
 from .serializers import PurchaseOrderSerializer
@@ -50,7 +57,8 @@ from .services import PurchasingService
                 response=ErrorResponseSerializer, description='Manager or above only'
             ),
             422: OpenApiResponse(
-                response=ValidationErrorResponseSerializer, description='Validation error'
+                response=ValidationErrorResponseSerializer,
+                description='Validation error',
             ),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
@@ -70,7 +78,8 @@ from .services import PurchasingService
                 response=ErrorResponseSerializer, description='Supplier not found'
             ),
             422: OpenApiResponse(
-                response=ValidationErrorResponseSerializer, description='Validation error'
+                response=ValidationErrorResponseSerializer,
+                description='Validation error',
             ),
         },
         tags=['purchasing'],
@@ -89,7 +98,8 @@ from .services import PurchasingService
                 response=ErrorResponseSerializer, description='Supplier not found'
             ),
             422: OpenApiResponse(
-                response=ValidationErrorResponseSerializer, description='Validation error'
+                response=ValidationErrorResponseSerializer,
+                description='Validation error',
             ),
         },
         tags=['purchasing'],
@@ -156,7 +166,8 @@ class SupplierViewSet(viewsets.ModelViewSet):
                 response=ErrorResponseSerializer, description='Manager or above only'
             ),
             422: OpenApiResponse(
-                response=ValidationErrorResponseSerializer, description='Validation error'
+                response=ValidationErrorResponseSerializer,
+                description='Validation error',
             ),
             429: OpenApiResponse(response=ErrorResponseSerializer, description='Too many requests'),
         },
@@ -176,7 +187,8 @@ class SupplierViewSet(viewsets.ModelViewSet):
                 response=ErrorResponseSerializer, description='Purchase order not found'
             ),
             422: OpenApiResponse(
-                response=ValidationErrorResponseSerializer, description='Validation error'
+                response=ValidationErrorResponseSerializer,
+                description='Validation error',
             ),
         },
         tags=['purchasing'],
@@ -195,7 +207,8 @@ class SupplierViewSet(viewsets.ModelViewSet):
                 response=ErrorResponseSerializer, description='Purchase order not found'
             ),
             422: OpenApiResponse(
-                response=ValidationErrorResponseSerializer, description='Validation error'
+                response=ValidationErrorResponseSerializer,
+                description='Validation error',
             ),
         },
         tags=['purchasing'],
@@ -222,7 +235,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [IsViewerOrAbove()]
-        if self.action in ('approve', 'reject'):
+        if self.action in ('approve', 'reject', 'overdue_suppliers'):
             return [IsManagerOrAbove()]
         return [IsManagerOrAbove()]
 
@@ -318,3 +331,88 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         """Return suppliers with sent POs that exceed their lead time."""
         overdue = PurchasingService().get_overdue_suppliers()
         return Response(overdue)
+
+    @extend_schema(
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'sku_id': {'type': 'integer', 'description': 'SKU ID to purchase'},
+                    'quantity': {'type': 'integer', 'description': 'Quantity needed'},
+                    'supplier_id': {'type': 'integer', 'description': 'Supplier ID'},
+                    'agent_reasoning': {
+                        'type': 'string',
+                        'description': 'Why this order is needed',
+                    },
+                    'auto_approve': {
+                        'type': 'boolean',
+                        'description': 'Skip human approval gate',
+                        'default': False,
+                    },
+                },
+                'required': ['sku_id', 'quantity', 'supplier_id'],
+            },
+        },
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {
+                        'agent': {'type': 'string'},
+                        'status': {'type': 'string'},
+                        'po_id': {'type': 'integer'},
+                    },
+                },
+                description='Workflow result',
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Manager or above only'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer,
+                description='Validation error',
+            ),
+        },
+        tags=['purchasing'],
+    )
+    @action(detail=False, methods=['post'], url_path='agent-workflow')
+    def agent_workflow(self, request):
+        """Trigger the purchasing agent workflow with HITL approval gate."""
+        from ai.agents.purchasing_agent import PurchasingAgent
+
+        sku_id = request.data.get('sku_id')
+        quantity = request.data.get('quantity')
+        supplier_id = request.data.get('supplier_id')
+
+        if not all([sku_id, quantity, supplier_id]):
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'sku_id, quantity, and supplier_id are required.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        context = {
+            'sku_id': int(sku_id),
+            'quantity': int(quantity),
+            'supplier_id': int(supplier_id),
+            'user': request.user,
+            'agent_reasoning': request.data.get('agent_reasoning', ''),
+            'auto_approve': request.data.get('auto_approve', False),
+        }
+
+        agent = PurchasingAgent()
+        result = agent.run(context)
+        result_status = result.get('status')
+        http_status_map = {
+            'failed': status.HTTP_500_INTERNAL_SERVER_ERROR,
+            'pending_approval': status.HTTP_202_ACCEPTED,
+            'rejected': status.HTTP_409_CONFLICT,
+            'timeout': status.HTTP_408_REQUEST_TIMEOUT,
+        }
+        http_status = http_status_map.get(result_status, status.HTTP_200_OK)
+        return Response(result, status=http_status)
