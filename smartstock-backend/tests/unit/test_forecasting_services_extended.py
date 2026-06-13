@@ -153,7 +153,7 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
         mock_cache.get.return_value = cached_data
         result = self.service.get_dashboard_data()
         self.assertEqual(result, cached_data)
-        mock_cache.get.assert_called_once_with('forecast_dashboard_data')
+        mock_cache.get.assert_called_once_with('forecast_dashboard_data_v2')
 
     @patch('apps.forecasting.services.cache')
     def test_computes_when_not_cached(self, mock_cache):
@@ -162,7 +162,7 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
             result = self.service.get_dashboard_data()
             self.assertEqual(result, {'skus': []})
             mock_cache.set.assert_called_once_with(
-                'forecast_dashboard_data', {'skus': []}, timeout=3600
+                'forecast_dashboard_data_v2', {'skus': []}, timeout=3600
             )
 
 
