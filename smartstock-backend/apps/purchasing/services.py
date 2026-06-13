@@ -7,6 +7,7 @@ from .repositories import PurchasingRepository
 po_approved = Signal()
 po_rejected = Signal()
 po_sent = Signal()
+po_confirmed = Signal()
 
 
 class PurchasingService:
@@ -51,6 +52,57 @@ class PurchasingService:
             },
         )
         po_sent.send(sender=self.__class__, po=po)
+        return po
+
+    def mark_email_sent(self, po_id: int, message_id: str | None = None):
+        po = self.repo.get_by_id(po_id)
+        if po.status not in ('approved', 'sent'):
+            raise ValidationError('Only approved or sent orders can be marked as email sent.')
+        update_data: dict = {
+            'status': 'email_sent',
+            'sent_at': timezone.now(),
+        }
+        if message_id:
+            update_data['message_id'] = message_id
+        po = self.repo.update(po_id, update_data)
+        po_sent.send(sender=self.__class__, po=po)
+        return po
+
+    def mark_waiting_confirmation(self, po_id: int):
+        po = self.repo.get_by_id(po_id)
+        if po.status != 'email_sent':
+            raise ValidationError('Only email_sent orders can be moved to waiting confirmation.')
+        po = self.repo.update(po_id, {'status': 'waiting_confirmation'})
+        return po
+
+    def mark_confirmed(self, po_id: int):
+        po = self.repo.get_by_id(po_id)
+        if po.status != 'waiting_confirmation':
+            raise ValidationError('Only waiting_confirmation orders can be marked as confirmed.')
+        po = self.repo.update(
+            po_id,
+            {
+                'status': 'confirmed',
+                'confirmed_at': timezone.now(),
+            },
+        )
+        po_confirmed.send(sender=self.__class__, po=po)
+        return po
+
+    def mark_failed(self, po_id: int, error_message: str = ''):
+        po = self.repo.get_by_id(po_id)
+        po = self.repo.update(
+            po_id,
+            {
+                'status': 'failed',
+                'notes': error_message or po.notes,
+            },
+        )
+        return po
+
+    def mark_timeout(self, po_id: int):
+        po = self.repo.get_by_id(po_id)
+        po = self.repo.update(po_id, {'status': 'timeout'})
         return po
 
     def get_open_po_status(self, product_id: int) -> dict:
