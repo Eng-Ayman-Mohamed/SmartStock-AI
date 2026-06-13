@@ -1,0 +1,30 @@
+{"id":"gd-001","query":"Show all active inventory items","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"is_active","op":"eq","value":true}]}}
+{"id":"gd-002","query":"Find products with stock below 10 units","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"quantity_on_hand","op":"lt","value":10}]}}
+{"id":"gd-003","query":"List low stock items","expected_action":"get_low_stock","expected_filters":{}}
+{"id":"gd-004","query":"Which SKUs are out of stock?","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"quantity_on_hand","op":"lte","value":0}]}}
+{"id":"gd-005","query":"Show inventory for SKU WGT-500","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"sku_code","op":"eq","value":"WGT-500"}]}}
+{"id":"gd-006","query":"Find products supplied by Supplier A","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"supplier_name","op":"eq","value":"Supplier A"}]}}
+{"id":"gd-007","query":"Show electronics products with less than 20 on hand","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"category","op":"eq","value":"electronics"},{"field":"quantity_on_hand","op":"lt","value":20}]}}
+{"id":"gd-008","query":"List products whose name starts with Wire","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"product_name","op":"starts_with","value":"Wire"}]}}
+{"id":"gd-009","query":"Show products from Supplier A or Supplier B","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"supplier_name","op":"in","value":["Supplier A","Supplier B"]}]}}
+{"id":"gd-010","query":"Get inventory sorted by product name ascending","expected_action":"get_inventory","expected_filters":{"sort":"product_name","sort_order":"asc"}}
+{"id":"gd-011","query":"Give me sales for SKU WGT-500 in March 2026","expected_action":"get_sales_report","expected_filters":{"conditions":[{"field":"sku_code","op":"eq","value":"WGT-500"},{"field":"date_from","op":"gte","value":"2026-03-01"},{"field":"date_to","op":"lte","value":"2026-03-31"}]}}
+{"id":"gd-012","query":"Show sales sorted by quantity sold descending","expected_action":"get_sales_report","expected_filters":{"sort":"quantity_sold","sort_order":"desc"}}
+{"id":"gd-013","query":"Sales report for products sold after January 1 2026","expected_action":"get_sales_report","expected_filters":{"conditions":[{"field":"date_from","op":"gte","value":"2026-01-01"}]}}
+{"id":"gd-014","query":"Which SKU sold the most?","expected_action":"get_top_products","expected_filters":{"limit":1}}
+{"id":"gd-015","query":"Top 10 products by units sold","expected_action":"get_top_products","expected_filters":{"limit":10}}
+{"id":"gd-016","query":"Forecast demand for SKU CHAIR-PRO-2 for the next 30 days","expected_action":"forecast_demand","expected_filters":{"sku_code":"CHAIR-PRO-2","forecast_days":30}}
+{"id":"gd-017","query":"What is the 7 day forecast for WGT-500?","expected_action":"forecast_demand","expected_filters":{"sku_code":"WGT-500","forecast_days":7}}
+{"id":"gd-018","query":"Predict demand for product Wireless Mouse","expected_action":"forecast_demand","expected_filters":{"product_name":"Wireless Mouse"}}
+{"id":"gd-019","query":"Get supplier information for Supplier A","expected_action":"get_supplier_info","expected_filters":{"conditions":[{"field":"supplier_name","op":"eq","value":"Supplier A"}]}}
+{"id":"gd-020","query":"Find supplier with email ops@example.com","expected_action":"get_supplier_info","expected_filters":{"conditions":[{"field":"contact_email","op":"eq","value":"ops@example.com"}]}}
+{"id":"gd-021","query":"Show all supplier contacts","expected_action":"get_supplier_info","expected_filters":{}}
+{"id":"gd-022","query":"What is the total value of inventory?","expected_action":"get_total_value","expected_filters":{}}
+{"id":"gd-023","query":"Total value for electronics inventory","expected_action":"get_total_value","expected_filters":{"conditions":[{"field":"category","op":"eq","value":"electronics"}]}}
+{"id":"gd-024","query":"Inventory value for Supplier B","expected_action":"get_total_value","expected_filters":{"conditions":[{"field":"supplier_name","op":"eq","value":"Supplier B"}]}}
+{"id":"gd-025","query":"Show active products with reorder point under 15","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"is_active","op":"eq","value":true},{"field":"reorder_point","op":"lt","value":15}]}}
+{"id":"gd-026","query":"Find SKUs where available stock is at most 5","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"quantity_available","op":"lte","value":5}]}}
+{"id":"gd-027","query":"List furniture products that are not from Supplier C","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"category","op":"eq","value":"furniture"},{"field":"supplier_name","op":"neq","value":"Supplier C"}]}}
+{"id":"gd-028","query":"Show products ending with Mk3","expected_action":"get_inventory","expected_filters":{"conditions":[{"field":"product_name","op":"ends_with","value":"Mk3"}]}}
+{"id":"gd-029","query":"Get sales for SKU ABC-001 sorted oldest first","expected_action":"get_sales_report","expected_filters":{"conditions":[{"field":"sku_code","op":"eq","value":"ABC-001"}],"sort":"date","sort_order":"asc"}}
+{"id":"gd-030","query":"Show five slowest moving products","expected_action":"get_top_products","expected_filters":{"limit":5,"sort_order":"asc"}}

@@ -32,5 +32,8 @@ class Migration(migrations.Migration):
                 ('sku', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='purchase_orders', to='inventory.sku')),
                 ('supplier', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='purchase_orders', to='inventory.supplier')),
             ],
+            options={
+                'ordering': ['-created_at', '-id'],
+            },
         ),
     ]

@@ -22,7 +22,7 @@ class PurchasingRepository(BaseRepository):
         ]
         return (
             PurchaseOrder.objects.filter(sku__product_id=product_id, status__in=open_statuses)
-            .order_by('-created_at')
+            .order_by('-created_at', '-id')
             .first()
         )
 

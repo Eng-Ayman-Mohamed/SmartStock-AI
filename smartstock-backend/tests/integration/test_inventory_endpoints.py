@@ -150,6 +150,7 @@ class InventoryEndpointTests(APITestCase):
         )
         data = resp.json()
         self.assertEqual(len(data['data']), 5)
+        self.assertEqual(data['meta']['per_page'], 5)
 
     # === SEARCH & FILTER ===
 
@@ -163,6 +164,41 @@ class InventoryEndpointTests(APITestCase):
         results = resp.json()['data']
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['name'], 'Wireless Mouse')
+
+    def test_search_products_by_sku_code(self):
+        product = Product.objects.create(name='SKU Search Product', category=self.cat_electronics)
+        SKU.objects.create(product=product, code='SKU-SEARCH-001')
+        Product.objects.create(name='Other Product', category=self.cat_electronics)
+
+        resp = self.client.get(
+            '/api/inventory/products/?search=SKU-SEARCH',
+            HTTP_AUTHORIZATION=self._auth_header(self.manager),
+        )
+
+        results = resp.json()['data']
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['id'], product.id)
+
+    def test_product_list_includes_sku_stock_fields(self):
+        product = Product.objects.create(name='Stock Payload Product', category=self.cat_testing)
+        sku = SKU.objects.create(product=product, code='STOCK-PAYLOAD-001')
+        stock = StockLevel.objects.create(
+            sku=sku,
+            quantity_on_hand=14,
+            quantity_reserved=3,
+            reorder_point=9,
+        )
+
+        resp = self.client.get(
+            '/api/inventory/products/?search=STOCK-PAYLOAD-001',
+            HTTP_AUTHORIZATION=self._auth_header(self.manager),
+        )
+
+        sku_payload = resp.json()['data'][0]['skus'][0]
+        self.assertEqual(sku_payload['stock_level_id'], stock.id)
+        self.assertEqual(sku_payload['quantity_on_hand'], 14)
+        self.assertEqual(sku_payload['quantity_reserved'], 3)
+        self.assertEqual(sku_payload['stock_reorder_point'], 9)
 
     def test_filter_by_category(self):
         Product.objects.create(name='Item A', category=self.cat_electronics)

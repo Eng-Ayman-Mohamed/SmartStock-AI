@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                'ordering': ['-created_at'],
+                'ordering': ['-created_at', '-id'],
                 'indexes': [
                     models.Index(fields=['sku', 'status'], name='forecasting_sku_id_a18a43_idx'),
                     models.Index(fields=['created_at'], name='forecasting_created_18d832_idx'),
