@@ -394,6 +394,11 @@ export default function InvoiceScanPage() {
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
                 <span>Confirmation is audited with the original extraction, your edited values, user ID, and timestamp.</span>
               </div>
+
+              <div className="flex items-start gap-2 rounded-md bg-canvas-soft px-3 py-2 text-caption text-ink-muted">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
+                <span>Extracted data is processed by AI and stored securely. PII (emails, phone numbers) is only visible to managers and administrators.</span>
+              </div>
             </>
           )}
         </Card>
