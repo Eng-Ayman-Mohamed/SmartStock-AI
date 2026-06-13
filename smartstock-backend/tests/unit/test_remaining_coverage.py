@@ -16,28 +16,53 @@ from ai.rag.citation import inject_citations
 
 class StubToolTests(unittest.TestCase):
     def test_confirmation_listener_returns_false(self):
-        tool = ConfirmationListenerTool()
-        self.assertFalse(tool.run({'order_id': 1})['confirmed'])
+        mock_service = MagicMock()
+        mock_service.check_confirmation.return_value = {'confirmed': False, 'timed_out': False}
+        tool = ConfirmationListenerTool(service=mock_service)
+        self.assertFalse(tool.run({'po_id': 1})['confirmed'])
 
     def test_db_read_returns_empty(self):
         tool = DBReadTool()
         self.assertEqual(tool.run({'query': 'all'}), {'data': []})
 
     def test_db_update_returns_status(self):
-        tool = DBUpdateTool()
-        self.assertEqual(tool.run({'id': 1}), {'status': 'updated'})
+        mock_service = MagicMock()
+        mock_po = MagicMock()
+        mock_po.id = 1
+        mock_po.status = 'updated'
+        mock_service.transition_po_status.return_value = mock_po
+        tool = DBUpdateTool(service=mock_service)
+        result = tool.run({'po_id': 1, 'status': 'updated'})
+        self.assertEqual(result, {'po_id': 1, 'status': 'updated'})
 
     def test_db_write_returns_status(self):
         tool = DBWriteTool()
         self.assertEqual(tool.run({'payload': {}}), {'status': 'written'})
 
     def test_email_send_returns_sent(self):
-        tool = EmailSendTool()
-        self.assertEqual(tool.run({'to': 'x@y.com'}), {'status': 'sent'})
+        mock_service = MagicMock()
+        mock_service.send_po_email.return_value = {'sent': True, 'recipient': 'x@y.com'}
+        tool = EmailSendTool(service=mock_service)
+        self.assertEqual(tool.run({'po_id': 1}), {'sent': True, 'recipient': 'x@y.com'})
 
     def test_po_draft_returns_draft(self):
-        tool = PODraftTool()
-        self.assertEqual(tool.run({'sku': 'X'}), {'po_id': None, 'status': 'draft'})
+        mock_service = MagicMock()
+        mock_po = MagicMock()
+        mock_po.id = 1
+        mock_service.draft_po.return_value = mock_po
+        mock_sku = MagicMock()
+        mock_product = MagicMock()
+        mock_product.unit_price = 10.0
+        mock_sku.product = mock_product
+        with (
+            patch('ai.agents.tools.po_draft.generate_po_number', return_value='PO-001'),
+            patch('ai.agents.tools.po_draft.SKU.objects.select_related') as mock_sr,
+        ):
+            mock_sr.return_value.get.return_value = mock_sku
+            tool = PODraftTool(service=mock_service)
+            result = tool.run({'sku_id': 1, 'quantity': 5, 'supplier_id': 1})
+            self.assertEqual(result['status'], 'draft')
+            self.assertEqual(result['po_id'], 1)
 
 
 class BaseToolInvokeTests(unittest.TestCase):
