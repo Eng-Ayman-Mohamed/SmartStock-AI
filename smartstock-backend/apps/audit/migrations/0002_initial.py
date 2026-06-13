@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -18,7 +17,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='auditlog',
             name='user',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='audit_logs', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='audit_logs',
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddIndex(
             model_name='auditlog',
@@ -34,6 +39,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='auditlog',
-            index=models.Index(fields=['entity_type', 'entity_id'], name='audit_audit_entity__9535bf_idx'),
+            index=models.Index(
+                fields=['entity_type', 'entity_id'], name='audit_audit_entity__9535bf_idx'
+            ),
         ),
     ]

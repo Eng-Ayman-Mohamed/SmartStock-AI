@@ -6,10 +6,10 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.audit.models import AuditLog
+from apps.audit.models import AgentRun, AuditLog
 from apps.authentication.models import CustomUser
-from apps.forecasting.models import ForecastResult
-from apps.ingestion.models import Document, DocumentChunk
+from apps.forecasting.models import ForecastResult, ReorderFlag
+from apps.ingestion.models import Document, DocumentChunk, InvoiceScan
 from apps.inventory.models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 from apps.purchasing.models import PurchaseOrder as PurchasingPurchaseOrder
 
@@ -35,8 +35,11 @@ BASE_COUNTS = {
     SalesRecord: 8000,
     PurchasingPurchaseOrder: 500,
     ForecastResult: 4000,
+    ReorderFlag: 800,
     Document: 30,
     DocumentChunk: 600,
+    InvoiceScan: 100,
+    AgentRun: 50,
     AuditLog: 2000,
 }
 
@@ -50,8 +53,11 @@ SEED_ORDER = [
     SalesRecord,
     PurchasingPurchaseOrder,
     ForecastResult,
+    ReorderFlag,
     Document,
     DocumentChunk,
+    InvoiceScan,
+    AgentRun,
     AuditLog,
 ]
 
@@ -412,6 +418,125 @@ def seed_forecasts(scale: int, skus: list[SKU]):
     return forecasts
 
 
+def seed_reorder_flags(scale: int, skus: list[SKU]):
+    count = BASE_COUNTS[ReorderFlag] * scale
+    flags = []
+
+    for sku in random.choices(skus, k=count):
+        on_hand = random.randint(0, 200)
+        predicted_demand = round(random.uniform(10, 500), 1)
+        flags.append(
+            ReorderFlag(
+                sku=sku,
+                quantity_available=on_hand,
+                total_predicted_demand=predicted_demand,
+                safety_stock=random.randint(0, 50),
+                lead_time_days=random.choice([3, 5, 7, 10, 14]),
+                forecast_days=random.choice([7, 14, 30, 90]),
+                reorder_required=on_hand < predicted_demand,
+                has_open_po=random.random() < 0.3,
+                open_po_id=random.randint(1, 500) if random.random() < 0.2 else None,
+                reasoning=fake.paragraph(nb_sentences=3),
+                status=random.choices(
+                    ['open', 'consumed', 'dismissed'],
+                    weights=[0.5, 0.3, 0.2],
+                )[0],
+            )
+        )
+
+    ReorderFlag.objects.bulk_create(flags, batch_size=200)
+    return flags
+
+
+def seed_invoice_scans(scale: int, users: list[CustomUser]):
+    count = BASE_COUNTS[InvoiceScan] * scale
+    scans = []
+
+    for i in range(count):
+        user = random.choice(users)
+        ext = random.choice(['.pdf', '.jpg', '.png'])
+        filename = f'invoice_{i + 1}{ext}'
+        status = random.choices(
+            ['pending', 'extracted', 'partial', 'failed', 'confirmed', 'rejected'],
+            weights=[0.1, 0.3, 0.15, 0.05, 0.3, 0.1],
+        )[0]
+        extracted = {
+            'invoice_number': f'INV-{fake.random_number(digits=6)}',
+            'vendor': fake.company(),
+            'total': round(random.uniform(100, 50000), 2),
+            'date': str(fake.date_between(start_date='-6M', end_date='today')),
+        }
+
+        scans.append(
+            InvoiceScan(
+                uploaded_by=user,
+                original_filename=filename,
+                content_type=f'image/{ext[1:]}' if ext in ('.jpg', '.png') else 'application/pdf',
+                file_size=random.randint(100000, 10000000),
+                status=status,
+                extracted_data=extracted,
+                confidence={
+                    'invoice_number': round(random.uniform(0.7, 1.0), 2),
+                    'vendor': round(random.uniform(0.6, 1.0), 2),
+                    'total': round(random.uniform(0.5, 1.0), 2),
+                },
+                missing_fields=random.sample(
+                    ['vendor', 'date', 'total', 'line_items'],
+                    k=random.choices([0, 1, 2, 3], weights=[0.5, 0.3, 0.15, 0.05])[0],
+                ),
+                failure_reason=fake.sentence() if status == 'failed' else '',
+                confirmed_data=extracted if status == 'confirmed' else {},
+                is_confirmed=status == 'confirmed',
+                confirmed_at=aware_dt(start_date='-30d', end_date='-1d')
+                if status == 'confirmed'
+                else None,
+                rejected_at=aware_dt(start_date='-30d', end_date='-1d')
+                if status == 'rejected'
+                else None,
+            )
+        )
+
+    InvoiceScan.objects.bulk_create(scans, batch_size=100)
+    return scans
+
+
+def seed_agent_runs(scale: int):
+    count = BASE_COUNTS[AgentRun] * scale
+    agent_names = [
+        'forecast-engine',
+        'reorder-agent',
+        'po-generator',
+        'supplier-analyzer',
+        'inventory-auditor',
+        'nl-query-handler',
+        'invoice-processor',
+        'anomaly-detector',
+    ]
+    runs = []
+
+    for _ in range(count):
+        status = random.choices(
+            ['pending', 'running', 'completed', 'failed'],
+            weights=[0.05, 0.05, 0.8, 0.1],
+        )[0]
+        started_at = aware_dt(start_date='-7d', end_date='now')
+
+        runs.append(
+            AgentRun(
+                agent_name=random.choice(agent_names),
+                status=status,
+                started_at=started_at if status != 'pending' else None,
+                completed_at=started_at + timedelta(minutes=random.randint(1, 30))
+                if status == 'completed'
+                else None,
+                error_message=fake.sentence() if status == 'failed' else '',
+            )
+        )
+
+    AgentRun.objects.bulk_create(runs, batch_size=100)
+    return runs
+
+
 DOC_TYPES_POOL = ['policy', 'contract', 'procedure', 'specification']
 DOC_TYPE_WEIGHTS = [0.3, 0.3, 0.2, 0.2]
 
@@ -424,10 +549,36 @@ AUDIT_EVENTS_POOL = [
     'STOCK_ADJUSTED',
     'PRODUCT_CREATED',
     'PRODUCT_UPDATED',
+    'INVOICE_CONFIRMED',
+    'INVOICE_REJECTED',
+    'AI_RAG_QUERY',
+    'AGENT_RUN_COMPLETED',
 ]
-AUDIT_EVENT_WEIGHTS = [0.3, 0.1, 0.08, 0.05, 0.05, 0.12, 0.1, 0.1]
+AUDIT_EVENT_WEIGHTS = [
+    0.25,
+    0.08,
+    0.06,
+    0.04,
+    0.04,
+    0.1,
+    0.08,
+    0.08,
+    0.05,
+    0.03,
+    0.12,
+    0.07,
+]
 
-ENTITY_TYPES = ['PurchaseOrder', 'User', 'Product', 'SKU', 'StockLevel']
+ENTITY_TYPES = [
+    'PurchaseOrder',
+    'User',
+    'Product',
+    'SKU',
+    'StockLevel',
+    'InvoiceScan',
+    'ReorderFlag',
+    'AgentRun',
+]
 
 
 def seed_documents(scale: int, users: list[CustomUser]) -> list[Document]:
@@ -518,6 +669,12 @@ class Command(BaseCommand):
             default=True,
             help='Truncate all tables before seeding (default: True).',
         )
+        parser.add_argument(
+            '--validate',
+            action='store_true',
+            default=True,
+            help='Run validation queries after seeding (default: True).',
+        )
 
     def handle(self, *args, **options):
         scale = options['scale']
@@ -536,8 +693,11 @@ class Command(BaseCommand):
         self.stdout.write(f'  SalesRecs:   {BASE_COUNTS[SalesRecord] * scale}')
         self.stdout.write(f'  POs:         {BASE_COUNTS[PurchasingPurchaseOrder] * scale}')
         self.stdout.write(f'  Forecasts:   {BASE_COUNTS[ForecastResult] * scale}')
+        self.stdout.write(f'  ReorderFlags:{BASE_COUNTS[ReorderFlag] * scale}')
         self.stdout.write(f'  Documents:   {BASE_COUNTS[Document] * scale}')
         self.stdout.write(f'  Chunks:      {BASE_COUNTS[DocumentChunk] * scale}')
+        self.stdout.write(f'  InvoiceScans:{BASE_COUNTS[InvoiceScan] * scale}')
+        self.stdout.write(f'  AgentRuns:   {BASE_COUNTS[AgentRun] * scale}')
         self.stdout.write(f'  AuditLogs:   {BASE_COUNTS[AuditLog] * scale}')
 
         start = datetime.now()
@@ -574,14 +734,93 @@ class Command(BaseCommand):
             self.stdout.write('Seeding forecasts...')
             seed_forecasts(scale, skus)
 
+            self.stdout.write('Seeding reorder flags...')
+            seed_reorder_flags(scale, skus)
+
             self.stdout.write('Seeding documents...')
             docs = seed_documents(scale, users)
 
             self.stdout.write('Seeding document chunks...')
             seed_document_chunks(scale, docs)
 
+            self.stdout.write('Seeding invoice scans...')
+            seed_invoice_scans(scale, users)
+
+            self.stdout.write('Seeding agent runs...')
+            seed_agent_runs(scale)
+
             self.stdout.write('Seeding audit logs...')
             seed_audit_logs(scale, users)
 
         elapsed = datetime.now() - start
         self.stdout.write(self.style.SUCCESS(f'Seeding complete in {elapsed.total_seconds():.2f}s'))
+
+        if options.get('validate', True):
+            self.validate()
+
+    def validate(self):
+        self.stdout.write()
+        self.stdout.write('Validating seed data integrity...')
+        checks = []
+        all_models = [
+            CustomUser,
+            Category,
+            Supplier,
+            Product,
+            SKU,
+            StockLevel,
+            SalesRecord,
+            PurchasingPurchaseOrder,
+            ForecastResult,
+            ReorderFlag,
+            Document,
+            DocumentChunk,
+            InvoiceScan,
+            AgentRun,
+            AuditLog,
+        ]
+
+        for model in all_models:
+            count = model.objects.count()
+            expected = BASE_COUNTS.get(model, 0)
+            status = '✓' if count > 0 else '✗'
+            checks.append((model.__name__, count, expected, status))
+
+        header = f'{"Model":<25} {"Count":>8} {"Expected":>10}  Status'
+        self.stdout.write(header)
+        self.stdout.write('-' * len(header))
+        all_ok = True
+        for name, count, expected, status in checks:
+            line = f'{name:<25} {count:>8} {expected:>10}  {status}'
+            self.stdout.write(line)
+            if count == 0:
+                all_ok = False
+
+        fk_checks = [
+            ('SalesRecord → SKU', SalesRecord, 'sku_id', SKU),
+            ('PurchaseOrder → SKU', PurchasingPurchaseOrder, 'sku_id', SKU),
+            ('PurchaseOrder → Supplier', PurchasingPurchaseOrder, 'supplier_id', Supplier),
+            ('ForecastResult → SKU', ForecastResult, 'sku_id', SKU),
+            ('ReorderFlag → SKU', ReorderFlag, 'sku_id', SKU),
+            ('DocumentChunk → Document', DocumentChunk, 'document_id', Document),
+            ('InvoiceScan → User', InvoiceScan, 'uploaded_by_id', CustomUser),
+            ('AuditLog → User', AuditLog, 'user_id', CustomUser),
+        ]
+
+        self.stdout.write()
+        self.stdout.write('Foreign key integrity checks:')
+        for label, child_model, fk_field, parent_model in fk_checks:
+            orphans = (
+                child_model.objects.filter(**{f'{fk_field}__isnull': False})
+                .exclude(**{f'{fk_field}__in': parent_model.objects.values_list('pk', flat=True)})
+                .count()
+            )
+            status = '✓' if orphans == 0 else '✗'
+            self.stdout.write(f'  {status} {label}: {orphans} orphans')
+            if orphans > 0:
+                all_ok = False
+
+        if all_ok:
+            self.stdout.write(self.style.SUCCESS('✓ All validation checks passed'))
+        else:
+            self.stdout.write(self.style.WARNING('⚠ Some checks failed — review above'))

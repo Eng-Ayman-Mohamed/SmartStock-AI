@@ -176,7 +176,6 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': (
         'core.throttles.SAFEAnonRateThrottle',
         'core.throttles.SAFEUserRateThrottle',
-        'core.throttles.AIRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
         'anon': '20/minute',

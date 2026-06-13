@@ -54,8 +54,7 @@ jobs:
         working-directory: smartstock-backend
     env:
       CI: true
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      DJANGO_SETTINGS_MODULE: config.settings.test
       REDIS_URL: ${{ secrets.REDIS_URL }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
@@ -65,7 +64,6 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python manage.py migrate --noinput
       - run: pytest tests/ --cov --cov-fail-under=80 -v
       - name: Validate OpenAPI schema
         run: |

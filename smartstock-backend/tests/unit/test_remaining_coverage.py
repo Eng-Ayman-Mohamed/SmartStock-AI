@@ -416,8 +416,14 @@ class DBStubToolTests(unittest.TestCase):
         self.assertEqual(tool.run({'query': 'all'}), {'data': []})
 
     def test_db_update_returns_status(self):
-        tool = DBUpdateTool()
-        self.assertEqual(tool.run({'id': 1}), {'status': 'updated'})
+        mock_service = MagicMock()
+        mock_po = MagicMock()
+        mock_po.id = 1
+        mock_po.status = 'updated'
+        mock_service.transition_po_status.return_value = mock_po
+        tool = DBUpdateTool(service=mock_service)
+        result = tool.run({'po_id': 1, 'status': 'updated'})
+        self.assertEqual(result, {'po_id': 1, 'status': 'updated'})
 
     def test_db_write_returns_status(self):
         tool = DBWriteTool()

@@ -32,6 +32,7 @@ const api = axios.create({
 });
 
 let isRefreshing = false;
+let lastRefreshedToken: string | null = null;
 let pendingQueue: Array<{
   resolve: (token: string) => void;
   reject: (err: unknown) => void;
@@ -87,6 +88,13 @@ api.interceptors.response.use(
     if (!originalRequest) return Promise.reject(error);
 
     if (error.response?.status === 401 && !originalRequest._retry && !AUTH_EXEMPT_PATHS.some((p) => originalRequest.url?.includes(p))) {
+      const currentToken = useAuthStore.getState().token;
+
+      // Prevent refresh loop: if we already refreshed this exact token and it still fails, bail
+      if (currentToken && currentToken === lastRefreshedToken) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           pendingQueue.push({
@@ -109,6 +117,7 @@ api.interceptors.response.use(
           { withCredentials: true }
         );
         const newToken = data.access;
+        lastRefreshedToken = newToken;
         useAuthStore.getState().setToken(newToken);
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;

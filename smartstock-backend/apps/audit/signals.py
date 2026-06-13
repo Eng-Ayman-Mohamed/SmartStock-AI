@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 
 @receiver(po_approved)
 def log_po_approval(sender, po, user, **kwargs):
+    from apps.authentication.models import CustomUser
+
+    if not isinstance(user, CustomUser):
+        return
     try:
         AuditLog.objects.create(
             event='PO_APPROVED',
@@ -76,6 +80,10 @@ def log_po_confirmed(sender, po, **kwargs):
 
 @receiver(stock_adjusted)
 def log_stock_adjustment(sender, stock_level, delta, user, reason, **kwargs):
+    from apps.authentication.models import CustomUser
+
+    if not isinstance(user, CustomUser):
+        return
     try:
         AuditLog.objects.create(
             event='STOCK_ADJUSTED',

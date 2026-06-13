@@ -235,7 +235,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [IsViewerOrAbove()]
-        if self.action in ('approve', 'reject'):
+        if self.action in ('approve', 'reject', 'overdue_suppliers'):
             return [IsManagerOrAbove()]
         return [IsManagerOrAbove()]
 

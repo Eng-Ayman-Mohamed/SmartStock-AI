@@ -45,3 +45,8 @@ htmlcov/
 
 # Project
 .impeccable/
+
+#user defined
+docs/
+.ruff_cache/
+temp.md
