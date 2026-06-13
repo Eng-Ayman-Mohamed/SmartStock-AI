@@ -674,9 +674,7 @@ class ChatView(APIView):
         # --- Execute pipeline with timeout ---
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(
-                    self._run_pipeline, query, engine, request.user
-                )
+                future = executor.submit(self._run_pipeline, query, engine, request.user)
                 result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
         except FuturesTimeout:
             return Response(
@@ -715,18 +713,20 @@ class ChatView(APIView):
             temperature=0,
             api_key=os.environ.get('OPENAI_API_KEY'),
         )
-        prompt = ChatPromptTemplate.from_messages([
-            (
-                'system',
-                'Classify this inventory management query as either:\n'
-                '- "nl" if it asks about live inventory data (stock, sales, '
-                'forecasts, suppliers, products, POs, reorder)\n'
-                '- "rag" if it asks about documents, policies, procedures, '
-                'uploaded files, contracts, or specifications\n'
-                'Respond with exactly one word: nl or rag.',
-            ),
-            ('user', query),
-        ])
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    'system',
+                    'Classify this inventory management query as either:\n'
+                    '- "nl" if it asks about live inventory data (stock, sales, '
+                    'forecasts, suppliers, products, POs, reorder)\n'
+                    '- "rag" if it asks about documents, policies, procedures, '
+                    'uploaded files, contracts, or specifications\n'
+                    'Respond with exactly one word: nl or rag.',
+                ),
+                ('user', query),
+            ]
+        )
         chain = prompt | llm | StrOutputParser()
         try:
             result = chain.invoke({}).strip().lower()
@@ -823,7 +823,9 @@ class ChatView(APIView):
             'sources': None,
         }
 
-    def _trace_query(self, user, query: str, engine: str, latency_ms: int, action=None, filters=None):
+    def _trace_query(
+        self, user, query: str, engine: str, latency_ms: int, action=None, filters=None
+    ):
         from apps.inventory.views import get_langfuse
 
         trace_data = {

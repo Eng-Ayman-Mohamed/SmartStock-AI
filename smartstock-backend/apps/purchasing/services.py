@@ -27,7 +27,15 @@ class PurchasingService:
     def __init__(self, repo=None):
         self.repo = repo or PurchasingRepository()
 
-    def draft_po(self, sku_id: int, quantity: int, supplier_id: int, user, po_number: str = None, total_cost=None):
+    def draft_po(
+        self,
+        sku_id: int,
+        quantity: int,
+        supplier_id: int,
+        user,
+        po_number: str = None,
+        total_cost=None,
+    ):
         data = {
             'sku_id': sku_id,
             'quantity': quantity,
@@ -118,8 +126,7 @@ class PurchasingService:
         allowed = LEGAL_TRANSITIONS.get(current, [])
         if new_status not in allowed:
             raise IllegalPOTransitionError(
-                f'Cannot transition from "{current}" to "{new_status}". '
-                f'Allowed: {allowed}'
+                f'Cannot transition from "{current}" to "{new_status}". Allowed: {allowed}'
             )
         update_data = {'status': new_status}
         if new_status == 'confirmed':
@@ -157,6 +164,7 @@ class PurchasingService:
     def send_po_email(self, po_id: int) -> dict:
         po_data = self.get_po_with_supplier(po_id)
         from django.template.loader import render_to_string
+
         subject = f'Purchase Order {po_data["po_number"]} — Confirmation Required'
         message = render_to_string('purchasing/po_email.txt', po_data)
         EmailService().send(
