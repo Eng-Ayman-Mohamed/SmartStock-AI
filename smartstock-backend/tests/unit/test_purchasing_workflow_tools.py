@@ -98,7 +98,7 @@ class EmailSendToolTest(TestCase):
             }
         )
 
-        self.assertEqual(result['status'], 'queued')
+        self.assertEqual(result['status'], 'sent')
         self.assertEqual(result['po_id'], 42)
         self.assertIn('message_id', result)
         self.assertEqual(result['recipient'], 'supplier@example.com')
