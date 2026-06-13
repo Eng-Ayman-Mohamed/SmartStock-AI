@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('purchasing', '0001_initial'),
     ]
@@ -28,20 +27,65 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='purchaseorder',
             name='status',
-            field=models.CharField(choices=[('draft', 'Draft'), ('pending_approval', 'Pending Approval'), ('approved', 'Approved'), ('email_sent', 'Email Sent'), ('sent', 'Sent'), ('waiting_confirmation', 'Waiting Confirmation'), ('confirmed', 'Confirmed'), ('rejected', 'Rejected'), ('cancelled', 'Cancelled'), ('failed', 'Failed'), ('timeout', 'Timeout')], default='draft', max_length=20),
+            field=models.CharField(
+                choices=[
+                    ('draft', 'Draft'),
+                    ('pending_approval', 'Pending Approval'),
+                    ('approved', 'Approved'),
+                    ('email_sent', 'Email Sent'),
+                    ('sent', 'Sent'),
+                    ('waiting_confirmation', 'Waiting Confirmation'),
+                    ('confirmed', 'Confirmed'),
+                    ('rejected', 'Rejected'),
+                    ('cancelled', 'Cancelled'),
+                    ('failed', 'Failed'),
+                    ('timeout', 'Timeout'),
+                ],
+                default='draft',
+                max_length=20,
+            ),
         ),
         migrations.CreateModel(
             name='PurchaseOrderWorkflow',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('draft', 'Draft'), ('pending_approval', 'Pending Approval'), ('approved', 'Approved'), ('email_sent', 'Email Sent'), ('waiting_confirmation', 'Waiting Confirmation'), ('confirmed', 'Confirmed'), ('rejected', 'Rejected'), ('failed', 'Failed'), ('timeout', 'Timeout')], default='draft', max_length=20)),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[
+                            ('draft', 'Draft'),
+                            ('pending_approval', 'Pending Approval'),
+                            ('approved', 'Approved'),
+                            ('email_sent', 'Email Sent'),
+                            ('waiting_confirmation', 'Waiting Confirmation'),
+                            ('confirmed', 'Confirmed'),
+                            ('rejected', 'Rejected'),
+                            ('failed', 'Failed'),
+                            ('timeout', 'Timeout'),
+                        ],
+                        default='draft',
+                        max_length=20,
+                    ),
+                ),
                 ('message_id', models.CharField(blank=True, max_length=255, null=True)),
                 ('polling_attempts', models.IntegerField(default=0)),
                 ('last_poll_at', models.DateTimeField(blank=True, null=True)),
                 ('error_message', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('purchase_order', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='workflow', to='purchasing.purchaseorder')),
+                (
+                    'purchase_order',
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='workflow',
+                        to='purchasing.purchaseorder',
+                    ),
+                ),
             ],
             options={
                 'ordering': ['-created_at'],

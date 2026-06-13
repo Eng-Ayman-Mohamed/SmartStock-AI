@@ -28,7 +28,6 @@ from ai.rag.citation import inject_citations
 # ---------------------------------------------------------------------------
 
 
-
 class _FakeStockTool:
     name = 'stock_level_read_tool'
 
@@ -429,7 +428,6 @@ class DBStubToolTests(unittest.TestCase):
     def test_db_write_returns_status(self):
         tool = DBWriteTool()
         self.assertEqual(tool.run({'payload': {}}), {'status': 'written'})
-
 
 
 class BaseToolInvokeTests(unittest.TestCase):
