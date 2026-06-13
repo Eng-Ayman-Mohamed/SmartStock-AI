@@ -84,6 +84,7 @@ export default function InventoryPage() {
   const ordering = sortField ? (sortOrder === 'desc' ? `-${sortField}` : sortField) : '';
   const orderingParam = ordering ? { ordering } : {};
 
+  const token = useAuthStore((s) => s.token);
   const inventoryQuery = useQuery({
     queryKey: ['inventory', debouncedSearch, sortField, sortOrder],
     queryFn: async () => {
@@ -101,6 +102,8 @@ export default function InventoryPage() {
         lowStock: unwrap<LowStockItem[]>(lowStockRes.data),
       };
     },
+    enabled: !!token,
+    retry: false,
   });
 
   const saveProduct = useMutation({

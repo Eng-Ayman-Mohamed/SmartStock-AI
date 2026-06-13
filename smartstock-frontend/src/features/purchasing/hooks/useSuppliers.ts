@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '../../../store/authStore';
 import * as suppliersApi from '../api';
 import type { CreateSupplierPayload, UpdateSupplierPayload } from '../types';
 
 export const suppliersQueryKey = ['suppliers'] as const;
 
 export function useSuppliers(searchQuery?: string) {
+  const token = useAuthStore((s) => s.token);
   return useQuery({
     queryKey: [...suppliersQueryKey, searchQuery],
     queryFn: () => suppliersApi.listSuppliers(searchQuery),
+    enabled: !!token,
+    retry: false,
   });
 }
 
