@@ -76,6 +76,9 @@ class SKURepository(BaseRepository):
     def get_by_id(self, id: int):
         return SKU.objects.select_related('product').get(pk=id)
 
+    def get_by_code(self, code: str):
+        return SKU.objects.select_related('product').filter(code=code).first()
+
     def get_all(self):
         return SKU.objects.select_related('product').all()
 
@@ -127,6 +130,9 @@ class StockLevelRepository(BaseRepository):
         except StockLevel.DoesNotExist:
             return None
 
+    def get_by_sku_id(self, sku_id: int):
+        return StockLevel.objects.filter(sku_id=sku_id).first()
+
 
 class SalesRecordRepository(BaseRepository):
     """Repository for SalesRecord model."""
@@ -161,6 +167,9 @@ class SupplierRepository(BaseRepository):
 
     def get_by_id(self, id: int):
         return Supplier.objects.get(pk=id)
+
+    def get_by_name(self, name: str):
+        return Supplier.objects.filter(name__iexact=name).first()
 
     def get_all(self):
         return Supplier.objects.all()

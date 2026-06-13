@@ -26,7 +26,19 @@ from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsVie
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 
 from .models import Document
-from .serializers import DocumentSerializer, DocumentUploadSerializer, RAGQuerySerializer
+from .serializers import (
+    DocumentSerializer,
+    DocumentUploadSerializer,
+    InvoiceScanConfirmSerializer,
+    InvoiceScanUploadSerializer,
+    RAGQuerySerializer,
+)
+from .services import (
+    InvoiceAlreadyConfirmed,
+    InvoiceExtractionMalformed,
+    InvoiceExtractionTimeout,
+    InvoiceScanService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -449,3 +461,107 @@ class RAGQueryView(APIView):
                 lf.flush()
         except Exception as lf_err:
             logger.debug('Langfuse trace skipped: %s', lf_err)
+
+
+class InvoiceScanView(APIView):
+    permission_classes = [IsManagerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
+
+    def post(self, request, *args, **kwargs):
+        serializer = InvoiceScanUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        service = InvoiceScanService()
+        try:
+            result = service.scan_invoice(serializer.validated_data['file'], request.user)
+        except InvoiceExtractionTimeout as exc:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'InvoiceExtractionTimeout',
+                    'message': str(exc),
+                    'code': status.HTTP_504_GATEWAY_TIMEOUT,
+                },
+                status=status.HTTP_504_GATEWAY_TIMEOUT,
+            )
+        except InvoiceExtractionMalformed as exc:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'InvoiceExtractionMalformed',
+                    'message': str(exc),
+                    'code': status.HTTP_422_UNPROCESSABLE_ENTITY,
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
+
+
+class InvoiceScanConfirmView(APIView):
+    permission_classes = [IsManagerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
+
+    def post(self, request, *args, **kwargs):
+        serializer = InvoiceScanConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        service = InvoiceScanService()
+        try:
+            result = service.confirm_scan(
+                serializer.validated_data['scan_id'],
+                request.user,
+                serializer.validated_data['confirmed_data'],
+            )
+        except PermissionError as exc:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'PermissionDenied',
+                    'message': str(exc),
+                    'code': status.HTTP_403_FORBIDDEN,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        except InvoiceAlreadyConfirmed as exc:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'InvoiceAlreadyConfirmed',
+                    'message': str(exc),
+                    'code': status.HTTP_409_CONFLICT,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
+
+
+class InvoiceScanRejectView(APIView):
+    permission_classes = [IsManagerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
+
+    def post(self, request, scan_id: int, *args, **kwargs):
+        service = InvoiceScanService()
+        try:
+            result = service.reject_scan(scan_id, request.user)
+        except PermissionError as exc:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'PermissionDenied',
+                    'message': str(exc),
+                    'code': status.HTTP_403_FORBIDDEN,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        except InvoiceAlreadyConfirmed as exc:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'InvoiceAlreadyConfirmed',
+                    'message': str(exc),
+                    'code': status.HTTP_409_CONFLICT,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
