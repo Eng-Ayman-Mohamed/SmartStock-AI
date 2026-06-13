@@ -1,20 +1,27 @@
-<<<<<<< HEAD
-"""Remaining coverage tests — 12 tests covering three known gaps.
+"""Remaining coverage tests — gaps across agents, stub tools, and utilities.
 
 Problem 1: DecisionAgent tests (9) — must work without live LLM API.
 Problem 2: StubToolTests (2) — EmailSendTool, PODraftTool response formats.
 Problem 3: PurchasingAgentTests (1) — tool must handle 'action' trace key.
+Additional: DB stubs, ForecastingAgent, Citation, IntentClassifier, Audit purge,
+            IngestDocument command tests from main.
 """
 
+import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
 from ai.agents.decision_agent import DecisionAgent, DecisionReasoner
+from ai.agents.forecasting_agent import ForecastingAgent
 from ai.agents.purchasing_agent import PurchasingAgent
+from ai.agents.tools.db_read import DBReadTool
+from ai.agents.tools.db_update import DBUpdateTool
+from ai.agents.tools.db_write import DBWriteTool
 from ai.agents.tools.email_send import EmailSendTool
 from ai.agents.tools.po_draft import PODraftTool
+from ai.rag.citation import inject_citations
 
 # ---------------------------------------------------------------------------
 # Fakes (same style as test_agent_integration_comprehensive.py)
@@ -170,7 +177,7 @@ class _FakeWorkflowService:
 
 
 # ===================================================================
-# Problem 1 — DecisionAgent / DecisionReasoner (9 tests)
+# Problem 1 -- DecisionAgent / DecisionReasoner (9 tests)
 # ===================================================================
 
 
@@ -230,12 +237,34 @@ class DecisionAgentOfflineTest(TestCase):
 
     def _build_agent(self, quantity_available=50, total_predicted_demand=30.0, has_open_po=False):
         service = _FakeForecastingService()
+
+        class _FakeAgent:
+            def __init__(self, tools):
+                self._tools = tools
+
+            def invoke(self, agent_input, config=None):
+                for tool in self._tools:
+                    if tool.name == 'stock_level_read_tool':
+                        tool.invoke({'product_id': 1})
+                    elif tool.name == 'forecast_read_tool':
+                        tool.invoke({'product_id': 1, 'forecast_days': 7})
+                    elif tool.name == 'po_status_check_tool':
+                        tool.invoke({'product_id': 1})
+                    else:
+                        tool.invoke({})
+                return {'messages': [{'content': 'done'}]}
+
+        def _fake_agent_factory(model, tools, system_prompt=''):
+            return _FakeAgent(tools)
+
         return DecisionAgent(
             stock_tool=_FakeStockTool(quantity_available=quantity_available),
             forecast_tool=_FakeForecastTool(total_predicted_demand),
             po_status_tool=_FakePOStatusTool(has_open_po=has_open_po),
             forecasting_service=service,
             reasoner=_FakeReasoner(),
+            agent_factory=_fake_agent_factory,
+            llm=object(),
         ), service
 
     def test_single_product_low_stock(self):
@@ -277,7 +306,7 @@ class DecisionAgentOfflineTest(TestCase):
 
 
 # ===================================================================
-# Problem 2 — StubToolTests (2 tests)
+# Problem 2 -- StubToolTests (2 tests)
 # ===================================================================
 
 
@@ -334,7 +363,7 @@ class StubToolTests(TestCase):
 
 
 # ===================================================================
-# Problem 3 — PurchasingAgent (1 test)
+# Problem 3 -- PurchasingAgent (1 test)
 # ===================================================================
 
 
@@ -374,28 +403,14 @@ class PurchasingAgentTraceActionTest(TestCase):
         )
         self.assertEqual(result['status'], 'rejected')
         self.assertIn('po_id', result)
-=======
-import unittest
-from unittest.mock import MagicMock, patch
-
-from django.test import TestCase
-
-from ai.agents.forecasting_agent import ForecastingAgent
-from ai.agents.purchasing_agent import PurchasingAgent
-from ai.agents.tools.confirmation_listener import ConfirmationListenerTool
-from ai.agents.tools.db_read import DBReadTool
-from ai.agents.tools.db_update import DBUpdateTool
-from ai.agents.tools.db_write import DBWriteTool
-from ai.agents.tools.email_send import EmailSendTool
-from ai.agents.tools.po_draft import PODraftTool
-from ai.rag.citation import inject_citations
 
 
-class StubToolTests(unittest.TestCase):
-    def test_confirmation_listener_returns_false(self):
-        tool = ConfirmationListenerTool()
-        self.assertFalse(tool.run({'order_id': 1})['confirmed'])
+# ===================================================================
+# Additional -- DB stub tools
+# ===================================================================
 
+
+class DBStubToolTests(unittest.TestCase):
     def test_db_read_returns_empty(self):
         tool = DBReadTool()
         self.assertEqual(tool.run({'query': 'all'}), {'data': []})
@@ -407,14 +422,6 @@ class StubToolTests(unittest.TestCase):
     def test_db_write_returns_status(self):
         tool = DBWriteTool()
         self.assertEqual(tool.run({'payload': {}}), {'status': 'written'})
-
-    def test_email_send_returns_sent(self):
-        tool = EmailSendTool()
-        self.assertEqual(tool.run({'to': 'x@y.com'}), {'status': 'sent'})
-
-    def test_po_draft_returns_draft(self):
-        tool = PODraftTool()
-        self.assertEqual(tool.run({'sku': 'X'}), {'po_id': None, 'status': 'draft'})
 
 
 class BaseToolInvokeTests(unittest.TestCase):
@@ -434,6 +441,11 @@ class BaseToolInvokeTests(unittest.TestCase):
         self.assertEqual(lc_tool.name, 'db_read_tool')
 
 
+# ===================================================================
+# Additional -- ForecastingAgent tests
+# ===================================================================
+
+
 class ForecastingAgentTests(unittest.TestCase):
     @patch('ai.agents.forecasting_agent.trace_agent_run')
     def test_run_returns_not_implemented(self, mock_trace):
@@ -450,13 +462,9 @@ class ForecastingAgentTests(unittest.TestCase):
         self.assertEqual(result['agent'], 'forecasting_agent')
 
 
-class PurchasingAgentTests(unittest.TestCase):
-    @patch('ai.agents.purchasing_agent.trace_agent_run')
-    def test_run_returns_draft_po(self, mock_trace):
-        agent = PurchasingAgent()
-        result = agent.run(context={'sku': 'X'})
-        self.assertEqual(result['action'], 'draft_po')
-        mock_trace.assert_called_once()
+# ===================================================================
+# Additional -- Citation tests
+# ===================================================================
 
 
 class CitationTests(unittest.TestCase):
@@ -467,6 +475,11 @@ class CitationTests(unittest.TestCase):
     def test_inject_citations_empty_sources(self):
         result = inject_citations('hello', [])
         self.assertEqual(result, 'hello')
+
+
+# ===================================================================
+# Additional -- IntentClassifier tests
+# ===================================================================
 
 
 class IntentClassifierTests(unittest.TestCase):
@@ -569,6 +582,11 @@ class IntentClassifierTests(unittest.TestCase):
         self.assertEqual(result.intent, 'nl_query')
 
 
+# ===================================================================
+# Additional -- Audit purge tests
+# ===================================================================
+
+
 class PurgeOldAuditLogsTests(TestCase):
     @patch('apps.audit.models.AuditLog')
     @patch('apps.audit.tasks.timezone')
@@ -589,6 +607,11 @@ class PurgeOldAuditLogsTests(TestCase):
 
         result = purge_old_audit_logs()
         self.assertEqual(result['deleted'], 0)
+
+
+# ===================================================================
+# Additional -- IngestDocument command tests
+# ===================================================================
 
 
 class IngestDocumentCommandTests(TestCase):
@@ -614,4 +637,3 @@ class IngestDocumentCommandTests(TestCase):
 
         with self.assertRaises(CommandError):
             call_command('ingest_document', file='bad.pdf')
->>>>>>> main
