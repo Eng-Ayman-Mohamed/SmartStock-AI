@@ -131,7 +131,6 @@ export default function InventoryPage() {
     : "";
   const orderingParam = ordering ? { ordering } : {};
 
-  const token = useAuthStore((s) => s.token);
   const inventoryQuery = useQuery({
     queryKey: [
       "inventory",
