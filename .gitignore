@@ -4,8 +4,6 @@
 .env.*.local
 *.env
 
-docs/
-.ruff_cache/
 # Python
 __pycache__/
 *.pyc
@@ -47,3 +45,8 @@ htmlcov/
 
 # Project
 .impeccable/
+
+#user defined
+docs/
+.ruff_cache/
+temp.md
