@@ -62,6 +62,26 @@ class FakeReasoner:
         )
 
 
+class FakeLangChainDecisionAgent:
+    def __init__(self, tools):
+        self.tools = {tool.name: tool for tool in tools}
+
+    def invoke(self, input, config=None):
+        product_id = 1
+        stock = self.tools['stock_level_read_tool'].invoke({'product_id': product_id})
+        self.tools['forecast_read_tool'].invoke(
+            {'product_id': product_id, 'forecast_days': stock['lead_time_days']}
+        )
+        self.tools['po_status_check_tool'].invoke({'product_id': product_id})
+        return {'messages': [SimpleNamespace(content='observations gathered')]}
+
+
+def fake_agent_factory(model, tools, system_prompt):
+    assert model == 'fake-llm'
+    assert 'available tools' in system_prompt
+    return FakeLangChainDecisionAgent(tools)
+
+
 def build_agent(quantity_available, total_predicted_demand, has_open_po=False):
     service = FakeForecastingService()
     forecast_tool = FakeForecastTool(total_predicted_demand)
@@ -73,6 +93,8 @@ def build_agent(quantity_available, total_predicted_demand, has_open_po=False):
         ),
         forecasting_service=service,
         reasoner=FakeReasoner(),
+        llm='fake-llm',
+        agent_factory=fake_agent_factory,
     )
     return agent, service, forecast_tool
 
@@ -104,6 +126,29 @@ def test_decision_agent_does_not_flag_sufficient_stock():
     assert result['flags_created'] == 0
     assert decision['reorder_required'] is False
     assert service.persisted == []
+
+
+def test_decision_agent_requires_agent_collected_observations():
+    class IncompleteAgent:
+        def invoke(self, input, config=None):
+            return {'messages': [SimpleNamespace(content='stopped early')]}
+
+    agent = DecisionAgent(
+        stock_tool=FakeStockTool(45),
+        forecast_tool=FakeForecastTool(62),
+        po_status_tool=FakePOStatusTool(),
+        forecasting_service=FakeForecastingService(),
+        reasoner=FakeReasoner(),
+        llm='fake-llm',
+        agent_factory=lambda **kwargs: IncompleteAgent(),
+    )
+
+    try:
+        agent.run({'product_id': 1})
+    except Exception as exc:
+        assert 'required observations' in str(exc)
+    else:
+        raise AssertionError('Expected missing observations to fail the decision run.')
 
 
 def test_decision_agent_suppresses_duplicate_when_open_po_exists():

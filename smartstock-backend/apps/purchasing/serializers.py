@@ -10,6 +10,17 @@ class SupplierSerializer(serializers.ModelSerializer):
         model = Supplier
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if request.user.role not in ('manager', 'admin'):
+                if data.get('contact_email'):
+                    data['contact_email'] = '***@***.***'
+                if data.get('contact_phone'):
+                    data['contact_phone'] = '***-***-****'
+        return data
+
 
 class PurchaseOrderSerializer(serializers.ModelSerializer):
     sku_code = serializers.CharField(source='sku.code', read_only=True)
