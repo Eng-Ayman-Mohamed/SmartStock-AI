@@ -19,7 +19,7 @@ class ExceptionHandlerTest(TestCase):
 
     def _call_handler(self, exc, view=None):
         context = {'view': view or MagicMock()}
-        request = self.factory.get('/')
+        self.factory.get('/')
         return custom_exception_handler(exc, context)
 
 
@@ -86,7 +86,6 @@ class GenericExceptionHandlerTest(ExceptionHandlerTest):
 class DRFExceptionHandlerStringDetailTest(ExceptionHandlerTest):
     def test_404_with_string_detail(self):
         from rest_framework.exceptions import NotFound
-        from rest_framework.views import exception_handler
 
         class Fake404View:
             def get(self, request):
