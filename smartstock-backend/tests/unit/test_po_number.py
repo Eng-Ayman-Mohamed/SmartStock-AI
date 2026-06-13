@@ -1,5 +1,7 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from django.test import TestCase
+
 from apps.purchasing.po_number import generate_po_number
 
 
