@@ -38,9 +38,12 @@ class PurchaseOrder(models.Model):
     sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    po_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f'PO-{self.id}: {self.sku.code} x{self.quantity}'
+        label = self.po_number or f'PO-{self.id}'
+        return f'{label}: {self.sku.code} x{self.quantity}'
 
     class Meta:
         ordering = ['-created_at']
