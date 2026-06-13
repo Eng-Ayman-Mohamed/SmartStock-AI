@@ -19,6 +19,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from ai.llm.schemas import NLQueryFilters
+from ai.observability.langfuse import get_langfuse_alert_thresholds, get_langfuse_client
 from apps.audit.models import AuditLog
 from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
 from apps.forecasting.services import ForecastingService
@@ -38,7 +39,6 @@ from .serializers import (
 from .services import InventoryService, SalesRecordService, SKUService
 
 _nl_chain = None
-_langfuse_client = None
 
 
 def get_nl_chain():
@@ -51,23 +51,7 @@ def get_nl_chain():
 
 
 def get_langfuse():
-    global _langfuse_client
-    if _langfuse_client is None:
-        try:
-            from django.conf import settings
-            from langfuse import Langfuse
-
-            public_key = getattr(settings, 'LANGFUSE_PUBLIC_KEY', None)
-            secret_key = getattr(settings, 'LANGFUSE_SECRET_KEY', None)
-            if public_key and secret_key:
-                _langfuse_client = Langfuse(
-                    public_key=public_key,
-                    secret_key=secret_key,
-                    host=getattr(settings, 'LANGFUSE_HOST', 'https://cloud.langfuse.com'),
-                )
-        except Exception:
-            _langfuse_client = None
-    return _langfuse_client
+    return get_langfuse_client()
 
 
 logger = logging.getLogger(__name__)
@@ -165,9 +149,14 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated]
-    queryset = Product.objects.prefetch_related('skus').all().order_by('-created_at')
+    queryset = (
+        Product.objects.select_related('category', 'supplier')
+        .prefetch_related('skus__stock_level')
+        .all()
+        .order_by('-created_at')
+    )
     filterset_class = ProductFilter
-    search_fields = ['name', 'category__name']
+    search_fields = ['name', 'category__name', 'supplier__name', 'skus__code']
     ordering_fields = ['name', 'category', 'created_at']
     ordering = ['-created_at']
 
@@ -1438,6 +1427,7 @@ class NLQueryEndpointView(APIView):
                         'user': str(user.id),
                         'action': action_type,
                         'pipeline_time': time.time() - pipeline_start,
+                        'alert_thresholds': get_langfuse_alert_thresholds(),
                     },
                 )
         except Exception:
@@ -1546,7 +1536,11 @@ class NLQueryEndpointView(APIView):
                 trace = lf.trace(
                     name='nl_query',
                     user_id=str(user.id) if user else 'anonymous',
-                    metadata={'action': action, 'latency_ms': latency_ms},
+                    metadata={
+                        'action': action,
+                        'latency_ms': latency_ms,
+                        'alert_thresholds': get_langfuse_alert_thresholds(),
+                    },
                 )
                 trace.span(
                     name='query_processing',
