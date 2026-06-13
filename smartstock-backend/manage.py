@@ -11,7 +11,7 @@ load_dotenv()
 
 def main():
     """Run administrative tasks."""
-    if len(sys.argv) > 1 and sys.argv[1] == 'test':
+    if 'test' in sys.argv:
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.test')
     else:
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')

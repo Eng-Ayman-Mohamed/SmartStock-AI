@@ -460,3 +460,134 @@ class PurchasingServiceDraftPoOptionalParamsTest(TestCase):
         call_data = self.repo.create.call_args[0][0]
         self.assertEqual(call_data['po_number'], 'PO-BOTH-001')
         self.assertEqual(call_data['total_cost'], 1500.00)
+
+
+class PurchasingServiceMarkEmailSentTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+
+    @patch('apps.purchasing.services.timezone')
+    @patch('apps.purchasing.services.po_sent')
+    def test_mark_email_sent_from_approved(self, mock_signal, mock_tz):
+        mock_tz.now.return_value = timezone.now()
+        self.repo.get_by_id.return_value = MagicMock(status='approved')
+        self.repo.update.return_value = MagicMock(id=1, status='email_sent')
+
+        self.service.mark_email_sent(po_id=1, message_id='msg-001')
+
+        self.repo.update.assert_called_once()
+        update_data = self.repo.update.call_args[0][1]
+        self.assertEqual(update_data['status'], 'email_sent')
+        self.assertIn('sent_at', update_data)
+        self.assertEqual(update_data['message_id'], 'msg-001')
+
+    @patch('apps.purchasing.services.timezone')
+    @patch('apps.purchasing.services.po_sent')
+    def test_mark_email_sent_from_sent(self, mock_signal, mock_tz):
+        mock_tz.now.return_value = timezone.now()
+        self.repo.get_by_id.return_value = MagicMock(status='sent')
+        self.repo.update.return_value = MagicMock(id=1, status='email_sent')
+
+        result = self.service.mark_email_sent(po_id=1)
+
+        self.assertEqual(result.status, 'email_sent')
+
+    def test_mark_email_sent_rejects_draft(self):
+        self.repo.get_by_id.return_value = MagicMock(status='draft')
+        with self.assertRaises(ValidationError):
+            self.service.mark_email_sent(po_id=1)
+
+    def test_mark_email_sent_rejects_confirmed(self):
+        self.repo.get_by_id.return_value = MagicMock(status='confirmed')
+        with self.assertRaises(ValidationError):
+            self.service.mark_email_sent(po_id=1)
+
+
+class PurchasingServiceMarkWaitingConfirmationTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+
+    def test_mark_waiting_confirmation(self):
+        self.repo.get_by_id.return_value = MagicMock(status='email_sent')
+        self.repo.update.return_value = MagicMock(id=1, status='waiting_confirmation')
+
+        result = self.service.mark_waiting_confirmation(po_id=1)
+
+        self.repo.update.assert_called_once_with(1, {'status': 'waiting_confirmation'})
+        self.assertEqual(result.status, 'waiting_confirmation')
+
+    def test_mark_waiting_confirmation_rejects_other_statuses(self):
+        self.repo.get_by_id.return_value = MagicMock(status='approved')
+        with self.assertRaises(ValidationError):
+            self.service.mark_waiting_confirmation(po_id=1)
+
+
+class PurchasingServiceMarkConfirmedTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+
+    @patch('apps.purchasing.services.timezone')
+    @patch('apps.purchasing.services.po_confirmed')
+    def test_mark_confirmed(self, mock_signal, mock_tz):
+        mock_tz.now.return_value = timezone.now()
+        self.repo.get_by_id.return_value = MagicMock(status='waiting_confirmation')
+        self.repo.update.return_value = MagicMock(id=1, status='confirmed')
+
+        self.service.mark_confirmed(po_id=1)
+
+        self.repo.update.assert_called_once()
+        update_data = self.repo.update.call_args[0][1]
+        self.assertEqual(update_data['status'], 'confirmed')
+        self.assertIn('confirmed_at', update_data)
+
+    def test_mark_confirmed_rejects_sent_status(self):
+        self.repo.get_by_id.return_value = MagicMock(status='sent')
+        with self.assertRaises(ValidationError):
+            self.service.mark_confirmed(po_id=1)
+
+    def test_mark_confirmed_rejects_approved_status(self):
+        self.repo.get_by_id.return_value = MagicMock(status='approved')
+        with self.assertRaises(ValidationError):
+            self.service.mark_confirmed(po_id=1)
+
+
+class PurchasingServiceMarkFailedTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+
+    def test_mark_failed(self):
+        self.repo.get_by_id.return_value = MagicMock(status='email_sent', notes='')
+        self.repo.update.return_value = MagicMock(id=1, status='failed')
+
+        self.service.mark_failed(po_id=1, error_message='SMTP error')
+
+        self.repo.update.assert_called_once()
+        update_data = self.repo.update.call_args[0][1]
+        self.assertEqual(update_data['status'], 'failed')
+
+    def test_mark_failed_preserves_existing_notes(self):
+        self.repo.get_by_id.return_value = MagicMock(status='sent', notes='existing note')
+        self.repo.update.return_value = MagicMock(id=1, status='failed')
+
+        self.service.mark_failed(po_id=1, error_message='')
+        update_data = self.repo.update.call_args[0][1]
+        self.assertEqual(update_data['notes'], 'existing note')
+
+
+class PurchasingServiceMarkTimeoutTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+
+    def test_mark_timeout(self):
+        self.repo.get_by_id.return_value = MagicMock(status='waiting_confirmation')
+        self.repo.update.return_value = MagicMock(id=1, status='timeout')
+
+        result = self.service.mark_timeout(po_id=1)
+
+        self.repo.update.assert_called_once_with(1, {'status': 'timeout'})
+        self.assertEqual(result.status, 'timeout')
