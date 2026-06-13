@@ -48,7 +48,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
 
     setLocalError(null);
     try {
-      await approveMutation.mutateAsync({ id: po.id, qty: editableQty });
+      await approveMutation.mutateAsync({ id: po.id });
       setPendingConfirm(false);
       onApproved?.();
     } catch {
@@ -74,7 +74,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
     if (isLoading || readOnly) return;
     setLocalError(null);
     try {
-      await rejectMutation.mutateAsync({ id: po.id, reason: rejectReason });
+      await rejectMutation.mutateAsync({ id: po.id });
       setShowRejectReason(false);
       setRejectReason('');
       onRejected?.();
