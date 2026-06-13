@@ -114,15 +114,8 @@ class ForecastBySKUView(APIView):
         tags=['forecasting'],
     )
     def get(self, request, sku):
-        filters = {'sku__code__iexact': sku}
-        if str(sku).isdigit():
-            filters = {'sku_id': int(sku)}
-
-        rows = list(
-            ForecastResult.objects.filter(**filters)
-            .select_related('sku__product')
-            .order_by('forecast_date')[:30]
-        )
+        service = ForecastingService()
+        rows = list(service.get_forecast_by_sku_code_or_id(sku))
         if not rows:
             return Response(
                 {'status': 'error', 'message': f'No forecast found for SKU {sku}.'},

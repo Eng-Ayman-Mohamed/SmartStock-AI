@@ -60,20 +60,25 @@ class ForecastingService:
             if sku_id not in skus_map:
                 stock = getattr(row.sku, 'stock_level', None)
                 stockout_risk = self.calculate_stockout_risk(row.sku.code)
+                mape = row.mape
+                confidence = max(0, 100 - round(mape * 10)) if mape else None
                 skus_map[sku_id] = {
                     'id': row.sku.code,
-                    'name': row.sku.product.name,
-                    'threshold': stock.reorder_point if stock else 0,
+                    'sku_code': row.sku.code,
+                    'product_name': row.sku.product.name,
+                    'reorder_point': stock.reorder_point if stock else 0,
                     'current_stock': stock.quantity_on_hand if stock else 0,
                     'stockout_risk': stockout_risk,
                     'supplier': '—',
                     'lead_time_days': 0,
                     'mae': row.mae,
-                    'mape': row.mape,
+                    'mape': mape,
                     'model_version': row.model_version,
-                    'days': [],
+                    'confidence_score': confidence,
+                    'predicted_demand_30d': 0,
+                    'forecast': [],
                 }
-            skus_map[sku_id]['days'].append(
+            skus_map[sku_id]['forecast'].append(
                 {
                     'date': row.forecast_date.isoformat(),
                     'demand': round(row.predicted_quantity, 2),
@@ -81,11 +86,15 @@ class ForecastingService:
                     'lower_bound': round(row.lower_bound, 2) if row.lower_bound else None,
                 }
             )
+            skus_map[sku_id]['predicted_demand_30d'] += round(row.predicted_quantity, 2)
 
         return {'skus': list(skus_map.values())}
 
     def get_forecast(self, sku_id: int):
         return self.repo.get_by_sku(sku_id)
+
+    def get_forecast_by_sku_code_or_id(self, sku: str):
+        return self.repo.get_by_sku_code_or_id(sku)
 
     def get_decision_forecast_data(self, product_id: int, forecast_days: int = 7) -> dict:
         forecast_days = max(1, int(forecast_days or 7))
