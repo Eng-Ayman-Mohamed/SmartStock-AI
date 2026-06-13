@@ -338,3 +338,125 @@ class PurchasingServiceSignalsTest(TestCase):
         self.repo.update.return_value = MagicMock(status='sent')
         self.service.send_po(po_id=1)
         mock_signal.send.assert_called_once()
+
+
+class PurchasingServiceGetPoWithSupplierTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+
+    def test_get_po_with_supplier_returns_dict(self):
+        mock_po = MagicMock()
+        mock_po.id = 5
+        mock_po.po_number = 'PO-2026-001'
+        mock_po.sku.code = 'SKU-001'
+        mock_po.sku.product.name = 'Test Product'
+        mock_po.sku.product.unit_price = 10.00
+        mock_po.total_cost = 500.00
+        mock_po.supplier.contact_email = 'supplier@test.com'
+        mock_po.supplier.name = 'Test Supplier'
+        self.repo.get_by_id.return_value = mock_po
+
+        result = self.service.get_po_with_supplier(po_id=5)
+
+        self.assertEqual(result['po_id'], 5)
+        self.assertEqual(result['po_number'], 'PO-2026-001')
+        self.assertEqual(result['sku_code'], 'SKU-001')
+        self.assertEqual(result['product_name'], 'Test Product')
+        self.assertEqual(result['supplier_email'], 'supplier@test.com')
+        self.repo.get_by_id.assert_called_once_with(5)
+
+    def test_get_po_with_supplier_works_without_po_number(self):
+        mock_po = MagicMock()
+        mock_po.id = 10
+        mock_po.po_number = None
+        mock_po.sku.code = 'SKU-002'
+        mock_po.sku.product.name = 'Another Product'
+        mock_po.sku.product.unit_price = 5.00
+        mock_po.total_cost = 250.00
+        mock_po.supplier.contact_email = 'sup2@test.com'
+        mock_po.supplier.name = 'Supplier 2'
+        self.repo.get_by_id.return_value = mock_po
+
+        result = self.service.get_po_with_supplier(po_id=10)
+
+        self.assertEqual(result['po_id'], 10)
+        self.assertIsNone(result['po_number'])
+
+
+class PurchasingServiceSendPoEmailTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+
+    @patch('django.template.loader.render_to_string')
+    @patch('apps.purchasing.services.EmailService')
+    def test_send_po_email_calls_email_service(self, mock_email_cls, mock_render):
+        mock_po = MagicMock()
+        mock_po.id = 7
+        mock_po.po_number = 'PO-2026-050'
+        mock_po.sku.code = 'SKU-100'
+        mock_po.sku.product.name = 'Email Test Product'
+        mock_po.sku.product.unit_price = 3.00
+        mock_po.total_cost = 150.00
+        mock_po.supplier.contact_email = 'send@test.com'
+        mock_po.supplier.name = 'Email Supplier'
+        self.repo.get_by_id.return_value = mock_po
+
+        mock_render.return_value = 'Please find below PO details.'
+        mock_email_instance = MagicMock()
+        mock_email_cls.return_value = mock_email_instance
+
+        result = self.service.send_po_email(po_id=7)
+
+        self.assertTrue(result['sent'])
+        self.assertEqual(result['recipient'], 'send@test.com')
+        mock_render.assert_called_once()
+        mock_email_instance.send.assert_called_once()
+        send_call = mock_email_instance.send.call_args
+        self.assertIn('Confirmation Required', send_call[1]['subject'])
+
+
+class PurchasingServiceDraftPoOptionalParamsTest(TestCase):
+    def setUp(self):
+        self.repo = MagicMock()
+        self.service = PurchasingService(repo=self.repo)
+        self.user = MagicMock(id=1)
+
+    def test_draft_po_with_po_number(self):
+        self.repo.create.return_value = MagicMock(id=20)
+        self.service.draft_po(
+            sku_id=3,
+            quantity=50,
+            supplier_id=7,
+            user=self.user,
+            po_number='PO-CUSTOM-001',
+        )
+        call_data = self.repo.create.call_args[0][0]
+        self.assertEqual(call_data['po_number'], 'PO-CUSTOM-001')
+
+    def test_draft_po_with_total_cost(self):
+        self.repo.create.return_value = MagicMock(id=21)
+        self.service.draft_po(
+            sku_id=4,
+            quantity=10,
+            supplier_id=8,
+            user=self.user,
+            total_cost=999.99,
+        )
+        call_data = self.repo.create.call_args[0][0]
+        self.assertEqual(call_data['total_cost'], 999.99)
+
+    def test_draft_po_with_both_optional_params(self):
+        self.repo.create.return_value = MagicMock(id=22)
+        self.service.draft_po(
+            sku_id=5,
+            quantity=15,
+            supplier_id=9,
+            user=self.user,
+            po_number='PO-BOTH-001',
+            total_cost=1500.00,
+        )
+        call_data = self.repo.create.call_args[0][0]
+        self.assertEqual(call_data['po_number'], 'PO-BOTH-001')
+        self.assertEqual(call_data['total_cost'], 1500.00)
