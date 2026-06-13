@@ -74,6 +74,6 @@ def classify_intent(query: str) -> ClassificationResult:
     except (json.JSONDecodeError, KeyError, ValueError) as exc:
         logger.warning('Classifier parse failed: %s — defaulting to nl_query', exc)
         return ClassificationResult(intent='nl_query', confidence=0.5)
-    except Exception as exc:
+    except Exception:
         logger.exception('Intent classifier failed')
         return ClassificationResult(intent='nl_query', confidence=0.5)

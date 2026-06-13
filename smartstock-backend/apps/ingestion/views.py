@@ -41,6 +41,7 @@ from .services import (
     InvoiceExtractionMalformed,
     InvoiceExtractionTimeout,
     InvoiceScanService,
+    RAGQueryService,
 )
 
 logger = logging.getLogger(__name__)
@@ -827,13 +828,13 @@ class ChatEndpointView(APIView):
         """Execute the NL Query pipeline — mirrors NLQueryEndpointView._run_pipeline."""
         from ai.llm.chain import NLQueryChain, call_gpt4o_formatter
         from apps.inventory.views import (
+            _handle_forecast_demand,
             _handle_get_inventory,
             _handle_get_low_stock,
             _handle_get_sales_report,
             _handle_get_supplier_info,
             _handle_get_top_products,
             _handle_get_total_value,
-            _handle_forecast_demand,
         )
 
         # Step B: LangChain Processing
