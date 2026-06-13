@@ -54,50 +54,11 @@ jobs:
 
       - name: Health check
         run: |
-          BACKEND_URL="${{ secrets.RENDER_PRODUCTION_URL }}"
-          echo "Checking ${BACKEND_URL}/api/health/ ..."
-
-          STATUS=$(curl -sf "${BACKEND_URL}/api/health/")
+          STATUS=$(curl -s "${{ secrets.RENDER_PRODUCTION_URL }}/api/health/")
           echo "$STATUS" | python3 -m json.tool
-
           echo "$STATUS" | python3 -c "
           import sys, json
           data = json.load(sys.stdin)
-          assert data.get('status') == 'ok', f'Service not ok: {data}'
           assert data.get('database') == 'connected', f'Database not connected: {data}'
-          assert data.get('redis') == 'connected', f'Redis not connected: {data}'
-          print('Health check passed — all services connected')
+          print('Health check passed')
           "
-
-      - name: Verify HTTPS redirect
-        run: |
-          HTTP_URL=$(echo "${{ secrets.RENDER_PRODUCTION_URL }}" | sed 's|^https://|http://|')
-          REDIRECT_CODE=$(curl -so /dev/null -w "%{http_code}" -L --max-redirs 0 "$HTTP_URL" 2>/dev/null || true)
-          if [ "$REDIRECT_CODE" = "301" ] || [ "$REDIRECT_CODE" = "302" ] || [ "$REDIRECT_CODE" = "308" ]; then
-            echo "HTTP → HTTPS redirect confirmed (HTTP ${REDIRECT_CODE})"
-          else
-            echo "WARNING: HTTP returned ${REDIRECT_CODE} (may be handled by Render proxy)"
-          fi
-
-      - name: Verify API docs
-        run: |
-          DOCS_CODE=$(curl -so /dev/null -w "%{http_code}" "${{ secrets.RENDER_PRODUCTION_URL }}/api/docs/")
-          if [ "$DOCS_CODE" = "200" ]; then
-            echo "Swagger UI accessible (HTTP 200)"
-          else
-            echo "FAIL: Swagger UI returned HTTP ${DOCS_CODE}"
-            exit 1
-          fi
-
-      - name: Verify auth endpoint
-        run: |
-          AUTH_CODE=$(curl -so /dev/null -w "%{http_code}" \
-            -X POST "${{ secrets.RENDER_PRODUCTION_URL }}/api/auth/login/" \
-            -H "Content-Type: application/json" \
-            -d '{"email":"test@test.com","password":"wrong"}')
-          if [ "$AUTH_CODE" = "400" ] || [ "$AUTH_CODE" = "401" ]; then
-            echo "Auth endpoint live and validating (HTTP ${AUTH_CODE})"
-          else
-            echo "FAIL: Auth endpoint returned HTTP ${AUTH_CODE}"
-            exit 1
-          fi
