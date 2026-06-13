@@ -80,11 +80,48 @@ def get_langchain_callbacks() -> list:
     return [handler] if handler is not None else []
 
 
-def invoke_with_langfuse(chain, payload: dict):
+def extract_token_usage(response) -> dict:
+    if response is None:
+        return {}
+
+    llm_output = getattr(response, 'llm_output', None)
+    if isinstance(llm_output, dict):
+        usage = llm_output.get('token_usage') or llm_output.get('usage')
+        if isinstance(usage, dict):
+            return usage
+
+    usage_metadata = getattr(response, 'usage_metadata', None)
+    if isinstance(usage_metadata, dict):
+        return usage_metadata
+
+    response_metadata = getattr(response, 'response_metadata', None)
+    if isinstance(response_metadata, dict):
+        usage = response_metadata.get('token_usage') or response_metadata.get('usage')
+        if isinstance(usage, dict):
+            return usage
+
+    if isinstance(response, dict):
+        usage = response.get('token_usage') or response.get('usage') or response.get('usage_metadata')
+        if isinstance(usage, dict):
+            return usage
+
+    return {}
+
+
+def get_langfuse_alert_thresholds() -> dict:
+    thresholds = _setting('LANGFUSE_ALERT_THRESHOLDS', {})
+    return thresholds if isinstance(thresholds, dict) else {}
+
+
+def invoke_with_langfuse(chain, payload: dict, include_token_usage: bool = False):
     callbacks = get_langchain_callbacks()
     if callbacks:
-        return chain.invoke(payload, config={'callbacks': callbacks})
-    return chain.invoke(payload)
+        result = chain.invoke(payload, config={'callbacks': callbacks})
+    else:
+        result = chain.invoke(payload)
+    if include_token_usage:
+        return result, extract_token_usage(result)
+    return result
 
 
 def trace_agent_run(
@@ -98,7 +135,10 @@ def trace_agent_run(
             name=agent_name,
             input=input_data,
             output=output_data,
-            metadata={'span_count': len(spans or [])},
+            metadata={
+                'span_count': len(spans or []),
+                'alert_thresholds': get_langfuse_alert_thresholds(),
+            },
         )
         for span in spans or []:
             trace.span(
@@ -144,7 +184,10 @@ class _LangfuseCoreCallbackHandler(BaseCallbackHandler):
             run['trace'].span(
                 name='llm_generation',
                 output=str(response),
-                metadata={'duration_ms': round((time.time() - run['started_at']) * 1000)},
+                metadata={
+                    'duration_ms': round((time.time() - run['started_at']) * 1000),
+                    'token_usage': extract_token_usage(response),
+                },
             )
             self.client.flush()
         except Exception as exc:

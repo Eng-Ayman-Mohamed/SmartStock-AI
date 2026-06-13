@@ -43,4 +43,4 @@ class PurchaseOrder(models.Model):
         return f'PO-{self.id}: {self.sku.code} x{self.quantity}'
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['-created_at', '-id']
