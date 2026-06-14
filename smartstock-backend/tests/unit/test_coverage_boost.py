@@ -161,21 +161,21 @@ class ForecastingTasksTests(TestCase):
         )
         cls.sku = SKU.objects.create(product=cls.product, code='TASK-SKU-001')
 
-    def test_run_forecast_for_all_skus(self):
-        from apps.forecasting.tasks import run_forecast_for_all_skus
+    def test_run_forecasting_agent(self):
+        from apps.forecasting.tasks import run_forecasting_agent
 
-        with patch('apps.forecasting.services.ForecastingService.run_forecast') as mock_run:
-            mock_run.return_value = [{'sku': 'TASK-SKU-001', 'status': 'skipped'}]
-            result = run_forecast_for_all_skus()
-            self.assertIn('1/1', result)
+        with patch('ai.agents.forecasting_agent.ForecastingAgent.run') as mock_run:
+            mock_run.return_value = {'processed': 0, 'skipped': 1, 'failed': 0}
+            result = run_forecasting_agent()
+            self.assertEqual(result, {'processed': 0, 'skipped': 1, 'failed': 0})
 
     def test_run_forecast_handles_failure(self):
-        from apps.forecasting.tasks import run_forecast_for_all_skus
+        from apps.forecasting.tasks import run_forecasting_agent
 
-        with patch('apps.forecasting.services.ForecastingService.run_forecast') as mock_run:
+        with patch('ai.agents.forecasting_agent.ForecastingAgent.run') as mock_run:
             mock_run.side_effect = Exception('boom')
-            result = run_forecast_for_all_skus()
-            self.assertIn('0/1', result)
+            with self.assertRaises(Exception):
+                run_forecasting_agent()
 
 
 class InventoryServiceMethodTests(TestCase):
