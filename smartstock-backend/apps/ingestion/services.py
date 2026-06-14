@@ -9,6 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from openai import APITimeoutError
 
+from ai.llm.output_validator import validate_response_safety
 from ai.multimodal.vision import VisionExtractor
 from ai.observability.langfuse import invoke_with_langfuse
 from ai.rag.ingestion import EMBEDDING_MODEL, ingest_pdf
@@ -449,7 +450,11 @@ class RAGQueryService:
             {'context': context, 'query': query},
             include_token_usage=True,
         )
-        return StrOutputParser().invoke(response).strip(), token_usage
+        answer = StrOutputParser().invoke(response).strip()
+        if not validate_response_safety(answer):
+            logger.warning('RAGQueryService call_llm output blocked by response safety validator')
+            answer = 'I\'m sorry, I cannot provide that information.'
+        return answer, token_usage
 
     def extract_sources(self, chunks: list[dict]) -> list[dict]:
         seen = set()

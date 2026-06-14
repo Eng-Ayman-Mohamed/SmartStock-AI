@@ -50,3 +50,4 @@ htmlcov/
 docs/
 .ruff_cache/
 temp.md
+.code-review-graph/
