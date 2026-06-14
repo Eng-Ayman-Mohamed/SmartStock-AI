@@ -1388,7 +1388,7 @@ Respond with JSON only: {"intent": "...", "confidence": 0.0-1.0}
 | A6  | Purchasing Agent tool endpoints | Backend  | All 4 tools (`po_draft`, `email_send`, `confirmation_listener`, `db_update`) implemented as Django services. Unit tested. |
 | A7  | PO approval card component      | Frontend | Card renders SKU, stockout date, qty, supplier, cost, reasoning trace. Approve/Reject/Edit flow works end-to-end.         |
 | A8  | Forecasting Agent — LangChain   | AI/ML    | Agent wired with 3 tools. Celery Beat schedules daily run. Results appear in `forecast_results` table next morning.       |
-| A9  | GitHub Actions CI pipeline      | DevOps   | `ci.yml` triggers on push to `main`. Steps: checkout → pip install → flake8 → pytest → build. Badge on README.            |
+| A9  | GitHub Actions CI pipeline      | DevOps   | `ci.yml` triggers on push to `main`. Steps: checkout → pip install → ruff → pytest → build. Badge on README.            |
 | A10 | Prompt injection defense        | Security | System-role boundary tested: injecting "ignore previous instructions" returns scoped error, not compliance.               |
 
 #### Omar Wael
