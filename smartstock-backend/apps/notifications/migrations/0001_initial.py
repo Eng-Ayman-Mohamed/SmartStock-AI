@@ -5,81 +5,78 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ("purchasing", "0002_alter_purchaseorder_options_and_more"),
+        ('purchasing', '0002_purchaseorder_confirmed_at_purchaseorder_message_id_and_more'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name="EscalationNotification",
+            name='EscalationNotification',
             fields=[
                 (
-                    "id",
+                    'id',
                     models.BigAutoField(
                         auto_created=True,
                         primary_key=True,
                         serialize=False,
-                        verbose_name="ID",
+                        verbose_name='ID',
                     ),
                 ),
                 (
-                    "reason",
+                    'reason',
                     models.CharField(
                         choices=[
-                            ("email_delivery_failed", "Email Delivery Failed"),
-                            ("supplier_timeout", "Supplier Timeout"),
-                            ("other", "Other"),
+                            ('email_delivery_failed', 'Email Delivery Failed'),
+                            ('supplier_timeout', 'Supplier Timeout'),
+                            ('other', 'Other'),
                         ],
                         max_length=50,
                     ),
                 ),
                 (
-                    "channel",
+                    'channel',
                     models.CharField(
-                        choices=[("email", "Email"), ("in_app", "In-App")],
-                        default="email",
+                        choices=[('email', 'Email'), ('in_app', 'In-App')],
+                        default='email',
                         max_length=20,
                     ),
                 ),
                 (
-                    "status",
+                    'status',
                     models.CharField(
                         choices=[
-                            ("pending", "Pending"),
-                            ("sent", "Sent"),
-                            ("failed", "Failed"),
+                            ('pending', 'Pending'),
+                            ('sent', 'Sent'),
+                            ('failed', 'Failed'),
                         ],
-                        default="pending",
+                        default='pending',
                         max_length=20,
                     ),
                 ),
-                ("recipient_email", models.EmailField(blank=True, max_length=254)),
-                ("message", models.TextField(blank=True)),
-                ("error_message", models.TextField(blank=True)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("sent_at", models.DateTimeField(blank=True, null=True)),
+                ('recipient_email', models.EmailField(blank=True, max_length=254)),
+                ('message', models.TextField(blank=True)),
+                ('error_message', models.TextField(blank=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('sent_at', models.DateTimeField(blank=True, null=True)),
                 (
-                    "po",
+                    'po',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="escalation_notifications",
-                        to="purchasing.purchaseorder",
+                        related_name='escalation_notifications',
+                        to='purchasing.purchaseorder',
                     ),
                 ),
             ],
             options={
-                "ordering": ["-created_at"],
-                "indexes": [
+                'ordering': ['-created_at'],
+                'indexes': [
                     models.Index(
-                        fields=["reason", "status"],
-                        name="notificatio_reason_63d33c_idx",
+                        fields=['reason', 'status'],
+                        name='notificatio_reason_63d33c_idx',
                     ),
-                    models.Index(
-                        fields=["po", "reason"], name="notificatio_po_id_386c80_idx"
-                    ),
+                    models.Index(fields=['po', 'reason'], name='notificatio_po_id_386c80_idx'),
                 ],
             },
         ),
