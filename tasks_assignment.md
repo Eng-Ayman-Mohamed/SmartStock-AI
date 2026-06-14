@@ -315,7 +315,7 @@ Implement automated continuous integration so that every code push to the main b
 **Functional Requirements:**
 
 - The CI pipeline must trigger on every push to `main` and on every pull request targeting `main`.
-- The pipeline must execute the following steps in order, failing fast (stopping on first error): code checkout, Python dependency installation, Django system check (`python manage.py check`), Python linting with `flake8` (max line length 100, ignore E501 for docstrings only), pytest execution for all tests in the `tests/` directory, and frontend build verification (`npm run build` must succeed without errors).
+- The pipeline must execute the following steps in order, failing fast (stopping on first error): code checkout, Python dependency installation, Django system check (`python manage.py check`), Python linting with `ruff` (max line length 100, ignore E501), pytest execution for all tests in the `tests/` directory, and frontend build verification (`npm run build` must succeed without errors).
 - The pipeline must run against a real PostgreSQL service (GitHub Actions service container) with the pgvector extension — not SQLite. Tests must use the test database, not the production database.
 - All sensitive values (database URL, secret key, API keys) must be read from GitHub Actions secrets, not hardcoded in the workflow file.
 - The pipeline must report test coverage and fail if coverage on the `ai/` and `apps/` directories falls below 80%.
@@ -334,7 +334,7 @@ Implement automated continuous integration so that every code push to the main b
 **Implicit Context:**
 
 - The workflow file must not contain any hardcoded secrets. All sensitive values reference `${{ secrets.VARIABLE_NAME }}`.
-- The `flake8` configuration must be defined in a `setup.cfg` or `.flake8` file in the repository, not as inline CLI flags, to allow developers to run the same linting locally.
+- The `ruff` configuration must be defined in a `ruff.toml` file in the repository, not as inline CLI flags, to allow developers to run the same linting locally.
 - The frontend build step must also run ESLint. TypeScript type errors must cause the pipeline to fail — `tsc --noEmit` must be included.
 
 ---
@@ -1785,7 +1785,7 @@ All API errors must follow this exact shape:
 
 ## Code Quality Standards
 
-- All Python code must pass `flake8` with max line length 100.
+- All Python code must pass `ruff` with max line length 100.
 - All TypeScript code must pass `tsc --noEmit` without errors.
 - All new backend features must have at least one integration test.
 - All new AI features must have at least one unit test with mocked external calls.
