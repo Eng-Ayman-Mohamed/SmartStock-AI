@@ -124,9 +124,9 @@ Incumbent systems are reactive — they rely on manual, periodic audits that fai
 | **Observability**      | Langfuse                                     | 2.x     | LLM trace, token cost, agent monitoring      |
 | **Containerisation**   | Docker + Docker Compose                      | 25.x    | Environment consistency                      |
 | **CI/CD**              | GitHub Actions                               | —       | Lint + test + deploy on push                 |
-| **Backend Hosting**    | Render                                       | —       | Django + Celery deployment                   |
+| **Backend Hosting**    | Railway                                      | —       | Django + Celery deployment                   |
 | **Frontend Hosting**   | Vercel                                       | —       | React SPA deployment                         |
-| **Secret Management**  | python-dotenv (dev) / Render Env Vars (prod) | —       | Credential isolation                         |
+| **Secret Management**  | python-dotenv (dev) / Railway Env Vars (prod) | —       | Credential isolation                         |
 
 ### 2.2 Architecture Pattern
 
@@ -170,7 +170,7 @@ Incumbent systems are reactive — they rely on manual, periodic audits that fai
                      │  HTTPS · Bearer JWT
                      ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                   DJANGO REST API (Render)                       │
+│                   DJANGO REST API (Railway)                       │
 │                                                                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌────────────────────────┐  │
 │  │    auth/    │  │ inventory/  │  │     forecasting/        │  │
@@ -1398,7 +1398,7 @@ Respond with JSON only: {"intent": "...", "confidence": 0.0-1.0}
 | O6  | RAG query Django endpoint              | Backend  | `POST /api/ai/rag-query/` orchestrates hybrid search → rerank → LLM → returns answer + source citations.                                |
 | O7  | Voice input — Whisper UI               | Frontend | Mic button toggles recording. Audio sent to `/api/ai/transcribe/`. Transcript fed into ChatPanel query field automatically.             |
 | O8  | RAG hybrid search + reranking          | AI/ML    | Dense vector + PostgreSQL FTS hybrid search implemented. Cohere reranker selects top 3. Every response includes `[Source: X, Page: Y]`. |
-| O9  | GitHub Actions CD pipeline             | DevOps   | On merge to `main`: backend deploys to Render, frontend deploys to Vercel. Post-deploy health check hits `/api/health/`.                |
+| O9  | GitHub Actions CD pipeline             | DevOps   | On merge to `main`: Railway auto-deploys backend, Vercel auto-deploys frontend. CI gates the merge via branch protection.              |
 | O10 | PII protection + data retention policy | Security | PII fields access-controlled by role. `AuditLog` cleanup job (Celery Beat) deletes entries > 90 days.                                   |
 
 #### Mostafa Abdel Aziz
@@ -1428,7 +1428,7 @@ Respond with JSON only: {"intent": "...", "confidence": 0.0-1.0}
 | MW6  | OpenAPI docs — drf-spectacular    | Backend  | `/api/docs/` renders Swagger UI. All 30+ endpoints documented with request/response schemas.                                         |
 | MW7  | AI chat panel + citation tag UI   | Frontend | ChatPanel displays message history. CitationTag renders `[Source: X, Page: Y]` as clickable badge. Loading skeleton during API call. |
 | MW8  | Golden dataset — 30 NL test cases | AI/ML    | 30 annotated queries across 5 categories created. Pytest test reads dataset and asserts correct `action` + `filters`. Runs in CI.    |
-| MW9  | Production deployment + HTTPS     | DevOps   | Backend live on Render with HTTPS. Frontend live on Vercel. All env vars injected via platform. Smoke test passes.                   |
+| MW9  | Production deployment + HTTPS     | DevOps   | Backend live on Railway with HTTPS. Frontend live on Vercel. All env vars injected via platform. Smoke test passes.                   |
 | MW10 | Final security audit              | Security | No hardcoded secrets in repo (confirmed by `grep -r "sk-" .`). HTTPS enforced. CORS + rate limit verified on production URL.         |
 
 ---
