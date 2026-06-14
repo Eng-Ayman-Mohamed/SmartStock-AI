@@ -85,13 +85,8 @@ class TestIngestionRoleSeparation:
         Intercepts ChatPromptTemplate.from_messages inside the production
         code path to verify the actual prompt construction.
         """
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
-        from langchain_core.prompts import (
-            ChatPromptTemplate,
-            HumanMessagePromptTemplate,
-            SystemMessagePromptTemplate,
-        )
 
         original_from_messages = ChatPromptTemplate.from_messages
         captured = []
