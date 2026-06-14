@@ -4,6 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.forecasting.views import ForecastBySKUView
 from apps.inventory.views import NLQueryEndpointView
+from apps.monitoring.views import MetricsView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -16,6 +17,8 @@ urlpatterns = [
     path('api/ai/', include('apps.ingestion.urls')),
     path('api/ai/nlquery/', NLQueryEndpointView.as_view(), name='nl-query-endpoint'),
     path('api/audit/logs/', include('apps.audit.urls')),
+    path('api/monitoring/', include('apps.monitoring.urls')),
+    path('metrics/', MetricsView.as_view(), name='metrics'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
