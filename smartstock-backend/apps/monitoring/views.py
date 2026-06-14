@@ -1,5 +1,8 @@
 import logging
+import time
 
+from django.http import HttpResponse
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -13,9 +16,6 @@ class MetricsView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        from django.http import HttpResponse
-        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
-
         return HttpResponse(
             generate_latest(),
             content_type=CONTENT_TYPE_LATEST,
@@ -111,8 +111,6 @@ class EvaluationMetricsView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        import time
-
         from ai.evaluation.metrics import evaluate_golden_dataset, log_scores_to_langfuse
 
         start = time.time()

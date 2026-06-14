@@ -217,16 +217,6 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
-
-CELERY_BEAT_SCHEDULE = {
-    'purge-audit-logs-daily': {
-        'task': 'apps.audit.tasks.purge_old_audit_logs',
-        'schedule': timedelta(hours=24),
-    },
-}
-
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -275,6 +265,10 @@ CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
 )
 
 CELERY_BEAT_SCHEDULE = {
+    'purge-audit-logs-daily': {
+        'task': 'apps.audit.tasks.purge_old_audit_logs',
+        'schedule': timedelta(hours=24),
+    },
     'check-supplier-timeouts': {
         'task': 'apps.purchasing.timeout_tasks.check_supplier_timeouts',
         'schedule': 3600,  # every hour

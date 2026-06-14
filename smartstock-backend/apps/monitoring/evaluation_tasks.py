@@ -26,6 +26,12 @@ def run_daily_evaluation_task(self):
     """
     from ai.evaluation.metrics import evaluate_golden_dataset, log_scores_to_langfuse
 
+    from .metrics import (
+        EVALUATION_FAITHFULNESS_GAUGE,
+        EVALUATION_PRECISION_GAUGE,
+        EVALUATION_TIMESTAMP_GAUGE,
+    )
+
     start = time.time()
     try:
         logger.info('Starting daily evaluation run')
@@ -36,7 +42,9 @@ def run_daily_evaluation_task(self):
 
         log_scores_to_langfuse(results, duration_ms)
 
-        _update_prometheus_metrics(results)
+        EVALUATION_PRECISION_GAUGE.set(results.get('precision_at_5', 0.0))
+        EVALUATION_FAITHFULNESS_GAUGE.set(results.get('faithfulness', 0.0))
+        EVALUATION_TIMESTAMP_GAUGE.set(time.time())
 
         logger.info(
             'Daily evaluation completed: precision_at_5=%.4f, faithfulness=%.4f, '
@@ -67,28 +75,3 @@ def run_daily_evaluation_task(self):
             'error': str(exc),
             'duration_ms': round((time.time() - start) * 1000),
         }
-
-
-def _update_prometheus_metrics(results: dict) -> None:
-    """Update Prometheus gauges with evaluation results."""
-    try:
-        from prometheus_client import Gauge
-
-        precision_gauge = Gauge(
-            'evaluation_retrieval_precision_at_5',
-            'Retrieval Precision@5 from golden dataset evaluation',
-        )
-        faithfulness_gauge = Gauge(
-            'evaluation_answer_faithfulness',
-            'Answer Faithfulness score from golden dataset evaluation',
-        )
-        timestamp_gauge = Gauge(
-            'evaluation_last_timestamp_seconds',
-            'Unix timestamp of the last evaluation run',
-        )
-
-        precision_gauge.set(results.get('precision_at_5', 0.0))
-        faithfulness_gauge.set(results.get('faithfulness', 0.0))
-        timestamp_gauge.set(time.time())
-    except Exception as exc:
-        logger.warning('Failed to update Prometheus metrics: %s', exc)
