@@ -1,4 +1,4 @@
-from django.core.cache import cache
+from celery.result import AsyncResult
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiResponse,
@@ -16,6 +16,7 @@ from config.schema_serializers import ErrorResponseSerializer
 from .models import ForecastResult
 from .serializers import ForecastResultSerializer
 from .services import ForecastingService
+from .tasks import run_forecasting_agent
 
 
 @extend_schema_view(
@@ -144,50 +145,65 @@ class ForecastBySKUView(APIView):
         )
 
 
-class TriggerForecastView(APIView):
+class RunForecastView(APIView):
     permission_classes = [IsAdminOnly]
 
     @extend_schema(
         request=inline_serializer(
-            'TriggerForecastInput',
+            'RunForecastInput',
             {
-                'sku_id': serializers.IntegerField(
+                'sku_ids': serializers.ListField(
+                    child=serializers.IntegerField(),
                     required=False,
-                    help_text='Optional SKU ID to forecast for a specific product',
+                    help_text='Optional list of SKU IDs to forecast. Forecasts all if omitted.',
                 ),
             },
         ),
         responses={
-            200: OpenApiResponse(
+            202: OpenApiResponse(
                 response={
                     'type': 'object',
                     'properties': {
                         'status': {'type': 'string', 'example': 'forecast_triggered'},
-                        'forecasts': {'type': 'array', 'items': {'type': 'object'}},
+                        'job_id': {'type': 'string', 'example': 'fc8a2b7e-...'},
                     },
                 },
-                description='Forecast triggered successfully',
+                description='Forecast agent dispatched as async Celery task',
             ),
             401: OpenApiResponse(
                 response=ErrorResponseSerializer, description='Authentication required'
             ),
             403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Invalid sku_ids format'
+            ),
         },
         examples=[
             OpenApiExample(
-                'Trigger Forecast Request',
-                value={'sku_id': 1},
+                'Run Forecast Request',
+                value={'sku_ids': [1, 2, 3]},
                 request_only=True,
             ),
         ],
         tags=['forecasting'],
     )
     def post(self, request):
-        sku_id = request.data.get('sku_id')
-        service = ForecastingService()
-        result = service.run_forecast(sku_id=sku_id)
-        cache.delete_pattern('forecast_dashboard_*')
-        return Response({'status': 'forecast_triggered', 'forecasts': result})
+        sku_ids = request.data.get('sku_ids')
+        if sku_ids is not None:
+            if not isinstance(sku_ids, list) or not all(type(s) is int for s in sku_ids):
+                return Response(
+                    {
+                        'status': 'error',
+                        'error': 'ValidationError',
+                        'message': 'sku_ids must be a list of integers.',
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        task = run_forecasting_agent.delay(sku_ids=sku_ids)
+        return Response(
+            {'status': 'forecast_triggered', 'job_id': task.id},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 class ForecastDashboardView(APIView):
@@ -210,3 +226,39 @@ class ForecastDashboardView(APIView):
         service = ForecastingService()
         data = service.get_dashboard_data()
         return Response(data)
+
+
+class ForecastJobStatusView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {
+                        'job_id': {'type': 'string'},
+                        'status': {'type': 'string'},
+                        'result': {'type': 'object'},
+                    },
+                },
+                description='Job status and result if completed',
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Admin only'),
+        },
+        tags=['forecasting'],
+    )
+    def get(self, request, job_id):
+        result = AsyncResult(job_id)
+        response_data = {
+            'job_id': job_id,
+            'status': result.status,
+        }
+        if result.status == 'SUCCESS':
+            response_data['result'] = result.result
+        elif result.status == 'FAILURE':
+            response_data['error'] = str(result.result)
+        return Response(response_data)
