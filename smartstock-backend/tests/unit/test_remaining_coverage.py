@@ -454,17 +454,18 @@ class BaseToolInvokeTests(unittest.TestCase):
 
 class ForecastingAgentTests(unittest.TestCase):
     @patch('ai.agents.forecasting_agent.trace_agent_run')
-    def test_run_returns_not_implemented(self, mock_trace):
+    def test_run_completes_when_no_skus(self, mock_trace):
         agent = ForecastingAgent()
-        result = agent.run()
-        self.assertEqual(result['status'], 'not_implemented')
+        result = agent.run(context={'sku_ids': []})
+        self.assertEqual(result['status'], 'completed')
         self.assertEqual(result['agent'], 'forecasting_agent')
+        self.assertEqual(result['total_skus'], 0)
         mock_trace.assert_called_once()
 
     @patch('ai.agents.forecasting_agent.trace_agent_run')
     def test_run_with_context(self, mock_trace):
         agent = ForecastingAgent()
-        result = agent.run(context={'key': 'val'})
+        result = agent.run(context={'sku_ids': []})
         self.assertEqual(result['agent'], 'forecasting_agent')
 
 

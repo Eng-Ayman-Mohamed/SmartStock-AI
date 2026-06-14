@@ -6,10 +6,10 @@ class HealthEndpointTests(APITestCase):
     """Integration tests for health check API endpoints."""
 
     def _health_url(self):
-        return '/api/health/'
+        return '/api/health/live/'
 
     def _readiness_url(self):
-        return '/api/health/readiness/'
+        return '/api/health/ready/'
 
     def test_health_check_returns_200(self):
         """GET /api/health/ should always return 200 while the process is alive."""
