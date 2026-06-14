@@ -8,7 +8,11 @@ Ensures that:
 """
 
 import pytest
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+)
 
 from ai.llm.chain import _NL_PROMPT
 from ai.llm.prompts import SYSTEM_PROMPT

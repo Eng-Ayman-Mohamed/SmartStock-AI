@@ -190,7 +190,11 @@ def prompt_injection_filter(query: str) -> tuple[bool, str | None]:
         'now act as',
         'new instructions',
     ]
-    role_switching = [('system:', r'system\s*:'), ('assistant:', r'assistant\s*:'), ('human:', r'human\s*:')]
+    role_switching = [
+        ('system:', r'system\s*:'),
+        ('assistant:', r'assistant\s*:'),
+        ('human:', r'human\s*:'),
+    ]
     for pattern in patterns:
         if pattern in normalized:
             return False, pattern
@@ -232,12 +236,12 @@ def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
         ).strip()
         if not result or not validate_response_safety(result):
             logger.warning('GPT-4o formatter output blocked by response safety validator')
-            return 'I\'m sorry, I cannot provide that information.'
+            return "I'm sorry, I cannot provide that information."
         return result
     except Exception as exc:
         logger.warning('GPT-4o formatter failed: %s', exc)
         fallback = f'Here is the requested information: {raw_data}'
         if not validate_response_safety(fallback):
             logger.warning('GPT-4o formatter fallback blocked by response safety validator')
-            return 'I\'m sorry, I cannot provide that information.'
+            return "I'm sorry, I cannot provide that information."
         return fallback
