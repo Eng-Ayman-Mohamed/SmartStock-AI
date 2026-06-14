@@ -170,7 +170,7 @@ def _evaluate_rule(rule, current_value, threshold):
 
 
 def _fire_alert(rule, value, message):
-    """Create a firing alert event and send notifications."""
+    """Create a firing alert event, send notifications, and log to Langfuse."""
     event = AlertEvent.objects.create(
         rule=rule,
         status=AlertStatus.FIRING,
@@ -194,6 +194,8 @@ def _fire_alert(rule, value, message):
     event.email_sent = email_sent
     event.dashboard_notified = dashboard_notified
     event.save(update_fields=['email_sent', 'dashboard_notified'])
+
+    _log_alert_to_langfuse(rule, value, message, 'firing')
 
     return event
 
@@ -235,3 +237,32 @@ def evaluate_all_alerts():
             logger.exception('Alert evaluation failed for %s: %s', name, exc)
             results[name] = f'error: {exc}'
     return results
+
+
+def _log_alert_to_langfuse(rule, value, message, status):
+    """Log an alert event to Langfuse as a trace with a score."""
+    try:
+        from ai.observability.langfuse import get_langfuse_client
+
+        client = get_langfuse_client()
+        if client is None:
+            return
+
+        trace = client.trace(
+            name=f'alert_{rule.name}',
+            input={'metric_name': rule.metric_name, 'threshold': rule.threshold},
+            output={'value': value, 'message': message, 'status': status},
+            metadata={
+                'severity': rule.severity,
+                'alert_rule': rule.name,
+            },
+        )
+        severity_score = {'critical': 1.0, 'warning': 0.5, 'info': 0.1}.get(rule.severity, 0.0)
+        client.score(
+            trace_id=trace.id,
+            name='alert_severity',
+            value=severity_score,
+        )
+        client.flush()
+    except Exception as exc:
+        logger.debug('Langfuse alert trace skipped: %s', exc)

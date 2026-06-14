@@ -8,7 +8,7 @@ export function useReorderAlerts() {
   return useQuery<ReorderAlert[]>({
     queryKey: ['reorder-alerts'],
     queryFn: fetchLowStockItems,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     enabled: !!token,
     retry: false,
   });
