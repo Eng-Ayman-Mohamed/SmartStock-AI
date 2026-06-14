@@ -121,8 +121,9 @@ class ForecastingEndpointTests(APITestCase):
         )
         self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
         data = resp.json()
-        self.assertEqual(data['status'], 'forecast_triggered')
-        self.assertIn('job_id', data)
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['data']['status'], 'forecast_triggered')
+        self.assertIn('job_id', data['data'])
         mock_task.assert_called_once_with(sku_ids=[self.sku.id])
 
     @patch('apps.forecasting.views.run_forecasting_agent.delay')
@@ -157,7 +158,7 @@ class ForecastingEndpointTests(APITestCase):
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
         )
-        job_id = resp.json()['job_id']
+        job_id = resp.json()['data']['job_id']
 
         with patch('apps.forecasting.views.AsyncResult') as mock_result:
             mock_result.return_value.status = 'PENDING'
