@@ -24,9 +24,7 @@ def _check_redis() -> bool:
 class HealthCheckView(APIView):
     """Liveness probe — always 200 as long as the process is alive.
 
-    Use this to confirm the container is up and Django can serve requests.
-    Body includes dep status for diagnostics, but the status code never
-    drops to 503, so Railway (and similar orchestrators) keep routing traffic.
+    Body includes dependency status for diagnostics.
     """
 
     authentication_classes = []
@@ -65,9 +63,7 @@ class HealthCheckView(APIView):
 class ReadinessView(APIView):
     """Readiness probe — 200 only when all required dependencies are reachable.
 
-    Use this as a stricter check for orchestrators that want to drain traffic
-    when a dependency is down. Returns 503 + diagnostic body when DB or Redis
-    is unreachable so callers can react.
+    Returns 503 + diagnostic body when DB or Redis is unreachable.
     """
 
     authentication_classes = []

@@ -38,17 +38,10 @@ npm run build          # tsc -b && vite build
 npm run lint           # eslint .
 ```
 
-### Docker (full stack)
-```bash
-docker compose up --build
-```
-Services: postgres (pgvector/pg16), redis, backend (port 8000), celery, celery-beat, frontend (port 3000).
-
 ## Config quirks
 
-- **Settings split**: `config/settings/base.py` ← `development.py` / `production.py`. The Dockerfile and Railway use `production`.
+- **Settings split**: `config/settings/base.py` ← `development.py`. `manage.py` defaults to `development`; `wsgi.py`/`asgi.py` also default to `development`.
 - **No flake8, no pyproject.toml** in backend — linting config is not yet committed despite being mentioned in task specs.
-- **CI workflow** at `.github/workflows/ci.yml` — runs lint, tests (pytest with `config.settings.test`), and OpenAPI validation.
 - **No pre-commit hooks** configured.
 - **Migrations are tracked in git** — run `python manage.py makemigrations` after model changes and commit the generated files.
 - **Frontend ESLint** at `eslint.config.js` — run via `npm run lint`.
@@ -57,7 +50,6 @@ Services: postgres (pgvector/pg16), redis, backend (port 8000), celery, celery-b
 
 ```bash
 cd smartstock-backend
-# no pytest config files found — may need DJANGO_SETTINGS_MODULE set
 DJANGO_SETTINGS_MODULE=config.settings.development python -m pytest tests/
 ```
 - Tests live in `smartstock-backend/tests/` split into `unit/`, `integration/`, and `golden_dataset/`.
@@ -69,9 +61,3 @@ DJANGO_SETTINGS_MODULE=config.settings.development python -m pytest tests/
 - **Standard response envelope**: `{"status": "success", "data": ..., "meta": {...}}` on success, `{"status": "error", "error": "Type", "message": "...", "code": NNN}` on error.
 - **Domain exceptions** in `core/exceptions.py` → global exception handler maps to HTTP codes.
 - **Design system**: Custom Tailwind tokens (brand-50..900, green-50..900, amber, red, purple, gray). See `design-system-prompt.md` for exact hex values.
-
-## Deployment
-
-- **Backend**: Railway (`railway.toml` + `railway.worker.toml`). Start command runs `migrate --noinput` then gunicorn.
-- **Frontend**: Vercel (implied by `.env.example` comments).
-- **Health check**: `GET /api/health/` returns `{"database": "connected", "redis": "connected"}`.
