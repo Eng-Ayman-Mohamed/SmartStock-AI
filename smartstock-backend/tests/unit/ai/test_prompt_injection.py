@@ -6,7 +6,6 @@ Tests for the prompt injection defence subsystem:
   3. validate_response_safety()  —  dangerous-content detection
 """
 
-
 from pydantic import BaseModel
 
 from ai.llm.chain import prompt_injection_filter

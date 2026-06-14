@@ -87,7 +87,6 @@ class TestIngestionRoleSeparation:
         """
         from unittest.mock import patch
 
-
         original_from_messages = ChatPromptTemplate.from_messages
         captured = []
 
