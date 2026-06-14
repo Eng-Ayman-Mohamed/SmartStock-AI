@@ -8,7 +8,7 @@ export function useAgentRuns() {
   return useQuery<AgentRun[]>({
     queryKey: ['agent-runs'],
     queryFn: fetchAgentRuns,
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
     enabled: !!token,
     retry: false,
   });

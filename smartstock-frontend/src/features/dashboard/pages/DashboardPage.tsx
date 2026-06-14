@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AreaChart,
   Area,
@@ -11,9 +12,10 @@ import {
 } from 'recharts';
 import StatCard from '../../../shared/components/StatCard';
 import Card from '../../../shared/components/Card';
-import { Package, AlertTriangle, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Package, AlertTriangle, ShoppingCart, TrendingUp, RefreshCw, AlertCircle } from 'lucide-react';
 import { useReorderAlerts } from '../hooks/useReorderAlerts';
 import { usePendingPOs } from '../hooks/usePendingPOs';
+import { useAgentRuns } from '../hooks/useAgentRuns';
 import { useForecastDashboard } from '../../forecasting/hooks/useForecastDashboard';
 import ReorderAlertList from '../components/ReorderAlertList';
 import AgentRunStatus from '../components/AgentRunStatus';
@@ -124,13 +126,38 @@ function ForecastChart({ data: allSkus }: { data: ChartPoint[] | null }) {
   );
 }
 
+function isAgentPipelineStale(runs: { created_at: string }[] | undefined): boolean {
+  if (!runs || runs.length === 0) return true;
+  const now = new Date();
+  const mostRecent = new Date(runs[0].created_at);
+  const diffMs = now.getTime() - mostRecent.getTime();
+  const STALE_THRESHOLD_MS = 25 * 60 * 60 * 1000;
+  return diffMs >= STALE_THRESHOLD_MS;
+}
+
 export default function DashboardPage() {
+  const qc = useQueryClient();
   const { data: alerts } = useReorderAlerts();
   const { data: pendingPOs } = usePendingPOs();
   const { data: forecastData } = useForecastDashboard();
+  const { data: agentRuns } = useAgentRuns();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['reorder-alerts'] }),
+      qc.invalidateQueries({ queryKey: ['agent-runs'] }),
+      qc.invalidateQueries({ queryKey: ['pending-pos'] }),
+    ]);
+    setIsRefreshing(false);
+  }, [qc, isRefreshing]);
 
   const lowStockCount = alerts?.length ?? 0;
   const pendingPOCount = pendingPOs?.length ?? 0;
+  const agentStale = isAgentPipelineStale(agentRuns);
 
   const chartData = useMemo(() => {
     if (!forecastData?.skus?.length) return null;
@@ -159,14 +186,31 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div>
-        <h1 className="text-page-heading text-ink">Dashboard</h1>
-        <p className="text-body text-ink-muted mt-1">
-          {pendingPOCount > 0
-            ? `You have ${pendingPOCount} pending PO${pendingPOCount > 1 ? 's' : ''}.`
-            : 'All purchase orders are up to date.'}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-page-heading text-ink">Dashboard</h1>
+          <p className="text-body text-ink-muted mt-1">
+            {pendingPOCount > 0
+              ? `You have ${pendingPOCount} pending PO${pendingPOCount > 1 ? 's' : ''}.`
+              : 'All purchase orders are up to date.'}
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-ink-secondary bg-white border border-hairline rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
+
+      {agentStale && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <p className="text-body">Agent pipeline may not be running.</p>
+        </div>
+      )}
 
       <SupplierWarningBadge />
 
@@ -188,7 +232,7 @@ export default function DashboardPage() {
           <ForecastChart data={chartData} />
         </Card>
 
-        <ReorderAlertList />
+        <ReorderAlertList onRefresh={handleRefresh} isRefreshing={isRefreshing} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -7,6 +7,7 @@ export interface ReorderAlert {
   reorder_point: number;
   reorder_quantity: number;
   supplier_name: string | null;
+  predicted_stockout_date: string | null;
 }
 
 export interface AgentRun {
