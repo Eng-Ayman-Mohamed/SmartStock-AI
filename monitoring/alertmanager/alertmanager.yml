@@ -1,0 +1,46 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-email'
+
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical-email'
+      repeat_interval: 1h
+
+    - match:
+        severity: warning
+      receiver: 'default-email'
+      repeat_interval: 4h
+
+receivers:
+  - name: 'default-email'
+    email_configs:
+      - to: '${ESCALATION_RECIPIENT_EMAILS}'
+        from: 'noreply@smartstock.ai'
+        smarthost: '${EMAIL_HOST}:${EMAIL_PORT}'
+        auth_username: '${EMAIL_HOST_USER}'
+        auth_password: '${EMAIL_HOST_PASSWORD}'
+        require_tls: true
+
+  - name: 'critical-email'
+    email_configs:
+      - to: '${ESCALATION_RECIPIENT_EMAILS}'
+        from: 'noreply@smartstock.ai'
+        smarthost: '${EMAIL_HOST}:${EMAIL_PORT}'
+        auth_username: '${EMAIL_HOST_USER}'
+        auth_password: '${EMAIL_HOST_PASSWORD}'
+        require_tls: true
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname']
