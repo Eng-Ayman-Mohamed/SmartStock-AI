@@ -1349,12 +1349,17 @@ class NLQueryEndpointView(APIView):
         pipeline_start = time.time()
 
         # Step A: Prompt Injection Check
-        is_safe = prompt_injection_filter(query)
+        try:
+            is_safe, matched_pattern = prompt_injection_filter(query)
+        except Exception:
+            logger.exception('Prompt injection filter failed')
+            is_safe, matched_pattern = True, None
+
         if not is_safe:
             AuditLog.objects.create(
                 user=user,
                 event='PROMPT_INJECTION_ATTEMPT',
-                data_snapshot={'query': query},
+                data_snapshot={'query': query, 'matched_pattern': matched_pattern},
             )
             return Response(
                 {'status': 'error', 'message': 'Malicious query detected.'},

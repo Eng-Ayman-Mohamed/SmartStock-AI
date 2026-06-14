@@ -37,14 +37,14 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Authentication & RBAC ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_unauthenticated_returns_401(self, mock_execute, mock_filter):
         response = self.client.post(self._url(), {'query': 'test'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         mock_execute.assert_not_called()
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_viewer_returns_403(self, mock_execute, mock_filter):
         self._auth(self.viewer)
@@ -54,7 +54,7 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Input validation ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_missing_query_returns_422(self, mock_execute, mock_filter):
         self._auth(self.manager)
@@ -62,7 +62,7 @@ class RAGQueryEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
         mock_execute.assert_not_called()
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_short_query_returns_422(self, mock_execute, mock_filter):
         self._auth(self.manager)
@@ -72,7 +72,7 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Prompt injection ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=False)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(False, 'injection-attempt'))
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_injection_returns_400(self, mock_execute, mock_filter):
         self._auth(self.manager)
@@ -89,7 +89,7 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Successful RAG query ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_successful_rag_query(self, mock_execute, mock_executor_cls, mock_filter):
@@ -127,7 +127,7 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- No relevant context found ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_no_relevant_context_returns_explicit_message(
@@ -164,7 +164,7 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Pipeline timeout ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.services.RAGQueryService.execute')
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     def test_pipeline_timeout_returns_504(self, mock_executor_cls, mock_execute, mock_filter):
@@ -194,7 +194,7 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Service failure ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_service_error_returns_500(self, mock_execute, mock_executor_cls, mock_filter):
@@ -221,7 +221,7 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Audit log for successful queries ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.services.RAGQueryService.execute')
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     def test_successful_query_creates_audit_log(self, mock_executor_cls, mock_execute, mock_filter):
@@ -381,7 +381,7 @@ class RAGQueryFullPipelineTests(APITestCase):
         refresh = RefreshToken.for_user(user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('ai.rag.retrieval._get_embedding_model')
     @patch('ai.rag.retrieval.connection')
@@ -449,7 +449,7 @@ class RAGQueryFullPipelineTests(APITestCase):
         self.assertEqual(len(response.data['data']['sources']), 1)
         self.assertEqual(response.data['data']['sources'][0]['document'], 'supplier_policy.pdf')
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_cohere_unavailable_returns_503(self, mock_execute, mock_executor_cls, mock_filter):
@@ -475,7 +475,7 @@ class RAGQueryFullPipelineTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=True)
+    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ThreadPoolExecutor')
     @patch('apps.ingestion.views._get_langfuse')
     @patch('apps.ingestion.services.RAGQueryService.execute')
