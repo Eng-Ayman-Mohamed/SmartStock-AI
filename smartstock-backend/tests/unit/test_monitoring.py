@@ -123,9 +123,7 @@ class PrometheusMetricsTest(TestCase):
     """Verify that Prometheus metric objects are correctly defined and usable."""
 
     def test_request_latency_histogram_observe(self):
-        REQUEST_LATENCY.labels(method='GET', endpoint='/api/test', status_code='200').observe(
-            0.5
-        )
+        REQUEST_LATENCY.labels(method='GET', endpoint='/api/test', status_code='200').observe(0.5)
 
     def test_request_count_counter_inc(self):
         REQUEST_COUNT.labels(method='GET', endpoint='/api/test', status_code='200').inc()
