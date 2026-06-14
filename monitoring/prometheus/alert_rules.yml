@@ -1,0 +1,46 @@
+groups:
+  - name: smartstock_alerts
+    rules:
+      # --- P95 Latency Alert ---
+      - alert: P95LatencyHigh
+        expr: http_request_p95_latency_seconds > 3.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 request latency is above 3 seconds"
+          description: "P95 latency is {{ $value | humanizeDuration }} which exceeds the 3s threshold."
+          runbook_url: "https://docs.smartstock.ai/runbooks/high-latency"
+
+      # --- Error Rate Alert ---
+      - alert: ErrorRateHigh
+        expr: http_error_rate > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application error rate exceeds 1%"
+          description: "Error rate is {{ $value | humanizePercentage }} which exceeds the 1% threshold."
+          runbook_url: "https://docs.smartstock.ai/runbooks/high-error-rate"
+
+      # --- Daily Token Spend Cap ---
+      - alert: DailyTokenSpendCapReached
+        expr: ai_daily_token_spend >= ai_token_daily_budget
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Daily token spending cap reached"
+          description: "Current spend: {{ $value }} tokens, budget: {{ printf \"%.0f\" (query \"ai_token_daily_budget\" | first) }} tokens."
+          runbook_url: "https://docs.smartstock.ai/runbooks/token-budget"
+
+      # --- Agent Success Rate Alert ---
+      - alert: AgentSuccessRateLow
+        expr: ai_agent_success_rate_current < 0.80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AI agent success rate is below 80%"
+          description: "Agent success rate is {{ $value | humanizePercentage }} which is below the 80% threshold."
+          runbook_url: "https://docs.smartstock.ai/runbooks/agent-success-rate"
