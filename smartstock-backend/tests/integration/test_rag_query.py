@@ -72,7 +72,9 @@ class RAGQueryEndpointTests(APITestCase):
 
     # --- Prompt injection ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(False, 'injection-attempt'))
+    @patch(
+        'apps.ingestion.views.prompt_injection_filter', return_value=(False, 'injection-attempt')
+    )
     @patch('apps.ingestion.services.RAGQueryService.execute')
     def test_injection_returns_400(self, mock_execute, mock_filter):
         self._auth(self.manager)
