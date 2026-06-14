@@ -27,7 +27,8 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
   const isRejected = rejectMutation.isSuccess;
   const isSettled = isApproved || isRejected;
 
-  const computedTotal = `$${(editableQty * po.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const safeUnitCost = po.unit_cost ?? 0;
+  const computedTotal = `$${(editableQty * safeUnitCost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const qtyAlreadyEdited = editableQty !== po.recommended_qty;
 
   const handleResetQty = () => {
@@ -134,7 +135,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             </div>
             <div>
               <p className="text-caption text-ink-muted">Unit cost</p>
-              <p className="text-body text-ink mt-0.5 tabular-nums">${po.unit_cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-body text-ink mt-0.5 tabular-nums">${safeUnitCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
             <div>
               <p className="text-caption text-ink-muted flex items-center gap-1">
