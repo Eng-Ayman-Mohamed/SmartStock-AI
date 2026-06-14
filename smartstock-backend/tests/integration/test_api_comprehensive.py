@@ -467,15 +467,15 @@ class IngestionEndpointComprehensiveTest(APITestCase):
 
 class HealthEndpointComprehensiveTest(APITestCase):
     def test_health_check_method_not_allowed_post(self):
-        resp = self.client.post('/api/health/')
+        resp = self.client.post('/api/health/live/')
         self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_readiness_method_not_allowed_post(self):
-        resp = self.client.post('/api/health/readiness/')
+        resp = self.client.post('/api/health/ready/')
         self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_health_check_get(self):
-        resp = self.client.get('/api/health/')
+        resp = self.client.get('/api/health/live/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         data = resp.json()
         self.assertEqual(data['status'], 'success')
@@ -485,7 +485,7 @@ class HealthEndpointComprehensiveTest(APITestCase):
         self.assertIn(inner['redis'], ['connected', 'disconnected'])
 
     def test_readiness_check(self):
-        resp = self.client.get('/api/health/readiness/')
+        resp = self.client.get('/api/health/ready/')
         self.assertIn(resp.status_code, [status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE])
         data = resp.json()
         if resp.status_code == status.HTTP_200_OK:
