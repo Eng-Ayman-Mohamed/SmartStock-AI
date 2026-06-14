@@ -65,7 +65,9 @@ if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
 
     _orig_create_extension_database_forwards = CreateExtension.database_forwards
 
-    def _test_create_extension_database_forwards(self, app_label, schema_editor, from_state, to_state):
+    def _test_create_extension_database_forwards(
+        self, app_label, schema_editor, from_state, to_state
+    ):
         if schema_editor.connection.vendor != 'postgresql':
             logger.info(
                 'Skipping CreateExtension(%s) on %s', self.name, schema_editor.connection.vendor
