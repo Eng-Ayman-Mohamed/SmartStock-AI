@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.cache import cache
 from rest_framework import status
@@ -389,14 +390,16 @@ class ForecastingEndpointComprehensiveTest(APITestCase):
         )
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_trigger_forecast(self):
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_trigger_forecast(self, mock_task):
+        mock_task.return_value.id = 'fake-task-id'
         resp = self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+            '/api/forecasting/run/',
+            {'sku_ids': [self.sku.id]},
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
         )
-        self.assertIn(resp.status_code, [status.HTTP_200_OK, status.HTTP_202_ACCEPTED])
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
 
     def test_dashboard(self):
         resp = self.client.get(
@@ -467,15 +470,15 @@ class IngestionEndpointComprehensiveTest(APITestCase):
 
 class HealthEndpointComprehensiveTest(APITestCase):
     def test_health_check_method_not_allowed_post(self):
-        resp = self.client.post('/api/health/')
+        resp = self.client.post('/api/health/live/')
         self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_readiness_method_not_allowed_post(self):
-        resp = self.client.post('/api/health/readiness/')
+        resp = self.client.post('/api/health/ready/')
         self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_health_check_get(self):
-        resp = self.client.get('/api/health/')
+        resp = self.client.get('/api/health/live/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         data = resp.json()
         self.assertEqual(data['status'], 'success')
@@ -485,7 +488,7 @@ class HealthEndpointComprehensiveTest(APITestCase):
         self.assertIn(inner['redis'], ['connected', 'disconnected'])
 
     def test_readiness_check(self):
-        resp = self.client.get('/api/health/readiness/')
+        resp = self.client.get('/api/health/ready/')
         self.assertIn(resp.status_code, [status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE])
         data = resp.json()
         if resp.status_code == status.HTTP_200_OK:
