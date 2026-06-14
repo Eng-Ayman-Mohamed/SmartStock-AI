@@ -1,9 +1,9 @@
 groups:
   - name: smartstock_alerts
     rules:
-      # --- P95 Latency Alert ---
+      # --- P95 Latency Alert (computed from Histogram) ---
       - alert: P95LatencyHigh
-        expr: http_request_p95_latency_seconds > 3.0
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 3.0
         for: 5m
         labels:
           severity: warning
@@ -12,9 +12,9 @@ groups:
           description: "P95 latency is {{ $value | humanizeDuration }} which exceeds the 3s threshold."
           runbook_url: "https://docs.smartstock.ai/runbooks/high-latency"
 
-      # --- Error Rate Alert ---
+      # --- Error Rate Alert (computed from Counters) ---
       - alert: ErrorRateHigh
-        expr: http_error_rate > 0.01
+        expr: sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m])) > 0.01
         for: 5m
         labels:
           severity: critical
@@ -25,16 +25,16 @@ groups:
 
       # --- Daily Token Spend Cap ---
       - alert: DailyTokenSpendCapReached
-        expr: ai_daily_token_spend >= ai_token_daily_budget
+        expr: ai_daily_token_usage >= ai_token_daily_budget
         for: 1m
         labels:
           severity: warning
         annotations:
           summary: "Daily token spending cap reached"
-          description: "Current spend: {{ $value }} tokens, budget: {{ printf \"%.0f\" (query \"ai_token_daily_budget\" | first) }} tokens."
+          description: "Current spend: {{ $value }} tokens."
           runbook_url: "https://docs.smartstock.ai/runbooks/token-budget"
 
-      # --- Agent Success Rate Alert ---
+      # --- Agent Success Rate Alert (set by Django Celery task) ---
       - alert: AgentSuccessRateLow
         expr: ai_agent_success_rate_current < 0.80
         for: 5m

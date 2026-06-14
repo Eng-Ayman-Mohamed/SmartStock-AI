@@ -1,14 +1,18 @@
+"""Application-specific alert evaluations.
+
+P95 latency and error-rate alerts are handled natively by Prometheus via
+histogram_quantile() and rate() respectively.  This module only evaluates
+alerts that require database queries or business logic not expressible in
+PromQL (token spend caps, agent success rate).
+"""
+
 import logging
 from datetime import timedelta
 
+from django.db.models import Sum
 from django.utils import timezone
 
-from .metrics import (
-    AGENT_SUCCESS_RATE_GAUGE,
-    get_current_error_rate,
-    get_current_p95_latency,
-    set_current_daily_token_budget,
-)
+from .metrics import AGENT_SUCCESS_RATE_GAUGE
 from .models import (
     AgentRunLog,
     AlertEvent,
@@ -28,54 +32,18 @@ def _get_alert_config():
     return getattr(settings, 'LANGFUSE_ALERT_THRESHOLDS', {})
 
 
-def evaluate_p95_latency():
-    """Evaluate P95 latency alert."""
-    rule, _ = AlertRule.objects.get_or_create(
-        name='P95 Latency Alert',
-        defaults={
-            'description': 'Triggers when P95 request latency exceeds 3 seconds',
-            'severity': AlertSeverity.WARNING,
-            'metric_name': 'http_request_p95_latency_seconds',
-            'threshold': 3.0,
-            'evaluation_window_minutes': 5,
-            'cooldown_minutes': 10,
-        },
-    )
-
-    current_value = get_current_p95_latency()
-    threshold = _get_alert_config().get('llm_latency_p95_ms_warning', 3000) / 1000.0
-
-    return _evaluate_rule(rule, current_value, threshold)
-
-
-def evaluate_error_rate():
-    """Evaluate error rate alert."""
-    rule, _ = AlertRule.objects.get_or_create(
-        name='Error Rate Alert',
-        defaults={
-            'description': 'Triggers when application error rate exceeds 1%',
-            'severity': AlertSeverity.CRITICAL,
-            'metric_name': 'http_error_rate',
-            'threshold': 0.01,
-            'evaluation_window_minutes': 5,
-            'cooldown_minutes': 10,
-        },
-    )
-
-    current_value = get_current_error_rate()
-    threshold = _get_alert_config().get('llm_api_error_rate_critical', 0.01)
-
-    return _evaluate_rule(rule, current_value, threshold)
-
-
 def evaluate_token_spend():
-    """Evaluate daily token spend cap alert."""
+    """Evaluate daily token spend cap alert.
+
+    Queries the database for today's total token usage and compares against
+    the configured budget.
+    """
     rule, _ = AlertRule.objects.get_or_create(
         name='Daily Token Spend Cap',
         defaults={
             'description': 'Triggers when daily token spending cap is reached',
             'severity': AlertSeverity.WARNING,
-            'metric_name': 'ai_daily_token_spend',
+            'metric_name': 'ai_daily_token_usage',
             'threshold': 1_000_000,
             'evaluation_window_minutes': 60,
             'cooldown_minutes': 60,
@@ -89,19 +57,22 @@ def evaluate_token_spend():
         rule.threshold = threshold
         rule.save(update_fields=['threshold'])
 
-    set_current_daily_token_budget(threshold)
-
     today = timezone.now().date()
-    daily_total = TokenUsageLog.objects.filter(logged_at=today).values_list(
-        'total_tokens', flat=True
+    daily_total = (
+        TokenUsageLog.objects.filter(logged_at=today).aggregate(total=Sum('total_tokens'))['total']
+        or 0
     )
-    current_value = sum(daily_total)
 
-    return _evaluate_rule(rule, current_value, threshold)
+    return _evaluate_rule(rule, float(daily_total), threshold)
 
 
 def evaluate_agent_success_rate():
-    """Evaluate agent success rate alert."""
+    """Evaluate agent success rate alert.
+
+    Queries the database for recent agent runs and computes the success rate.
+    This logic is application-specific (windowed DB query) and cannot be
+    expressed purely in Prometheus.
+    """
     rule, _ = AlertRule.objects.get_or_create(
         name='Agent Success Rate Alert',
         defaults={
@@ -133,7 +104,6 @@ def evaluate_agent_success_rate():
     success_rate = successes / total
     AGENT_SUCCESS_RATE_GAUGE.set(success_rate)
 
-    # Alert fires when success rate is BELOW threshold
     if success_rate < threshold:
         return _fire_alert(
             rule,
@@ -151,7 +121,6 @@ def _evaluate_rule(rule, current_value, threshold):
         return None
 
     if current_value > threshold:
-        # Check cooldown before firing
         last_fired = (
             AlertEvent.objects.filter(rule=rule, status=AlertStatus.FIRING)
             .order_by('-created_at')
@@ -170,7 +139,7 @@ def _evaluate_rule(rule, current_value, threshold):
 
 
 def _fire_alert(rule, value, message):
-    """Create a firing alert event and send notifications."""
+    """Create a firing alert event, send notifications, and log to Langfuse."""
     event = AlertEvent.objects.create(
         rule=rule,
         status=AlertStatus.FIRING,
@@ -194,6 +163,8 @@ def _fire_alert(rule, value, message):
     event.email_sent = email_sent
     event.dashboard_notified = dashboard_notified
     event.save(update_fields=['email_sent', 'dashboard_notified'])
+
+    _log_alert_to_langfuse(rule, value, message, 'firing')
 
     return event
 
@@ -219,11 +190,13 @@ def _resolve_if_was_firing(rule, current_value):
 
 
 def evaluate_all_alerts():
-    """Run all alert evaluations. Called by Celery beat."""
+    """Run all application-specific alert evaluations. Called by Celery beat.
+
+    P95 latency and error-rate alerts are evaluated by Prometheus natively.
+    This method only runs alerts that require database queries.
+    """
     results = {}
     evaluators = [
-        ('p95_latency', evaluate_p95_latency),
-        ('error_rate', evaluate_error_rate),
         ('token_spend', evaluate_token_spend),
         ('agent_success_rate', evaluate_agent_success_rate),
     ]
@@ -235,3 +208,32 @@ def evaluate_all_alerts():
             logger.exception('Alert evaluation failed for %s: %s', name, exc)
             results[name] = f'error: {exc}'
     return results
+
+
+def _log_alert_to_langfuse(rule, value, message, status):
+    """Log an alert event to Langfuse as a trace with a score."""
+    try:
+        from ai.observability.langfuse import get_langfuse_client
+
+        client = get_langfuse_client()
+        if client is None:
+            return
+
+        trace = client.trace(
+            name=f'alert_{rule.name}',
+            input={'metric_name': rule.metric_name, 'threshold': rule.threshold},
+            output={'value': value, 'message': message, 'status': status},
+            metadata={
+                'severity': rule.severity,
+                'alert_rule': rule.name,
+            },
+        )
+        severity_score = {'critical': 1.0, 'warning': 0.5, 'info': 0.1}.get(rule.severity, 0.0)
+        client.score(
+            trace_id=trace.id,
+            name='alert_severity',
+            value=severity_score,
+        )
+        client.flush()
+    except Exception as exc:
+        logger.debug('Langfuse alert trace skipped: %s', exc)

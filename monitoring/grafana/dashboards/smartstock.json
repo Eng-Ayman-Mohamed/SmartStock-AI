@@ -28,7 +28,7 @@
       },
       "targets": [
         {
-          "expr": "http_request_p95_latency_seconds",
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
           "legendFormat": "P95 Latency",
           "refId": "A"
         },
@@ -59,7 +59,7 @@
       },
       "targets": [
         {
-          "expr": "http_error_rate",
+          "expr": "sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m]))",
           "legendFormat": "Error Rate",
           "refId": "A"
         },
@@ -91,7 +91,7 @@
       },
       "targets": [
         {
-          "expr": "ai_daily_token_spend",
+          "expr": "ai_daily_token_usage",
           "legendFormat": "Current Spend",
           "refId": "A"
         },
@@ -214,6 +214,25 @@
         {
           "expr": "sum(increase(ai_agent_runs_total[24h]))",
           "legendFormat": "Total Runs (24h)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "P95 Request Latency by Endpoint",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (endpoint) (rate(http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{ endpoint }}",
           "refId": "A"
         }
       ]
