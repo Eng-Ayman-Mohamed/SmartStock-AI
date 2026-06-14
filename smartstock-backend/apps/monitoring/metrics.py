@@ -1,6 +1,20 @@
+"""Prometheus metrics for the SmartStock monitoring subsystem.
+
+All P95 latency and error-rate calculations are done by Prometheus via
+histogram_quantile() and rate() respectively.  No process-local state
+is used — every metric is process-safe by construction because
+prometheus_client's Counter/Gauge/Histogram use locks internally and
+prometheus multiprocess mode (PROMETHEUS_MULTIPROC_DIR) aggregates
+across workers automatically.
+"""
+
 from prometheus_client import Counter, Gauge, Histogram
 
-# --- Request metrics ---
+# ---------------------------------------------------------------------------
+# Request metrics — Histogram + Counters only.
+# Prometheus computes P95 via histogram_quantile(0.95, rate(..._bucket[5m]))
+# and error rate via sum(rate(..._total[5m])) / sum(rate(http_requests_total[5m])).
+# ---------------------------------------------------------------------------
 REQUEST_LATENCY = Histogram(
     'http_request_duration_seconds',
     'HTTP request latency in seconds',
@@ -20,7 +34,9 @@ ERROR_COUNT = Counter(
     ['method', 'endpoint', 'status_code'],
 )
 
-# --- AI / Token metrics ---
+# ---------------------------------------------------------------------------
+# AI / Token metrics
+# ---------------------------------------------------------------------------
 TOKEN_USAGE_TOTAL = Counter(
     'ai_token_usage_total',
     'Total AI tokens consumed',
@@ -29,7 +45,7 @@ TOKEN_USAGE_TOTAL = Counter(
 
 DAILY_TOKEN_USAGE = Gauge(
     'ai_daily_token_usage',
-    'Cumulative token usage for the current day',
+    'Cumulative token usage for the current day (updated by Celery task)',
 )
 
 TOKEN_DAILY_BUDGET = Gauge(
@@ -37,67 +53,34 @@ TOKEN_DAILY_BUDGET = Gauge(
     'Configured daily token budget',
 )
 
-# --- Agent metrics ---
+# ---------------------------------------------------------------------------
+# Agent metrics
+# ---------------------------------------------------------------------------
 AGENT_RUN_TOTAL = Counter(
     'ai_agent_runs_total',
     'Total AI agent runs',
     ['agent_name', 'outcome'],  # outcome: success / failure
 )
 
-# --- Alerting gauges (Prometheus alert rules query these) ---
-P95_LATENCY = Gauge(
-    'http_request_p95_latency_seconds',
-    'P95 request latency over the evaluation window',
-)
-
-ERROR_RATE = Gauge(
-    'http_error_rate',
-    'Current application error rate (errors / total requests)',
-)
-
-DAILY_TOKEN_SPEND = Gauge(
-    'ai_daily_token_spend',
-    'Current daily token spend count',
-)
-
 AGENT_SUCCESS_RATE_GAUGE = Gauge(
     'ai_agent_success_rate_current',
-    'Current agent success rate over evaluation window',
+    'Current agent success rate over evaluation window (updated by Celery task)',
 )
 
-# --- Tracked values (updated by middleware / tasks, read by alert evaluators) ---
-# prometheus_client Gauge._value is a private implementation detail.
-# We maintain plain Python counters that are synced to Gauges periodically.
-_current_p95_latency: float = 0.0
-_current_error_rate: float = 0.0
-_current_daily_token_budget: float = 1_000_000.0
+# ---------------------------------------------------------------------------
+# Evaluation metrics (set by daily evaluation task)
+# ---------------------------------------------------------------------------
+EVALUATION_PRECISION_GAUGE = Gauge(
+    'evaluation_retrieval_precision_at_5',
+    'Retrieval Precision@5 from golden dataset evaluation',
+)
 
+EVALUATION_FAITHFULNESS_GAUGE = Gauge(
+    'evaluation_answer_faithfulness',
+    'Answer Faithfulness score from golden dataset evaluation',
+)
 
-def get_current_p95_latency() -> float:
-    return _current_p95_latency
-
-
-def set_current_p95_latency(value: float) -> None:
-    global _current_p95_latency
-    _current_p95_latency = value
-    P95_LATENCY.set(value)
-
-
-def get_current_error_rate() -> float:
-    return _current_error_rate
-
-
-def set_current_error_rate(value: float) -> None:
-    global _current_error_rate
-    _current_error_rate = value
-    ERROR_RATE.set(value)
-
-
-def get_current_daily_token_budget() -> float:
-    return _current_daily_token_budget
-
-
-def set_current_daily_token_budget(value: float) -> None:
-    global _current_daily_token_budget
-    _current_daily_token_budget = value
-    TOKEN_DAILY_BUDGET.set(value)
+EVALUATION_TIMESTAMP_GAUGE = Gauge(
+    'evaluation_last_timestamp_seconds',
+    'Unix timestamp of the last evaluation run',
+)
