@@ -8,7 +8,7 @@ export function usePendingPOs() {
   return useQuery<PurchaseOrder[]>({
     queryKey: ['pending-pos'],
     queryFn: fetchPendingPOs,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     enabled: !!token,
     retry: false,
   });
