@@ -7,9 +7,16 @@ from django.utils import timezone
 from apps.monitoring.alerts import (
     evaluate_agent_success_rate,
     evaluate_all_alerts,
-    evaluate_error_rate,
-    evaluate_p95_latency,
     evaluate_token_spend,
+)
+from apps.monitoring.metrics import (
+    AGENT_RUN_TOTAL,
+    AGENT_SUCCESS_RATE_GAUGE,
+    DAILY_TOKEN_USAGE,
+    ERROR_COUNT,
+    REQUEST_COUNT,
+    REQUEST_LATENCY,
+    TOKEN_USAGE_TOTAL,
 )
 from apps.monitoring.models import (
     AgentRunLog,
@@ -112,48 +119,29 @@ class AgentRunLogModelTest(TestCase):
         self.assertEqual(log.outcome, 'success')
 
 
-class EvaluateP95LatencyTest(TestCase):
-    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'llm_latency_p95_ms_warning': 3000})
-    @patch('apps.monitoring.alerts.get_current_p95_latency', return_value=4.5)
-    @patch('apps.monitoring.alerts.send_dashboard_notification', return_value=True)
-    @patch('apps.monitoring.alerts.send_alert_email', return_value=True)
-    def test_fires_when_latency_exceeds_threshold(
-        self, mock_email, mock_dashboard, mock_get_latency
-    ):
-        result = evaluate_p95_latency()
+class PrometheusMetricsTest(TestCase):
+    """Verify that Prometheus metric objects are correctly defined and usable."""
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.status, AlertStatus.FIRING)
-        self.assertAlmostEqual(result.triggered_value, 4.5)
-        mock_email.assert_called_once()
-        mock_dashboard.assert_called_once()
+    def test_request_latency_histogram_observe(self):
+        REQUEST_LATENCY.labels(method='GET', endpoint='/api/test', status_code='200').observe(0.5)
 
-    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'llm_latency_p95_ms_warning': 3000})
-    @patch('apps.monitoring.alerts.get_current_p95_latency', return_value=1.5)
-    def test_does_not_fire_when_below_threshold(self, mock_get_latency):
-        result = evaluate_p95_latency()
-        self.assertIsNone(result)
+    def test_request_count_counter_inc(self):
+        REQUEST_COUNT.labels(method='GET', endpoint='/api/test', status_code='200').inc()
 
+    def test_error_count_counter_inc(self):
+        ERROR_COUNT.labels(method='GET', endpoint='/api/test', status_code='500').inc()
 
-class EvaluateErrorRateTest(TestCase):
-    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'llm_api_error_rate_critical': 0.01})
-    @patch('apps.monitoring.alerts.get_current_error_rate', return_value=0.05)
-    @patch('apps.monitoring.alerts.send_dashboard_notification', return_value=True)
-    @patch('apps.monitoring.alerts.send_alert_email', return_value=True)
-    def test_fires_when_error_rate_exceeds_threshold(
-        self, mock_email, mock_dashboard, mock_get_rate
-    ):
-        result = evaluate_error_rate()
+    def test_token_usage_counter_inc(self):
+        TOKEN_USAGE_TOTAL.labels(type='total').inc(100)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.status, AlertStatus.FIRING)
-        self.assertAlmostEqual(result.triggered_value, 0.05)
+    def test_daily_token_usage_gauge_set(self):
+        DAILY_TOKEN_USAGE.set(5000)
 
-    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'llm_api_error_rate_critical': 0.01})
-    @patch('apps.monitoring.alerts.get_current_error_rate', return_value=0.005)
-    def test_does_not_fire_when_below_threshold(self, mock_get_rate):
-        result = evaluate_error_rate()
-        self.assertIsNone(result)
+    def test_agent_run_counter_inc(self):
+        AGENT_RUN_TOTAL.labels(agent_name='test', outcome='success').inc()
+
+    def test_agent_success_rate_gauge_set(self):
+        AGENT_SUCCESS_RATE_GAUGE.set(0.95)
 
 
 class EvaluateTokenSpendTest(TestCase):
@@ -215,20 +203,14 @@ class EvaluateAgentSuccessRateTest(TestCase):
 class EvaluateAllAlertsTest(TestCase):
     @override_settings(
         LANGFUSE_ALERT_THRESHOLDS={
-            'llm_latency_p95_ms_warning': 3000,
-            'llm_api_error_rate_critical': 0.01,
             'daily_token_budget_alert': 1000000,
             'agent_success_rate_minimum': 0.80,
         }
     )
-    @patch('apps.monitoring.alerts.get_current_error_rate', return_value=0.001)
-    @patch('apps.monitoring.alerts.get_current_p95_latency', return_value=1.0)
-    def test_evaluate_all_returns_results_dict(self, mock_latency, mock_error):
+    def test_evaluate_all_returns_results_dict(self):
         results = evaluate_all_alerts()
 
         self.assertIsInstance(results, dict)
-        self.assertIn('p95_latency', results)
-        self.assertIn('error_rate', results)
         self.assertIn('token_spend', results)
         self.assertIn('agent_success_rate', results)
 
@@ -277,48 +259,54 @@ class RecordAgentRunTaskTest(TestCase):
 
 
 class AlertResilienceTest(TestCase):
-    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'llm_latency_p95_ms_warning': 3000})
-    @patch('apps.monitoring.alerts.get_current_p95_latency', return_value=10.0)
+    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'daily_token_budget_alert': 100})
     @patch('apps.monitoring.alerts.send_alert_email', side_effect=Exception('email failed'))
     @patch('apps.monitoring.alerts.send_dashboard_notification', return_value=False)
-    def test_alert_fires_even_when_notifications_fail(
-        self, mock_dashboard, mock_email, mock_get_latency
-    ):
-        result = evaluate_p95_latency()
+    def test_alert_fires_even_when_notifications_fail(self, mock_dashboard, mock_email):
+        today = timezone.now().date()
+        TokenUsageLog.objects.create(total_tokens=200, logged_at=today)
+
+        result = evaluate_token_spend()
 
         self.assertIsNotNone(result)
         self.assertEqual(result.status, AlertStatus.FIRING)
 
-    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'llm_latency_p95_ms_warning': 3000})
-    @patch('apps.monitoring.alerts.get_current_p95_latency', return_value=10.0)
-    def test_cooldown_prevents_duplicate_firing(self, mock_get_latency):
+    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'daily_token_budget_alert': 100})
+    def test_cooldown_prevents_duplicate_firing(self):
+        today = timezone.now().date()
+        TokenUsageLog.objects.create(total_tokens=200, logged_at=today)
+
         with (
             patch('apps.monitoring.alerts.send_alert_email', return_value=True),
             patch('apps.monitoring.alerts.send_dashboard_notification', return_value=True),
         ):
-            result1 = evaluate_p95_latency()
+            result1 = evaluate_token_spend()
             self.assertIsNotNone(result1)
 
-        result2 = evaluate_p95_latency()
+        result2 = evaluate_token_spend()
         self.assertIsNone(result2)
 
-    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'llm_latency_p95_ms_warning': 3000})
-    @patch('apps.monitoring.alerts.get_current_p95_latency', return_value=10.0)
-    def test_alert_resolves_when_value_drops(self, mock_get_latency):
+    @override_settings(LANGFUSE_ALERT_THRESHOLDS={'daily_token_budget_alert': 100})
+    def test_alert_resolves_when_value_drops(self):
+        today = timezone.now().date()
+        TokenUsageLog.objects.create(total_tokens=200, logged_at=today)
+
         with (
             patch('apps.monitoring.alerts.send_alert_email', return_value=True),
             patch('apps.monitoring.alerts.send_dashboard_notification', return_value=True),
         ):
-            result = evaluate_p95_latency()
+            result = evaluate_token_spend()
             self.assertIsNotNone(result)
 
-        mock_get_latency.return_value = 1.0
+        # Now create a small amount that won't exceed budget
+        TokenUsageLog.objects.filter(logged_at=today).update(total_tokens=10)
+
         with patch('apps.monitoring.alerts.send_dashboard_notification', return_value=True):
-            result = evaluate_p95_latency()
+            result = evaluate_token_spend()
             self.assertIsNone(result)
 
         resolved = AlertEvent.objects.filter(
-            rule__name='P95 Latency Alert',
+            rule__name='Daily Token Spend Cap',
             status=AlertStatus.RESOLVED,
         ).first()
         self.assertIsNotNone(resolved)
