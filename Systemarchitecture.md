@@ -652,7 +652,7 @@ def log_po_approval(sender, po, user, **kwargs):
 | Area          | Implementation                                                                                                          |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Secrets       | All API keys in `.env`. Never hardcoded. `.gitignore` blocks `.env`. `.env.example` lists all key names without values. |
-| HTTPS         | Enforced in production via Render TLS. HTTP requests redirected to HTTPS.                                               |
+| HTTPS         | Enforced in production via Railway TLS. HTTP requests redirected to HTTPS.                                               |
 | CORS          | `django-cors-headers` restricts to known frontend origin only.                                                          |
 | Rate Limiting | DRF throttle: 100 req/min/user. IP-based limits. Daily LLM token quotas.                                                |
 | Containers    | Docker containers run as non-root user. No secrets in Dockerfile.                                                       |
@@ -665,7 +665,7 @@ def log_po_approval(sender, po, user, **kwargs):
 | PII fields     | Supplier contacts, emails, and financial data access-controlled by role.                                |
 | Audit logging  | Every PO approval, AI action, login attempt, and config change logged with timestamp and user identity. |
 | Data retention | PII data retention policy: 90 days. Automated cleanup job via Celery Beat.                              |
-| Backups        | Automated daily PostgreSQL backups. Point-in-time recovery enabled on production Render instance.       |
+| Backups        | Automated daily PostgreSQL backups. Point-in-time recovery enabled on production Railway instance.       |
 
 ---
 

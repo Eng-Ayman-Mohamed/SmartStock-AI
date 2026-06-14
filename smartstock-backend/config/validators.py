@@ -5,8 +5,6 @@ from django.core.exceptions import ImproperlyConfigured
 
 REQUIRED_ENV_VARS = [
     'OPENAI_API_KEY',
-    'LANGFUSE_PUBLIC_KEY',
-    'LANGFUSE_SECRET_KEY',
     'COHERE_API_KEY',
     'DJANGO_SECRET_KEY',
     'DATABASE_URL',
@@ -15,8 +13,20 @@ REQUIRED_ENV_VARS = [
 
 OPTIONAL_ENV_VARS = {
     'LANGFUSE_HOST': 'https://cloud.langfuse.com',
+    'LANGFUSE_PUBLIC_KEY': '',
+    'LANGFUSE_SECRET_KEY': '',
+    'LANGFUSE_DAILY_TOKEN_BUDGET': '1000000',
+    'ALLOWED_HOSTS': 'localhost,127.0.0.1',
+    'CORS_ALLOWED_ORIGINS': 'http://localhost:5173',
+    'CSRF_TRUSTED_ORIGINS': '',
+    'CLOUDINARY_URL': '',
     'DJANGO_DEBUG': 'False',
+    'EMAIL_HOST': '',
+    'EMAIL_HOST_USER': '',
+    'EMAIL_HOST_PASSWORD': '',
     'EMAIL_PORT': '587',
+    'DEFAULT_FROM_EMAIL': 'noreply@smartstock.ai',
+    'ESCALATION_RECIPIENT_EMAILS': '',
 }
 
 logger = logging.getLogger(__name__)
