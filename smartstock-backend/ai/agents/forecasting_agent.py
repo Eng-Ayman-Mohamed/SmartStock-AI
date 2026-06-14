@@ -77,24 +77,30 @@ class ForecastingAgent:
             sku_code = sku_map.get(sku_id, '')
             try:
                 if self.repo.has_todays_forecast(sku_id):
-                    logger.info('Skipping SKU %s (ID %d) — forecast exists for today', sku_code, sku_id)
-                    results.append({
-                        'sku_id': sku_id,
-                        'sku_code': sku_code,
-                        'status': 'skipped',
-                        'reason': 'todays_forecast_exists',
-                    })
+                    logger.info(
+                        'Skipping SKU %s (ID %d) — forecast exists for today', sku_code, sku_id
+                    )
+                    results.append(
+                        {
+                            'sku_id': sku_id,
+                            'sku_code': sku_code,
+                            'status': 'skipped',
+                            'reason': 'todays_forecast_exists',
+                        }
+                    )
                     continue
                 result = self._forecast_for_sku(sku_id, sku_code, trace_spans)
                 results.append(result)
             except Exception as exc:
                 logger.exception('Forecasting agent failed for SKU ID %d: %s', sku_id, exc)
-                results.append({
-                    'sku_id': sku_id,
-                    'sku_code': sku_code,
-                    'status': 'failed',
-                    'error': str(exc),
-                })
+                results.append(
+                    {
+                        'sku_id': sku_id,
+                        'sku_code': sku_code,
+                        'status': 'failed',
+                        'error': str(exc),
+                    }
+                )
 
         output = {
             'agent': 'forecasting_agent',
@@ -139,15 +145,17 @@ class ForecastingAgent:
             ) from exc
         finally:
             if trace_spans is not None:
-                trace_spans.append({
-                    'name': 'forecasting_agent_loop',
-                    'input': agent_input,
-                    'output': {
-                        'observed_tools': sorted(observations.keys()),
-                        'agent_result': agent_result,
-                    },
-                    'duration_ms': round((time.time() - started_at) * 1000),
-                })
+                trace_spans.append(
+                    {
+                        'name': 'forecasting_agent_loop',
+                        'input': agent_input,
+                        'output': {
+                            'observed_tools': sorted(observations.keys()),
+                            'agent_result': agent_result,
+                        },
+                        'duration_ms': round((time.time() - started_at) * 1000),
+                    }
+                )
 
         write_key = self._tool_name(self.write_tool, 'forecast_db_write_tool')
         write_obs = observations.get(write_key, {})
@@ -168,7 +176,9 @@ class ForecastingAgent:
         observations: dict,
     ):
         def forecast_db_read_tool(sku_id: int, sku_code: str = '') -> dict:
-            output = self._run_tool(self.read_tool, {'sku_id': sku_id, 'sku_code': sku_code or ''}, trace_spans)
+            output = self._run_tool(
+                self.read_tool, {'sku_id': sku_id, 'sku_code': sku_code or ''}, trace_spans
+            )
             observations[self._tool_name(self.read_tool, 'forecast_db_read_tool')] = output
             return output
 
@@ -271,7 +281,20 @@ class ForecastingAgent:
     def _summarize_observation(key: str, value: dict) -> dict:
         if not isinstance(value, dict):
             return {'raw': str(value)}
-        summary = {k: v for k, v in value.items() if k in ('status', 'has_data', 'record_count', 'model_version', 'forecast_method', 'records_written', 'reason')}
+        summary = {
+            k: v
+            for k, v in value.items()
+            if k
+            in (
+                'status',
+                'has_data',
+                'record_count',
+                'model_version',
+                'forecast_method',
+                'records_written',
+                'reason',
+            )
+        }
         if 'data' in value:
             summary['data_length'] = len(value['data'])
         if 'results' in value:
@@ -288,24 +311,28 @@ class ForecastingAgent:
                     future = executor.submit(fn, tool_input)
                     output = future.result(timeout=self.tool_timeout)
                 if trace_spans is not None:
-                    trace_spans.append({
-                        'name': getattr(tool, 'name', tool.__class__.__name__),
-                        'input': tool_input,
-                        'output': output,
-                        'attempt': attempt + 1,
-                        'duration_ms': round((time.time() - started_at) * 1000),
-                    })
+                    trace_spans.append(
+                        {
+                            'name': getattr(tool, 'name', tool.__class__.__name__),
+                            'input': tool_input,
+                            'output': output,
+                            'attempt': attempt + 1,
+                            'duration_ms': round((time.time() - started_at) * 1000),
+                        }
+                    )
                 return output
             except Exception as exc:
                 last_error = exc
                 if trace_spans is not None:
-                    trace_spans.append({
-                        'name': getattr(tool, 'name', tool.__class__.__name__),
-                        'input': tool_input,
-                        'error': str(exc),
-                        'attempt': attempt + 1,
-                        'duration_ms': round((time.time() - started_at) * 1000),
-                    })
+                    trace_spans.append(
+                        {
+                            'name': getattr(tool, 'name', tool.__class__.__name__),
+                            'input': tool_input,
+                            'error': str(exc),
+                            'attempt': attempt + 1,
+                            'duration_ms': round((time.time() - started_at) * 1000),
+                        }
+                    )
                 logger.warning(
                     'Forecasting tool %s failed on attempt %s: %s',
                     getattr(tool, 'name', tool.__class__.__name__),

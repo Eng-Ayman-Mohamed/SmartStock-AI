@@ -7,7 +7,6 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.authentication.models import CustomUser
-from apps.forecasting.models import ForecastResult
 from apps.inventory.models import SKU, Category, Product, SalesRecord, StockLevel
 
 

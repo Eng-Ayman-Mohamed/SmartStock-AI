@@ -1,4 +1,4 @@
-from django.core.cache import cache
+from celery.result import AsyncResult
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiResponse,
@@ -16,8 +16,6 @@ from config.schema_serializers import ErrorResponseSerializer
 from .models import ForecastResult
 from .serializers import ForecastResultSerializer
 from .services import ForecastingService
-from celery.result import AsyncResult
-
 from .tasks import run_forecasting_agent
 
 
@@ -194,7 +192,11 @@ class RunForecastView(APIView):
         if sku_ids is not None:
             if not isinstance(sku_ids, list) or not all(type(s) is int for s in sku_ids):
                 return Response(
-                    {'status': 'error', 'error': 'ValidationError', 'message': 'sku_ids must be a list of integers.'},
+                    {
+                        'status': 'error',
+                        'error': 'ValidationError',
+                        'message': 'sku_ids must be a list of integers.',
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         task = run_forecasting_agent.delay(sku_ids=sku_ids)

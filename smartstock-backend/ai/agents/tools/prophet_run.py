@@ -36,7 +36,11 @@ class ProphetRunTool(BaseTool):
         periods = int(input.get('periods', 30))
 
         if not raw_data:
-            logger.warning('No data provided for SKU %s (ID %d); using empty forecast', sku_code or sku_id, sku_id)
+            logger.warning(
+                'No data provided for SKU %s (ID %d); using empty forecast',
+                sku_code or sku_id,
+                sku_id,
+            )
             df = pd.DataFrame()
         else:
             df = pd.DataFrame(raw_data)
