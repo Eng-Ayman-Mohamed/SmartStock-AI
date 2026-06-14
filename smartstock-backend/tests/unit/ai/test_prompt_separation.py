@@ -8,7 +8,11 @@ Ensures that:
 """
 
 import pytest
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+)
 
 from ai.llm.chain import _NL_PROMPT
 from ai.llm.prompts import SYSTEM_PROMPT
@@ -81,13 +85,7 @@ class TestIngestionRoleSeparation:
         Intercepts ChatPromptTemplate.from_messages inside the production
         code path to verify the actual prompt construction.
         """
-        from unittest.mock import MagicMock, patch
-
-        from langchain_core.prompts import (
-            ChatPromptTemplate,
-            HumanMessagePromptTemplate,
-            SystemMessagePromptTemplate,
-        )
+        from unittest.mock import patch
 
         original_from_messages = ChatPromptTemplate.from_messages
         captured = []
@@ -98,9 +96,13 @@ class TestIngestionRoleSeparation:
 
         with (
             patch.object(ChatPromptTemplate, 'from_messages', side_effect=capture_prompt),
+            patch('apps.ingestion.services.RAGQueryService._get_llm'),
             patch('apps.ingestion.services.ChatOpenAI'),
             patch('apps.ingestion.services.OpenAIEmbeddings'),
-            patch('apps.ingestion.services.invoke_with_langfuse'),
+            patch(
+                'apps.ingestion.services.invoke_with_langfuse',
+                return_value=('answer', {'total_tokens': 10}),
+            ),
         ):
             from apps.ingestion.services import RAGQueryService
 

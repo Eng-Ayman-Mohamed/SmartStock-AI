@@ -6,4 +6,6 @@ until pg_isready -d "$DATABASE_URL"; do
   sleep 2
 done
 
+python manage.py migrate --noinput
+
 exec "$@"

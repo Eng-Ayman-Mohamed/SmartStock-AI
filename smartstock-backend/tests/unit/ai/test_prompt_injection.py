@@ -6,15 +6,10 @@ Tests for the prompt injection defence subsystem:
   3. validate_response_safety()  —  dangerous-content detection
 """
 
-import json
-from typing import Optional
-
-import pytest
 from pydantic import BaseModel
 
 from ai.llm.chain import prompt_injection_filter
 from ai.llm.output_validator import validate_llm_output, validate_response_safety
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. prompt_injection_filter
@@ -227,10 +222,7 @@ class TestValidateLlmOutput:
 
     def test_json_with_code_fences(self):
         assert (
-            validate_llm_output(
-                '```json\n{"action": "get_inventory", "filters": {}}\n```'
-            )
-            is True
+            validate_llm_output('```json\n{"action": "get_inventory", "filters": {}}\n```') is True
         )
 
     def test_json_with_backtick_in_value(self):
@@ -240,12 +232,7 @@ class TestValidateLlmOutput:
         assert validate_llm_output('{"key": "value`"}') is True
 
     def test_code_fence_with_backtick_value(self):
-        assert (
-            validate_llm_output(
-                '```json\n{"key": "value`"}\n```'
-            )
-            is True
-        )
+        assert validate_llm_output('```json\n{"key": "value`"}\n```') is True
 
     def test_code_fence_no_closing(self):
         assert validate_llm_output('```\n{"key": "value"}') is True
@@ -298,8 +285,7 @@ class TestValidateResponseSafety:
 
     def test_safe_with_numbers(self):
         assert (
-            validate_response_safety('Product 123 has 45 units in stock and 10 on order.')
-            is True
+            validate_response_safety('Product 123 has 45 units in stock and 10 on order.') is True
         )
 
     def test_safe_with_sql_like_words(self):

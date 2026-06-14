@@ -9,6 +9,7 @@ import cloudinary
 import cloudinary.api
 import cloudinary.uploader
 import dj_database_url
+from celery.schedules import crontab
 
 logger = logging.getLogger(__name__)
 
@@ -281,6 +282,10 @@ CELERY_BEAT_SCHEDULE = {
     'run-forecast-daily': {
         'task': 'apps.forecasting.tasks.run_forecasting_agent',
         'schedule': crontab(hour=2, minute=0),  # 02:00 UTC daily
+    },
+    'daily-evaluation-metrics': {
+        'task': 'apps.monitoring.evaluation_tasks.run_daily_evaluation_task',
+        'schedule': crontab(hour=3, minute=0),  # 03:00 UTC daily
     },
 }
 

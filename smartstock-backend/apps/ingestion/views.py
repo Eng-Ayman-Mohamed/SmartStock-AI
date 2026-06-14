@@ -722,7 +722,11 @@ class ChatEndpointView(APIView):
             AuditLog.objects.create(
                 user=request.user,
                 event='PROMPT_INJECTION_ATTEMPT',
-                data_snapshot={'query': query[:200], 'matched_pattern': matched_pattern, 'endpoint': 'chat'},
+                data_snapshot={
+                    'query': query[:200],
+                    'matched_pattern': matched_pattern,
+                    'endpoint': 'chat',
+                },
             )
             return Response(
                 {
