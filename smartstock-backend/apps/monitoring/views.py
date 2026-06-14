@@ -102,3 +102,35 @@ class TriggerAlertEvaluationView(APIView):
 
         results = evaluate_all_alerts()
         return Response({'status': 'success', 'data': results})
+
+
+class EvaluationMetricsView(APIView):
+    """Expose evaluation metrics (Precision@5, Faithfulness, etc.)."""
+
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request):
+        import time
+
+        from ai.evaluation.metrics import evaluate_golden_dataset, log_scores_to_langfuse
+
+        start = time.time()
+        results = evaluate_golden_dataset()
+        duration_ms = (time.time() - start) * 1000
+
+        log_scores_to_langfuse(results, duration_ms)
+
+        return Response(
+            {
+                'status': 'success',
+                'data': {
+                    'precision_at_5': results.get('precision_at_5', 0.0),
+                    'faithfulness': results.get('faithfulness', 0.0),
+                    'total_queries': results.get('total_queries', 0),
+                    'successful_queries': results.get('successful_queries', 0),
+                    'evaluation_timestamp': time.time(),
+                    'duration_ms': round(duration_ms),
+                },
+            }
+        )

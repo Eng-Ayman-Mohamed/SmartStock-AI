@@ -7,6 +7,7 @@ import cloudinary
 import cloudinary.api
 import cloudinary.uploader
 import dj_database_url
+from celery.schedules import crontab
 
 logger = logging.getLogger(__name__)
 
@@ -281,6 +282,10 @@ CELERY_BEAT_SCHEDULE = {
     'evaluate-monitoring-alerts': {
         'task': 'apps.monitoring.tasks.evaluate_all_alerts_task',
         'schedule': 300,  # every 5 minutes
+    },
+    'daily-evaluation-metrics': {
+        'task': 'apps.monitoring.evaluation_tasks.run_daily_evaluation_task',
+        'schedule': crontab(hour=3, minute=0),  # 03:00 UTC daily
     },
 }
 
