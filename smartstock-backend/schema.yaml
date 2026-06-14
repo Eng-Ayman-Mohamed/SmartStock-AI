@@ -4,6 +4,76 @@ info:
   version: 1.0.0
   description: Inventory forecasting and management API
 paths:
+  /api/ai/chat/:
+    post:
+      operationId: ai_chat_create
+      description: |-
+        POST /api/ai/chat/
+        Unified endpoint that routes queries to NL Query or RAG engine
+        based on mode parameter or automatic intent classification.
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              ChatRequest(auto):
+                value:
+                  query: How many Widget-001 do we have?
+                summary: Chat Request (auto)
+              ChatRequest(explicitMode):
+                value:
+                  query: What is our return policy?
+                  mode: rag
+                summary: Chat Request (explicit mode)
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+        required: true
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                ChatResponse:
+                  value:
+                    status: success
+                    data:
+                      engine: nl_query
+                      mode: auto
+                      answer: You have 42 units of Widget-001 in stock.
+                      action:
+                        type: get_inventory
+                        filters: {}
+                  summary: Chat Response
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request or prompt injection detected
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+          description: Validation error
+        '504':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Gateway timeout
   /api/ai/documents/:
     get:
       operationId: ai_documents_list
@@ -348,6 +418,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Document not found
+  /api/ai/invoice-scan/:
+    post:
+      operationId: ai_invoice_scan_create
+      tags:
+      - ai
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
+  /api/ai/invoice-scan/{scan_id}/reject/:
+    post:
+      operationId: ai_invoice_scan_reject_create
+      parameters:
+      - in: path
+        name: scan_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ai
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
+  /api/ai/invoice-scan/confirm/:
+    post:
+      operationId: ai_invoice_scan_confirm_create
+      tags:
+      - ai
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
   /api/ai/nlquery/:
     post:
       operationId: ai_nlquery_create
@@ -498,6 +604,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Gateway timeout
+  /api/ai/transcribe/:
+    post:
+      operationId: ai_transcribe_create
+      tags:
+      - ai
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+              required:
+              - audio
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptionResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Transcription failed
   /api/audit/logs/:
     get:
       operationId: audit_logs_list
@@ -512,7 +655,10 @@ paths:
           type: string
           enum:
           - AGENT_RUN_COMPLETED
+          - AI_CHAT_QUERY
+          - AI_NL_QUERY
           - AI_RAG_QUERY
+          - EMAIL_DELIVERY_FAILED
           - INVOICE_CONFIRMED
           - INVOICE_REJECTED
           - PO_APPROVED
@@ -523,6 +669,7 @@ paths:
           - PRODUCT_UPDATED
           - PROMPT_INJECTION_ATTEMPT
           - STOCK_ADJUSTED
+          - SUPPLIER_TIMEOUT
           - USER_LOGIN
           - VISION_EXTRACTION_FAILED
         description: |-
@@ -538,8 +685,12 @@ paths:
           * `INVOICE_REJECTED` - Invoice Rejected
           * `PROMPT_INJECTION_ATTEMPT` - Prompt Injection Attempt
           * `AI_RAG_QUERY` - Ai Rag Query
+          * `AI_NL_QUERY` - Ai Nl Query
+          * `AI_CHAT_QUERY` - Ai Chat Query
           * `VISION_EXTRACTION_FAILED` - Vision Extraction Failed
           * `AGENT_RUN_COMPLETED` - Agent Run Completed
+          * `EMAIL_DELIVERY_FAILED` - Email Delivery Failed
+          * `SUPPLIER_TIMEOUT` - Supplier Timeout
       - name: page
         required: false
         in: query
@@ -1503,27 +1654,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: No forecast found for SKU
-  /api/forecasting/trigger/:
+  /api/forecasting/run/:
     post:
-      operationId: forecasting_trigger_create
+      operationId: forecasting_run_create
       tags:
       - forecasting
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TriggerForecastInputRequest'
+              $ref: '#/components/schemas/RunForecastInputRequest'
             examples:
-              TriggerForecastRequest:
+              RunForecastRequest:
                 value:
-                  sku_id: 1
-                summary: Trigger Forecast Request
+                  sku_ids:
+                  - 1
+                  - 2
+                  - 3
+                summary: Run Forecast Request
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TriggerForecastInputRequest'
+              $ref: '#/components/schemas/RunForecastInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TriggerForecastInputRequest'
+              $ref: '#/components/schemas/RunForecastInputRequest'
+      security:
+      - BearerJWT: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: forecast_triggered
+                  job_id:
+                    type: string
+                    example: fc8a2b7e-...
+          description: Forecast agent dispatched as async Celery task
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Admin only
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid sku_ids format
+  /api/forecasting/run/{job_id}/:
+    get:
+      operationId: forecasting_run_retrieve
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - forecasting
       security:
       - BearerJWT: []
       responses:
@@ -1533,14 +1732,13 @@ paths:
               schema:
                 type: object
                 properties:
+                  job_id:
+                    type: string
                   status:
                     type: string
-                    example: forecast_triggered
-                  forecasts:
-                    type: array
-                    items:
-                      type: object
-          description: Forecast triggered successfully
+                  result:
+                    type: object
+          description: Job status and result if completed
         '401':
           content:
             application/json:
@@ -3629,6 +3827,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Supplier not found
+  /api/monitoring/alerts/:
+    get:
+      operationId: monitoring_alerts_retrieve
+      description: Return recent alert events.
+      tags:
+      - monitoring
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
+  /api/monitoring/alerts/evaluate/:
+    post:
+      operationId: monitoring_alerts_evaluate_create
+      description: Manually trigger alert evaluation (for testing/debugging).
+      tags:
+      - monitoring
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
+  /api/monitoring/banners/:
+    get:
+      operationId: monitoring_banners_retrieve
+      description: Return active (non-dismissed) dashboard banners.
+      tags:
+      - monitoring
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
+  /api/monitoring/banners/{banner_id}/dismiss/:
+    post:
+      operationId: monitoring_banners_dismiss_create
+      description: Dismiss a dashboard banner.
+      parameters:
+      - in: path
+        name: banner_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - monitoring
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
   /api/purchasing/orders/:
     get:
       operationId: purchasing_orders_list
@@ -3666,17 +3914,25 @@ paths:
           - cancelled
           - confirmed
           - draft
+          - email_sent
+          - failed
           - pending_approval
           - rejected
           - sent
+          - timeout
+          - waiting_confirmation
         description: |-
           * `draft` - Draft
           * `pending_approval` - Pending Approval
           * `approved` - Approved
+          * `email_sent` - Email Sent
           * `sent` - Sent
+          * `waiting_confirmation` - Waiting Confirmation
           * `confirmed` - Confirmed
           * `rejected` - Rejected
           * `cancelled` - Cancelled
+          * `failed` - Failed
+          * `timeout` - Timeout
       tags:
       - purchasing
       security:
@@ -4023,6 +4279,72 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Purchase order not found
+  /api/purchasing/orders/agent-workflow/:
+    post:
+      operationId: purchasing_orders_agent_workflow_create
+      description: Trigger the purchasing agent workflow with HITL approval gate.
+      tags:
+      - purchasing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sku_id:
+                  type: integer
+                  description: SKU ID to purchase
+                quantity:
+                  type: integer
+                  description: Quantity needed
+                supplier_id:
+                  type: integer
+                  description: Supplier ID
+                agent_reasoning:
+                  type: string
+                  description: Why this order is needed
+                auto_approve:
+                  type: boolean
+                  description: Skip human approval gate
+                  default: false
+              required:
+              - sku_id
+              - quantity
+              - supplier_id
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent:
+                    type: string
+                  status:
+                    type: string
+                  po_id:
+                    type: integer
+          description: Workflow result
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Manager or above only
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+          description: Validation error
   /api/purchasing/orders/overdue-suppliers/:
     get:
       operationId: purchasing_orders_overdue_suppliers_retrieve
@@ -4343,6 +4665,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Supplier not found
+  /metrics/:
+    get:
+      operationId: metrics_retrieve
+      description: Expose Prometheus metrics at /metrics/.
+      tags:
+      - metrics
+      security:
+      - BearerJWT: []
+      responses:
+        '200':
+          description: No response body
 components:
   schemas:
     AgentRun:
@@ -4471,6 +4804,50 @@ components:
       - created_at
       - id
       - name
+    ChatData:
+      type: object
+      properties:
+        engine:
+          type: string
+        mode:
+          type: string
+        answer:
+          type: string
+        action:
+          type: object
+          additionalProperties: {}
+        sources:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - answer
+      - engine
+      - mode
+    ChatRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        mode:
+          allOf:
+          - $ref: '#/components/schemas/ModeEnum'
+          default: auto
+      required:
+      - query
+    ChatResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          $ref: '#/components/schemas/ChatData'
+      required:
+      - data
+      - status
     CustomTokenObtainPairRequest:
       type: object
       properties:
@@ -4601,8 +4978,12 @@ components:
       - INVOICE_REJECTED
       - PROMPT_INJECTION_ATTEMPT
       - AI_RAG_QUERY
+      - AI_NL_QUERY
+      - AI_CHAT_QUERY
       - VISION_EXTRACTION_FAILED
       - AGENT_RUN_COMPLETED
+      - EMAIL_DELIVERY_FAILED
+      - SUPPLIER_TIMEOUT
       type: string
       description: |-
         * `USER_LOGIN` - User Login
@@ -4617,8 +4998,12 @@ components:
         * `INVOICE_REJECTED` - Invoice Rejected
         * `PROMPT_INJECTION_ATTEMPT` - Prompt Injection Attempt
         * `AI_RAG_QUERY` - Ai Rag Query
+        * `AI_NL_QUERY` - Ai Nl Query
+        * `AI_CHAT_QUERY` - Ai Chat Query
         * `VISION_EXTRACTION_FAILED` - Vision Extraction Failed
         * `AGENT_RUN_COMPLETED` - Agent Run Completed
+        * `EMAIL_DELIVERY_FAILED` - Email Delivery Failed
+        * `SUPPLIER_TIMEOUT` - Supplier Timeout
     ForecastResult:
       type: object
       properties:
@@ -4699,6 +5084,16 @@ components:
       required:
       - id
       - name
+    ModeEnum:
+      enum:
+      - auto
+      - nl_query
+      - rag
+      type: string
+      description: |-
+        * `auto` - auto
+        * `nl_query` - nl_query
+        * `rag` - rag
     NLQueryRequest:
       type: object
       properties:
@@ -5070,6 +5465,18 @@ components:
           type: string
           format: date-time
           nullable: true
+        message_id:
+          type: string
+          nullable: true
+          maxLength: 255
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+        po_number:
+          type: string
+          nullable: true
+          maxLength: 20
         sku:
           type: integer
         supplier:
@@ -5279,11 +5686,9 @@ components:
         requested_by_name:
           type: string
           readOnly: true
-          nullable: true
         approved_by_name:
           type: string
           readOnly: true
-          nullable: true
         quantity:
           type: integer
           maximum: 2147483647
@@ -5305,6 +5710,14 @@ components:
           type: string
           format: date-time
           nullable: true
+        message_id:
+          type: string
+          nullable: true
+          maxLength: 255
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -5313,6 +5726,10 @@ components:
           type: string
           format: date-time
           readOnly: true
+        po_number:
+          type: string
+          nullable: true
+          maxLength: 20
         sku:
           type: integer
         supplier:
@@ -5361,6 +5778,18 @@ components:
           type: string
           format: date-time
           nullable: true
+        message_id:
+          type: string
+          nullable: true
+          maxLength: 255
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+        po_number:
+          type: string
+          nullable: true
+          maxLength: 20
         sku:
           type: integer
         supplier:
@@ -5375,19 +5804,27 @@ components:
       - draft
       - pending_approval
       - approved
+      - email_sent
       - sent
+      - waiting_confirmation
       - confirmed
       - rejected
       - cancelled
+      - failed
+      - timeout
       type: string
       description: |-
         * `draft` - Draft
         * `pending_approval` - Pending Approval
         * `approved` - Approved
+        * `email_sent` - Email Sent
         * `sent` - Sent
+        * `waiting_confirmation` - Waiting Confirmation
         * `confirmed` - Confirmed
         * `rejected` - Rejected
         * `cancelled` - Cancelled
+        * `failed` - Failed
+        * `timeout` - Timeout
     RAGQueryData:
       type: object
       properties:
@@ -5456,6 +5893,14 @@ components:
       properties:
         role:
           $ref: '#/components/schemas/RoleEnum'
+    RunForecastInputRequest:
+      type: object
+      properties:
+        sku_ids:
+          type: array
+          items:
+            type: integer
+          description: Optional list of SKU IDs to forecast. Forecasts all if omitted.
     SKU:
       type: object
       properties:
@@ -5496,10 +5941,26 @@ components:
           type: string
           format: date-time
           readOnly: true
+        stock_level_id:
+          type: string
+          readOnly: true
+        quantity_on_hand:
+          type: string
+          readOnly: true
+        quantity_reserved:
+          type: string
+          readOnly: true
+        stock_reorder_point:
+          type: string
+          readOnly: true
       required:
       - code
       - created_at
       - id
+      - quantity_on_hand
+      - quantity_reserved
+      - stock_level_id
+      - stock_reorder_point
     SKURequest:
       type: object
       properties:
@@ -5695,12 +6156,23 @@ components:
       required:
       - contact_email
       - name
-    TriggerForecastInputRequest:
+    TranscriptionData:
       type: object
       properties:
-        sku_id:
-          type: integer
-          description: Optional SKU ID to forecast for a specific product
+        text:
+          type: string
+      required:
+      - text
+    TranscriptionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          $ref: '#/components/schemas/TranscriptionData'
+      required:
+      - data
+      - status
     User:
       type: object
       properties:

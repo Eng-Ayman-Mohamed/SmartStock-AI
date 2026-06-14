@@ -55,6 +55,9 @@ class ForecastingRepository(BaseRepository):
     def get_sku(self, sku_id: int):
         return SKU.objects.get(pk=sku_id)
 
+    def get_skus_by_ids(self, sku_ids: list[int]):
+        return SKU.objects.filter(id__in=sku_ids).select_related('product')
+
     def get_primary_sku_for_product(self, product_id: int):
         return SKU.objects.filter(product_id=product_id).order_by('id').first()
 
@@ -89,16 +92,20 @@ class ForecastingRepository(BaseRepository):
             result[sku_code] = self.get_sales_for_sku(sku_id)
         return result
 
+    def has_todays_forecast(self, sku_id: int) -> bool:
+        today = timezone.localdate()
+        return ForecastResult.objects.filter(sku_id=sku_id, forecast_date=today).exists()
+
     @transaction.atomic
     def upsert(
         self,
         sku_id: int,
         forecast_date: str,
         predicted_quantity: float,
-        lower_bound: float = None,
-        upper_bound: float = None,
-        mae: float = None,
-        mape: float = None,
+        lower_bound: float | None = None,
+        upper_bound: float | None = None,
+        mae: float | None = None,
+        mape: float | None = None,
         model_version: str = '',
     ):
         ForecastResult.objects.update_or_create(

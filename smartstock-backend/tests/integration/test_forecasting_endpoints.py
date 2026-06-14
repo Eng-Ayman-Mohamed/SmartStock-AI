@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.core.cache import cache
 from rest_framework import status
@@ -79,106 +80,94 @@ class ForecastingEndpointTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.json()['data']), 0)
 
-    # === TRIGGER FORECAST ===
+    # === RUN FORECAST (async Celery task) ===
 
-    def test_trigger_unauthenticated(self):
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_run_forecast_unauthenticated(self, mock_task):
         resp = self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+            '/api/forecasting/run/',
+            {'sku_ids': [self.sku.id]},
             format='json',
         )
         self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_trigger_as_viewer_fails(self):
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_run_forecast_as_viewer_fails(self, mock_task):
         resp = self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+            '/api/forecasting/run/',
+            {'sku_ids': [self.sku.id]},
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.viewer),
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_trigger_as_manager_fails(self):
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_run_forecast_as_manager_fails(self, mock_task):
         resp = self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+            '/api/forecasting/run/',
+            {'sku_ids': [self.sku.id]},
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.manager),
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_trigger_as_admin_success(self):
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_run_forecast_as_admin_success(self, mock_task):
+        mock_task.return_value.id = 'fake-task-id'
         resp = self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+            '/api/forecasting/run/',
+            {'sku_ids': [self.sku.id]},
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
         )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
         data = resp.json()
-        self.assertEqual(data['status'], 'success')
-        inner = data['data']
-        self.assertEqual(inner['status'], 'forecast_triggered')
-        forecasts = inner['forecasts']
-        self.assertEqual(len(forecasts), 1)
-        self.assertEqual(forecasts[0]['sku'], 'FRC-TST')
-        self.assertEqual(forecasts[0]['status'], 'success')
-        self.assertEqual(forecasts[0]['forecast_days'], 30)
+        self.assertEqual(data['status'], 'forecast_triggered')
+        self.assertIn('job_id', data)
+        mock_task.assert_called_once_with(sku_ids=[self.sku.id])
 
-    def test_trigger_creates_30_forecast_results(self):
-        self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_run_forecast_all_skus(self, mock_task):
+        mock_task.return_value.id = 'fake-task-id'
+        resp = self.client.post(
+            '/api/forecasting/run/',
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
         )
-        forecasts = ForecastResult.objects.filter(sku=self.sku)
-        self.assertEqual(forecasts.count(), 30)
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
+        mock_task.assert_called_once_with(sku_ids=None)
 
-        for f in forecasts:
-            self.assertIsNotNone(f.predicted_quantity)
-            self.assertIsNotNone(f.forecast_date)
-            self.assertIn(f.model_version, ['prophet_1.1', 'moving_average_fallback'])
-
-    # === FORECAST LIST AFTER TRIGGER ===
-
-    def test_forecast_list_shows_triggered_data(self):
-        self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_run_forecast_invalid_sku_ids(self, mock_task):
+        resp = self.client.post(
+            '/api/forecasting/run/',
+            {'sku_ids': 'not-a-list'},
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
         )
-        resp = self.client.get(
-            '/api/forecasting/forecasts/?page_size=30',
-            HTTP_AUTHORIZATION=self._auth_header(self.viewer),
-        )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        items = resp.json()['data']
-        self.assertEqual(len(items), 30)
-        self.assertIn('sku_code', items[0])
-        self.assertIn('product_name', items[0])
-        self.assertIn('predicted_quantity', items[0])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
-    # === FORECAST DETAIL ===
+    # === JOB STATUS ===
 
-    def test_retrieve_forecast_detail(self):
-        self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
+    @patch('apps.forecasting.views.run_forecasting_agent.delay')
+    def test_job_status_pending(self, mock_task):
+        mock_task.return_value.id = 'fake-task-id'
+        resp = self.client.post(
+            '/api/forecasting/run/',
+            {'sku_ids': [self.sku.id]},
             format='json',
             HTTP_AUTHORIZATION=self._auth_header(self.admin),
         )
-        forecast = ForecastResult.objects.first()
-        resp = self.client.get(
-            f'/api/forecasting/forecasts/{forecast.id}/',
-            HTTP_AUTHORIZATION=self._auth_header(self.viewer),
-        )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        item = resp.json()['data']
-        self.assertEqual(item['id'], forecast.id)
-        self.assertEqual(item['sku_code'], 'FRC-TST')
-        self.assertEqual(item['product_name'], 'Forecast Product')
+        job_id = resp.json()['job_id']
+
+        with patch('apps.forecasting.views.AsyncResult') as mock_result:
+            mock_result.return_value.status = 'PENDING'
+            mock_result.return_value.result = None
+            resp = self.client.get(
+                f'/api/forecasting/run/{job_id}/',
+                HTTP_AUTHORIZATION=self._auth_header(self.admin),
+            )
+            self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     # === DASHBOARD ===
 
@@ -196,52 +185,6 @@ class ForecastingEndpointTests(APITestCase):
         self.assertIn('status', data)
         self.assertIn('data', data)
         self.assertEqual(data['data']['skus'], [])
-
-    def test_dashboard_with_forecast_data(self):
-        self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': self.sku.id},
-            format='json',
-            HTTP_AUTHORIZATION=self._auth_header(self.admin),
-        )
-        resp = self.client.get(
-            '/api/forecasting/dashboard/',
-            HTTP_AUTHORIZATION=self._auth_header(self.viewer),
-        )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        data = resp.json()['data']
-        self.assertIn('skus', data)
-        self.assertEqual(len(data['skus']), 1)
-        sku_data = data['skus'][0]
-        self.assertEqual(sku_data['id'], 'FRC-TST')
-        self.assertEqual(sku_data['sku_code'], 'FRC-TST')
-        self.assertEqual(sku_data['product_name'], 'Forecast Product')
-        self.assertEqual(sku_data['current_stock'], 50)
-        self.assertEqual(sku_data['reorder_point'], 10)
-        self.assertEqual(len(sku_data['forecast']), 30)
-        self.assertIn('predicted_demand_30d', sku_data)
-        self.assertIn('confidence_score', sku_data)
-
-    # === TRIGGER WITH NO SALES DATA ===
-
-    def test_trigger_no_sales_data(self):
-        new_product = Product.objects.create(name='Dry Product', category=self.category)
-        dry_sku = SKU.objects.create(product=new_product, code='DRY-001')
-        StockLevel.objects.create(sku=dry_sku, quantity_on_hand=0)
-
-        resp = self.client.post(
-            '/api/forecasting/trigger/',
-            {'sku_id': dry_sku.id},
-            format='json',
-            HTTP_AUTHORIZATION=self._auth_header(self.admin),
-        )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        data = resp.json()['data']
-        self.assertEqual(data['status'], 'forecast_triggered')
-        forecasts = data['forecasts']
-        self.assertEqual(len(forecasts), 1)
-        self.assertEqual(forecasts[0]['status'], 'skipped')
-        self.assertEqual(forecasts[0]['reason'], 'no_data')
 
     # === ERROR ENVELOPE ===
 
