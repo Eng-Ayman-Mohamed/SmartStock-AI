@@ -57,6 +57,9 @@ class ForecastDBReadTool(BaseTool):
     @staticmethod
     def _df_to_records(df: pd.DataFrame) -> list[dict]:
         return [
-            {'ds': str(row['ds'].date() if hasattr(row['ds'], 'date') else row['ds']), 'y': float(row['y'])}
+            {
+                'ds': str(row['ds'].date() if hasattr(row['ds'], 'date') else row['ds']),
+                'y': float(row['y']),
+            }
             for _, row in df.iterrows()
         ]

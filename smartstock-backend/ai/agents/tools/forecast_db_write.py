@@ -45,7 +45,11 @@ class ForecastDBWriteTool(BaseTool):
         mape = input.get('mape')
 
         if self.repo.has_todays_forecast(sku_id):
-            logger.info('Skipping SKU %s (ID %d) — forecast already exists for today', sku_code or sku_id, sku_id)
+            logger.info(
+                'Skipping SKU %s (ID %d) — forecast already exists for today',
+                sku_code or sku_id,
+                sku_id,
+            )
             return {
                 'sku_id': sku_id,
                 'sku_code': sku_code or '',
@@ -68,7 +72,13 @@ class ForecastDBWriteTool(BaseTool):
             )
             written += 1
 
-        logger.info('Wrote %d forecast records for SKU %s (ID %d) using %s', written, sku_code or sku_id, sku_id, model_version)
+        logger.info(
+            'Wrote %d forecast records for SKU %s (ID %d) using %s',
+            written,
+            sku_code or sku_id,
+            sku_id,
+            model_version,
+        )
         return {
             'sku_id': sku_id,
             'sku_code': sku_code or '',

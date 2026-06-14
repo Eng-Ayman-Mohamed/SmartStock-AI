@@ -12,9 +12,7 @@ class TestForecastDBReadTool(unittest.TestCase):
 
     def test_run_with_valid_data(self):
         mock_repo = MagicMock()
-        with patch(
-            'ai.agents.tools.forecast_db_read.prepare_forecast_dataframe'
-        ) as mock_prepare:
+        with patch('ai.agents.tools.forecast_db_read.prepare_forecast_dataframe') as mock_prepare:
             mock_df = pd.DataFrame(
                 {'ds': pd.to_datetime(['2025-01-01', '2025-01-02']), 'y': [10.0, 20.0]}
             )
@@ -31,9 +29,7 @@ class TestForecastDBReadTool(unittest.TestCase):
 
     def test_run_with_no_data(self):
         mock_repo = MagicMock()
-        with patch(
-            'ai.agents.tools.forecast_db_read.prepare_forecast_dataframe'
-        ) as mock_prepare:
+        with patch('ai.agents.tools.forecast_db_read.prepare_forecast_dataframe') as mock_prepare:
             mock_prepare.return_value = None
 
             tool = self.tool(repo=mock_repo)
@@ -44,9 +40,7 @@ class TestForecastDBReadTool(unittest.TestCase):
 
     def test_run_with_empty_dataframe(self):
         mock_repo = MagicMock()
-        with patch(
-            'ai.agents.tools.forecast_db_read.prepare_forecast_dataframe'
-        ) as mock_prepare:
+        with patch('ai.agents.tools.forecast_db_read.prepare_forecast_dataframe') as mock_prepare:
             mock_prepare.return_value = pd.DataFrame(
                 {'ds': pd.Series(dtype='datetime64[ns]'), 'y': pd.Series(dtype='float64')}
             )
@@ -245,7 +239,9 @@ class TestForecastingAgent(unittest.TestCase):
 
         agent = self.agent_class(
             repo=mock_repo,
-            agent_factory=lambda model, tools, system_prompt: _raise_on_invoke(Exception('LLM unavailable')),
+            agent_factory=lambda model, tools, system_prompt: _raise_on_invoke(
+                Exception('LLM unavailable')
+            ),
         )
         result = agent.run({'sku_ids': [1]})
 
