@@ -9,7 +9,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-ALLOWED_HOSTS = list({*ALLOWED_HOSTS, '.up.railway.app'})  # noqa: F405
+ALLOWED_HOSTS = ['*']
 
 _extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 _default_csrf = 'https://smart-stock-dev.vercel.app'
