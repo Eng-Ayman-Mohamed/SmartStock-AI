@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.audit.apps.AuditConfig',
     'apps.ingestion.apps.IngestionConfig',
     'apps.notifications',
+    'apps.monitoring',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.audit.middleware.AuditMiddleware',
+    'apps.monitoring.middleware.PrometheusMetricsMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -275,6 +277,10 @@ CELERY_BEAT_SCHEDULE = {
     'check-supplier-timeouts': {
         'task': 'apps.purchasing.timeout_tasks.check_supplier_timeouts',
         'schedule': 3600,  # every hour
+    },
+    'evaluate-monitoring-alerts': {
+        'task': 'apps.monitoring.tasks.evaluate_all_alerts_task',
+        'schedule': 300,  # every 5 minutes
     },
 }
 
