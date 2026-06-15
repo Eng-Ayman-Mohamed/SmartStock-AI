@@ -171,9 +171,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         if not hasattr(self, '_cached_queryset'):
             from .repositories import InventoryRepository
 
-            include_inactive = self.request.query_params.get('include_inactive', '').lower() == 'true'
+            include_inactive = (
+                self.request.query_params.get('include_inactive', '').lower() == 'true'
+            )
             is_admin = include_inactive and self.request.user.role == 'admin'
-            self._cached_queryset = InventoryRepository().get_all_queryset(include_inactive=is_admin)
+            self._cached_queryset = InventoryRepository().get_all_queryset(
+                include_inactive=is_admin
+            )
         return self._cached_queryset
 
     def get_serializer_class(self):
