@@ -59,10 +59,14 @@ type LowStockItem = {
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
 
-function unwrap<T>(payload: T | { data: T }): T {
-  return payload && typeof payload === "object" && "data" in payload
-    ? payload.data
-    : payload;
+function unwrap<T>(payload: T | { data: T } | { results: T }): T {
+  if (payload && typeof payload === "object") {
+    if ("data" in payload) return (payload as { data: T }).data;
+    if ("results" in payload && Array.isArray((payload as { results: unknown }).results)) {
+      return (payload as { results: T }).results;
+    }
+  }
+  return payload as T;
 }
 
 type PaginationMeta = {
@@ -153,17 +157,23 @@ export default function InventoryPage() {
         api.get("/inventory/products/", { params }),
         api.get("/inventory/stock-levels/low_stock/"),
       ]);
-      const products = unwrap<Product[]>(productsRes.data);
-      const meta = productsRes._meta ?? {};
+      const productsResponse = productsRes.data as {
+        count: number;
+        results?: Product[];
+        next?: string | null;
+        previous?: string | null;
+      };
+      const products = productsResponse.results ?? [];
+      const total = productsResponse.count ?? products.length;
 
       return {
         products,
         pagination: {
-          page: numberFromMeta(meta.page, page),
-          total: numberFromMeta(meta.total, products.length),
-          perPage: numberFromMeta(meta.per_page, PAGE_SIZE),
-          next: typeof meta.next === "string" ? meta.next : null,
-          previous: typeof meta.previous === "string" ? meta.previous : null,
+          page,
+          total,
+          perPage: PAGE_SIZE,
+          next: productsResponse.next ?? null,
+          previous: productsResponse.previous ?? null,
         } satisfies PaginationMeta,
         lowStock: unwrap<LowStockItem[]>(lowStockRes.data),
       };
