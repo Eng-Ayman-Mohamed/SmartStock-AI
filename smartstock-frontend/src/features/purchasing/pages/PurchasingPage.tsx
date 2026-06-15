@@ -8,23 +8,7 @@ import type { Column } from '../../../shared/components/DataTable';
 import POApprovalCard from '../components/POApprovalCard';
 import { usePendingPOs } from '../hooks/usePurchasing';
 import type { PendingPO } from '../types';
-
-const mockPendingPOs: PendingPO[] = [
-  {
-    id: 'PO-1042', product: 'Wireless Mouse', sku: 'WM-2024-001',
-    supplier: 'TechSupply Co.',
-    predicted_stockout: '15 Jun 2025', recommended_qty: 250,
-    unit_cost: 21.25, estimated_total_cost: '$5,312.50',
-    agent_reasoning: 'Wireless Mouse has a 30-day moving average of 185 units. Current stock of 28 units will last approximately 5 days based on current velocity. The AI recommends ordering 250 units to maintain 30 days of buffer stock.',
-  },
-  {
-    id: 'PO-1044', product: 'Mechanical Keyboard', sku: 'MK-2024-017',
-    supplier: 'Global Parts Inc.',
-    predicted_stockout: '22 Jun 2025', recommended_qty: 100,
-    unit_cost: 42.00, estimated_total_cost: '$4,200.00',
-    agent_reasoning: null,
-  },
-];
+import Skeleton from '../../../shared/components/Skeleton';
 
 interface POHistory {
   id: string;

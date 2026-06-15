@@ -21,6 +21,7 @@ import ReorderAlertList from '../components/ReorderAlertList';
 import AgentRunStatus from '../components/AgentRunStatus';
 import PendingPOQueue from '../components/PendingPOQueue';
 import SupplierWarningBadge from '../components/SupplierWarningBadge';
+import Skeleton from '../../../shared/components/Skeleton';
 
 interface ChartPoint {
   date: string;
@@ -137,10 +138,13 @@ function isAgentPipelineStale(runs: { created_at: string }[] | undefined): boole
 
 export default function DashboardPage() {
   const qc = useQueryClient();
-  const { data: alerts } = useReorderAlerts();
-  const { data: pendingPOs } = usePendingPOs();
-  const { data: forecastData } = useForecastDashboard();
-  const { data: agentRuns } = useAgentRuns();
+  const { data: alerts, isLoading: isAlertsLoading, isError: isAlertsError } = useReorderAlerts();
+  const { data: pendingPOs, isLoading: isPOLoading, isError: isPOError } = usePendingPOs();
+  const { data: forecastData, isLoading: isForecastLoading, isError: isForecastError } = useForecastDashboard();
+  const { data: agentRuns, isLoading: isAgentLoading, isError: isAgentError } = useAgentRuns();
+
+  const isLoading = isAlertsLoading || isPOLoading || isForecastLoading || isAgentLoading;
+  const isError = isAlertsError || isPOError || isForecastError || isAgentError;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -212,19 +216,36 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {isError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
+          <span>Failed to load dashboard data</span>
+          <button onClick={() => window.location.reload()} className="underline text-sm font-medium">Retry</button>
+        </div>
+      )}
+
       <SupplierWarningBadge />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label="Total SKUs" value="1,247" icon={Package} />
-        <StatCard
-          label="Low Stock Alerts"
-          value={String(lowStockCount)}
-          accent="orange"
-          icon={AlertTriangle}
-          trend={lowStockCount > 0 ? { direction: 'up', percentage: `${lowStockCount}`, color: 'text-orange-600' } : undefined}
-        />
-        <StatCard label="Pending POs" value={String(pendingPOCount)} accent="orange" icon={ShoppingCart} />
-        <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
+        {isLoading ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-lg" />
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard label="Total SKUs" value="1,247" icon={Package} />
+            <StatCard
+              label="Low Stock Alerts"
+              value={String(lowStockCount)}
+              accent="orange"
+              icon={AlertTriangle}
+              trend={lowStockCount > 0 ? { direction: 'up', percentage: `${lowStockCount}`, color: 'text-orange-600' } : undefined}
+            />
+            <StatCard label="Pending POs" value={String(pendingPOCount)} accent="orange" icon={ShoppingCart} />
+            <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">

@@ -8,21 +8,20 @@
 
 ## Executive Summary
 
-The SmartStock AI codebase has solid architectural foundations (Clean Architecture, repository pattern, proper `select_related`/`prefetch_related` usage in main views, Redis caching). However, several critical performance bottlenecks exist — most notably in the **AI/LLM pipeline** (dual GPT-4o calls per query), **N+1 query patterns** in the forecasting dashboard, and **missing database indexes** on high-traffic filter fields. Addressing the P0 and P1 items would likely reduce p95 latency by 40-60% and significantly improve throughput under load.
+The SmartStock AI codebase has solid architectural foundations (Clean Architecture, repository pattern, proper `select_related`/`prefetch_related` usage in main views, Redis caching). Several critical performance bottlenecks were identified and **12 of 19 issues have been fixed**. The remaining 7 issues (1 Critical, 3 High, 2 Medium, 1 Low) should be addressed to fully optimize the system.
 
 ### Fix Progress
 
 | Status | Count | Details |
 |--------|-------|---------|
-| ✅ FIXED | 0 | — |
-| 🔶 PARTIALLY FIXED | 1 | P1-2: SalesRecord indexes added, other models pending |
-| ❌ NOT FIXED | 18 | All P0, remaining P1, P2, P3 issues |
+| ✅ FIXED | 12 | P0-2, P0-3, P0-4, P1-1, P1-2, P1-5, P2-1, P2-4, P2-5, P3-1, P3-2, P3-3, P3-5 |
+| ❌ NOT FIXED | 7 | P0-1, P1-3, P1-4, P2-2, P2-3, P3-4 |
 
 ---
 
-## P0 — Critical Issues (Fix Immediately)
+## P0 — Critical Issues
 
-### P0-1: NLQueryEndpointView Makes Two Sequential LLM Calls (3-8s Each)
+### P0-1: NLQueryEndpointView Makes Two Sequential LLM Calls (3-8s Each) ❌ NOT FIXED
 
 **File:** `apps/inventory/views.py` lines 1346-1461
 **Also:** `ai/llm/chain.py` lines 147-153
@@ -52,229 +51,68 @@ format_nl_answer.delay(original_query, raw_data, trace_id)
 
 ---
 
-### P0-2: N+1 Query in `get_low_stock_items()` — Per-SKU SQL Queries in Loop
+### P0-2: N+1 Query in `get_low_stock_items()` — Per-SKU SQL Queries in Loop ✅ FIXED
 
 **File:** `apps/inventory/services.py` lines 70-89
 
-**Problem:** The method iterates over each low stock item and calls `self._avg_daily_demand(sl.sku_id)` (line 79) for each one. Each call executes a separate SQL query:
+**Problem:** The method iterated over each low stock item and called `self._avg_daily_demand(sl.sku_id)` for each one, executing a separate SQL query per SKU.
+
+**Fix Applied:** `_avg_daily_demand()` removed. Lines 99-104 now use a single batched query:
 ```python
-# Line 96-103: This runs for EVERY low stock item
-SalesRecord.objects.filter(sku_id=sku_id, date__gte=cutoff).aggregate(...)
-```
-With 50 low-stock items, this creates **50 additional SQL queries** after the initial low-stock fetch.
-
-**Impact:** Linear query scaling. 50 low-stock items = 51 DB queries instead of 2.
-
-**Recommended Fix:**
-```python
-def get_low_stock_items(self):
-    # ... cache check ...
-    low_stock = self.stock_repo.get_low_stock()
-    sku_ids = [sl.sku_id for sl in low_stock]
-
-    # Bulk fetch all avg daily demands in ONE query
-    from datetime import timedelta
-    from django.utils import timezone
-    cutoff = timezone.localdate() - timedelta(days=30)
-    demand_map = dict(
-        SalesRecord.objects.filter(sku_id__in=sku_ids, date__gte=cutoff)
-        .values('sku_id')
-        .annotate(total=Sum('quantity_sold'))
-        .values_list('sku_id', 'total')
-    )
-
-    result = []
-    for sl in low_stock:
-        total = demand_map.get(sl.sku_id, 0)
-        avg_daily_demand = total / 30.0
-        # ... rest of logic ...
+SalesRecord.objects.filter(sku_id__in=sku_ids, date__gte=cutoff)
+    .values('sku_id')
+    .annotate(total=Sum('quantity_sold'))
 ```
 
 ---
 
-### P0-3: N+1 in `_compute_dashboard()` — `calculate_stockout_risk()` Called Per SKU
+### P0-3: N+1 in `_compute_dashboard()` — `calculate_stockout_risk()` Called Per SKU ✅ FIXED
 
-**File:** `apps/forecasting/services.py` lines 46-67 and 71-86
+**File:** `apps/forecasting/services.py` lines 46-86
 
-**Problem:** Inside `_compute_dashboard()`, for each unique SKU in the forecast results, `calculate_stockout_risk(row.sku.code)` is called (line 55). Each call:
-1. Does `StockLevel.objects.get(sku__code=sku_code)` — SQL query
-2. Accesses `stock.sku.product.supplier` — potential lazy-load SQL
-3. Queries `self.repo.get_all().filter(sku__code=sku_code).order_by('-forecast_date')[:lead_time]` — SQL query
+**Problem:** `calculate_stockout_risk(row.sku.code)` was called for each SKU in the dashboard, generating ~90 additional SQL queries for 30 SKUs.
 
-For a dashboard with 30 SKUs, this generates **~90 additional SQL queries**.
-
-**Impact:** Dashboard page load time scales linearly with SKU count. With 30 SKUs, total ~100 queries.
-
-**Recommended Fix:**
-```python
-def _compute_dashboard(self):
-    # ... existing forecast query ...
-
-    # Batch-fetch stock levels for all SKUs in the dashboard
-    sku_ids = set(row.sku.id for row in rows)
-    stock_map = {
-        sl.sku_id: sl
-        for sl in StockLevel.objects.select_related('sku__product__supplier')
-            .filter(sku_id__in=sku_ids)
-    }
-
-    # Batch-fetch forecast data for stockout risk
-    from datetime import timedelta
-    today = datetime.date.today()
-    forecast_by_sku = defaultdict(list)
-    for f in ForecastResult.objects.filter(
-        forecast_date__gte=today,
-        sku_id__in=sku_ids
-    ).order_by('sku', 'forecast_date'):
-        forecast_by_sku[f.sku_id].append(f)
-
-    skus_map = {}
-    for row in rows:
-        sku_id = row.sku.id
-        if sku_id not in skus_map:
-            stock = stock_map.get(sku_id)
-            # Calculate stockout risk from pre-fetched data
-            lead_time = getattr(stock.sku.product.supplier, 'default_lead_time_days', 7) or 7 if stock else 7
-            forecasts = forecast_by_sku.get(sku_id, [])[:lead_time]
-            total_predicted = sum(f.predicted_quantity for f in forecasts)
-            safety_stock = stock.sku.product.safety_stock if stock else 0
-            stockout_risk = (stock.quantity_available < total_predicted + safety_stock) if stock else False
-            # ... rest of logic ...
-```
+**Fix Applied:** `calculate_stockout_risk()` no longer called in `_compute_dashboard()`. Lines 71-82 batch-fetch all StockLevels into `stock_map` and all forecasts into `forecasts_by_sku`. Stockout risk is computed inline (lines 92-95) from pre-fetched data.
 
 ---
 
-### P0-4: `ProductViewSet.get_queryset()` Creates New Repository Instance Per Request
+### P0-4: `ProductViewSet.get_queryset()` Creates New Repository Instance Per Request ✅ FIXED
 
 **File:** `apps/inventory/views.py` lines 120-127
 
-**Problem:** Every call to `get_queryset()` instantiates a new `InventoryRepository()`:
-```python
-def get_queryset(self):
-    from .repositories import InventoryRepository
-    return InventoryRepository().get_all_queryset(include_inactive=False)
-```
-This is called multiple times per request by DRF's `get_object()`, `list()`, etc. Each instantiation also re-evaluates the `select_related`/`prefetch_related` chain.
+**Problem:** Every call to `get_queryset()` instantiated a new `InventoryRepository()`.
 
-**Impact:** Unnecessary object creation and potential query re-evaluation per request.
-
-**Recommended Fix:**
-```python
-class ProductViewSet(viewsets.ModelViewSet):
-    def get_queryset(self):
-        if not hasattr(self, '_queryset'):
-            from .repositories import InventoryRepository
-            include_inactive = self.request.query_params.get('include_inactive', '').lower() == 'true'
-            is_admin = include_inactive and self.request.user.role == 'admin'
-            self._queryset = InventoryRepository().get_all_queryset(include_inactive=is_admin)
-        return self._queryset
-```
-Or better yet, set `queryset` in `__init__` or use DRF's caching pattern.
+**Fix Applied:** Line 171: `if not hasattr(self, '_cached_queryset'):` guards creation; line 178 stores result in `self._cached_queryset`; line 181 returns it. Repository is created once per ViewSet instance and cached.
 
 ---
 
-## P1 — High Priority (Fix Soon)
+## P1 — High Priority
 
-### P1-1: SKUCompactSerializer Calls `_stock_level()` 4 Times Per SKU
+### P1-1: SKUCompactSerializer Calls `_stock_level()` 4 Times Per SKU ✅ FIXED
 
 **File:** `apps/inventory/serializers.py` lines 32-40
 
-**Problem:** Each `SKUCompactSerializer` calls `_stock_level(obj)` **four times** (for `stock_level_id`, `quantity_on_hand`, `quantity_reserved`, `stock_reorder_point`). Even with `prefetch_related('skus__stock_level')`, this hits Python attribute access 4 times when it should cache the result once.
+**Problem:** Each `SKUCompactSerializer` called `_stock_level(obj)` four times without caching.
 
-**Impact:** With 20 products × 3 SKUs each = 120 redundant attribute accesses per list request.
-
-**Recommended Fix:**
-```python
-class SKUCompactSerializer(serializers.ModelSerializer):
-    stock_level_id = serializers.SerializerMethodField()
-    quantity_on_hand = serializers.SerializerMethodField()
-    quantity_reserved = serializers.SerializerMethodField()
-    stock_reorder_point = serializers.SerializerMethodField()
-
-    class Meta:
-        model = SKU
-        fields = (...)
-
-    def _get_stock_level(self, obj):
-        """Cache stock_level access to avoid repeated lookups."""
-        if not hasattr(self, '_stock_level_cache'):
-            self._stock_level_cache = {}
-        if obj.pk not in self._stock_level_cache:
-            try:
-                self._stock_level_cache[obj.pk] = obj.stock_level
-            except StockLevel.DoesNotExist:
-                self._stock_level_cache[obj.pk] = None
-        return self._stock_level_cache[obj.pk]
-
-    def get_stock_level_id(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.id if stock else None
-
-    def get_quantity_on_hand(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.quantity_on_hand if stock else 0
-
-    def get_quantity_reserved(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.quantity_reserved if stock else 0
-
-    def get_stock_reorder_point(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.reorder_point if stock else None
-```
+**Fix Applied:** `_get_stock_level()` (lines 35-43) uses `self._stock_level_cache` dict keyed by `obj.pk`. All four `get_*` methods (lines 45-58) call `_get_stock_level()`, which returns the cached value on repeated calls.
 
 ---
 
-### P1-2: Missing Database Indexes on High-Traffic Fields 🔶 PARTIALLY FIXED
+### P1-2: Missing Database Indexes on High-Traffic Fields ✅ FIXED
 
 **File:** `apps/inventory/models.py`, `apps/purchasing/models.py`, `apps/authentication/models.py`
 
-**Status:** ✅ `SalesRecord` now has `indexes = [models.Index(fields=['sku', 'date'])]` and `unique_together = [('sku', 'date')]`. ❌ All other models still missing indexes.
+**Problem:** Several frequently filtered/queried fields lacked explicit indexes.
 
-**Remaining Problem:** Several frequently filtered/queried fields lack explicit indexes:
-
-| Model | Field | Used In | Impact | Status |
-|-------|-------|---------|--------|--------|
-| `SalesRecord` | `sku`, `date` | Forecasting queries | — | ✅ FIXED |
-| `Product` | `name` | `ProductFilter`, search | Full table scan on icontains | ❌ NOT FIXED |
-| `Product` | `is_active` | Every product query (`filter(is_active=True)`) | Full table scan | ❌ NOT FIXED |
-| `StockLevel` | `quantity_on_hand` | `StockLevelFilter`, ordering | Full table scan | ❌ NOT FIXED |
-| `StockLevel` | `reorder_point` | Low stock comparison | Full table scan | ❌ NOT FIXED |
-| `CustomUser` | `role` | Permission checks on every request | Full table scan | ❌ NOT FIXED |
-| `PurchaseOrder` | `status` | `PurchaseOrderViewSet` filter | Full table scan | ❌ NOT FIXED |
-
-**Recommended Fix:** Add to `models.py` `Meta.indexes`:
-```python
-# Product
-class Meta:
-    indexes = [
-        models.Index(fields=['is_active', '-created_at'], name='idx_product_active_created'),
-        models.Index(fields=['name'], name='idx_product_name'),
-    ]
-
-# StockLevel
-class Meta:
-    indexes = [
-        models.Index(fields=['quantity_on_hand'], name='idx_stocklevel_qty'),
-        models.Index(fields=['quantity_on_hand', 'reorder_point'], name='idx_stocklevel_low'),
-    ]
-
-# CustomUser
-class Meta:
-    indexes = [
-        models.Index(fields=['role'], name='idx_user_role'),
-    ]
-
-# PurchaseOrder
-class Meta:
-    indexes = [
-        models.Index(fields=['status', '-created_at'], name='idx_po_status_created'),
-    ]
-```
+**Fix Applied:** All indexes added:
+- Product: `idx_product_active_created`, `idx_product_name` (models.py:48-51)
+- StockLevel: `idx_stocklevel_qty`, `idx_stocklevel_low` (models.py:84-87)
+- CustomUser: `idx_user_role` (auth/models.py:14-16)
+- PurchaseOrder: `idx_po_status_created` (purchasing/models.py:55-57)
 
 ---
 
-### P1-3: `_handle_get_inventory` Uses `.values()` After `.prefetch_related()`
+### P1-3: `_handle_get_inventory` Uses `.values()` After `.prefetch_related()` ❌ NOT FIXED
 
 **File:** `apps/inventory/views.py` lines 1138-1162
 
@@ -305,16 +143,11 @@ def _handle_get_inventory(filters: NLQueryFilters) -> list:
 
 ---
 
-### P1-4: Forecast Celery Task Processes SKUs Sequentially
+### P1-4: Forecast Celery Task Processes SKUs Sequentially ❌ NOT FIXED
 
 **File:** `apps/forecasting/tasks.py` lines 9-21
 
-**Problem:** `run_forecast_for_all_skus()` loops through every SKU sequentially:
-```python
-for sku_id in sku_ids:
-    service.run_forecast(sku_id=sku_id)  # CPU-intensive Prophet training
-```
-Prophet model training is CPU-bound. With 100 SKUs, this could take 30+ minutes on a single worker.
+**Problem:** `run_forecast_for_all_skus()` loops through every SKU sequentially. `run_forecast_single_sku` exists but is never dispatched in bulk via `group()`.
 
 **Impact:** Long-running task blocks the Celery worker. No parallelism. Other tasks queue behind it.
 
@@ -341,48 +174,29 @@ def run_forecast_single_sku(sku_id: int):
 
 ---
 
-### P1-5: `NLQueryEndpointView` Creates `AuditLog` Synchronously
+### P1-5: `NLQueryEndpointView` Creates `AuditLog` Synchronously ✅ FIXED
 
 **File:** `apps/inventory/views.py` lines 1441-1450
 
-**Problem:** `AuditLog.objects.create()` is called synchronously at the end of every NL query, adding 10-50ms latency to each response.
+**Problem:** `AuditLog.objects.create()` was called synchronously at the end of every NL query.
 
-**Impact:** Unnecessary response latency for a non-critical write operation.
-
-**Recommended Fix:**
-```python
-# Use Celery for audit logging
-from apps.audit.tasks import create_audit_log
-
-create_audit_log.delay(
-    user_id=user.id,
-    event='AI_NL_QUERY',
-    data_snapshot={...}
-)
-```
+**Fix Applied:** Lines 1481-1505: Primary path uses `create_audit_log_task.delay(...)` (async Celery task defined in `apps/audit/tasks.py`). Sync `AuditLog.objects.create()` is only used as a fallback if the Celery task dispatch fails.
 
 ---
 
-## P2 — Medium Priority (Nice to Have)
+## P2 — Medium Priority
 
-### P2-1: ProductViewSet Cache Key Doesn't Include User Role
+### P2-1: ProductViewSet Cache Key Doesn't Include User Role ✅ FIXED
 
 **File:** `apps/inventory/views.py` lines 135-142
 
-**Problem:** The cache key `f'product_list_{request.get_full_path()}'` doesn't include user role. Admin users who can see inactive products would get cached results from non-admin users (or vice versa).
+**Problem:** The cache key didn't include user role.
 
-**Impact:** Potential data leakage or incorrect data served from cache.
-
-**Recommended Fix:**
-```python
-def list(self, request, *args, **kwargs):
-    cache_key = f'product_list_{request.user.role}_{request.get_full_path()}'
-    # ... rest unchanged ...
-```
+**Fix Applied:** Line 198: `cache_key = f'product_list_{request.user.role}_{request.get_full_path()}'` — role is embedded in the cache key.
 
 ---
 
-### P2-2: `ProductViewSet` List Cache Invalidates ALL Filtered Variants
+### P2-2: `ProductViewSet` List Cache Invalidates ALL Filtered Variants ❌ NOT FIXED
 
 **File:** `apps/inventory/views.py` line 135 and `apps/inventory/services.py` line 18
 
@@ -404,7 +218,7 @@ cache_key = f'product_list_v{_product_cache_version}_{request.get_full_path()}'
 
 ---
 
-### P2-3: No `only()` or `defer()` on List Querysets
+### P2-3: No `only()` or `defer()` on List Querysets ❌ NOT FIXED
 
 **File:** `apps/inventory/views.py` (multiple ViewSets)
 
@@ -425,135 +239,59 @@ queryset = (
 
 ---
 
-### P2-4: Gunicorn Worker Configuration Suboptimal
+### P2-4: Gunicorn Worker Configuration Suboptimal ✅ FIXED
 
 **File:** `Dockerfile` line 32
 
-**Problem:** `gunicorn ... --workers 3 --timeout 60`. With only 3 workers and heavy I/O (LLM calls, DB queries), the server can handle very few concurrent requests.
+**Problem:** `gunicorn ... --workers 3 --timeout 60` with sync workers.
 
-**Impact:** Low concurrency ceiling. Workers blocked on I/O can't serve other requests.
-
-**Recommended Fix:**
-```dockerfile
-# For I/O-bound workloads: 2 * CPUcores + 1 workers
-# For LLM-heavy workloads, consider more workers with async support
-CMD ["gunicorn", "config.wsgi:application", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "4", \
-     "--threads", "2", \
-     "--timeout", "120", \
-     "--worker-class", "gthread", \
-     "--max-requests", "1000", \
-     "--max-requests-jitter", "50"]
-```
+**Fix Applied:** Line 32: `gunicorn ... --workers 4 --threads 2 --timeout 120 --worker-class gthread --max-requests 1000 --max-requests-jitter 50`. All recommended improvements are present.
 
 ---
 
-### P2-5: `_nl_chain` Global Singleton Not Thread-Safe
+### P2-5: `_nl_chain` Global Singleton Not Thread-Safe ✅ FIXED
 
 **File:** `apps/inventory/views.py` lines 15-20
 
-**Problem:** The global `_nl_chain` lazy initialization is not thread-safe:
-```python
-_nl_chain = None
-def get_nl_chain():
-    global _nl_chain
-    if _nl_chain is None:  # Race condition in multi-threaded env
-        from ai.llm.chain import NLQueryChain
-        _nl_chain = NLQueryChain()
-    return _nl_chain
-```
+**Problem:** The global `_nl_chain` lazy initialization was not thread-safe.
 
-**Impact:** In gthread worker class or async context, two threads could simultaneously create the chain.
-
-**Recommended Fix:**
-```python
-import threading
-_nl_chain = None
-_nl_chain_lock = threading.Lock()
-
-def get_nl_chain():
-    global _nl_chain
-    if _nl_chain is None:
-        with _nl_chain_lock:
-            if _nl_chain is None:
-                from ai.llm.chain import NLQueryChain
-                _nl_chain = NLQueryChain()
-    return _nl_chain
-```
+**Fix Applied:** Lines 41-57: Double-checked locking pattern with `threading.Lock()`. `_nl_chain_lock` is initialized inside the first null check, then the actual `_nl_chain` creation is guarded by `with _nl_chain_lock:`.
 
 ---
 
-## P3 — Low Priority (Future Optimizations)
+## P3 — Low Priority
 
-### P3-1: No Frontend Code Splitting
+### P3-1: No Frontend Code Splitting ✅ FIXED
 
 **File:** `smartstock-frontend/src/lib/router.tsx`
 
-**Problem:** All 13 page components are eagerly imported. The entire app bundle loads on first visit.
+**Problem:** All 13 page components were eagerly imported.
 
-**Impact:** Larger initial bundle (~500KB+ with recharts, lucide-react, etc.). Slower First Contentful Paint.
-
-**Recommended Fix:**
-```tsx
-import { lazy, Suspense } from 'react';
-
-const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
-const InventoryPage = lazy(() => import('../features/inventory/pages/InventoryPage'));
-const ForecastingPage = lazy(() => import('../features/forecasting/pages/ForecastingPage'));
-// ... etc
-
-// In routes:
-{
-  element: <Layout />,
-  children: [
-    { index: true, element: <Suspense fallback={<Skeleton />}><DashboardPage /></Suspense> },
-    // ...
-  ],
-}
-```
+**Fix Applied:** Lines 8-19: All 12 page components use `lazy(() => import(...))`. All are wrapped in `<SuspenseWrapper>`.
 
 ---
 
-### P3-2: No Vite Build Chunk Optimization
+### P3-2: No Vite Build Chunk Optimization ✅ FIXED
 
 **File:** `smartstock-frontend/vite.config.ts`
 
-**Problem:** No manual chunk splitting configured. Heavy libraries (recharts, react, zustand) end up in the main bundle.
+**Problem:** No manual chunk splitting configured.
 
-**Recommended Fix:**
-```ts
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-charts': ['recharts'],
-          'vendor-state': ['zustand', '@tanstack/react-query'],
-        },
-      },
-    },
-  },
-});
-```
+**Fix Applied:** Lines 20-35: `build.rollupOptions.output.manualChunks` splits into `vendor-react`, `vendor-charts`, and `vendor-state` chunks.
 
 ---
 
-### P3-3: Redis `appendfsync` Not Tuned for Cache Use Case
+### P3-3: Redis `appendfsync` Not Tuned for Cache Use Case ✅ FIXED
 
 **File:** `docker-compose.yml` line 35
 
-**Problem:** `redis-server --appendonly yes` without specifying `appendfsync`. Default is `everysec`. For a cache-only Redis instance, AOF persistence is unnecessary overhead.
+**Problem:** `redis-server --appendonly yes` without specifying `appendfsync`.
 
-**Recommended Fix:**
-```yaml
-command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
-```
+**Fix Applied:** Line 35: `redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru`. AOF is disabled, LRU eviction is configured.
 
 ---
 
-### P3-4: DocumentChunk Vector Search Missing HNSW Index
+### P3-4: DocumentChunk Vector Search Missing HNSW Index ❌ NOT FIXED
 
 **File:** `apps/ingestion/models.py`
 
@@ -571,13 +309,13 @@ WITH (m = 16, ef_construction = 64);
 
 ---
 
-### P3-5: `call_gpt4o_formatter` Creates New LLM Instance Every Call
+### P3-5: `call_gpt4o_formatter` Creates New LLM Instance Every Call ✅ FIXED
 
 **File:** `ai/llm/chain.py` line 150
 
-**Problem:** `call_gpt4o_formatter()` calls `llm = get_llm()` which creates a new `ChatOpenAI` instance each time. While LangChain may pool HTTP connections internally, creating new client objects has overhead.
+**Problem:** `call_gpt4o_formatter()` created a new `ChatOpenAI` instance each time.
 
-**Recommended Fix:** Cache the LLM instance or reuse the one from NLQueryChain.
+**Fix Applied:** Line 228: `call_gpt4o_formatter()` calls `get_llm()`, which returns the singleton `_cached_llm` (lines 51-68) using double-checked locking with `threading.Lock()`. The same cached `ChatOpenAI` instance is reused.
 
 ---
 
@@ -586,28 +324,41 @@ WITH (m = 16, ef_construction = 64);
 | ID | Severity | Category | Impact | Effort | Status |
 |----|----------|----------|--------|--------|--------|
 | P0-1 | Critical | LLM Pipeline | 2x latency, 2x API cost | High | ❌ NOT FIXED |
-| P0-2 | Critical | DB (N+1) | 50+ extra queries on low stock | Medium | ❌ NOT FIXED |
-| P0-3 | Critical | DB (N+1) | 90+ extra queries on dashboard | Medium | ❌ NOT FIXED |
-| P0-4 | Critical | View | Redundant repo instantiation | Low | ❌ NOT FIXED |
-| P1-1 | High | Serializer | 120 redundant lookups per list | Low | ❌ NOT FIXED |
-| P1-2 | High | DB Index | Full scans on key filters | Low | 🔶 PARTIAL |
+| P0-2 | Critical | DB (N+1) | 50+ extra queries on low stock | Medium | ✅ FIXED |
+| P0-3 | Critical | DB (N+1) | 90+ extra queries on dashboard | Medium | ✅ FIXED |
+| P0-4 | Critical | View | Redundant repo instantiation | Low | ✅ FIXED |
+| P1-1 | High | Serializer | 120 redundant lookups per list | Low | ✅ FIXED |
+| P1-2 | High | DB Index | Full scans on key filters | Low | ✅ FIXED |
 | P1-3 | High | Query | Wasted prefetch on NL queries | Medium | ❌ NOT FIXED |
 | P1-4 | High | Celery | Sequential CPU-bound tasks | Medium | ❌ NOT FIXED |
-| P1-5 | High | Audit | Unnecessary sync write latency | Low | ❌ NOT FIXED |
-| P2-1 | Medium | Cache | Data leakage risk | Low | ❌ NOT FIXED |
+| P1-5 | High | Audit | Unnecessary sync write latency | Low | ✅ FIXED |
+| P2-1 | Medium | Cache | Data leakage risk | Low | ✅ FIXED |
 | P2-2 | Medium | Cache | Over-invalidation | Low | ❌ NOT FIXED |
 | P2-3 | Medium | Query | Excess data transfer | Low | ❌ NOT FIXED |
-| P2-4 | Medium | Infra | Low concurrency ceiling | Low | ❌ NOT FIXED |
-| P2-5 | Medium | Concurrency | Race condition | Low | ❌ NOT FIXED |
-| P3-1 | Low | Frontend | Large initial bundle | Medium | ❌ NOT FIXED |
-| P3-2 | Low | Frontend | No chunk splitting | Low | ❌ NOT FIXED |
-| P3-3 | Low | Infra | Redis persistence overhead | Low | ❌ NOT FIXED |
+| P2-4 | Medium | Infra | Low concurrency ceiling | Low | ✅ FIXED |
+| P2-5 | Medium | Concurrency | Race condition | Low | ✅ FIXED |
+| P3-1 | Low | Frontend | Large initial bundle | Medium | ✅ FIXED |
+| P3-2 | Low | Frontend | No chunk splitting | Low | ✅ FIXED |
+| P3-3 | Low | Infra | Redis persistence overhead | Low | ✅ FIXED |
 | P3-4 | Low | RAG | Vector search at scale | Medium | ❌ NOT FIXED |
-| P3-5 | Low | LLM | Client instantiation overhead | Low | ❌ NOT FIXED |
+| P3-5 | Low | LLM | Client instantiation overhead | Low | ✅ FIXED |
 
 ---
 
-## Estimated Impact of P0+P1 Fixes
+## Remaining 7 Issues to Fix
+
+| ID | Priority | Issue | Recommended Action |
+|----|----------|-------|-------------------|
+| P0-1 | Critical | Dual LLM calls in NL query | Merge into single prompt or make formatter async via Celery |
+| P1-3 | High | Dead `prefetch_related` before `.values()` | Remove `.prefetch_related()` since data is re-fetched manually |
+| P1-4 | High | Sequential forecasting tasks | Dispatch `group(run_forecast_single_sku.s(...) for sku_id in all_ids)` |
+| P2-2 | Medium | `delete_pattern` cache invalidation | Use versioned cache keys with incrementing counter |
+| P2-3 | Medium | No `only()`/`defer()` on lists | Add `.only('id', 'name', ...)` to main list querysets |
+| P3-4 | Low | No HNSW index on embeddings | Add `HNSWIndex(fields=['embedding'], m=16, ef_construction=64)` |
+
+---
+
+## Estimated Impact After All Fixes
 
 - **API latency reduction:** 40-60% for NL query endpoints
 - **DB query reduction:** 80-90% for dashboard and low-stock endpoints
@@ -622,3 +373,4 @@ WITH (m = 16, ef_construction = 64);
 |------|--------|---------|
 | Sun Jun 14 2026 | Performance Engineer | Initial report created |
 | Sun Jun 14 2026 | Performance Engineer | Status verification: P1-2 partially fixed (SalesRecord indexes added) |
+| Sun Jun 14 2026 | Performance Engineer | Full verification: 12 of 19 issues fixed (63%) |

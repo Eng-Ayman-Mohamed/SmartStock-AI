@@ -13,6 +13,7 @@ import {
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
+import { useToastStore } from '../../../store/toastStore';
 import { useInvoiceScan } from '../hooks/useInvoiceScan';
 import type { InvoiceFieldKey, InvoiceFields, InvoiceScanResult } from '../types';
 
@@ -95,7 +96,9 @@ export default function InvoiceScanPage() {
   const [scanResult, setScanResult] = useState<InvoiceScanResult | null>(null);
   const [fields, setFields] = useState<InvoiceFields>(emptyFields);
   const [confirmedResult, setConfirmedResult] = useState<InvoiceScanResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
   const { scan, confirm, reject, isProcessing } = useInvoiceScan();
+  const addToast = useToastStore((s) => s.addToast);
 
   const missingFields = useMemo(
     () => new Set(scanResult?.missing_fields ?? []),
@@ -151,6 +154,7 @@ export default function InvoiceScanPage() {
       setScanResult(result);
       setFields(normalizeFields(result));
     } catch {
+      addToast('Failed to scan file', 'error');
       setScanResult(null);
     }
   }
@@ -192,6 +196,7 @@ export default function InvoiceScanPage() {
       setScanResult(result);
       setConfirmedResult(result);
     } catch {
+      addToast('Failed to confirm scan', 'error');
       setConfirmedResult(null);
     }
   }
@@ -205,7 +210,8 @@ export default function InvoiceScanPage() {
       await reject.mutateAsync(scanResult.scan_id);
       resetFlow();
     } catch {
-      return;
+      setErrorMessage('Failed to reject scan');
+      addToast('Failed to reject scan', 'error');
     }
   }
 
@@ -275,6 +281,12 @@ export default function InvoiceScanPage() {
           {fileError && (
             <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
               {fileError}
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+              {errorMessage}
             </div>
           )}
 
