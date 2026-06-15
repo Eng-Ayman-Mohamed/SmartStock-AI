@@ -81,7 +81,11 @@ class InventoryService:
         Adds ``predicted_stockout_date`` — the estimated date when stock
         reaches zero based on trailing 30-day average daily demand.
         """
-        from datetime import date, timedelta
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.inventory.models import SalesRecord
 
         cache_key = 'low_stock_items'
         cached = cache.get(cache_key)
@@ -89,12 +93,23 @@ class InventoryService:
             return cached
 
         low_stock = self.stock_repo.get_low_stock()
+        sku_ids = [sl.sku_id for sl in low_stock]
+
+        cutoff = timezone.localdate() - timedelta(days=30)
+        demand_map = dict(
+            SalesRecord.objects.filter(sku_id__in=sku_ids, date__gte=cutoff)
+            .values('sku_id')
+            .annotate(total=models.Sum('quantity_sold'))
+            .values_list('sku_id', 'total')
+        )
+
         result = []
         for sl in low_stock:
-            avg_daily_demand = self._avg_daily_demand(sl.sku_id)
+            total = demand_map.get(sl.sku_id, 0)
+            avg_daily_demand = total / 30.0
             if avg_daily_demand > 0:
                 days_left = sl.quantity_on_hand / avg_daily_demand
-                predicted_stockout = date.today() + timedelta(days=int(days_left))
+                predicted_stockout = timezone.localdate() + timedelta(days=int(days_left))
             else:
                 predicted_stockout = None
 
@@ -117,24 +132,6 @@ class InventoryService:
             )
         cache.set(cache_key, result, timeout=300)
         return result
-
-    @staticmethod
-    def _avg_daily_demand(sku_id: int) -> float:
-        """Return average daily demand over the last 30 days for *sku_id*."""
-        from datetime import timedelta
-
-        from django.utils import timezone
-
-        from apps.inventory.models import SalesRecord
-
-        cutoff = timezone.localdate() - timedelta(days=30)
-        total = (
-            SalesRecord.objects.filter(sku_id=sku_id, date__gte=cutoff).aggregate(
-                total=models.Sum('quantity_sold')
-            )['total']
-            or 0
-        )
-        return total / 30.0
 
     @staticmethod
     def filter_by_stock_status(queryset, value):
