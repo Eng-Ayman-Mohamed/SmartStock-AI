@@ -317,3 +317,63 @@ class InventoryServiceMethodTests(TestCase):
         qs = Product.objects.filter(id=self.product.id)
         result = InventoryService.filter_by_stock_status(qs, 'unknown')
         self.assertTrue(result.exists())
+
+
+class AuditTaskTests(TestCase):
+    def setUp(self):
+        from apps.authentication.models import CustomUser
+
+        self.user = CustomUser.objects.create_user(
+            username='audit_task_user',
+            email='audit_task@test.com',
+            password='testpass123',
+        )
+
+    def test_create_audit_log_task_success(self):
+        from apps.audit.tasks import create_audit_log_task
+
+        result = create_audit_log_task(self.user.id, 'test_event', {'key': 'value'})
+        self.assertEqual(result, {'status': 'success'})
+
+    def test_create_audit_log_task_user_not_found(self):
+        from apps.audit.tasks import create_audit_log_task
+
+        result = create_audit_log_task(99999, 'test_event', {'key': 'value'})
+        self.assertEqual(result, {'status': 'success'})
+
+    def test_create_audit_log_task_exception(self):
+        from apps.audit.tasks import create_audit_log_task
+
+        with patch('apps.audit.models.AuditLog.objects.create', side_effect=Exception('db error')):
+            result = create_audit_log_task(self.user.id, 'test_event', {})
+            self.assertEqual(result, {'status': 'success'})
+
+
+class PurchasingTaskTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from apps.inventory.models import Category, Supplier
+
+        cls.supplier = Supplier.objects.create(
+            name='Task Supplier', contact_email='task@supplier.com', default_lead_time_days=7
+        )
+        cls.category = Category.objects.create(name='Purchasing Task Category')
+
+    def test_run_purchasing_workflow(self):
+        from apps.purchasing.tasks import run_purchasing_workflow
+
+        ctx = {'sku_id': 1, 'quantity': 10, 'supplier_id': self.supplier.id}
+        with patch('ai.agents.purchasing_agent.PurchasingAgent') as MockAgent:
+            MockAgent.return_value.run.return_value = {'status': 'completed'}
+            result = run_purchasing_workflow(ctx)
+            self.assertEqual(result, {'status': 'completed'})
+
+    def test_run_purchasing_workflow_with_approval(self):
+        from apps.purchasing.tasks import run_purchasing_workflow_with_approval
+
+        ctx = {'sku_id': 1, 'quantity': 10}
+        with patch('apps.purchasing.tasks.run_purchasing_workflow') as mock_wf:
+            mock_wf.return_value = {'status': 'done'}
+            result = run_purchasing_workflow_with_approval(ctx, auto_approve=True)
+            self.assertEqual(result, {'status': 'done'})
+            mock_wf.assert_called_once_with({**ctx, 'auto_approve': True})

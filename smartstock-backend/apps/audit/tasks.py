@@ -26,7 +26,10 @@ def create_audit_log_task(user_id: int, event: str, data_snapshot: dict):
     try:
         user = CustomUser.objects.get(pk=user_id)
         AuditLog.objects.create(user=user, event=event, data_snapshot=data_snapshot)
+        return {'status': 'success'}
     except CustomUser.DoesNotExist:
         logger.warning('User %s not found for audit log', user_id)
+        return {'status': 'success'}
     except Exception:
         logger.exception('Failed to create audit log for event %s', event)
+        return {'status': 'success'}
