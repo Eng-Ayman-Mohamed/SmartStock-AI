@@ -535,7 +535,7 @@ export default function InventoryPage() {
               <Skeleton key={item} className="h-10" />
             ))}
           </div>
-        ) : rows.length === 0 ? (
+        ) : rows.length === 0 && !inventoryQuery.isError ? (
           <EmptyState
             icon={Package}
             heading="No products yet"

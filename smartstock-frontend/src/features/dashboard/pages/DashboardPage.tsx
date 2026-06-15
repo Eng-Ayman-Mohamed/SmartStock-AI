@@ -219,7 +219,7 @@ export default function DashboardPage() {
       {isError && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
           <span>Failed to load dashboard data</span>
-          <button onClick={() => window.location.reload()} className="underline text-sm font-medium">Retry</button>
+          <button onClick={() => qc.invalidateQueries()} className="underline text-sm font-medium">Retry</button>
         </div>
       )}
 

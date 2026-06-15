@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import Skeleton from '../../../shared/components/Skeleton';
 import { useOverdueSuppliers } from '../hooks/useOverdueSuppliers';
 
 export default function SupplierWarningBadge() {
@@ -6,13 +7,13 @@ export default function SupplierWarningBadge() {
 
   if (isLoading) {
     return (
-      <div className="flex items-start gap-3 p-3 rounded-md border border-gray-200 bg-gray-50 animate-pulse">
+      <div className="flex items-start gap-3 p-3 rounded-md border border-gray-200 bg-gray-50">
         <div className="flex items-center justify-center w-7 h-7 rounded-md bg-gray-200 shrink-0">
           <AlertTriangle className="w-4 h-4 text-gray-400" />
         </div>
         <div className="flex-1 min-w-0 space-y-2">
-          <div className="h-4 bg-gray-200 rounded w-3/4" />
-          <div className="h-3 bg-gray-200 rounded w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
         </div>
       </div>
     );

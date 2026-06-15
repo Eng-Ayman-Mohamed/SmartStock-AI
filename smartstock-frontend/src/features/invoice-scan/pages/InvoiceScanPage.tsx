@@ -128,6 +128,7 @@ export default function InvoiceScanPage() {
   function selectFile(file: File) {
     const error = validateFile(file);
     setFileError(error);
+    setErrorMessage('');
     setConfirmedResult(null);
     setScanResult(null);
     setFields(emptyFields);

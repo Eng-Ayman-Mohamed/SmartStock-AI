@@ -235,7 +235,7 @@ export function SuppliersPage() {
           <div className="p-6 space-y-3">
             {[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-10" />)}
           </div>
-        ) : sortedSuppliers.length === 0 ? (
+        ) : sortedSuppliers.length === 0 && !queryError ? (
           <EmptyState
             icon={Truck}
             heading="No suppliers yet"

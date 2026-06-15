@@ -51,12 +51,6 @@ export default function PurchasingPage() {
         <Button variant="primary" size="md"><Plus className="w-4 h-4" /> New Order</Button>
       </div>
 
-      {isError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
-          Failed to load pending purchase orders.
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Pending Approval" subtitle={isError ? undefined : `${pendingPOs.length} orders awaiting review`}>
           {isPendingLoading ? (

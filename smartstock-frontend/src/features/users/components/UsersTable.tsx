@@ -75,7 +75,7 @@ export default function UsersTable({ users, emptyState }: UsersTableProps) {
               value={u.role}
               currentUserId={currentUserId}
               selfId={u.id}
-              onChange={(role) => updateRole.mutate({ id: u.id, role }, { onSuccess: () => addToast('Role updated successfully', 'success'), onError: (err) => addToast(`Failed to update role: ${err.message}`, 'error') })}
+               onChange={(role) => updateRole.mutate({ id: u.id, role }, { onSuccess: () => addToast('Role updated successfully', 'success'), onError: () => addToast('Failed to update role', 'error') })}
               disabled={updateRole.isPending}
               ariaLabel={`Change role for ${u.name}`}
             />
@@ -117,7 +117,7 @@ export default function UsersTable({ users, emptyState }: UsersTableProps) {
           return (
             <button
               type="button"
-              onClick={() => deactivate.mutate(u.id, { onSuccess: () => addToast('User deactivated successfully', 'success'), onError: (err) => addToast(`Failed to deactivate user: ${err.message}`, 'error') })}
+              onClick={() => deactivate.mutate(u.id, { onSuccess: () => addToast('User deactivated successfully', 'success'), onError: () => addToast('Failed to deactivate user', 'error') })}
               disabled={!u.is_active || isSelf || deactivate.isPending}
               title={isSelf ? "You can't deactivate your own account" : 'Deactivate user'}
               className="inline-flex items-center gap-1 px-2 py-1 rounded text-caption font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
