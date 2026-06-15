@@ -13,9 +13,17 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    _is_test = 'test' in os.environ.get('DJANGO_SETTINGS_MODULE', '')
+    if _is_test:
+        SECRET_KEY = 'test-secret-key-not-for-production'
+    else:
+        from django.core.exceptions import ImproperlyConfigured
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY environment variable is required.')
+
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
