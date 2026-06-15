@@ -45,6 +45,10 @@ class Product(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_active', '-created_at'], name='idx_product_active_created'),
+            models.Index(fields=['name'], name='idx_product_name'),
+        ]
 
 
 class SKU(models.Model):
@@ -77,6 +81,10 @@ class StockLevel(models.Model):
 
     class Meta:
         ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['quantity_on_hand'], name='idx_stocklevel_qty'),
+            models.Index(fields=['quantity_on_hand', 'reorder_point'], name='idx_stocklevel_low'),
+        ]
 
 
 class SalesRecord(models.Model):

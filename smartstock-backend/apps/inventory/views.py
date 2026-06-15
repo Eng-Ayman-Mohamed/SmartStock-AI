@@ -39,14 +39,21 @@ from .serializers import (
 from .services import InventoryService, SalesRecordService, SKUService
 
 _nl_chain = None
+_nl_chain_lock = None
 
 
 def get_nl_chain():
-    global _nl_chain
+    global _nl_chain, _nl_chain_lock
     if _nl_chain is None:
-        from ai.llm.chain import NLQueryChain
+        import threading
 
-        _nl_chain = NLQueryChain()
+        if _nl_chain_lock is None:
+            _nl_chain_lock = threading.Lock()
+        with _nl_chain_lock:
+            if _nl_chain is None:
+                from ai.llm.chain import NLQueryChain
+
+                _nl_chain = NLQueryChain()
     return _nl_chain
 
 
@@ -161,12 +168,17 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        from .repositories import InventoryRepository
+        if not hasattr(self, '_cached_queryset'):
+            from .repositories import InventoryRepository
 
-        include_inactive = self.request.query_params.get('include_inactive', '').lower() == 'true'
-        if include_inactive and self.request.user.role == 'admin':
-            return InventoryRepository().get_all_queryset(include_inactive=True)
-        return InventoryRepository().get_all_queryset(include_inactive=False)
+            include_inactive = (
+                self.request.query_params.get('include_inactive', '').lower() == 'true'
+            )
+            is_admin = include_inactive and self.request.user.role == 'admin'
+            self._cached_queryset = InventoryRepository().get_all_queryset(
+                include_inactive=is_admin
+            )
+        return self._cached_queryset
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
@@ -183,7 +195,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [IsManagerOrAbove()]
 
     def list(self, request, *args, **kwargs):
-        cache_key = f'product_list_{request.get_full_path()}'
+        cache_key = f'product_list_{request.user.role}_{request.get_full_path()}'
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -1075,7 +1087,7 @@ FIELD_ALIASES = {
 
 def _parse_condition(condition: dict) -> Q:
     field = condition.get('field')
-    operator = condition.get('operator', 'eq')
+    operator = condition.get('op', 'eq')
     value = condition.get('value')
     alias = FIELD_ALIASES.get(field, field)
     lookup = OP_MAP.get(operator, '')
@@ -1090,13 +1102,16 @@ def _parse_condition(condition: dict) -> Q:
 
 
 def _build_q_from_filters(filters: NLQueryFilters) -> Q:
+    import operator
+    from functools import reduce
+
     conjunction = getattr(filters, 'conjunction', 'and')
     conditions = getattr(filters, 'conditions', [])
     if not conditions:
         return Q()
     q_parts = [_parse_condition(c) for c in conditions]
     if conjunction == 'or':
-        return Q._new_or(q_parts[0] if len(q_parts) == 1 else q_parts)
+        return reduce(operator.or_, q_parts)
     result = q_parts[0]
     for part in q_parts[1:]:
         result &= part
@@ -1137,37 +1152,44 @@ def _apply_pagination(qs, page: int = 1, per_page: int = 20):
 
 def _handle_get_inventory(filters: NLQueryFilters) -> list:
     q = _build_q_from_filters(filters)
-    results = (
+    products = (
         Product.objects.filter(q)
-        .prefetch_related('skus__stock_level')
         .select_related('category', 'supplier')
+        .prefetch_related('skus__stock_level')
         .values(
             'id',
             'name',
             'category__name',
             'supplier__name',
-            'skus__code',
-            'skus__stock_level__quantity_on_hand',
         )[:50]
     )
+    product_ids = [r['id'] for r in products]
+    skus_by_product = {}
+    for sl in StockLevel.objects.filter(sku__product_id__in=product_ids).select_related('sku'):
+        pid = sl.sku.product_id
+        if pid not in skus_by_product:
+            skus_by_product[pid] = []
+        skus_by_product[pid].append({'code': sl.sku.code, 'stock': sl.quantity_on_hand})
     return [
         {
             'id': r['id'],
             'name': r['name'],
             'category': r['category__name'],
             'supplier': r['supplier__name'],
-            'skus': [{'code': r['skus__code'], 'stock': r['skus__stock_level__quantity_on_hand']}],
+            'skus': skus_by_product.get(r['id'], []),
         }
-        for r in results
+        for r in products
     ]
 
 
 def _handle_get_sales_report(filters: NLQueryFilters) -> list:
+    if isinstance(filters, dict):
+        filters = NLQueryFilters.from_dict(filters)
     q = _build_q_from_filters(filters)
     rows = (
         SalesRecord.objects.filter(q)
         .select_related('sku__product')
-        .values('sku__code', 'sku__product__name', 'quantity_sold', 'date', 'unit_price')
+        .values('sku__code', 'sku__product__name', 'quantity_sold', 'date')
         .order_by('-date')[:100]
     )
     return [
@@ -1176,15 +1198,16 @@ def _handle_get_sales_report(filters: NLQueryFilters) -> list:
             'product_name': r['sku__product__name'],
             'quantity_sold': r['quantity_sold'],
             'date': r['date'].isoformat() if hasattr(r['date'], 'isoformat') else str(r['date']),
-            'unit_price': r['unit_price'],
         }
         for r in rows
     ]
 
 
 def _handle_get_low_stock(filters: NLQueryFilters) -> list:
+    if isinstance(filters, dict):
+        filters = NLQueryFilters.from_dict(filters)
     q = _build_q_from_filters(filters)
-    threshold = filters.get('threshold', 10)
+    threshold = filters.get('threshold', 10) if hasattr(filters, 'get') else 10
     items = (
         StockLevel.objects.select_related('sku__product')
         .filter(q, quantity_on_hand__lt=threshold)
@@ -1194,19 +1217,34 @@ def _handle_get_low_stock(filters: NLQueryFilters) -> list:
 
 
 def _handle_forecast_demand(filters: NLQueryFilters) -> list:
-    sku_code = filters.get('sku_code')
+    if isinstance(filters, dict):
+        filters = NLQueryFilters.from_dict(filters)
+    sku_code = None
+    for cond in filters.conditions:
+        if cond.field == 'sku_code':
+            sku_code = cond.value
+            break
     service = ForecastingService()
-    result = service.run_forecast(sku_code=sku_code)
+    if sku_code:
+        sku = service.repo.get_sku_by_code(sku_code)
+        if sku:
+            result = service.run_forecast(sku_id=sku.id)
+            return result if result else []
+    result = service.run_forecast()
     return result if result else []
 
 
 def _handle_get_supplier_info(filters: NLQueryFilters) -> list:
+    if isinstance(filters, dict):
+        filters = NLQueryFilters.from_dict(filters)
     q = _build_q_from_filters(filters)
     suppliers = Supplier.objects.filter(q).values('id', 'name', 'contact_email', 'phone', 'address')
     return list(suppliers)
 
 
 def _handle_get_total_value(filters: NLQueryFilters) -> list:
+    if isinstance(filters, dict):
+        filters = NLQueryFilters.from_dict(filters)
     q = _build_q_from_filters(filters)
     result = Product.objects.filter(q).aggregate(
         total_value=Sum(
@@ -1217,7 +1255,9 @@ def _handle_get_total_value(filters: NLQueryFilters) -> list:
 
 
 def _handle_get_top_products(filters: NLQueryFilters) -> list:
-    limit = filters.get('limit', 10)
+    if isinstance(filters, dict):
+        filters = NLQueryFilters.from_dict(filters)
+    limit = filters.limit or 10
     rows = (
         SalesRecord.objects.values('sku__code', 'sku__product__name')
         .annotate(total_sold=Sum('quantity_sold'))
@@ -1438,16 +1478,31 @@ class NLQueryEndpointView(APIView):
         except Exception:
             pass
 
-        AuditLog.objects.create(
-            user=user,
-            event='AI_NL_QUERY',
-            data_snapshot={
-                'query': query,
-                'action': action_type,
-                'response_length': len(natural_language_answer),
-                'pipeline_time_ms': int((time.time() - pipeline_start) * 1000),
-            },
-        )
+        try:
+            from apps.audit.tasks import create_audit_log_task
+
+            create_audit_log_task.delay(
+                user_id=user.id,
+                event='AI_NL_QUERY',
+                data_snapshot={
+                    'query': query,
+                    'action': action_type,
+                    'response_length': len(natural_language_answer),
+                    'pipeline_time_ms': int((time.time() - pipeline_start) * 1000),
+                },
+            )
+        except Exception:
+            logger.debug('Async audit log failed, falling back to sync')
+            AuditLog.objects.create(
+                user=user,
+                event='AI_NL_QUERY',
+                data_snapshot={
+                    'query': query,
+                    'action': action_type,
+                    'response_length': len(natural_language_answer),
+                    'pipeline_time_ms': int((time.time() - pipeline_start) * 1000),
+                },
+            )
 
         return Response(
             {
@@ -1471,17 +1526,19 @@ class NLQueryEndpointView(APIView):
         )
 
     def _handle_get_low_stock(self, filters):
-        return _handle_get_low_stock(filters if isinstance(filters, dict) else filters)
+        return _handle_get_low_stock(filters)
 
     def _handle_forecast_demand(self, filters):
-        return _handle_forecast_demand(filters if isinstance(filters, dict) else filters)
+        return _handle_forecast_demand(filters)
 
     def _handle_get_supplier_info(self, filters):
         return _handle_get_supplier_info(
             NLQueryFilters(**filters) if isinstance(filters, dict) else filters
         )
 
-    def _handle_get_total_value(self, filters: NLQueryFilters):
+    def _handle_get_total_value(self, filters):
+        if isinstance(filters, dict):
+            filters = NLQueryFilters.from_dict(filters)
         qs = Product.objects.filter(is_active=True).select_related('category')
         if filters.conditions:
             q = conditions_to_q(filters.conditions, model=Product)
@@ -1499,9 +1556,11 @@ class NLQueryEndpointView(APIView):
             'product_count': qs.count(),
         }
 
-    def _handle_get_top_products(self, filters: NLQueryFilters):
+    def _handle_get_top_products(self, filters):
         from django.db.models import Sum as DjSum
 
+        if isinstance(filters, dict):
+            filters = NLQueryFilters.from_dict(filters)
         qs = SalesRecord.objects.select_related('sku__product')
         if filters.conditions:
             q = conditions_to_q(filters.conditions, model=SalesRecord)

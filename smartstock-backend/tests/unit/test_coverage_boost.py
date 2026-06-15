@@ -40,73 +40,73 @@ class ParseConditionTests(TestCase):
     def test_eq_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'eq', 'value': 'Widget'})
+        q = _parse_condition({'field': 'name', 'op': 'eq', 'value': 'Widget'})
         self.assertEqual(q, Q(name='Widget'))
 
     def test_neq_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'neq', 'value': 'Widget'})
+        q = _parse_condition({'field': 'name', 'op': 'neq', 'value': 'Widget'})
         self.assertEqual(q, ~Q(name='Widget'))
 
     def test_lt_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'unit_price', 'operator': 'lt', 'value': 10})
+        q = _parse_condition({'field': 'unit_price', 'op': 'lt', 'value': 10})
         self.assertEqual(q, Q(unit_price__lt=10))
 
     def test_lte_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'quantity_sold', 'operator': 'lte', 'value': 50})
+        q = _parse_condition({'field': 'quantity_sold', 'op': 'lte', 'value': 50})
         self.assertEqual(q, Q(quantity_sold__lte=50))
 
     def test_gt_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'quantity_sold', 'operator': 'gt', 'value': 10})
+        q = _parse_condition({'field': 'quantity_sold', 'op': 'gt', 'value': 10})
         self.assertEqual(q, Q(quantity_sold__gt=10))
 
     def test_gte_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'quantity_sold', 'operator': 'gte', 'value': 5})
+        q = _parse_condition({'field': 'quantity_sold', 'op': 'gte', 'value': 5})
         self.assertEqual(q, Q(quantity_sold__gte=5))
 
     def test_contains_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'contains', 'value': 'wid'})
+        q = _parse_condition({'field': 'name', 'op': 'contains', 'value': 'wid'})
         self.assertEqual(q, Q(name__icontains='wid'))
 
     def test_in_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'in', 'value': ['A', 'B']})
+        q = _parse_condition({'field': 'name', 'op': 'in', 'value': ['A', 'B']})
         self.assertEqual(q, Q(name__in=['A', 'B']))
 
     def test_in_operator_empty_list(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'in', 'value': []})
+        q = _parse_condition({'field': 'name', 'op': 'in', 'value': []})
         self.assertEqual(q, Q(pk__in=[]))
 
     def test_not_in_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'not_in', 'value': ['A']})
+        q = _parse_condition({'field': 'name', 'op': 'not_in', 'value': ['A']})
         self.assertEqual(q, ~Q(name__in=['A']))
 
     def test_field_alias_category(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'category', 'operator': 'eq', 'value': 'Electronics'})
+        q = _parse_condition({'field': 'category', 'op': 'eq', 'value': 'Electronics'})
         self.assertEqual(q, Q(category__name='Electronics'))
 
     def test_field_alias_sku_code(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'sku_code', 'operator': 'eq', 'value': 'SKU-001'})
+        q = _parse_condition({'field': 'sku_code', 'op': 'eq', 'value': 'SKU-001'})
         self.assertEqual(q, Q(skus__code='SKU-001'))
 
 
@@ -126,7 +126,7 @@ class BuildQFromFiltersTests(TestCase):
         from apps.inventory.views import _build_q_from_filters
 
         filters = NLQueryFilters(
-            conditions=[{'field': 'name', 'operator': 'eq', 'value': 'Widget'}],
+            conditions=[{'field': 'name', 'op': 'eq', 'value': 'Widget'}],
         )
         q = _build_q_from_filters(filters)
         self.assertEqual(q, Q(name='Widget'))
@@ -138,8 +138,8 @@ class BuildQFromFiltersTests(TestCase):
 
         filters = NLQueryFilters(
             conditions=[
-                {'field': 'name', 'operator': 'eq', 'value': 'Widget'},
-                {'field': 'is_active', 'operator': 'eq', 'value': True},
+                {'field': 'name', 'op': 'eq', 'value': 'Widget'},
+                {'field': 'is_active', 'op': 'eq', 'value': True},
             ],
         )
         q = _build_q_from_filters(filters)
@@ -317,3 +317,63 @@ class InventoryServiceMethodTests(TestCase):
         qs = Product.objects.filter(id=self.product.id)
         result = InventoryService.filter_by_stock_status(qs, 'unknown')
         self.assertTrue(result.exists())
+
+
+class AuditTaskTests(TestCase):
+    def setUp(self):
+        from apps.authentication.models import CustomUser
+
+        self.user = CustomUser.objects.create_user(
+            username='audit_task_user',
+            email='audit_task@test.com',
+            password='testpass123',
+        )
+
+    def test_create_audit_log_task_success(self):
+        from apps.audit.tasks import create_audit_log_task
+
+        result = create_audit_log_task(self.user.id, 'test_event', {'key': 'value'})
+        self.assertEqual(result, {'status': 'success'})
+
+    def test_create_audit_log_task_user_not_found(self):
+        from apps.audit.tasks import create_audit_log_task
+
+        result = create_audit_log_task(99999, 'test_event', {'key': 'value'})
+        self.assertEqual(result, {'status': 'success'})
+
+    def test_create_audit_log_task_exception(self):
+        from apps.audit.tasks import create_audit_log_task
+
+        with patch('apps.audit.models.AuditLog.objects.create', side_effect=Exception('db error')):
+            result = create_audit_log_task(self.user.id, 'test_event', {})
+            self.assertEqual(result, {'status': 'success'})
+
+
+class PurchasingTaskTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from apps.inventory.models import Category, Supplier
+
+        cls.supplier = Supplier.objects.create(
+            name='Task Supplier', contact_email='task@supplier.com', default_lead_time_days=7
+        )
+        cls.category = Category.objects.create(name='Purchasing Task Category')
+
+    def test_run_purchasing_workflow(self):
+        from apps.purchasing.tasks import run_purchasing_workflow
+
+        ctx = {'sku_id': 1, 'quantity': 10, 'supplier_id': self.supplier.id}
+        with patch('ai.agents.purchasing_agent.PurchasingAgent') as MockAgent:
+            MockAgent.return_value.run.return_value = {'status': 'completed'}
+            result = run_purchasing_workflow(ctx)
+            self.assertEqual(result, {'status': 'completed'})
+
+    def test_run_purchasing_workflow_with_approval(self):
+        from apps.purchasing.tasks import run_purchasing_workflow_with_approval
+
+        ctx = {'sku_id': 1, 'quantity': 10}
+        with patch('apps.purchasing.tasks.run_purchasing_workflow') as mock_wf:
+            mock_wf.return_value = {'status': 'done'}
+            result = run_purchasing_workflow_with_approval(ctx, auto_approve=True)
+            self.assertEqual(result, {'status': 'done'})
+            mock_wf.assert_called_once_with({**ctx, 'auto_approve': True})

@@ -32,26 +32,30 @@ class SKUCompactSerializer(serializers.ModelSerializer):
             'stock_reorder_point',
         )
 
-    def _stock_level(self, obj):
-        try:
-            return obj.stock_level
-        except StockLevel.DoesNotExist:
-            return None
+    def _get_stock_level(self, obj):
+        if not hasattr(self, '_stock_level_cache'):
+            self._stock_level_cache = {}
+        if obj.pk not in self._stock_level_cache:
+            try:
+                self._stock_level_cache[obj.pk] = obj.stock_level
+            except StockLevel.DoesNotExist:
+                self._stock_level_cache[obj.pk] = None
+        return self._stock_level_cache[obj.pk]
 
     def get_stock_level_id(self, obj):
-        stock = self._stock_level(obj)
+        stock = self._get_stock_level(obj)
         return stock.id if stock else None
 
     def get_quantity_on_hand(self, obj):
-        stock = self._stock_level(obj)
+        stock = self._get_stock_level(obj)
         return stock.quantity_on_hand if stock else 0
 
     def get_quantity_reserved(self, obj):
-        stock = self._stock_level(obj)
+        stock = self._get_stock_level(obj)
         return stock.quantity_reserved if stock else 0
 
     def get_stock_reorder_point(self, obj):
-        stock = self._stock_level(obj)
+        stock = self._get_stock_level(obj)
         return stock.reorder_point if stock else None
 
 
@@ -137,12 +141,13 @@ class StockLevelSerializer(serializers.ModelSerializer):
     def validate_reorder_point(self, value):
         if value < 0:
             raise serializers.ValidationError('Reorder point cannot be negative.')
-        product = self.instance
-        max_cap = product.max_warehouse_capacity if product else 1000
-        if value > max_cap:
-            raise serializers.ValidationError(
-                f'Reorder point cannot exceed max warehouse capacity ({max_cap}).'
-            )
+        if self.instance and hasattr(self.instance, 'sku'):
+            product = self.instance.sku.product
+            max_cap = product.max_warehouse_capacity if product else 1000
+            if value > max_cap:
+                raise serializers.ValidationError(
+                    f'Reorder point cannot exceed max warehouse capacity ({max_cap}).'
+                )
         return value
 
     # Added

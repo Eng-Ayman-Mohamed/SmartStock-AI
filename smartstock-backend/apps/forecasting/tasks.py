@@ -37,3 +37,17 @@ def run_forecasting_agent(sku_ids: list[int] | None = None):
     except Exception:
         logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
     return result
+
+
+@shared_task(rate_limit='10/m')
+def run_forecast_single_sku(sku_id: int):
+    """Forecast a single SKU in parallel."""
+    from .services import ForecastingService
+
+    service = ForecastingService()
+    try:
+        result = service.run_forecast(sku_id=sku_id)
+        return {'sku_id': sku_id, 'status': 'success', 'result': result}
+    except Exception as e:
+        logger.exception('Forecast failed for SKU %s: %s', sku_id, e)
+        return {'sku_id': sku_id, 'status': 'failed', 'error': str(e)}
