@@ -40,73 +40,73 @@ class ParseConditionTests(TestCase):
     def test_eq_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'eq', 'value': 'Widget'})
+        q = _parse_condition({'field': 'name', 'op': 'eq', 'value': 'Widget'})
         self.assertEqual(q, Q(name='Widget'))
 
     def test_neq_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'neq', 'value': 'Widget'})
+        q = _parse_condition({'field': 'name', 'op': 'neq', 'value': 'Widget'})
         self.assertEqual(q, ~Q(name='Widget'))
 
     def test_lt_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'unit_price', 'operator': 'lt', 'value': 10})
+        q = _parse_condition({'field': 'unit_price', 'op': 'lt', 'value': 10})
         self.assertEqual(q, Q(unit_price__lt=10))
 
     def test_lte_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'quantity_sold', 'operator': 'lte', 'value': 50})
+        q = _parse_condition({'field': 'quantity_sold', 'op': 'lte', 'value': 50})
         self.assertEqual(q, Q(quantity_sold__lte=50))
 
     def test_gt_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'quantity_sold', 'operator': 'gt', 'value': 10})
+        q = _parse_condition({'field': 'quantity_sold', 'op': 'gt', 'value': 10})
         self.assertEqual(q, Q(quantity_sold__gt=10))
 
     def test_gte_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'quantity_sold', 'operator': 'gte', 'value': 5})
+        q = _parse_condition({'field': 'quantity_sold', 'op': 'gte', 'value': 5})
         self.assertEqual(q, Q(quantity_sold__gte=5))
 
     def test_contains_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'contains', 'value': 'wid'})
+        q = _parse_condition({'field': 'name', 'op': 'contains', 'value': 'wid'})
         self.assertEqual(q, Q(name__icontains='wid'))
 
     def test_in_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'in', 'value': ['A', 'B']})
+        q = _parse_condition({'field': 'name', 'op': 'in', 'value': ['A', 'B']})
         self.assertEqual(q, Q(name__in=['A', 'B']))
 
     def test_in_operator_empty_list(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'in', 'value': []})
+        q = _parse_condition({'field': 'name', 'op': 'in', 'value': []})
         self.assertEqual(q, Q(pk__in=[]))
 
     def test_not_in_operator(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'name', 'operator': 'not_in', 'value': ['A']})
+        q = _parse_condition({'field': 'name', 'op': 'not_in', 'value': ['A']})
         self.assertEqual(q, ~Q(name__in=['A']))
 
     def test_field_alias_category(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'category', 'operator': 'eq', 'value': 'Electronics'})
+        q = _parse_condition({'field': 'category', 'op': 'eq', 'value': 'Electronics'})
         self.assertEqual(q, Q(category__name='Electronics'))
 
     def test_field_alias_sku_code(self):
         from django.db.models import Q
 
-        q = _parse_condition({'field': 'sku_code', 'operator': 'eq', 'value': 'SKU-001'})
+        q = _parse_condition({'field': 'sku_code', 'op': 'eq', 'value': 'SKU-001'})
         self.assertEqual(q, Q(skus__code='SKU-001'))
 
 
@@ -126,7 +126,7 @@ class BuildQFromFiltersTests(TestCase):
         from apps.inventory.views import _build_q_from_filters
 
         filters = NLQueryFilters(
-            conditions=[{'field': 'name', 'operator': 'eq', 'value': 'Widget'}],
+            conditions=[{'field': 'name', 'op': 'eq', 'value': 'Widget'}],
         )
         q = _build_q_from_filters(filters)
         self.assertEqual(q, Q(name='Widget'))
@@ -138,8 +138,8 @@ class BuildQFromFiltersTests(TestCase):
 
         filters = NLQueryFilters(
             conditions=[
-                {'field': 'name', 'operator': 'eq', 'value': 'Widget'},
-                {'field': 'is_active', 'operator': 'eq', 'value': True},
+                {'field': 'name', 'op': 'eq', 'value': 'Widget'},
+                {'field': 'is_active', 'op': 'eq', 'value': True},
             ],
         )
         q = _build_q_from_filters(filters)
