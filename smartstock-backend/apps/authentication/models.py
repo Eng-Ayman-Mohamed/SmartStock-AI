@@ -9,3 +9,8 @@ class CustomUser(AbstractUser):
         ADMIN = 'admin', 'Admin'
 
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.VIEWER)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['role'], name='idx_user_role'),
+        ]
