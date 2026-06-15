@@ -7,6 +7,7 @@ import cloudinary
 import cloudinary.api
 import cloudinary.uploader
 import dj_database_url
+from celery.schedules import crontab
 
 logger = logging.getLogger(__name__)
 
@@ -216,9 +217,6 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
-
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -267,6 +265,10 @@ CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
 )
 
 CELERY_BEAT_SCHEDULE = {
+    'purge-audit-logs-daily': {
+        'task': 'apps.audit.tasks.purge_old_audit_logs',
+        'schedule': timedelta(hours=24),
+    },
     'check-supplier-timeouts': {
         'task': 'apps.purchasing.timeout_tasks.check_supplier_timeouts',
         'schedule': 3600,  # every hour
@@ -274,6 +276,14 @@ CELERY_BEAT_SCHEDULE = {
     'evaluate-monitoring-alerts': {
         'task': 'apps.monitoring.tasks.evaluate_all_alerts_task',
         'schedule': 300,  # every 5 minutes
+    },
+    'run-forecast-daily': {
+        'task': 'apps.forecasting.tasks.run_forecasting_agent',
+        'schedule': crontab(hour=2, minute=0),  # 02:00 UTC daily
+    },
+    'daily-evaluation-metrics': {
+        'task': 'apps.monitoring.evaluation_tasks.run_daily_evaluation_task',
+        'schedule': crontab(hour=3, minute=0),  # 03:00 UTC daily
     },
 }
 

@@ -1,6 +1,7 @@
 # SmartStock AI
 
 [![CI](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/ci.yml)
+[![Docker Build](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/docker-build.yml/badge.svg)](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/docker-build.yml)
 
 > AI-powered Inventory Management Platform — proactive demand planning, LLM-powered analytics, and autonomous purchasing agents.
 
@@ -37,11 +38,12 @@ SmartStock AI couples **real-time inventory tracking** with **AI-driven demand f
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React · TypeScript · Tailwind CSS · Recharts · React Query · Zustand |
-| **Backend** | Django REST Framework · Python |
-| **Database** | PostgreSQL · pgvector · Redis |
+| **Frontend** | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 · Recharts · React Query · Zustand |
+| **Backend** | Django 5 · DRF · Python 3.12 · Celery |
+| **Database** | PostgreSQL 16 · pgvector · Redis 7 |
 | **AI / ML** | Prophet · LangChain · GPT-4o · text-embedding-3-small · Cohere |
-| **Infrastructure** | Docker · GitHub Actions · Celery |
+| **Infrastructure** | Docker · GitHub Actions · Railway (deploy) |
+| **Monitoring** | Prometheus · Grafana · Alertmanager · Langfuse |
 
 ---
 
@@ -65,28 +67,56 @@ See [`Systemarchitecture.md`](Systemarchitecture.md) for the full architectural 
 ## Project Structure
 
 ```
-smartstock-backend/       # Django REST API (Clean Architecture)
-├── config/               # Project settings (dev/prod), Celery, URL routing
-├── apps/                 # Feature-based Django apps (5 domains)
-│   ├── authentication/   # JWT, RBAC, CustomUser model
-│   ├── inventory/        # Products, SKUs, stock levels
-│   ├── forecasting/      # Prophet model, reorder logic
-│   ├── purchasing/       # Purchase orders, supplier management
-│   └── audit/            # Audit logging (signals + middleware)
-├── ai/                   # Isolated AI layer
-│   ├── llm/              # LangChain chain, prompts, output parser
-│   ├── rag/              # Ingestion, hybrid retrieval, citation
-│   ├── agents/           # 3 agents + 8 plugin tools
-│   └── multimodal/       # Vision OCR, Whisper STT
-├── core/                 # Shared abstractions (BaseRepository, exceptions)
-└── infrastructure/       # Redis, email, file storage wrappers
+smartstock-backend/           # Django REST API (Clean Architecture)
+├── config/                   # Project settings (dev/prod), Celery, URL routing
+├── apps/                     # Feature-based Django apps
+│   ├── authentication/       # JWT, RBAC, CustomUser model
+│   ├── inventory/            # Products, SKUs, stock levels
+│   ├── forecasting/          # Prophet model, reorder logic
+│   ├── purchasing/           # Purchase orders, supplier management
+│   ├── ingestion/            # Document upload, RAG query
+│   ├── audit/                # Audit logging (signals + middleware)
+│   ├── monitoring/           # Prometheus metrics, alerting
+│   ├── notifications/        # Email + dashboard notifications
+│   └── health/               # Readiness / liveness probes
+├── ai/                       # Isolated AI layer
+│   ├── llm/                  # LangChain chain, prompts, output parser
+│   ├── rag/                  # Ingestion, hybrid retrieval, citation
+│   ├── agents/               # 3 agents + 8 plugin tools
+│   ├── multimodal/           # Vision OCR, Whisper STT
+│   ├── evaluation/           # AI evaluation metrics
+│   └── observability/        # Langfuse tracing integration
+├── core/                     # Shared abstractions (BaseRepository, exceptions)
+├── infrastructure/           # Redis, email, file storage wrappers
+├── tests/                    # Unit, integration, golden dataset
+├── Dockerfile
+├── entrypoint.sh
+├── railway.toml              # Railway web service config
+├── railway.worker.toml       # Railway Celery worker config
+└── DEPLOY.md                 # Detailed deployment guide
 
-smartstock-frontend/      # React + TypeScript SPA
-└── src/
-    ├── features/         # Vertical slices per domain
-    ├── shared/           # Reusable components/hooks
-    ├── lib/              # Axios, React Query, Router config
-    └── store/            # Zustand (client state only)
+smartstock-frontend/          # React + TypeScript SPA
+├── src/
+│   ├── features/             # Vertical slices per domain
+│   │   ├── ai-assistant/     # AI chat & voice assistant
+│   │   ├── auth/             # Login, register, session management
+│   │   ├── dashboard/        # Dashboard widgets & metrics
+│   │   ├── forecasting/      # Demand forecasting charts & alerts
+│   │   ├── inventory/        # Product & stock management
+│   │   ├── invoice-scan/     # AI-powered invoice scanning
+│   │   ├── purchasing/       # Purchase orders & suppliers
+│   │   └── users/            # User management (admin)
+│   ├── lib/                  # Axios, React Query, Router config
+│   ├── shared/               # Reusable components/hooks
+│   └── store/                # Zustand (client state only)
+├── Dockerfile                # Multi-stage build (Node → Nginx)
+├── nginx.conf                # Production reverse proxy
+└── docker-entrypoint.sh      # Runtime env injection for Docker
+
+monitoring/                   # Observability stack
+├── prometheus/               # Prometheus config + alert rules
+├── grafana/                  # Pre-built dashboards + datasources
+└── alertmanager/             # Alert routing config
 ```
 
 ---
@@ -96,9 +126,11 @@ smartstock-frontend/      # React + TypeScript SPA
 ### Prerequisites
 
 - Python 3.12+
-- Node.js 20+
+- Node.js 22+
 - PostgreSQL 16+ (with pgvector extension)
-- Redis
+- Redis 7+
+- OpenAI API key
+- Cohere API key (for RAG reranking)
 
 ### Backend Setup
 
@@ -111,31 +143,159 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+The API is available at `http://localhost:8000/api/`. Swagger docs at `http://localhost:8000/api/schema/swagger-ui/`.
+
 ### Frontend Setup
 
 ```bash
 cd smartstock-frontend
-npm install
 cp .env.example .env.local
+npm install
 npm run dev
 ```
 
-### Docker (alternative)
+Dev server starts on `http://localhost:5173`. API requests to `/api` are proxied to `http://localhost:8000`.
+
+### Docker (Full Stack)
 
 ```bash
 docker compose up --build
 ```
 
+This starts all services:
+
+| Service | Container | URL |
+|---------|-----------|-----|
+| **Frontend** | `smartstock_frontend` | http://localhost:3000 |
+| **Backend API** | `smartstock_backend` | http://localhost:8000/api/ |
+| **Celery Worker** | `smartstock_celery` | — |
+| **Celery Beat** | `smartstock_celery_beat` | — |
+| **PostgreSQL** | `smartstock_db` | localhost:5433 |
+| **Redis** | `smartstock_redis` | localhost:6379 |
+| **Prometheus** | `smartstock_prometheus` | http://localhost:9090 |
+| **Alertmanager** | `smartstock_alertmanager` | http://localhost:9093 |
+| **Grafana** | `smartstock_grafana` | http://localhost:3001 |
+
+> **Note:** The root `.env` file is shared by all Docker services. Copy `.env.example` at the repo root if one doesn't exist.
+
+### Environment Variables
+
+| Service | Required Vars | See |
+|---------|---------------|-----|
+| Backend | `DJANGO_SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY`, `COHERE_API_KEY` | [`smartstock-backend/.env.example`](smartstock-backend/.env.example) |
+| Frontend | `VITE_API_URL` (has default) | [`smartstock-frontend/.env.example`](smartstock-frontend/.env.example) |
+
+Each service's `.env.example` is annotated with purpose, defaults, and required/optional markers.
+
 ---
 
-## Delivery Roadmap
+## Available Commands
 
-| Week | Milestone |
-|------|-----------|
-| 1 | Core inventory CRUD, dashboard, PostgreSQL schema, JWT auth |
-| 2 | Prophet forecasting engine, historical sales ingestion, recharts chart |
-| 3 | GPT-4o NL query pipeline, 5 few-shot examples, RAG pipeline |
-| 4 | Purchasing Agent (HITL), email integration, approval workflow |
+### Backend
+
+```bash
+ruff check .                   # Lint
+ruff format .                  # Format
+pytest                         # Run tests (SQLite in-memory)
+pytest --cov=. --cov-report=html  # With coverage
+python manage.py migrate       # Run migrations
+python manage.py createsuperuser
+python manage.py seed_data     # Populate test data
+```
+
+### Frontend
+
+```bash
+npm run dev                    # Vite dev server (port 5173, HMR)
+npm run build                  # tsc -b + vite build
+npm run preview                # Preview production build
+npm run lint                   # ESLint
+```
+
+### Docker
+
+```bash
+docker compose up --build      # Build + start all services
+docker compose down            # Stop all services
+docker compose logs -f backend # Tail backend logs
+docker compose exec backend python manage.py shell  # Django shell
+```
+
+---
+
+## Testing
+
+### Backend
+
+```bash
+cd smartstock-backend
+pytest                                    # Unit + integration (SQLite)
+DATABASE_URL=postgres://... pytest        # Against real Postgres
+pytest tests/unit/                        # Unit tests only
+pytest tests/integration/                 # Integration tests only
+```
+
+- Tests use `config.settings.test` (Redis disabled, Celery eager, Cloudinary disabled)
+- CI enforces ≥80% coverage (`--cov-fail-under=80`)
+- Golden dataset: 30 annotated NL queries run in CI on merge to main
+- OpenAPI schema validation runs in CI
+
+### Frontend
+
+```bash
+cd smartstock-frontend
+npm run lint                  # ESLint
+npx tsc --noEmit              # Type checking
+```
+
+No test framework is currently configured. CI runs lint + build on every push/PR.
+
+---
+
+## CI/CD
+
+GitHub Actions workflows on push to `main`/`develop` and PRs to `main`:
+
+| Job | What it does |
+|-----|-------------|
+| `backend-lint` | `ruff check` + `ruff format --check` |
+| `backend-test` | `pytest` with Postgres service container, ≥80% coverage gate, OpenAPI schema validation |
+| `backend-check` | `python manage.py check` (system check) |
+| `frontend-lint` | `npm run lint` + `tsc --noEmit` |
+| `frontend-build` | `npm run build` |
+
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and [`.github/workflows/docker-build.yml`](.github/workflows/docker-build.yml).
+
+---
+
+## Deployment
+
+### Backend — Railway
+
+Deploys via two Railway services from the same Docker image:
+
+| Service | Config | Start Command |
+|---|---|---|
+| `smartstock-api` | `railway.toml` | `migrate` + `gunicorn` |
+| `smartstock-worker` | `railway.worker.toml` | `celery worker` |
+
+See [`smartstock-backend/DEPLOY.md`](smartstock-backend/DEPLOY.md) for the full deployment checklist.
+
+### Frontend — Vercel / Docker
+
+- **Vercel:** Deploy `dist/` to Vercel. Set `VITE_API_BASE_URL` to your backend URL.
+- **Docker:** `docker compose up --build` runs the full stack with Nginx serving the SPA and proxying API calls.
+
+---
+
+## Monitoring
+
+The Docker Compose stack includes a full observability suite:
+
+- **Prometheus** — scrapes backend metrics, 30-day retention
+- **Grafana** — pre-built dashboards at http://localhost:3001 (admin/smartstock)
+- **Alertmanager** — routes alerts for latency p95 >3s, error rate >1%, budget caps
+- **Langfuse** — traces every LLM call, RAG retrieval, and agent tool invocation (requires `LANGFUSE_*` env vars)
 
 ---
 
@@ -152,12 +312,18 @@ See [`Systemarchitecture.md`](Systemarchitecture.md) §9 for the full security m
 
 ---
 
-## Observability
+## Further Reading
 
-- **Langfuse** traces every LLM call, RAG retrieval, and agent tool invocation
-- 3 core metrics: Retrieval Precision@5 (≥0.80), Answer Faithfulness (≥0.85), Agent Success Rate (≥0.90)
-- Golden dataset of 30 annotated NL queries run in CI on every merge
-- Alerting: latency p95 >3s, error rate >1%, budget cap exceeded
+| Document | Description |
+|----------|-------------|
+| [`Systemarchitecture.md`](Systemarchitecture.md) | Full architectural reference (688 lines) |
+| [`DESIGN.md`](DESIGN.md) | Design system and UI guidelines |
+| [`design-system-prompt.md`](design-system-prompt.md) | Tailwind token reference (brand colors) |
+| [`Project-blueprint.md`](Project-blueprint.md) | Project blueprint and planning |
+| [`Future-Work.md`](Future-Work.md) | Planned features and improvements |
+| [`reports/security-audit-report.md`](reports/security-audit-report.md) | Security audit findings |
+| [`reports/performance-report.md`](reports/performance-report.md) | Performance analysis |
+| [`smartstock-backend/DEPLOY.md`](smartstock-backend/DEPLOY.md) | Railway deployment guide |
 
 ---
 

@@ -325,16 +325,16 @@ class RAGQueryView(APIView):
 
         # --- Prompt injection check (Task A10) ---
         try:
-            is_safe = prompt_injection_filter(query)
+            is_safe, matched_pattern = prompt_injection_filter(query)
         except Exception:
             logger.exception('Prompt injection filter failed')
-            is_safe = True
+            is_safe, matched_pattern = True, None
 
         if not is_safe:
             AuditLog.objects.create(
                 user=request.user,
                 event='PROMPT_INJECTION_ATTEMPT',
-                data_snapshot={'query': query[:200]},
+                data_snapshot={'query': query[:200], 'matched_pattern': matched_pattern},
             )
             return Response(
                 {
@@ -713,16 +713,20 @@ class ChatEndpointView(APIView):
 
         # --- Prompt injection check (Task A10) ---
         try:
-            is_safe = prompt_injection_filter(query)
+            is_safe, matched_pattern = prompt_injection_filter(query)
         except Exception:
             logger.exception('Prompt injection filter failed')
-            is_safe = True
+            is_safe, matched_pattern = True, None
 
         if not is_safe:
             AuditLog.objects.create(
                 user=request.user,
                 event='PROMPT_INJECTION_ATTEMPT',
-                data_snapshot={'query': query[:200], 'endpoint': 'chat'},
+                data_snapshot={
+                    'query': query[:200],
+                    'matched_pattern': matched_pattern,
+                    'endpoint': 'chat',
+                },
             )
             return Response(
                 {

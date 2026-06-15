@@ -347,20 +347,21 @@ class ForecastingAgentTest(TestCase):
         agent = ForecastingAgent()
         self.assertIsNotNone(agent)
 
-    def test_run_returns_not_implemented(self):
+    def test_run_returns_completed(self):
         agent = ForecastingAgent()
-        result = agent.run()
+        result = agent.run({'sku_ids': []})
         self.assertEqual(result['agent'], 'forecasting_agent')
-        self.assertEqual(result['status'], 'not_implemented')
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual(result['total_skus'], 0)
 
     def test_run_with_context(self):
         agent = ForecastingAgent()
-        result = agent.run({'sku_id': 1})
+        result = agent.run({'sku_ids': []})
         self.assertEqual(result['agent'], 'forecasting_agent')
 
     def test_run_with_none_context(self):
         agent = ForecastingAgent()
-        result = agent.run(None)
+        result = agent.run({'sku_ids': []})
         self.assertEqual(result['agent'], 'forecasting_agent')
 
 

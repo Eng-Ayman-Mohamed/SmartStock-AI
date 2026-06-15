@@ -45,7 +45,6 @@ class PurchaseOrder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     po_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
-    confirmed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         label = self.po_number or f'PO-{self.id}'
