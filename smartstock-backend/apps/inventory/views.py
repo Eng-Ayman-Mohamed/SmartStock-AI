@@ -29,6 +29,7 @@ from .filters import ProductFilter, SalesRecordFilter, SKUFilter, StockLevelFilt
 from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 from .serializers import (
     CategorySerializer,
+    ProductListSerializer,
     ProductSerializer,
     ProductWriteSerializer,
     SalesRecordSerializer,
@@ -40,6 +41,35 @@ from .services import InventoryService, SalesRecordService, SKUService
 
 _nl_chain = None
 _nl_chain_lock = None
+
+# P0-1: Pattern cache for common NL queries — short-circuits the first LLM call.
+# Maps lowercase substring patterns to (action, filters_dict) tuples.
+_QUERY_PATTERN_CACHE: list[tuple[str, str, dict]] = [
+    ('low stock', 'get_low_stock', {}),
+    (
+        'out of stock',
+        'get_low_stock',
+        {'conditions': [{'field': 'quantity_on_hand', 'op': 'eq', 'value': 0}]},
+    ),
+    ('top products', 'get_top_products', {}),
+    ('total value', 'get_total_value', {}),
+    ('total inventory value', 'get_total_value', {}),
+    ('supplier info', 'get_supplier_info', {}),
+    ('all suppliers', 'get_supplier_info', {}),
+    ('all products', 'get_inventory', {}),
+    ('show products', 'get_inventory', {}),
+    ('list products', 'get_inventory', {}),
+    ('show inventory', 'get_inventory', {}),
+]
+
+
+def _match_cached_query(query: str) -> tuple[str, dict] | None:
+    """Return (action, filters_dict) if the query matches a cached pattern, else None."""
+    lower_q = query.strip().lower()
+    for pattern, cached_action, cached_filters in _QUERY_PATTERN_CACHE:
+        if pattern in lower_q:
+            return cached_action, cached_filters
+    return None
 
 
 def get_nl_chain():
@@ -175,14 +205,18 @@ class ProductViewSet(viewsets.ModelViewSet):
                 self.request.query_params.get('include_inactive', '').lower() == 'true'
             )
             is_admin = include_inactive and self.request.user.role == 'admin'
-            self._cached_queryset = InventoryRepository().get_all_queryset(
-                include_inactive=is_admin
+            self._cached_queryset = (
+                InventoryRepository()
+                .get_all_queryset(include_inactive=is_admin)
+                .defer('description')
             )
         return self._cached_queryset
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
             return ProductWriteSerializer
+        if self.action == 'list':
+            return ProductListSerializer
         return ProductSerializer
 
     def get_permissions(self):
@@ -195,7 +229,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [IsManagerOrAbove()]
 
     def list(self, request, *args, **kwargs):
-        cache_key = f'product_list_{request.user.role}_{request.get_full_path()}'
+        from .services import get_product_cache_version
+
+        cache_key = (
+            f'product_list_v{get_product_cache_version()}'
+            f'_{request.user.role}_{request.get_full_path()}'
+        )
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -1085,10 +1124,15 @@ FIELD_ALIASES = {
 }
 
 
-def _parse_condition(condition: dict) -> Q:
-    field = condition.get('field')
-    operator = condition.get('op', 'eq')
-    value = condition.get('value')
+def _parse_condition(condition) -> Q:
+    if hasattr(condition, 'field'):
+        field = condition.field
+        operator = condition.op
+        value = condition.value
+    else:
+        field = condition.get('field')
+        operator = condition.get('op', 'eq')
+        value = condition.get('value')
     alias = FIELD_ALIASES.get(field, field)
     lookup = OP_MAP.get(operator, '')
     q_key = f'{alias}{lookup}'
@@ -1155,7 +1199,6 @@ def _handle_get_inventory(filters: NLQueryFilters) -> list:
     products = (
         Product.objects.filter(q)
         .select_related('category', 'supplier')
-        .prefetch_related('skus__stock_level')
         .values(
             'id',
             'name',
@@ -1406,20 +1449,26 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Step B: LangChain Processing
-        try:
-            chain_instance = get_nl_chain()
-            chain_result = chain_instance.run(query)
+        # Step B: LangChain Processing (P0-1: check pattern cache first)
+        cached = _match_cached_query(query)
+        if cached is not None:
+            action_type, filters = cached
+            chain_result = None
+            logger.info('Query matched pattern cache: action=%s', action_type)
+        else:
+            try:
+                chain_instance = get_nl_chain()
+                chain_result = chain_instance.run(query)
 
-            # Extracting information based on your structured JSON schema rules
-            chain_dict = chain_result.to_dict()
-            action_type = chain_dict.get('action')
-            filters = chain_dict.get('filters', {})
-        except Exception as chain_err:
-            return Response(
-                {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+                # Extracting information based on your structured JSON schema rules
+                chain_dict = chain_result.to_dict()
+                action_type = chain_dict.get('action')
+                filters = chain_dict.get('filters', {})
+            except Exception as chain_err:
+                return Response(
+                    {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         # Step C: Dispatch to the correct service
         raw_data = None
@@ -1551,10 +1600,12 @@ class NLQueryEndpointView(APIView):
                 )
             )
         )
-        return {
-            'total_value': str(total['total_value'] or 0),
-            'product_count': qs.count(),
-        }
+        return [
+            {
+                'total_value': str(total['total_value'] or 0),
+                'product_count': qs.count(),
+            }
+        ]
 
     def _handle_get_top_products(self, filters):
         from django.db.models import Sum as DjSum
