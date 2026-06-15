@@ -1436,7 +1436,7 @@ class NLQueryEndpointView(APIView):
             is_safe, matched_pattern = prompt_injection_filter(query)
         except Exception:
             logger.exception('Prompt injection filter failed')
-            is_safe, matched_pattern = True, None
+            is_safe, matched_pattern = False, 'filter_error'
 
         if not is_safe:
             AuditLog.objects.create(

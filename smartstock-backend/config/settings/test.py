@@ -97,6 +97,7 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
     'user': '10000/min',
     'login': '10000/min',
     'ai': '10000/min',
+    'health': '10000/min',
 }
 
 # Disable Cloudinary for tests

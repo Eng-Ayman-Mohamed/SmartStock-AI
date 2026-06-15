@@ -7,9 +7,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: smartstock_db
     environment:
-      POSTGRES_DB: ${DB_NAME:-smartstock}
-      POSTGRES_USER: ${DB_USER:-smartstock}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-smartstock}
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in .env}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     ports:
       - "5433:5432"
     volumes:
@@ -28,8 +28,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: smartstock_redis
-    ports:
-      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     volumes:
       - redisdata:/data
     command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -38,7 +37,7 @@ services:
         aliases:
           - cache
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -56,12 +55,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-smartstock}:${DB_PASSWORD:-smartstock}@db:5432/${DB_NAME:-smartstock}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       DB_HOST: db
       DB_PORT: "5432"
-      REDIS_URL: redis://cache:6379/0
-      CELERY_BROKER_URL: redis://cache:6379/0
-      CELERY_RESULT_BACKEND: redis://cache:6379/1
+      REDIS_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.development
     ports:
       - "8000:8000"
@@ -84,12 +83,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-smartstock}:${DB_PASSWORD:-smartstock}@db:5432/${DB_NAME:-smartstock}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       DB_HOST: db
       DB_PORT: "5432"
-      REDIS_URL: redis://cache:6379/0
-      CELERY_BROKER_URL: redis://cache:6379/0
-      CELERY_RESULT_BACKEND: redis://cache:6379/1
+      REDIS_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.development
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping --timeout 5 || exit 1"]
@@ -116,12 +115,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-smartstock}:${DB_PASSWORD:-smartstock}@db:5432/${DB_NAME:-smartstock}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       DB_HOST: db
       DB_PORT: "5432"
-      REDIS_URL: redis://cache:6379/0
-      CELERY_BROKER_URL: redis://cache:6379/0
-      CELERY_RESULT_BACKEND: redis://cache:6379/1
+      REDIS_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.development
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import os; [print(p) for p in os.listdir('/proc') if p.isdigit() and 'celery' in open(f'/proc/{p}/cmdline').read()]\" || exit 1"]

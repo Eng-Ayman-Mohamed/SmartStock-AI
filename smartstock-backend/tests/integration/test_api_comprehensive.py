@@ -484,8 +484,9 @@ class HealthEndpointComprehensiveTest(APITestCase):
         self.assertEqual(data['status'], 'success')
         inner = data['data']
         self.assertEqual(inner['status'], 'ok')
-        self.assertIn(inner['database'], ['connected', 'disconnected'])
-        self.assertIn(inner['redis'], ['connected', 'disconnected'])
+        # Liveness probe no longer exposes dependency info
+        self.assertNotIn('database', inner)
+        self.assertNotIn('redis', inner)
 
     def test_readiness_check(self):
         resp = self.client.get('/api/health/ready/')

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_filters',
     'django_celery_beat',
@@ -88,17 +89,47 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgres://{user}:{password}@{host}:{port}/{name}'.format(
-            user=os.environ.get('DB_USER', 'smartstock'),
-            password=os.environ.get('DB_PASSWORD', 'smartstock'),
-            host=os.environ.get('DB_HOST', 'localhost'),
-            port=os.environ.get('DB_PORT', '5432'),
-            name=os.environ.get('DB_NAME', 'smartstock'),
-        ),
+        default=os.environ.get('DATABASE_URL', ''),
         conn_max_age=600,
         conn_health_checks=True,
     )
 }
+
+if not DATABASES.get('default') or not DATABASES['default'].get('ENGINE'):
+    _db_user = os.environ.get('DB_USER')
+    _db_password = os.environ.get('DB_PASSWORD')
+    _db_host = os.environ.get('DB_HOST', 'localhost')
+    _db_port = os.environ.get('DB_PORT', '5432')
+    _db_name = os.environ.get('DB_NAME')
+
+    if not all([_db_user, _db_password, _db_name]):
+        if 'test' not in os.environ.get('DJANGO_SETTINGS_MODULE', ''):
+            from django.core.exceptions import ImproperlyConfigured
+
+            raise ImproperlyConfigured(
+                'Database credentials required. Set DATABASE_URL or '
+                'DB_USER, DB_PASSWORD, DB_NAME environment variables.'
+            )
+        else:
+            DATABASES = {
+                'default': {
+                    'ENGINE': 'django.db.backends.sqlite3',
+                    'NAME': ':memory:',
+                }
+            }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': _db_name,
+                'USER': _db_user,
+                'PASSWORD': _db_password,
+                'HOST': _db_host,
+                'PORT': _db_port,
+                'CONN_MAX_AGE': 600,
+                'CONN_HEALTH_CHECKS': True,
+            }
+        }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -194,13 +225,15 @@ REST_FRAMEWORK = {
         'login': '5/minute',
         'ai': '10/minute',
         'nlquery': '10/minute',
+        'health': '60/minute',
     },
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
     'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
     'AUTH_COOKIE_HTTP_ONLY': True,
@@ -224,6 +257,8 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = ['Content-Disposition']
 
 CACHES = {
     'default': {
