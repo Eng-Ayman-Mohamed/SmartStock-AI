@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.dispatch import Signal
 
 from .repositories import (
@@ -75,28 +76,65 @@ class InventoryService:
         }
 
     def get_low_stock_items(self):
-        """Get low stock items (cached 5 min)."""
+        """Get low stock items (cached 5 min).
+
+        Adds ``predicted_stockout_date`` — the estimated date when stock
+        reaches zero based on trailing 30-day average daily demand.
+        """
+        from datetime import date, timedelta
+
         cache_key = 'low_stock_items'
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
 
         low_stock = self.stock_repo.get_low_stock()
-        result = [
-            {
-                'id': sl.id,
-                'product_id': sl.sku.product.id,
-                'product_name': sl.sku.product.name,
-                'sku_code': sl.sku.code,
-                'quantity': sl.quantity_on_hand,
-                'reorder_point': sl.reorder_point,
-                'reorder_quantity': sl.reorder_quantity,
-                'supplier_name': sl.sku.product.supplier.name if sl.sku.product.supplier else None,
-            }
-            for sl in low_stock
-        ]
+        result = []
+        for sl in low_stock:
+            avg_daily_demand = self._avg_daily_demand(sl.sku_id)
+            if avg_daily_demand > 0:
+                days_left = sl.quantity_on_hand / avg_daily_demand
+                predicted_stockout = date.today() + timedelta(days=int(days_left))
+            else:
+                predicted_stockout = None
+
+            result.append(
+                {
+                    'id': sl.id,
+                    'product_id': sl.sku.product.id,
+                    'product_name': sl.sku.product.name,
+                    'sku_code': sl.sku.code,
+                    'quantity': sl.quantity_on_hand,
+                    'reorder_point': sl.reorder_point,
+                    'reorder_quantity': sl.reorder_quantity,
+                    'supplier_name': (
+                        sl.sku.product.supplier.name if sl.sku.product.supplier else None
+                    ),
+                    'predicted_stockout_date': (
+                        predicted_stockout.isoformat() if predicted_stockout else None
+                    ),
+                }
+            )
         cache.set(cache_key, result, timeout=300)
         return result
+
+    @staticmethod
+    def _avg_daily_demand(sku_id: int) -> float:
+        """Return average daily demand over the last 30 days for *sku_id*."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.inventory.models import SalesRecord
+
+        cutoff = timezone.localdate() - timedelta(days=30)
+        total = (
+            SalesRecord.objects.filter(sku_id=sku_id, date__gte=cutoff).aggregate(
+                total=models.Sum('quantity_sold')
+            )['total']
+            or 0
+        )
+        return total / 30.0
 
     @staticmethod
     def filter_by_stock_status(queryset, value):

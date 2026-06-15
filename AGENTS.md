@@ -47,7 +47,7 @@ Services: postgres (pgvector/pg16), redis, backend (port 8000), celery, celery-b
 ## Config quirks
 
 - **Settings split**: `config/settings/base.py` ← `development.py` / `production.py`. The Dockerfile and Railway use `production`.
-- **No flake8, no pyproject.toml** in backend — linting config is not yet committed despite being mentioned in task specs.
+- **Ruff for linting** in backend — config at `ruff.toml` (line-length=100, ignore E501).
 - **CI workflow** at `.github/workflows/ci.yml` — runs lint, tests (pytest with `config.settings.test`), and OpenAPI validation.
 - **No pre-commit hooks** configured.
 - **Migrations are tracked in git** — run `python manage.py makemigrations` after model changes and commit the generated files.
