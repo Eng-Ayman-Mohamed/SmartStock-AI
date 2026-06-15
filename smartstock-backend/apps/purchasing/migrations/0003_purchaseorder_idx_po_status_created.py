@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('inventory', '0004_product_idx_product_active_created_and_more'),
         ('purchasing', '0002_purchaseorder_confirmed_at_purchaseorder_message_id_and_more'),

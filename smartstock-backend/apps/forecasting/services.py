@@ -70,8 +70,9 @@ class ForecastingService:
 
         stock_map = {
             sl.sku_id: sl
-            for sl in StockLevel.objects.select_related('sku__product__supplier')
-            .filter(sku_id__in=sku_ids)
+            for sl in StockLevel.objects.select_related('sku__product__supplier').filter(
+                sku_id__in=sku_ids
+            )
         }
 
         forecasts_by_sku = defaultdict(list)

@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('inventory', '0003_alter_salesrecord_options'),
     ]
@@ -12,7 +11,9 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddIndex(
             model_name='product',
-            index=models.Index(fields=['is_active', '-created_at'], name='idx_product_active_created'),
+            index=models.Index(
+                fields=['is_active', '-created_at'], name='idx_product_active_created'
+            ),
         ),
         migrations.AddIndex(
             model_name='product',
@@ -24,6 +25,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='stocklevel',
-            index=models.Index(fields=['quantity_on_hand', 'reorder_point'], name='idx_stocklevel_low'),
+            index=models.Index(
+                fields=['quantity_on_hand', 'reorder_point'], name='idx_stocklevel_low'
+            ),
         ),
     ]
