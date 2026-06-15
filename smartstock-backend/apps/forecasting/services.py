@@ -49,6 +49,9 @@ class ForecastingService:
 
     def _compute_dashboard(self):
         import datetime
+        from collections import defaultdict
+
+        from apps.inventory.models import StockLevel
 
         from .models import ForecastResult
 
@@ -61,12 +64,37 @@ class ForecastingService:
             .order_by('sku', 'forecast_date')
         )
 
+        sku_ids = set()
+        for row in rows:
+            sku_ids.add(row.sku.id)
+
+        stock_map = {
+            sl.sku_id: sl
+            for sl in StockLevel.objects.select_related('sku__product__supplier')
+            .filter(sku_id__in=sku_ids)
+        }
+
+        forecasts_by_sku = defaultdict(list)
+        for f in ForecastResult.objects.filter(
+            forecast_date__gte=today, forecast_date__lte=horizon, sku_id__in=sku_ids
+        ).order_by('sku', 'forecast_date'):
+            forecasts_by_sku[f.sku_id].append(f)
+
         skus_map = {}
         for row in rows:
             sku_id = row.sku.id
             if sku_id not in skus_map:
-                stock = getattr(row.sku, 'stock_level', None)
-                stockout_risk = self.calculate_stockout_risk(row.sku.code)
+                stock = stock_map.get(sku_id)
+                if stock:
+                    supplier = stock.sku.product.supplier
+                    lead_time = getattr(supplier, 'default_lead_time_days', None) or 7
+                    sku_forecasts = forecasts_by_sku.get(sku_id, [])[:lead_time]
+                    total_predicted = sum(f.predicted_quantity for f in sku_forecasts)
+                    safety_stock = stock.sku.product.safety_stock or 0
+                    stockout_risk = stock.quantity_available < total_predicted + safety_stock
+                else:
+                    stockout_risk = False
+
                 mape = row.mape
                 confidence = max(0, 100 - round(mape * 10)) if mape else None
                 skus_map[sku_id] = {
