@@ -52,3 +52,6 @@ class PurchaseOrder(models.Model):
 
     class Meta:
         ordering = ['-created_at', '-id']
+        indexes = [
+            models.Index(fields=['status', '-created_at'], name='idx_po_status_created'),
+        ]

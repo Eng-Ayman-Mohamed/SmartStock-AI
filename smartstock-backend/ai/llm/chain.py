@@ -52,11 +52,24 @@ class NLQueryToolSchema(BaseModel):
 # -- LLM factory --------------------------------------------------------------
 
 
+_cached_llm = None
+_llm_lock = None
+
+
 def get_llm() -> ChatOpenAI:
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        raise ValueError('OPENAI_API_KEY is missing. Check your .env file.')
-    return ChatOpenAI(model='gpt-4o', temperature=0, api_key=api_key)
+    global _cached_llm, _llm_lock
+    if _cached_llm is None:
+        import threading
+
+        if _llm_lock is None:
+            _llm_lock = threading.Lock()
+        with _llm_lock:
+            if _cached_llm is None:
+                api_key = os.getenv('OPENAI_API_KEY')
+                if not api_key:
+                    raise ValueError('OPENAI_API_KEY is missing. Check your .env file.')
+                _cached_llm = ChatOpenAI(model='gpt-4o', temperature=0, api_key=api_key)
+    return _cached_llm
 
 
 # -- NL Query chain -----------------------------------------------------------

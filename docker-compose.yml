@@ -31,6 +31,7 @@ services:
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     volumes:
       - redisdata:/data
+    command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
     networks:
       smartstock_net:
         aliases:
