@@ -54,7 +54,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      - ./smartstock-backend/.env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-smartstock}:${DB_PASSWORD:-smartstock}@db:5432/${DB_NAME:-smartstock}
       DB_HOST: db
@@ -90,7 +90,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      - ./smartstock-backend/.env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-smartstock}:${DB_PASSWORD:-smartstock}@db:5432/${DB_NAME:-smartstock}
       DB_HOST: db
@@ -122,7 +122,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      - ./smartstock-backend/.env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-smartstock}:${DB_PASSWORD:-smartstock}@db:5432/${DB_NAME:-smartstock}
       DB_HOST: db
