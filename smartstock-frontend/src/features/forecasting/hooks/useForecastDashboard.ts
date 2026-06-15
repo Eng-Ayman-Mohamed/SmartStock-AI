@@ -50,7 +50,7 @@ export function useForecastDashboard() {
           ),
           predicted_demand_30d: (sku.days as ForecastDay[] | undefined)
             ?.reduce((sum: number, d: ForecastDay) => sum + d.demand, 0) ?? 0,
-          confidence_score: 85,
+          confidence_score: sku.confidence_score ?? 85,
         })),
       };
     },
