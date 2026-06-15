@@ -7,6 +7,12 @@ declare module 'axios' {
   }
 }
 
+declare global {
+  interface Window {
+    __ENV__?: Record<string, string | undefined>;
+  }
+}
+
 export class ApiResponseError extends Error {
   type: string;
   code: number;
@@ -24,8 +30,13 @@ export class ApiResponseError extends Error {
   }
 }
 
+const apiBaseUrl =
+  (typeof window !== 'undefined' && window.__ENV__?.VITE_API_URL) ||
+  import.meta.env.VITE_API_URL ||
+  '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
