@@ -164,18 +164,15 @@ class ForecastingTasksTests(TestCase):
     def test_run_forecasting_agent(self):
         from apps.forecasting.tasks import run_forecasting_agent
 
-        with patch('ai.agents.forecasting_agent.ForecastingAgent.run') as mock_run:
-            mock_run.return_value = {'processed': 0, 'skipped': 1, 'failed': 0}
-            result = run_forecasting_agent()
-            self.assertEqual(result, {'processed': 0, 'skipped': 1, 'failed': 0})
+        result = run_forecasting_agent(sku_ids=[self.sku.id])
+        self.assertIn('dispatched', result)
+        self.assertEqual(result['dispatched'], 1)
 
-    def test_run_forecast_handles_failure(self):
+    def test_run_forecasting_agent_empty(self):
         from apps.forecasting.tasks import run_forecasting_agent
 
-        with patch('ai.agents.forecasting_agent.ForecastingAgent.run') as mock_run:
-            mock_run.side_effect = Exception('boom')
-            with self.assertRaises(Exception):
-                run_forecasting_agent()
+        result = run_forecasting_agent(sku_ids=[])
+        self.assertEqual(result, {'processed': 0, 'skipped': 0, 'failed': 0})
 
 
 class InventoryServiceMethodTests(TestCase):

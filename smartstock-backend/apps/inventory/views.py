@@ -41,6 +41,35 @@ from .services import InventoryService, SalesRecordService, SKUService
 _nl_chain = None
 _nl_chain_lock = None
 
+# P0-1: Pattern cache for common NL queries — short-circuits the first LLM call.
+# Maps lowercase substring patterns to (action, filters_dict) tuples.
+_QUERY_PATTERN_CACHE: list[tuple[str, str, dict]] = [
+    ('low stock', 'get_low_stock', {}),
+    (
+        'out of stock',
+        'get_low_stock',
+        {'conditions': [{'field': 'quantity_on_hand', 'op': 'eq', 'value': 0}]},
+    ),
+    ('top products', 'get_top_products', {}),
+    ('total value', 'get_total_value', {}),
+    ('total inventory value', 'get_total_value', {}),
+    ('supplier info', 'get_supplier_info', {}),
+    ('all suppliers', 'get_supplier_info', {}),
+    ('all products', 'get_inventory', {}),
+    ('show products', 'get_inventory', {}),
+    ('list products', 'get_inventory', {}),
+    ('show inventory', 'get_inventory', {}),
+]
+
+
+def _match_cached_query(query: str) -> tuple[str, dict] | None:
+    """Return (action, filters_dict) if the query matches a cached pattern, else None."""
+    lower_q = query.strip().lower()
+    for pattern, cached_action, cached_filters in _QUERY_PATTERN_CACHE:
+        if pattern in lower_q:
+            return cached_action, cached_filters
+    return None
+
 
 def get_nl_chain():
     global _nl_chain, _nl_chain_lock
@@ -195,7 +224,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [IsManagerOrAbove()]
 
     def list(self, request, *args, **kwargs):
-        cache_key = f'product_list_{request.user.role}_{request.get_full_path()}'
+        from .services import get_product_cache_version
+
+        cache_key = (
+            f'product_list_v{get_product_cache_version()}'
+            f'_{request.user.role}_{request.get_full_path()}'
+        )
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -1155,7 +1189,6 @@ def _handle_get_inventory(filters: NLQueryFilters) -> list:
     products = (
         Product.objects.filter(q)
         .select_related('category', 'supplier')
-        .prefetch_related('skus__stock_level')
         .values(
             'id',
             'name',
@@ -1406,20 +1439,26 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Step B: LangChain Processing
-        try:
-            chain_instance = get_nl_chain()
-            chain_result = chain_instance.run(query)
+        # Step B: LangChain Processing (P0-1: check pattern cache first)
+        cached = _match_cached_query(query)
+        if cached is not None:
+            action_type, filters = cached
+            chain_result = None
+            logger.info('Query matched pattern cache: action=%s', action_type)
+        else:
+            try:
+                chain_instance = get_nl_chain()
+                chain_result = chain_instance.run(query)
 
-            # Extracting information based on your structured JSON schema rules
-            chain_dict = chain_result.to_dict()
-            action_type = chain_dict.get('action')
-            filters = chain_dict.get('filters', {})
-        except Exception as chain_err:
-            return Response(
-                {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+                # Extracting information based on your structured JSON schema rules
+                chain_dict = chain_result.to_dict()
+                action_type = chain_dict.get('action')
+                filters = chain_dict.get('filters', {})
+            except Exception as chain_err:
+                return Response(
+                    {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         # Step C: Dispatch to the correct service
         raw_data = None
