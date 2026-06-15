@@ -32,11 +32,6 @@ def run_forecasting_agent(sku_ids: list[int] | None = None):
     job = group(run_forecast_single_sku.s(sku_id) for sku_id in sku_ids)
     result = job.apply_async()
 
-    try:
-        cache.delete_pattern('forecast_dashboard_*')
-    except Exception:
-        logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
-
     return {'dispatched': len(sku_ids), 'group_id': str(result.id)}
 
 
@@ -48,6 +43,10 @@ def run_forecast_single_sku(sku_id: int):
     service = ForecastingService()
     try:
         result = service.run_forecast(sku_id=sku_id)
+        try:
+            cache.delete_pattern('forecast_dashboard_*')
+        except Exception:
+            logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
         return {'sku_id': sku_id, 'status': 'success', 'result': result}
     except Exception as e:
         logger.exception('Forecast failed for SKU %s: %s', sku_id, e)

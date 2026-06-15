@@ -29,6 +29,7 @@ from .filters import ProductFilter, SalesRecordFilter, SKUFilter, StockLevelFilt
 from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 from .serializers import (
     CategorySerializer,
+    ProductListSerializer,
     ProductSerializer,
     ProductWriteSerializer,
     SalesRecordSerializer,
@@ -204,14 +205,18 @@ class ProductViewSet(viewsets.ModelViewSet):
                 self.request.query_params.get('include_inactive', '').lower() == 'true'
             )
             is_admin = include_inactive and self.request.user.role == 'admin'
-            self._cached_queryset = InventoryRepository().get_all_queryset(
-                include_inactive=is_admin
+            self._cached_queryset = (
+                InventoryRepository()
+                .get_all_queryset(include_inactive=is_admin)
+                .defer('description')
             )
         return self._cached_queryset
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
             return ProductWriteSerializer
+        if self.action == 'list':
+            return ProductListSerializer
         return ProductSerializer
 
     def get_permissions(self):
@@ -1119,10 +1124,15 @@ FIELD_ALIASES = {
 }
 
 
-def _parse_condition(condition: dict) -> Q:
-    field = condition.get('field')
-    operator = condition.get('op', 'eq')
-    value = condition.get('value')
+def _parse_condition(condition) -> Q:
+    if hasattr(condition, 'field'):
+        field = condition.field
+        operator = condition.op
+        value = condition.value
+    else:
+        field = condition.get('field')
+        operator = condition.get('op', 'eq')
+        value = condition.get('value')
     alias = FIELD_ALIASES.get(field, field)
     lookup = OP_MAP.get(operator, '')
     q_key = f'{alias}{lookup}'
@@ -1590,10 +1600,12 @@ class NLQueryEndpointView(APIView):
                 )
             )
         )
-        return {
-            'total_value': str(total['total_value'] or 0),
-            'product_count': qs.count(),
-        }
+        return [
+            {
+                'total_value': str(total['total_value'] or 0),
+                'product_count': qs.count(),
+            }
+        ]
 
     def _handle_get_top_products(self, filters):
         from django.db.models import Sum as DjSum
