@@ -3,14 +3,21 @@ import time
 
 from django.http import HttpResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove
 
 logger = logging.getLogger(__name__)
 
 
 class MetricsView(APIView):
-    """Expose Prometheus metrics at /metrics/."""
+    """Expose Prometheus metrics at /metrics/.
+
+    Intentionally unauthenticated for Prometheus scraping.
+    In production, restrict access via network policy or reverse proxy.
+    """
 
     permission_classes = []
     authentication_classes = []
@@ -25,8 +32,7 @@ class MetricsView(APIView):
 class DashboardBannersView(APIView):
     """Return active (non-dismissed) dashboard banners."""
 
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from .models import DashboardBanner
@@ -48,8 +54,7 @@ class DashboardBannersView(APIView):
 class DismissBannerView(APIView):
     """Dismiss a dashboard banner."""
 
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
 
     def post(self, request, banner_id):
         from .models import DashboardBanner
@@ -66,8 +71,7 @@ class DismissBannerView(APIView):
 class AlertEventsView(APIView):
     """Return recent alert events."""
 
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from .models import AlertEvent
@@ -92,10 +96,9 @@ class AlertEventsView(APIView):
 
 
 class TriggerAlertEvaluationView(APIView):
-    """Manually trigger alert evaluation (for testing/debugging)."""
+    """Manually trigger alert evaluation (admin only)."""
 
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [IsAuthenticated, IsAdminOnly]
 
     def post(self, request):
         from .alerts import evaluate_all_alerts
@@ -105,10 +108,9 @@ class TriggerAlertEvaluationView(APIView):
 
 
 class EvaluationMetricsView(APIView):
-    """Expose evaluation metrics (Precision@5, Faithfulness, etc.)."""
+    """Expose evaluation metrics (admin only)."""
 
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [IsAuthenticated, IsAdminOnly]
 
     def get(self, request):
         from ai.evaluation.metrics import evaluate_golden_dataset, log_scores_to_langfuse

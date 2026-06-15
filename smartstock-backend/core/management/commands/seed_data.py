@@ -1,3 +1,4 @@
+import os
 import random
 from datetime import date, datetime, timedelta
 
@@ -677,6 +678,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        settings_module = os.environ.get('DJANGO_SETTINGS_MODULE', '')
+        if 'production' in settings_module:
+            raise CommandError(
+                'seed_data cannot be run in production. '
+                'Use this command only in development or test environments.'
+            )
+
         scale = options['scale']
         truncate = options.get('truncate', True)
 

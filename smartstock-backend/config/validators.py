@@ -27,6 +27,7 @@ OPTIONAL_ENV_VARS = {
     'EMAIL_PORT': '587',
     'DEFAULT_FROM_EMAIL': 'noreply@smartstock.ai',
     'ESCALATION_RECIPIENT_EMAILS': '',
+    'HEALTH_SECRET_HEADER': '',
 }
 
 logger = logging.getLogger(__name__)
