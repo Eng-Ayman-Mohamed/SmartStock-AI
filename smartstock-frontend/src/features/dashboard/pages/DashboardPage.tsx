@@ -155,6 +155,8 @@ export default function DashboardPage() {
       qc.invalidateQueries({ queryKey: ['reorder-alerts'] }),
       qc.invalidateQueries({ queryKey: ['agent-runs'] }),
       qc.invalidateQueries({ queryKey: ['pending-pos'] }),
+      qc.invalidateQueries({ queryKey: ['forecast-dashboard'] }),
+      qc.invalidateQueries({ queryKey: ['overdue-suppliers'] }),
     ]);
     setIsRefreshing(false);
   }, [qc, isRefreshing]);
@@ -219,7 +221,7 @@ export default function DashboardPage() {
       {isError && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
           <span>Failed to load dashboard data</span>
-          <button onClick={() => qc.invalidateQueries()} className="underline text-sm font-medium">Retry</button>
+          <button onClick={() => handleRefresh()} className="underline text-sm font-medium">Retry</button>
         </div>
       )}
 
