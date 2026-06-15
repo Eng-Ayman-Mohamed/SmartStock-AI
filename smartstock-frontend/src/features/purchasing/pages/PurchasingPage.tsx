@@ -7,40 +7,39 @@ import DataTable from '../../../shared/components/DataTable';
 import type { Column } from '../../../shared/components/DataTable';
 import POApprovalCard from '../components/POApprovalCard';
 import { usePendingPOs } from '../hooks/usePurchasing';
-import type { PendingPO } from '../types';
 import Skeleton from '../../../shared/components/Skeleton';
 
 interface POHistory {
   id: string;
-  product: string;
+  product_name: string;
   supplier: string;
-  qty: number;
+  quantity: number;
   total: string;
   status: string;
-  created: string;
-  approvedBy: string;
+  created_at: string;
+  approved_by: string;
 }
 
 const poHistory: POHistory[] = [
-  { id: 'PO-1043', product: 'USB-C Hub', supplier: 'Warehouse Direct', qty: 100, total: '$1,800.00', status: 'Approved', created: '01 Jun 2025', approvedBy: 'John Doe' },
-  { id: 'PO-1045', product: 'Monitor Stand', supplier: 'Local Distributors', qty: 50, total: '$950.00', status: 'Approved', created: '30 May 2025', approvedBy: 'John Doe' },
-  { id: 'PO-1046', product: 'Webcam HD', supplier: 'TechSupply Co.', qty: 150, total: '$2,800.00', status: 'Sent', created: '28 May 2025', approvedBy: '\u2014' },
+  { id: 'PO-1043', product_name: 'USB-C Hub', supplier: 'Warehouse Direct', quantity: 100, total: '$1,800.00', status: 'Approved', created_at: '01 Jun 2025', approved_by: 'John Doe' },
+  { id: 'PO-1045', product_name: 'Monitor Stand', supplier: 'Local Distributors', quantity: 50, total: '$950.00', status: 'Approved', created_at: '30 May 2025', approved_by: 'John Doe' },
+  { id: 'PO-1046', product_name: 'Webcam HD', supplier: 'TechSupply Co.', quantity: 150, total: '$2,800.00', status: 'Sent', created_at: '28 May 2025', approved_by: '\u2014' },
 ];
 
 const historyColumns: Column<POHistory>[] = [
   { key: 'po', label: 'PO #', width: '100px', render: (r) => <span className="text-mono text-ink-muted">{r.id}</span> },
-  { key: 'product', label: 'Product', render: (r) => <span className="truncate block">{r.product}</span> },
+  { key: 'product_name', label: 'Product', render: (r) => <span className="truncate block">{r.product_name}</span> },
   { key: 'supplier', label: 'Supplier', width: '150px', render: (r) => <span className="truncate block text-ink-muted">{r.supplier}</span> },
-  { key: 'qty', label: 'Qty', align: 'right', width: '60px', render: (r) => <span className="tabular-nums">{r.qty}</span> },
+  { key: 'quantity', label: 'Qty', align: 'right', width: '60px', render: (r) => <span className="tabular-nums">{r.quantity}</span> },
   { key: 'total', label: 'Total', align: 'right', width: '100px', render: (r) => <span className="tabular-nums">{r.total}</span> },
   { key: 'status', label: 'Status', width: '120px', render: (r) => <Badge>{r.status}</Badge> },
-  { key: 'created', label: 'Created', width: '110px', render: (r) => <span className="text-caption text-ink-muted tabular-nums">{r.created}</span> },
-  { key: 'approvedBy', label: 'Approved By', width: '120px', render: (r) => <span className="text-caption text-ink-muted">{r.approvedBy}</span> },
+  { key: 'created_at', label: 'Created', width: '110px', render: (r) => <span className="text-caption text-ink-muted tabular-nums">{r.created_at}</span> },
+  { key: 'approved_by', label: 'Approved By', width: '120px', render: (r) => <span className="text-caption text-ink-muted">{r.approved_by}</span> },
 ];
 
 export default function PurchasingPage() {
   const { data: pendingPOsData, isLoading: isPendingLoading, isError } = usePendingPOs();
-  const pendingPOs = isPendingLoading ? mockPendingPOs : (pendingPOsData ?? []);
+  const pendingPOs = pendingPOsData ?? [];
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -59,8 +58,18 @@ export default function PurchasingPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Pending Approval" subtitle={`${pendingPOs.length} orders awaiting review`}>
-          {pendingPOs.length === 0 && !isError ? (
+        <Card title="Pending Approval" subtitle={isError ? undefined : `${pendingPOs.length} orders awaiting review`}>
+          {isPendingLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 rounded-md" />
+              ))}
+            </div>
+          ) : isError && pendingPOs.length === 0 ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+              Failed to load pending purchase orders.
+            </div>
+          ) : pendingPOs.length === 0 ? (
             <EmptyState
               icon={ShoppingCart}
               heading="All caught up on approvals"
