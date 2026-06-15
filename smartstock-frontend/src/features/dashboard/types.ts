@@ -1,3 +1,5 @@
+import type { POStatus } from '../../features/purchasing/types';
+
 export interface ReorderAlert {
   id: number;
   product_id: number;
@@ -30,7 +32,7 @@ export interface PurchaseOrder {
   supplier_name: string;
   quantity: number;
   total_cost: string;
-  status: import('../../features/purchasing/types').POStatus;
+  status: POStatus;
   requested_by: number | null;
   requested_by_name: string | null;
   approved_by: number | null;

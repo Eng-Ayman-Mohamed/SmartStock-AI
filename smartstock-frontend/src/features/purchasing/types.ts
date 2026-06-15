@@ -21,10 +21,10 @@ export interface CreateSupplierPayload {
 
 export type UpdateSupplierPayload = Partial<CreateSupplierPayload>;
 
-export type POStatus = 'pending' | 'sent' | 'approved' | 'received' | 'cancelled';
+export type POStatus = 'draft' | 'pending_approval' | 'approved' | 'email_sent' | 'sent' | 'waiting_confirmation' | 'confirmed' | 'rejected' | 'cancelled' | 'failed' | 'timeout';
 
 export interface PendingPO {
-  id: number;
+  id: string;
   product: string;
   sku: string;
   supplier: string;
