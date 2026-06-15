@@ -17,9 +17,18 @@ from .repositories import (
 stock_adjusted = Signal()
 
 
+_product_cache_version = 0
+
+
 def _invalidate_product_cache():
+    global _product_cache_version
+    _product_cache_version += 1
     cache.delete_pattern('product_list_*')
     cache.delete('low_stock_items')
+
+
+def get_product_cache_version() -> int:
+    return _product_cache_version
 
 
 class InventoryService:

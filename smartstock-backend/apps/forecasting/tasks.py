@@ -13,30 +13,31 @@ def run_forecasting_agent(sku_ids: list[int] | None = None):
     Args:
         sku_ids: Optional list of SKU IDs to forecast.
                  If None, forecasts all active SKUs.
+                 Uses Celery group() for parallel execution.
 
     Returns:
         dict with agent run results.
     """
-    from ai.agents.forecasting_agent import ForecastingAgent
+    from celery import group
 
-    context = {}
-    if sku_ids is not None:
-        context['sku_ids'] = sku_ids
+    from apps.inventory.models import SKU
 
-    logger.info('Running forecasting agent (SKUs: %s)', sku_ids if sku_ids else 'ALL')
-    agent = ForecastingAgent()
-    result = agent.run(context)
-    logger.info(
-        'Forecasting agent completed: %d processed, %d skipped, %d failed',
-        result.get('processed', 0),
-        result.get('skipped', 0),
-        result.get('failed', 0),
-    )
+    if sku_ids is None:
+        sku_ids = list(SKU.objects.filter(product__is_active=True).values_list('id', flat=True))
+
+    if not sku_ids:
+        return {'processed': 0, 'skipped': 0, 'failed': 0}
+
+    logger.info('Dispatching %d parallel forecast tasks', len(sku_ids))
+    job = group(run_forecast_single_sku.s(sku_id) for sku_id in sku_ids)
+    result = job.apply_async()
+
     try:
         cache.delete_pattern('forecast_dashboard_*')
     except Exception:
         logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
-    return result
+
+    return {'dispatched': len(sku_ids), 'group_id': str(result.id)}
 
 
 @shared_task(rate_limit='10/m')
