@@ -1,6 +1,6 @@
 # SmartStock AI — Performance Engineering Report
 
-**Date:** Sun Jun 14 2026
+**Date:** Sun Jun 14 2026 (Updated)
 **Scope:** Full-stack performance audit — Django 5 + DRF backend, React 19 + Vite 8 frontend, PostgreSQL 16 + pgvector, Redis 7, Celery 5
 **Methodology:** Static code analysis, query pattern review, architecture analysis, configuration audit
 
@@ -9,6 +9,14 @@
 ## Executive Summary
 
 The SmartStock AI codebase has solid architectural foundations (Clean Architecture, repository pattern, proper `select_related`/`prefetch_related` usage in main views, Redis caching). However, several critical performance bottlenecks exist — most notably in the **AI/LLM pipeline** (dual GPT-4o calls per query), **N+1 query patterns** in the forecasting dashboard, and **missing database indexes** on high-traffic filter fields. Addressing the P0 and P1 items would likely reduce p95 latency by 40-60% and significantly improve throughput under load.
+
+### Fix Progress
+
+| Status | Count | Details |
+|--------|-------|---------|
+| ✅ FIXED | 0 | — |
+| 🔶 PARTIALLY FIXED | 1 | P1-2: SalesRecord indexes added, other models pending |
+| ❌ NOT FIXED | 18 | All P0, remaining P1, P2, P3 issues |
 
 ---
 
@@ -217,20 +225,23 @@ class SKUCompactSerializer(serializers.ModelSerializer):
 
 ---
 
-### P1-2: Missing Database Indexes on High-Traffic Fields
+### P1-2: Missing Database Indexes on High-Traffic Fields 🔶 PARTIALLY FIXED
 
 **File:** `apps/inventory/models.py`, `apps/purchasing/models.py`, `apps/authentication/models.py`
 
-**Problem:** Several frequently filtered/queried fields lack explicit indexes:
+**Status:** ✅ `SalesRecord` now has `indexes = [models.Index(fields=['sku', 'date'])]` and `unique_together = [('sku', 'date')]`. ❌ All other models still missing indexes.
 
-| Model | Field | Used In | Impact |
-|-------|-------|---------|--------|
-| `Product` | `name` | `ProductFilter`, search | Full table scan on icontains |
-| `Product` | `is_active` | Every product query (`filter(is_active=True)`) | Full table scan |
-| `StockLevel` | `quantity_on_hand` | `StockLevelFilter`, ordering | Full table scan |
-| `StockLevel` | `reorder_point` | Low stock comparison | Full table scan |
-| `CustomUser` | `role` | Permission checks on every request | Full table scan |
-| `PurchaseOrder` | `status` | `PurchaseOrderViewSet` filter | Full table scan |
+**Remaining Problem:** Several frequently filtered/queried fields lack explicit indexes:
+
+| Model | Field | Used In | Impact | Status |
+|-------|-------|---------|--------|--------|
+| `SalesRecord` | `sku`, `date` | Forecasting queries | — | ✅ FIXED |
+| `Product` | `name` | `ProductFilter`, search | Full table scan on icontains | ❌ NOT FIXED |
+| `Product` | `is_active` | Every product query (`filter(is_active=True)`) | Full table scan | ❌ NOT FIXED |
+| `StockLevel` | `quantity_on_hand` | `StockLevelFilter`, ordering | Full table scan | ❌ NOT FIXED |
+| `StockLevel` | `reorder_point` | Low stock comparison | Full table scan | ❌ NOT FIXED |
+| `CustomUser` | `role` | Permission checks on every request | Full table scan | ❌ NOT FIXED |
+| `PurchaseOrder` | `status` | `PurchaseOrderViewSet` filter | Full table scan | ❌ NOT FIXED |
 
 **Recommended Fix:** Add to `models.py` `Meta.indexes`:
 ```python
@@ -572,27 +583,27 @@ WITH (m = 16, ef_construction = 64);
 
 ## Summary Matrix
 
-| ID | Severity | Category | Impact | Effort |
-|----|----------|----------|--------|--------|
-| P0-1 | Critical | LLM Pipeline | 2x latency, 2x API cost | High |
-| P0-2 | Critical | DB (N+1) | 50+ extra queries on low stock | Medium |
-| P0-3 | Critical | DB (N+1) | 90+ extra queries on dashboard | Medium |
-| P0-4 | Critical | View | Redundant repo instantiation | Low |
-| P1-1 | High | Serializer | 120 redundant lookups per list | Low |
-| P1-2 | High | DB Index | Full scans on key filters | Low |
-| P1-3 | High | Query | Wasted prefetch on NL queries | Medium |
-| P1-4 | High | Celery | Sequential CPU-bound tasks | Medium |
-| P1-5 | High | Audit | Unnecessary sync write latency | Low |
-| P2-1 | Medium | Cache | Data leakage risk | Low |
-| P2-2 | Medium | Cache | Over-invalidation | Low |
-| P2-3 | Medium | Query | Excess data transfer | Low |
-| P2-4 | Medium | Infra | Low concurrency ceiling | Low |
-| P2-5 | Medium | Concurrency | Race condition | Low |
-| P3-1 | Low | Frontend | Large initial bundle | Medium |
-| P3-2 | Low | Frontend | No chunk splitting | Low |
-| P3-3 | Low | Infra | Redis persistence overhead | Low |
-| P3-4 | Low | RAG | Vector search at scale | Medium |
-| P3-5 | Low | LLM | Client instantiation overhead | Low |
+| ID | Severity | Category | Impact | Effort | Status |
+|----|----------|----------|--------|--------|--------|
+| P0-1 | Critical | LLM Pipeline | 2x latency, 2x API cost | High | ❌ NOT FIXED |
+| P0-2 | Critical | DB (N+1) | 50+ extra queries on low stock | Medium | ❌ NOT FIXED |
+| P0-3 | Critical | DB (N+1) | 90+ extra queries on dashboard | Medium | ❌ NOT FIXED |
+| P0-4 | Critical | View | Redundant repo instantiation | Low | ❌ NOT FIXED |
+| P1-1 | High | Serializer | 120 redundant lookups per list | Low | ❌ NOT FIXED |
+| P1-2 | High | DB Index | Full scans on key filters | Low | 🔶 PARTIAL |
+| P1-3 | High | Query | Wasted prefetch on NL queries | Medium | ❌ NOT FIXED |
+| P1-4 | High | Celery | Sequential CPU-bound tasks | Medium | ❌ NOT FIXED |
+| P1-5 | High | Audit | Unnecessary sync write latency | Low | ❌ NOT FIXED |
+| P2-1 | Medium | Cache | Data leakage risk | Low | ❌ NOT FIXED |
+| P2-2 | Medium | Cache | Over-invalidation | Low | ❌ NOT FIXED |
+| P2-3 | Medium | Query | Excess data transfer | Low | ❌ NOT FIXED |
+| P2-4 | Medium | Infra | Low concurrency ceiling | Low | ❌ NOT FIXED |
+| P2-5 | Medium | Concurrency | Race condition | Low | ❌ NOT FIXED |
+| P3-1 | Low | Frontend | Large initial bundle | Medium | ❌ NOT FIXED |
+| P3-2 | Low | Frontend | No chunk splitting | Low | ❌ NOT FIXED |
+| P3-3 | Low | Infra | Redis persistence overhead | Low | ❌ NOT FIXED |
+| P3-4 | Low | RAG | Vector search at scale | Medium | ❌ NOT FIXED |
+| P3-5 | Low | LLM | Client instantiation overhead | Low | ❌ NOT FIXED |
 
 ---
 
@@ -602,3 +613,12 @@ WITH (m = 16, ef_construction = 64);
 - **DB query reduction:** 80-90% for dashboard and low-stock endpoints
 - **Throughput increase:** 2-3x with proper Gunicorn tuning and async audit logging
 - **Cost reduction:** ~50% on OpenAI API calls (eliminating second LLM call)
+
+---
+
+## Changelog
+
+| Date | Author | Changes |
+|------|--------|---------|
+| Sun Jun 14 2026 | Performance Engineer | Initial report created |
+| Sun Jun 14 2026 | Performance Engineer | Status verification: P1-2 partially fixed (SalesRecord indexes added) |
