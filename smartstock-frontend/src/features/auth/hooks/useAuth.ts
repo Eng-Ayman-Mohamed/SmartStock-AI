@@ -2,15 +2,27 @@ import { useCallback, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
+import { ApiResponseError } from '../../../lib/axios';
 import * as authApi from '../api';
 import type { LoginPayload, RegisterPayload } from '../types';
 
-export type AuthError = { kind: 'invalid_credentials' | 'network' | 'unknown'; message: string };
+export type AuthError = { kind: 'invalid_credentials' | 'validation' | 'network' | 'unknown'; message: string };
 
 function toAuthError(err: unknown): AuthError {
+  if (err instanceof ApiResponseError) {
+    if (err.response.status === 422) {
+      return { kind: 'validation', message: 'Please check the form for errors.' };
+    }
+    if (err.response.status === 401 || err.response.status === 400) {
+      return { kind: 'invalid_credentials', message: 'Invalid email or password.' };
+    }
+  }
   if (axios.isAxiosError(err)) {
     if (!err.response) {
       return { kind: 'network', message: "Can't reach the server. Check your connection and try again." };
+    }
+    if (err.response.status === 422) {
+      return { kind: 'validation', message: 'Please check the form for errors.' };
     }
     if (err.response.status === 401 || err.response.status === 400) {
       return { kind: 'invalid_credentials', message: 'Invalid email or password.' };

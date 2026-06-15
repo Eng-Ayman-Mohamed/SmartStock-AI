@@ -59,11 +59,12 @@ export default function RegisterForm() {
 
   function pickServerErrors(err: unknown): Fields {
     if (axios.isAxiosError(err) && err.response?.data) {
-      const data = err.response.data as ApiErrorPayload;
+      const data = err.response.data as Record<string, unknown>;
+      const fields = (data.fields ?? data) as Record<string, string[] | string>;
       const out: Fields = {};
-      const nameErr = readError(data.name);
-      const emailErr = readError(data.email);
-      const passwordErr = readError(data.password);
+      const nameErr = readError(fields.name);
+      const emailErr = readError(fields.email);
+      const passwordErr = readError(fields.password);
       if (nameErr) out.name = nameErr;
       if (emailErr) out.email = emailErr;
       if (passwordErr) out.password = passwordErr;
