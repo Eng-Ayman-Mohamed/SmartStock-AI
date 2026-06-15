@@ -155,6 +155,7 @@ export default function InvoiceScanPage() {
       setFields(normalizeFields(result));
     } catch {
       addToast('Failed to scan file', 'error');
+      setErrorMessage('Failed to scan file');
       setScanResult(null);
     }
   }
@@ -197,6 +198,7 @@ export default function InvoiceScanPage() {
       setConfirmedResult(result);
     } catch {
       addToast('Failed to confirm scan', 'error');
+      setErrorMessage('Failed to confirm scan');
       setConfirmedResult(null);
     }
   }
