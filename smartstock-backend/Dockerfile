@@ -18,10 +18,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+RUN useradd -m -r appuser && chown -R appuser /app
+
 COPY --chown=appuser:appuser . .
 RUN python manage.py collectstatic --noinput
 
-RUN useradd -m -r appuser && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000
