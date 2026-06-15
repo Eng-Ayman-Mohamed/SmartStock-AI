@@ -9,20 +9,12 @@ export interface ChatRequest {
 }
 
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
-  const { data } = await api.post<{ status: string; data: ChatResponse }>(
-    '/ai/chat/',
-    request
-  );
-  return data.data;
+  const { data } = await api.post<ChatResponse>('/ai/chat/', request);
+  return data;
 }
 
 export async function sendRAGQuery(query: string): Promise<{ answer: string; sources: Array<{ document: string; page: number }> }> {
   const { data } = await api.post('/ai/rag-query/', { query });
-  return data;
-}
-
-export async function sendChat(query: string, mode: ChatMode): Promise<ChatResponse> {
-  const { data } = await api.post<ChatResponse>('/ai/chat/', { query, mode });
   return data;
 }
 
