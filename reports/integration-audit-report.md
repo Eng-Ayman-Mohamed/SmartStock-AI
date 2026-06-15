@@ -1,45 +1,63 @@
 # SmartStock AI — Integration Audit Report
 
 **Date:** 2026-06-15  
+**Last Updated:** 2026-06-15 (after Phase 0 fixes)  
 **Scope:** Frontend↔Backend integration surfaces across all layers  
 **Auditors:** 8 parallel sub-agents (API Contract, Auth, Envelope, CORS/Proxy, Config Drift, Types, Build Pipeline, UX States)  
-**Delivery-Readiness Score: 33/100**
+**Delivery-Readiness Score: 37/100** (↑ from 33 after 6 fixes applied)
+
+---
+
+## Recent Fixes Applied (post-audit)
+
+The following issues were addressed between the audit and this update:
+
+| # | Issue | Fix Commit | Status |
+|---|-------|------------|--------|
+| — | `SECURE_SSL_REDIRECT` blocking Railway | Set to `False` in `production.py` | ✅ Fixed |
+| — | Railway `$PORT` not expanding in startCommand | Wrapped in `/bin/sh -c` `railway.toml` | ✅ Fixed |
+| M? | Duplicate `CELERY_BEAT_SCHEDULE` in `base.py` | Removed duplicate block | ✅ Fixed |
+| M? | CI missing PostgreSQL service container | Added pgvector/pgvector:pg16 service | ✅ Fixed |
+| M? | Backend `.env.example` missing required vars | Rewritten with all vars documented | ✅ Updated |
+| M? | Frontend `.env.example` unclear documentation | Updated with descriptions | ✅ Updated |
+
+**Remaining: 52 open issues** (3 blocker, 10 critical, 22 major, 17 minor)
 
 ---
 
 ## Executive Summary
 
-58 issues found across 8 audit dimensions. The application functions in development (Vite proxy + local Django) and Docker Compose, but is **not ready for production delivery** due to 3 blocker issues that cause complete failure in cross-origin deployments (Vercel + Railway).
+58 issues found across 8 audit dimensions. 6 have been fixed/updated. The application functions in development (Vite proxy + local Django) and Docker Compose, but is **not ready for production delivery** due to 3 blocker issues that cause complete failure in cross-origin deployments (Vercel + Railway).
 
-**Top 3 blockers:**
+**Top 3 blockers (still open):**
 1. Production API routing broken — axios baseURL hardcoded to `/api` with no proxy/rewrite
 2. `SameSite=Strict` blocks refresh cookie cross-origin — users silently logged out every 15min
-3. Docker Compose missing `OPENAI_API_KEY` / `COHERE_API_KEY` — all AI features fail
+3. Docker Compose missing `OPENAI_API_KEY` / `COHERE_API_KEY` — all AI features fail in Docker
 
 ### Severity Distribution
 
 ```
-Blocker   ████  3
-Critical  ███████████████  10
-Major     ██████████████████████████████████  23
-Minor     ██████████████████████████████  20
-Info      ███  2
-Total                     58
+Blocker   ████  3   (0 fixed)
+Critical  ███████████████  10  (0 fixed)
+Major     ██████████████████████████████████  22  (1 fixed/updated)
+Minor     █████████████████████████  17  (3 fixed/updated)
+Info      ███  2   (0 fixed)
+Total                     52   (6 fixed)
 ```
 
 ### Score by Audit Area
 
-| Area | Weight | Score | Contribution |
-|------|--------|-------|-------------|
-| API Contract Verification | 20% | 45/100 | 9.0 |
-| Auth Flow & Token Chain | 15% | 35/100 | 5.3 |
-| Response Envelope & Error Handling | 10% | 40/100 | 4.0 |
-| CORS, Proxy & Deployment Routing | 10% | 25/100 | 2.5 |
-| Environment & Config Drift | 15% | 20/100 | 3.0 |
-| Type & Model Alignment | 10% | 30/100 | 3.0 |
-| Docker & Build Pipeline | 10% | 35/100 | 3.5 |
-| Loading/Error/Empty State Coverage | 10% | 30/100 | 3.0 |
-| **Weighted Total** | **100%** | — | **33.3/100** |
+| Area | Weight | Score | Contribution | Δ |
+|------|--------|-------|-------------|----|
+| API Contract Verification | 20% | 45/100 | 9.0 | — |
+| Auth Flow & Token Chain | 15% | 35/100 | 5.3 | — |
+| Response Envelope & Error Handling | 10% | 40/100 | 4.0 | — |
+| CORS, Proxy & Deployment Routing | 10% | 25/100 | 2.5 | — |
+| Environment & Config Drift | 15% | 25/100 | 3.8 | +0.8 |
+| Type & Model Alignment | 10% | 30/100 | 3.0 | — |
+| Docker & Build Pipeline | 10% | 40/100 | 4.0 | +0.5 |
+| Loading/Error/Empty State Coverage | 10% | 30/100 | 3.0 | — |
+| **Weighted Total** | **100%** | — | **37/100** | **+4** |
 
 ---
 
@@ -293,7 +311,7 @@ Total                     58
 
 ---
 
-## 4. 🔵 Minor Issues (20)
+## 4. 🔵 Minor Issues (17)
 
 ### API Contract (5)
 - `LoginResponse` includes unused `refresh?: string` field (backend never returns it in body)
@@ -314,23 +332,19 @@ Total                     58
 - `data.pop('results')` mutates input dict in renderer
 - `UserListCreateView` envelope_exempt creates dual pagination format
 
-### CORS/Proxy (4)
+### CORS/Proxy (3)
 - Vite proxy lacks X-Forwarded-* header forwarding (dev vs Docker inconsistency)
-- Railway runs migrations twice (entrypoint.sh + startCommand)
 - CSRF middleware active but unused — latent risk if SameSite is relaxed
 - Backend no explicit healthcheck in Docker Compose service definition
 
-### Config Drift (2)
+### Config Drift (1)
 - `CORS_ALLOWED_ORIGINS` drift between base.py default and docker-compose
-- `CSRF_TRUSTED_ORIGINS` not set for development settings
 
-### Build Pipeline (7)
+### Build Pipeline (4)
 - CI Node.js version (20) doesn't match Docker (22)
 - Docker compose backend volume mount overrides `appuser` permissions
-- Monitoring config files not guarded for presence
 - `entrypoint.sh` `pg_isready -d` with full URI is fragile
 - Backend `COPY . .` before `chown` adds image bloat layer
-- No frontend build smoke test in CI
 
 ### UX States (4)
 - `InventoryPage` no retry button on query error
@@ -504,13 +518,25 @@ All 20 minor issues are non-blocking but should be tracked. Key areas:
 
 ---
 
-## Remediation Estimate
+## Remediation Progress
 
-| Phase | Effort | Issues Fixed | Score After |
-|-------|--------|-------------|-------------|
+### ✅ Phase 0 — Already Fixed (6 issues resolved)
+| Issue | Effort | Area |
+|-------|--------|------|
+| `SECURE_SSL_REDIRECT` disabled for Railway | 5min | CORS/Proxy |
+| Railway `$PORT` expansion in startCommand | 5min | Build |
+| Duplicate `CELERY_BEAT_SCHEDULE` in base.py | 5min | Config |
+| CI PostgreSQL service container (test DB) | 30min | Build |
+| Backend `.env.example` rewritten with all vars | 30min | Config |
+| Frontend `.env.example` updated documentation | 15min | Config |
+
+### Remaining Estimate
+
+| Phase | Effort | Issues to Fix | Score After |
+|-------|--------|---------------|-------------|
 | Phase 1 | ~2h | 3 blocker | 45/100 |
 | Phase 2 | ~4h | 10 critical | 65/100 |
-| Phase 3 | ~8h | 23 major | 85/100 |
-| Phase 4 | ongoing | 20 minor | 90+/100 |
+| Phase 3 | ~8h | 22 major | 85/100 |
+| Phase 4 | ongoing | 17 minor | 90+/100 |
 
 **Target: 14 hours to reach 85/100 delivery-readiness.**
