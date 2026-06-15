@@ -69,6 +69,34 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class ProductListSerializer(serializers.ModelSerializer):
+    """List-only serializer — excludes description to reduce payload size."""
+
+    skus = SKUCompactSerializer(many=True, read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Product
+        fields = (
+            'id',
+            'name',
+            'category',
+            'category_name',
+            'supplier',
+            'supplier_name',
+            'unit_price',
+            'unit_of_measure',
+            'reorder_point',
+            'safety_stock',
+            'max_warehouse_capacity',
+            'is_active',
+            'created_at',
+            'updated_at',
+            'skus',
+        )
+
+
 class ProductWriteSerializer(serializers.ModelSerializer):
     """Serializer for create/update — no nested SKUs."""
 

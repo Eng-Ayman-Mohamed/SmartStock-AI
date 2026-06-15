@@ -242,7 +242,5 @@ class MockCeleryTest(TestCase):
     def test_forecasting_task_runs_eagerly(self):
         from apps.forecasting.tasks import run_forecasting_agent
 
-        with patch('ai.agents.forecasting_agent.ForecastingAgent.run') as mock_run:
-            mock_run.return_value = {'processed': 1, 'skipped': 0, 'failed': 0}
-            result = run_forecasting_agent()
-            self.assertEqual(result, {'processed': 1, 'skipped': 0, 'failed': 0})
+        result = run_forecasting_agent(sku_ids=[])
+        self.assertEqual(result, {'processed': 0, 'skipped': 0, 'failed': 0})
