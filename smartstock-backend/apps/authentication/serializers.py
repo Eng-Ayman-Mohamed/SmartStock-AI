@@ -1,8 +1,10 @@
 from django.conf import settings
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password as django_validate_password
 from rest_framework import serializers
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.settings import api_settings as jwt_api_settings
 
 from .models import CustomUser
 
@@ -21,11 +23,36 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['email'] = user.email
         return token
 
-    def to_internal_value(self, data):
-        if isinstance(data, dict) and 'email' in data and 'username' not in data:
-            data = data.copy()
-            data['username'] = data.pop('email')
-        return super().to_internal_value(data)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields[self.username_field].required = False
+        self.fields['email'] = serializers.CharField(required=False, write_only=True)
+
+    def validate(self, attrs):
+        identifier = attrs.get('email') or attrs.get(self.username_field)
+        if not identifier:
+            raise serializers.ValidationError('Email or username is required.')
+
+        user = authenticate(
+            request=self.context.get('request'),
+            email=identifier,
+            password=attrs['password'],
+        )
+        if user is None:
+            user = authenticate(
+                request=self.context.get('request'),
+                **{self.username_field: identifier, 'password': attrs['password']},
+            )
+
+        if not jwt_api_settings.USER_AUTHENTICATION_RULE(user):
+            raise AuthenticationFailed(
+                self.error_messages['no_active_account'],
+                'no_active_account',
+            )
+
+        self.user = user
+        refresh = self.get_token(user)
+        return {'refresh': str(refresh), 'access': str(refresh.access_token)}
 
 
 class CookieTokenRefreshSerializer(serializers.Serializer):

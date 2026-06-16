@@ -151,6 +151,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'authentication.CustomUser'
 
+AUTHENTICATION_BACKENDS = [
+    'apps.authentication.authentication_backends.EmailAuthBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'SmartStock AI API',
     'DESCRIPTION': 'Inventory forecasting and management API',
