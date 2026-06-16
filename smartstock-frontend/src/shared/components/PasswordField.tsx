@@ -9,23 +9,16 @@ export default function PasswordField({ error, className, id: idProp, ...rest }:
   const [visible, setVisible] = useState(false);
   const autoId = useId();
   const id = idProp ?? autoId;
-  const toggleId = `${id}-toggle`;
-
   return (
     <div className="relative">
       <input
         id={id}
         type={visible ? 'text' : 'password'}
         aria-invalid={error || undefined}
-        className={[
-          'w-full h-9 px-3 pr-9 rounded-md border bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors',
-          error ? 'border-red-300' : 'border-gray-100',
-          className ?? '',
-        ].join(' ')}
+        className={`w-full h-9 px-3 pr-9 rounded-md border bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors ${error ? 'border-red-300' : 'border-gray-100'} ${className ?? ''}`}
         {...rest}
       />
       <button
-        id={toggleId}
         type="button"
         tabIndex={-1}
         aria-label={visible ? 'Hide password' : 'Show password'}
