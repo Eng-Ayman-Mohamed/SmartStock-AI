@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { RefreshCw, TrendingUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, RefreshCw, TrendingUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForecastDashboard } from '../hooks/useForecastDashboard';
 import SkuChart from '../components/SkuChart';
@@ -13,6 +13,7 @@ const PAGE_SIZE = 6;
 
 export default function ForecastingPage() {
   const [page, setPage] = useState(1);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const { data, isLoading, isError } = useForecastDashboard(page, PAGE_SIZE);
   const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -25,6 +26,10 @@ export default function ForecastingPage() {
     .map(classifyAlert)
     .filter((a): a is AlertInfo => a !== null)
     .filter(a => !dismissed.has(a.sku.id));
+
+  useEffect(() => {
+    if (alerts.length === 0) setIsAlertModalOpen(false);
+  }, [alerts.length]);
 
   const totalSkus = pagination?.total ?? 0;
   const paginationControls = usePagination({
@@ -47,9 +52,23 @@ export default function ForecastingPage() {
             <h1 className="text-page-heading text-ink">Demand Forecasting</h1>
             <p className="text-body text-ink-muted mt-1">Peek 30 days ahead — AI predicts what you'll need before you need it</p>
           </div>
-          <Button variant="primary" size="md" onClick={handleRefresh}>
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {alerts.length > 0 && (
+              <button
+                onClick={() => setIsAlertModalOpen(true)}
+                className="xl:hidden relative flex items-center justify-center w-9 h-9 rounded-md border border-hairline bg-canvas text-ink-muted hover:bg-canvas-soft hover:text-ink transition-colors"
+                aria-label="Open alerts"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-4.5 h-4.5 rounded-full bg-red-500 text-[10px] font-semibold text-white min-w-[18px] px-1">
+                  {alerts.length}
+                </span>
+              </button>
+            )}
+            <Button variant="primary" size="md" onClick={handleRefresh}>
+              <RefreshCw className="w-4 h-4" /> Refresh
+            </Button>
+          </div>
         </div>
 
         {isError && (
@@ -174,9 +193,8 @@ export default function ForecastingPage() {
         )}
       </div>
 
-      {alerts.length > 0 && (
-        <AlertSidebar alerts={alerts} onDismiss={handleDismiss} />
-      )}
+      <AlertSidebar alerts={alerts} onDismiss={handleDismiss} isModalOpen={isAlertModalOpen} onModalClose={() => setIsAlertModalOpen(false)} />
+
     </div>
   );
 }

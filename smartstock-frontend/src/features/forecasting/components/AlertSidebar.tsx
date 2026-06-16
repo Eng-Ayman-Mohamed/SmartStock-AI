@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import AlertBanner from './AlertBanner';
 import type { AlertInfo } from '../utils/classifyAlert';
@@ -6,16 +6,45 @@ import type { AlertInfo } from '../utils/classifyAlert';
 interface AlertSidebarProps {
   alerts: AlertInfo[];
   onDismiss: (id: string) => void;
+  isModalOpen: boolean;
+  onModalClose: () => void;
 }
 
-export default function AlertSidebar({ alerts, onDismiss }: AlertSidebarProps) {
+function SeverityCount({ criticalCount, warningCount }: { criticalCount: number; warningCount: number }) {
+  return (
+    <p className="text-caption text-ink-muted mt-0.5">
+      {criticalCount > 0 && (
+        <span className="text-red-600 font-medium">{criticalCount} critical</span>
+      )}
+      {criticalCount > 0 && warningCount > 0 && <span className="text-ink-faint"> · </span>}
+      {warningCount > 0 && (
+        <span className="text-orange-600 font-medium">{warningCount} warning</span>
+      )}
+      {criticalCount === 0 && warningCount === 0 && (
+        <span className="text-green-600">All clear</span>
+      )}
+    </p>
+  );
+}
+
+export default function AlertSidebar({ alerts, onDismiss, isModalOpen, onModalClose }: AlertSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const criticalCount = alerts.filter(a => a.severity === 'critical').length;
   const warningCount = alerts.filter(a => a.severity === 'warning').length;
 
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isModalOpen]);
+
   return (
     <>
+      {/* Desktop: sticky sidebar (xl+) */}
       <div
         className={`
           hidden xl:block shrink-0 transition-all duration-300 ease-in-out
@@ -43,18 +72,7 @@ export default function AlertSidebar({ alerts, onDismiss }: AlertSidebarProps) {
               <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-hairline">
                 <div>
                   <h3 className="text-card-title text-ink">Alerts</h3>
-                  <p className="text-caption text-ink-muted mt-0.5">
-                    {criticalCount > 0 && (
-                      <span className="text-red-600 font-medium">{criticalCount} critical</span>
-                    )}
-                    {criticalCount > 0 && warningCount > 0 && <span className="text-ink-faint"> · </span>}
-                    {warningCount > 0 && (
-                      <span className="text-orange-600 font-medium">{warningCount} warning</span>
-                    )}
-                    {criticalCount === 0 && warningCount === 0 && (
-                      <span className="text-green-600">All clear</span>
-                    )}
-                  </p>
+                  <SeverityCount criticalCount={criticalCount} warningCount={warningCount} />
                 </div>
                 <button
                   onClick={() => setIsCollapsed(true)}
@@ -75,35 +93,44 @@ export default function AlertSidebar({ alerts, onDismiss }: AlertSidebarProps) {
         </div>
       </div>
 
-      <div className="xl:hidden">
-        {alerts.length > 0 && (
-          <div className="rounded-lg border border-hairline bg-canvas">
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-hairline">
+      {/* Mobile/tablet: alert modal overlay (below xl) */}
+      {isModalOpen && (
+        <div className="xl:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 animate-fadeIn">
+          <div
+            className="w-full sm:max-w-2xl bg-canvas rounded-t-xl sm:rounded-lg animate-slideUp max-h-[80vh] flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Alerts"
+          >
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-hairline shrink-0">
               <div>
                 <h3 className="text-card-title text-ink">Alerts</h3>
-                <p className="text-caption text-ink-muted mt-0.5">
-                  {criticalCount > 0 && (
-                    <span className="text-red-600 font-medium">{criticalCount} critical</span>
-                  )}
-                  {criticalCount > 0 && warningCount > 0 && <span className="text-ink-faint"> · </span>}
-                  {warningCount > 0 && (
-                    <span className="text-orange-600 font-medium">{warningCount} warning</span>
-                  )}
-                  {criticalCount === 0 && warningCount === 0 && (
-                    <span className="text-green-600">All clear</span>
-                  )}
-                </p>
+                <SeverityCount criticalCount={criticalCount} warningCount={warningCount} />
               </div>
-              <Bell className="w-4 h-4 text-ink-muted" />
+              <button
+                onClick={onModalClose}
+                className="shrink-0 p-1 rounded hover:bg-hairline transition-colors"
+                aria-label="Close alerts"
+              >
+                <X className="w-5 h-5 text-ink-muted" />
+              </button>
             </div>
-            <div className="p-4 space-y-2">
+
+            <div className="p-5 space-y-2 overflow-y-auto">
               {alerts.sort((a) => (a.severity === 'critical' ? -1 : 1)).map(alert => (
                 <AlertBanner key={alert.sku.id} alert={alert} onDismiss={onDismiss} />
               ))}
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Backdrop click to close */}
+          <button
+            onClick={onModalClose}
+            className="fixed inset-0 z-[-1]"
+            aria-label="Close alerts"
+          />
+        </div>
+      )}
     </>
   );
 }
