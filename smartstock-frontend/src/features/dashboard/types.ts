@@ -1,4 +1,4 @@
-type POStatus = 'draft' | 'pending_approval' | 'approved' | 'email_sent' | 'sent' | 'waiting_confirmation' | 'confirmed' | 'rejected' | 'cancelled' | 'failed' | 'timeout';
+import type { POStatus } from '../purchasing/types';
 
 export interface ReorderAlert {
   id: number;

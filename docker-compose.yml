@@ -131,7 +131,7 @@ services:
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.development
     healthcheck:
-      test: ["CMD", "celery", "-A", "config", "inspect", "ping", "--destination", "celery@beat"]
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

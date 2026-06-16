@@ -140,15 +140,10 @@ export default function DashboardPage() {
   const qc = useQueryClient();
   const { data: alerts, isLoading: alertsLoading, isError: alertsError } = useReorderAlerts();
   const { data: pendingPOs, isLoading: pendingLoading, isError: pendingError } = usePendingPOs();
-  const { data: forecastData, isLoading: forecastLoading, isError: forecastError } = useForecastDashboard();
-  const { data: agentRuns, isLoading: agentLoading, isError: agentError } = useAgentRuns();
+  const { data: forecastData, isError: forecastError } = useForecastDashboard();
+  const { data: agentRuns, isError: agentError } = useAgentRuns();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const isAlertsStatsLoading = alertsLoading;
-  const isPOStatsLoading = pendingLoading;
-  const isForecastStatsLoading = forecastLoading;
-  const isAgentStatsLoading = agentLoading;
 
   const isError = alertsError || pendingError || forecastError || agentError;
 
@@ -233,12 +228,8 @@ export default function DashboardPage() {
       <SupplierWarningBadge />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {isAlertsStatsLoading ? (
-          <Skeleton className="h-24" />
-        ) : (
-          <StatCard label="Total SKUs" value="1,247" icon={Package} />
-        )}
-        {isPOStatsLoading ? (
+        <StatCard label="Total SKUs" value="1,247" icon={Package} />
+        {alertsLoading ? (
           <Skeleton className="h-24" />
         ) : (
           <StatCard
@@ -249,16 +240,12 @@ export default function DashboardPage() {
             trend={lowStockCount > 0 ? { direction: 'up', percentage: `${lowStockCount}`, color: 'text-orange-600' } : undefined}
           />
         )}
-        {isForecastStatsLoading ? (
+        {pendingLoading ? (
           <Skeleton className="h-24" />
         ) : (
           <StatCard label="Pending POs" value={String(pendingPOCount)} accent="orange" icon={ShoppingCart} />
         )}
-        {isAgentStatsLoading ? (
-          <Skeleton className="h-24" />
-        ) : (
-          <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
-        )}
+        <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
