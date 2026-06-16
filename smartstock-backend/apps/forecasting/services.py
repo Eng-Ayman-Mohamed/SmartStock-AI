@@ -52,7 +52,12 @@ class ForecastingService:
         paginated_skus = all_skus[start:end]
 
         # Alerts computed from ALL SKUs (not paginated)
-        alerts = [sku for sku in all_skus if sku.get('stockout_risk') or sku.get('current_stock', 0) <= sku.get('reorder_point', 0)]
+        alerts = [
+            sku
+            for sku in all_skus
+            if sku.get('stockout_risk')
+            or sku.get('current_stock', 0) <= sku.get('reorder_point', 0)
+        ]
 
         return {
             'skus': paginated_skus,

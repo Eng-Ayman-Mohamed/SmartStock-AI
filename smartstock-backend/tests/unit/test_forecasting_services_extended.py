@@ -149,7 +149,11 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
 
     @patch('apps.forecasting.services.cache')
     def test_returns_cached_data(self, mock_cache):
-        cached_data = {'skus': [{'id': 'SKU1', 'stockout_risk': False, 'current_stock': 10, 'reorder_point': 5}]}
+        cached_data = {
+            'skus': [
+                {'id': 'SKU1', 'stockout_risk': False, 'current_stock': 10, 'reorder_point': 5}
+            ]
+        }
         mock_cache.get.return_value = cached_data
         result = self.service.get_dashboard_data()
         self.assertIn('skus', result)
