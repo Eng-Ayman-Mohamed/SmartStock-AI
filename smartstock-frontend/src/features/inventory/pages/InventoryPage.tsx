@@ -820,7 +820,7 @@ export default function InventoryPage() {
               type="number"
               value={stockDelta}
               onChange={(e) => setStockDelta(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-gray-200 bg-white text-body text-gray-800 focus:border-brand-600 focus:outline-none"
+              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
               placeholder="e.g. 10 or -5"
             />
             <p className="text-caption text-ink-muted mt-1">
@@ -835,7 +835,7 @@ export default function InventoryPage() {
               type="text"
               value={stockReason}
               onChange={(e) => setStockReason(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-gray-200 bg-white text-body text-gray-800 focus:border-brand-600 focus:outline-none"
+              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
               placeholder="e.g. Received shipment"
             />
           </div>

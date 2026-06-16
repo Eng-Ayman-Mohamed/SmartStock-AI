@@ -63,8 +63,8 @@ export default function UsersSettingsPage() {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-page-heading text-gray-900">Team & permissions</h1>
-          <p className="text-body text-gray-600 mt-1">
+          <h1 className="text-page-heading text-ink">Team & permissions</h1>
+          <p className="text-body text-ink-muted mt-1">
             Manage who can access SmartStock AI and what they can do.
           </p>
         </div>
@@ -75,13 +75,13 @@ export default function UsersSettingsPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white border border-gray-100 rounded-lg p-5 space-y-3">
+        <div className="bg-canvas border border-hairline rounded-lg p-5 space-y-3">
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-4 w-1/2" />
         </div>
       ) : isError ? (
-        <div className="bg-white border border-red-100 rounded-lg p-5">
+        <div className="bg-canvas border border-red-100 rounded-lg p-5">
           <p className="text-body text-red-600">
             Couldn't load users. {(error as Error)?.message ?? 'Unknown error.'}
           </p>

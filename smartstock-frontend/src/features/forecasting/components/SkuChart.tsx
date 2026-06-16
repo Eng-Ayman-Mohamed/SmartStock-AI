@@ -34,7 +34,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
     }));
 
   return (
-    <div className="bg-white border-[0.5px] border-gray-100 rounded-lg p-5 relative">
+    <div className="bg-canvas border border-hairline rounded-lg p-5 relative">
       {hasAlert && (
         <div className="absolute top-3 right-3">
           <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -43,12 +43,12 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
 
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-card-title text-gray-900">{sku.product_name}</h3>
-          <p className="text-mono text-gray-600 mt-0.5">SKU: {sku.sku_code}</p>
+          <h3 className="text-card-title text-ink">{sku.product_name}</h3>
+          <p className="text-mono text-ink-muted mt-0.5">SKU: {sku.sku_code}</p>
         </div>
         <div className="text-right">
-          <p className="text-[24px] font-medium text-gray-900 tabular-nums leading-none">{sku.predicted_demand_30d.toFixed(0)}</p>
-          <p className="text-caption text-gray-600 mt-0.5">30d forecast</p>
+          <p className="text-[24px] font-medium text-ink tabular-nums leading-none">{sku.predicted_demand_30d.toFixed(0)}</p>
+          <p className="text-caption text-ink-muted mt-0.5">30d forecast</p>
         </div>
       </div>
 
@@ -65,23 +65,22 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
                 <stop offset="100%" stopColor={color} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#D3D1C7" horizontal={true} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hairline)" horizontal={true} vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: '#888780' }}
+              tick={{ fontSize: 11, fill: 'var(--color-ink-faint)' }}
               tickLine={false}
-              axisLine={{ stroke: '#D3D1C7', strokeWidth: 0.5 }}
+              axisLine={{ stroke: 'var(--color-hairline)', strokeWidth: 0.5 }}
             />
-            <YAxis tick={{ fontSize: 11, fill: '#888780' }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-faint)' }} tickLine={false} axisLine={false} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#fff',
-                border: 'none',
+                backgroundColor: 'var(--color-canvas)',
+                border: '1px solid var(--color-hairline)',
                 borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                 fontSize: '12px',
               }}
-              labelStyle={{ fontSize: '11px', color: '#888780' }}
+              labelStyle={{ fontSize: '11px', color: 'var(--color-ink-faint)' }}
             />
             <Area
               type="monotone"
@@ -138,38 +137,38 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
         </ResponsiveContainer>
       </div>
 
-      <div className="flex items-center justify-between mt-3 pt-3 border-t-[0.5px] border-gray-100">
-        <div className="flex items-center gap-1.5 text-caption text-gray-600">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-hairline">
+        <div className="flex items-center gap-1.5 text-caption text-ink-muted">
           <TrendingUp className="w-3.5 h-3.5" />
           Stock: <span className="tabular-nums">{sku.current_stock}</span>
           {sku.stockout_risk && (
             <span className="ml-2 text-red-600 font-medium">At risk</span>
           )}
         </div>
-        <span className="text-caption px-1.5 py-0.5 rounded-sm bg-purple-50 text-purple-800 border-[0.5px] border-purple-100">
+        <span className="text-caption px-1.5 py-0.5 rounded-sm bg-purple-50 text-purple-800 border border-purple-100">
           {sku.confidence_score}% confidence
         </span>
       </div>
 
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-caption text-gray-700" aria-label={`Forecast data for ${sku.product_name}`}>
+        <table className="w-full text-caption text-ink-secondary" aria-label={`Forecast data for ${sku.product_name}`}>
           <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left py-1 pr-2 font-medium text-gray-500">Date</th>
-              <th className="text-right py-1 px-2 font-medium text-gray-500">Demand</th>
-              <th className="text-right py-1 px-2 font-medium text-gray-500">Lower</th>
-              <th className="text-right py-1 pl-2 font-medium text-gray-500">Upper</th>
+            <tr className="border-b border-hairline">
+              <th className="text-left py-1 pr-2 font-medium text-ink-faint">Date</th>
+              <th className="text-right py-1 px-2 font-medium text-ink-faint">Demand</th>
+              <th className="text-right py-1 px-2 font-medium text-ink-faint">Lower</th>
+              <th className="text-right py-1 pl-2 font-medium text-ink-faint">Upper</th>
             </tr>
           </thead>
           <tbody>
             {chartData.map((d) => (
-              <tr key={d.date} className="border-b border-gray-50 hover:bg-gray-50">
+              <tr key={d.date} className="border-b border-hairline hover:bg-canvas-soft">
                 <td className="py-1 pr-2 tabular-nums">{d.date}</td>
                 <td className="text-right py-1 px-2 tabular-nums">{d.demand.toFixed(1)}</td>
-                <td className="text-right py-1 px-2 tabular-nums text-gray-400">
+                <td className="text-right py-1 px-2 tabular-nums text-ink-faint">
                   {d.lowerBound !== null ? d.lowerBound.toFixed(1) : '—'}
                 </td>
-                <td className="text-right py-1 pl-2 tabular-nums text-gray-400">
+                <td className="text-right py-1 pl-2 tabular-nums text-ink-faint">
                   {d.upperBound !== null ? d.upperBound.toFixed(1) : '—'}
                 </td>
               </tr>

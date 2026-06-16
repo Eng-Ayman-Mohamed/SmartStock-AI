@@ -81,16 +81,16 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
       aria-modal="true"
       aria-labelledby="invite-user-title"
     >
-      <div className="w-full max-w-[460px] bg-white rounded-lg border border-gray-100 shadow-xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 id="invite-user-title" className="text-card-title font-semibold text-gray-900">
+      <div className="w-full max-w-[460px] bg-canvas rounded-lg border border-hairline shadow-xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
+          <h2 id="invite-user-title" className="text-card-title font-semibold text-ink">
             Invite user
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-muted hover:bg-canvas-soft"
           >
             <X className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -98,7 +98,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
 
         <form onSubmit={onSubmit} className="px-5 py-4 space-y-4">
           <div>
-            <label htmlFor="invite-name" className="block text-caption font-medium text-gray-900 mb-1.5">
+            <label htmlFor="invite-name" className="block text-caption font-medium text-ink mb-1.5">
               Full name
             </label>
             <input
@@ -112,7 +112,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                 if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: undefined }));
               }}
               aria-invalid={Boolean(fieldErrors.name)}
-              className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
               placeholder="Jane Doe"
             />
             {fieldErrors.name && (
@@ -121,7 +121,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
           </div>
 
           <div>
-            <label htmlFor="invite-email" className="block text-caption font-medium text-gray-900 mb-1.5">
+            <label htmlFor="invite-email" className="block text-caption font-medium text-ink mb-1.5">
               Email
             </label>
             <input
@@ -135,7 +135,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                 if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
               }}
               aria-invalid={Boolean(fieldErrors.email)}
-              className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
               placeholder="user@company.com"
             />
             {fieldErrors.email && (
@@ -144,7 +144,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
           </div>
 
           <div>
-            <label htmlFor="invite-password" className="block text-caption font-medium text-gray-900 mb-1.5">
+            <label htmlFor="invite-password" className="block text-caption font-medium text-ink mb-1.5">
               Temporary password
             </label>
             <PasswordField
@@ -163,13 +163,13 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             {fieldErrors.password && (
               <p className="mt-1 text-caption text-red-600">{fieldErrors.password}</p>
             )}
-            <p className="mt-1 text-caption text-gray-600">
+            <p className="mt-1 text-caption text-ink-muted">
               Share this with the user. They can change it after first login.
             </p>
           </div>
 
           <div>
-            <span className="block text-caption font-medium text-gray-900 mb-1.5">Role</span>
+            <span className="block text-caption font-medium text-ink mb-1.5">Role</span>
             <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Role">
               {ROLES.map((r) => {
                 const meta = ROLE_META[r];
@@ -184,11 +184,11 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                     className={`px-3 py-2 rounded-md border text-caption font-medium text-left transition-colors ${
                       isSelected
                         ? 'border-brand-600 bg-brand-50 text-brand-800'
-                        : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200'
+                        : 'border-hairline bg-canvas text-ink-secondary hover:border-ink-faint'
                     }`}
                   >
                     <span className="block capitalize">{meta.label}</span>
-                    <span className="block text-caption text-gray-500 mt-0.5">
+                    <span className="block text-caption text-ink-faint mt-0.5">
                       {r === 'viewer' && 'Read-only'}
                       {r === 'manager' && 'Approvals + edits'}
                       {r === 'admin' && 'Full access'}
@@ -209,14 +209,14 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             <button
               type="button"
               onClick={onClose}
-              className="px-3 h-9 rounded-md text-caption font-medium text-gray-700 hover:bg-gray-50"
+              className="px-3 h-9 rounded-md text-caption font-medium text-ink-secondary hover:bg-canvas-soft"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createUser.isPending}
-              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed"
             >
               {createUser.isPending ? (
                 <>

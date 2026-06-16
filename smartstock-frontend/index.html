@@ -11,6 +11,15 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet" />
+  <script>
+    (function() {
+      var mode = localStorage.getItem('theme-mode');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (mode === 'dark' || (mode !== 'light' && prefersDark)) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
   <title>SmartStock AI</title>
   <script src="/env-config.js"></script>
 </head>

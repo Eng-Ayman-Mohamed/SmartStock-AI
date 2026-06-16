@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import RoleBadge from '../../features/users/components/RoleBadge';
+import ThemeToggle from './ThemeToggle';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -95,6 +96,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <button
           className="relative flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
           aria-label="Notifications"

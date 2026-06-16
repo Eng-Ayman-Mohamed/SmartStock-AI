@@ -15,7 +15,7 @@ export default function PasswordField({ error, className, id: idProp, ...rest }:
         id={id}
         type={visible ? 'text' : 'password'}
         aria-invalid={error || undefined}
-        className={`w-full h-9 px-3 pr-9 rounded-md border bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors ${error ? 'border-red-300' : 'border-gray-100'} ${className ?? ''}`}
+        className={`w-full h-9 px-3 pr-9 rounded-md border bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors ${error ? 'border-red-300' : 'border-hairline'} ${className ?? ''}`}
         {...rest}
       />
       <button
@@ -23,7 +23,7 @@ export default function PasswordField({ error, className, id: idProp, ...rest }:
         tabIndex={-1}
         aria-label={visible ? 'Hide password' : 'Show password'}
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-gray-400 hover:text-gray-600"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-ink-faint hover:text-ink-muted"
       >
         {visible ? (
           <EyeOff className="w-4 h-4" aria-hidden="true" />

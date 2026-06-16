@@ -29,7 +29,7 @@ export default function UsersFilterBar({
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div className="relative flex-1 max-w-md">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint pointer-events-none"
           aria-hidden="true"
         />
         <input
@@ -38,12 +38,12 @@ export default function UsersFilterBar({
           onChange={(e: ChangeEvent<HTMLInputElement>) => onQueryChange(e.target.value)}
           placeholder="Search by name or email"
           aria-label="Search users"
-          className="w-full h-9 pl-9 pr-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+          className="w-full h-9 pl-9 pr-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
         />
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="inline-flex items-center rounded-md border border-gray-100 bg-white p-0.5">
+        <div className="inline-flex items-center rounded-md border border-hairline bg-canvas p-0.5">
           {STATUSES.map((s) => {
             const isSelected = s.value === status;
             return (
@@ -54,7 +54,7 @@ export default function UsersFilterBar({
                 className={`inline-flex items-center gap-1 px-2.5 h-8 rounded text-caption font-medium transition-colors ${
                   isSelected
                     ? 'bg-brand-50 text-brand-800'
-                    : 'text-gray-600 hover:text-gray-900'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
                 aria-pressed={isSelected}
               >
@@ -64,7 +64,7 @@ export default function UsersFilterBar({
             );
           })}
         </div>
-        <span className="text-caption text-gray-600 hidden sm:inline">
+        <span className="text-caption text-ink-muted hidden sm:inline">
           {filteredCount === totalCount ? (
             <>{totalCount} {totalCount === 1 ? 'user' : 'users'}</>
           ) : (
