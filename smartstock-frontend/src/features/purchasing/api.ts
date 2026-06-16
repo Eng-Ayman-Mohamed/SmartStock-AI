@@ -65,3 +65,54 @@ export async function rejectPO(id: string): Promise<void> {
   const numericId = id.replace('PO-', '');
   await api.post(`/purchasing/orders/${numericId}/reject/`);
 }
+
+interface POHistoryRaw {
+  id: number;
+  product_name: string;
+  supplier_name: string;
+  quantity: number;
+  total_cost: string;
+  status: string;
+  created_at: string;
+  approved_by_name: string | null;
+}
+
+export interface POHistoryItem {
+  id: string;
+  product_name: string;
+  supplier: string;
+  quantity: number;
+  total: string;
+  status: string;
+  created_at: string;
+  approved_by: string;
+}
+
+function formatPODate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatTotal(cost: string): string {
+  const num = parseFloat(cost) || 0;
+  return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export async function listPOHistory(): Promise<POHistoryItem[]> {
+  const { data } = await api.get<POHistoryRaw[]>('/purchasing/orders/', {
+    params: { page_size: 100 },
+  });
+  const items = data ?? [];
+  return items
+    .filter((item) => item.status !== 'pending_approval' && item.status !== 'draft')
+    .map((item) => ({
+      id: `PO-${item.id}`,
+      product_name: item.product_name,
+      supplier: item.supplier_name,
+      quantity: item.quantity,
+      total: formatTotal(item.total_cost),
+      status: item.status,
+      created_at: formatPODate(item.created_at),
+      approved_by: item.approved_by_name ?? '—',
+    }));
+}

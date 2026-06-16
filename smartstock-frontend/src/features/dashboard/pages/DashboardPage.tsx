@@ -17,6 +17,7 @@ import { Package, AlertTriangle, ShoppingCart, TrendingUp, RefreshCw, AlertCircl
 import { useReorderAlerts } from '../hooks/useReorderAlerts';
 import { usePendingPOs } from '../hooks/usePendingPOs';
 import { useAgentRuns } from '../hooks/useAgentRuns';
+import { useSKUCount } from '../hooks/useSKUCount';
 import { useForecastDashboard } from '../../forecasting/hooks/useForecastDashboard';
 import ReorderAlertList from '../components/ReorderAlertList';
 import AgentRunStatus from '../components/AgentRunStatus';
@@ -140,12 +141,13 @@ export default function DashboardPage() {
   const qc = useQueryClient();
   const { data: alerts, isLoading: alertsLoading, isError: alertsError } = useReorderAlerts();
   const { data: pendingPOs, isLoading: pendingLoading, isError: pendingError } = usePendingPOs();
-  const { data: forecastData, isError: forecastError } = useForecastDashboard();
+  const { data: forecastData, isLoading: forecastLoading, isError: forecastError } = useForecastDashboard();
   const { data: agentRuns, isError: agentError } = useAgentRuns();
+  const { data: skuCount, isLoading: skuLoading, isError: skuError } = useSKUCount();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const isError = alertsError || pendingError || forecastError || agentError;
+  const isError = alertsError || pendingError || forecastError || agentError || skuError;
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
@@ -156,6 +158,7 @@ export default function DashboardPage() {
       qc.invalidateQueries({ queryKey: ['pending-pos'] }),
       qc.invalidateQueries({ queryKey: ['forecast-dashboard'] }),
       qc.invalidateQueries({ queryKey: ['overdue-suppliers'] }),
+      qc.invalidateQueries({ queryKey: ['sku-count'] }),
     ]);
     setIsRefreshing(false);
   }, [qc, isRefreshing]);
@@ -163,6 +166,16 @@ export default function DashboardPage() {
   const lowStockCount = alerts?.length ?? 0;
   const pendingPOCount = pendingPOs?.length ?? 0;
   const agentStale = isAgentPipelineStale(agentRuns);
+
+  const forecastAccuracy = useMemo(() => {
+    if (!forecastData?.skus?.length) return null;
+    const scores = forecastData.skus
+      .filter((s) => s.confidence_score > 0)
+      .map((s) => s.confidence_score);
+    if (scores.length === 0) return null;
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    return { value: `${avg.toFixed(1)}%` };
+  }, [forecastData]);
 
   const chartData = useMemo(() => {
     if (!forecastData?.skus?.length) return null;
@@ -228,7 +241,11 @@ export default function DashboardPage() {
       <SupplierWarningBadge />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label="Total SKUs" value="1,247" icon={Package} />
+        {skuLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
+          <StatCard label="Total SKUs" value={String(skuCount ?? 0)} icon={Package} />
+        )}
         {alertsLoading ? (
           <Skeleton className="h-24" />
         ) : (
@@ -245,7 +262,11 @@ export default function DashboardPage() {
         ) : (
           <StatCard label="Pending POs" value={String(pendingPOCount)} accent="orange" icon={ShoppingCart} />
         )}
-        <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
+        {forecastLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
+          <StatCard label="Forecast Accuracy" value={forecastAccuracy?.value ?? '—'} accent="purple" icon={TrendingUp} />
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">

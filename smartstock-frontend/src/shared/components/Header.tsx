@@ -4,6 +4,7 @@ import { Bell, LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../features/auth/hooks/useAuth';
+import { useServerHealth } from '../../shared/hooks/useServerHealth';
 import RoleBadge from '../../features/users/components/RoleBadge';
 import ThemeToggle from './ThemeToggle';
 
@@ -33,6 +34,7 @@ export default function Header() {
   const user = useAuthStore((s) => s.user);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const { logout, isSubmitting } = useAuth();
+  const { data: isAlive, isLoading: healthLoading } = useServerHealth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const title = pageTitles[location.pathname] || 'SmartStock AI';
@@ -94,6 +96,16 @@ export default function Header() {
           </ol>
         </nav>
       </div>
+
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5" title={healthLoading ? 'Checking...' : isAlive ? 'Server online' : 'Server offline'}>
+          <span className={`w-2 h-2 rounded-full ${
+            healthLoading ? 'bg-gray-300' : isAlive ? 'bg-green-500' : 'bg-red-500'
+          }`} />
+          <span className="text-caption text-ink-muted hidden sm:inline">
+            {healthLoading ? '...' : isAlive ? 'Online' : 'Offline'}
+          </span>
+        </div>
 
       <div className="flex items-center gap-3">
         <ThemeToggle />
@@ -164,6 +176,7 @@ export default function Header() {
             )}
           </div>
         )}
+      </div>
       </div>
     </header>
   );
