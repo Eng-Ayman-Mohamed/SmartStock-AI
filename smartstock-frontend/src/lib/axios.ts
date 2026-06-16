@@ -113,14 +113,20 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await api.post<{ access: string }>(
+        const storedRefresh = sessionStorage.getItem('refreshToken');
+        const body = storedRefresh ? { refresh: storedRefresh } : null;
+        const { data } = await api.post<{ access: string; refresh?: string }>(
           '/auth/refresh/',
-          null,
+          body,
           { withCredentials: true }
         );
         const newToken = data.access;
         lastRefreshedToken = newToken;
         useAuthStore.getState().setToken(newToken);
+        if (data.refresh) {
+          useAuthStore.getState().setRefreshToken(data.refresh);
+          sessionStorage.setItem('refreshToken', data.refresh);
+        }
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);

@@ -65,6 +65,7 @@ class RegisterView(generics.CreateAPIView):
                     'type': 'object',
                     'properties': {
                         'access': {'type': 'string', 'description': 'JWT access token'},
+                        'refresh': {'type': 'string', 'description': 'JWT refresh token'},
                         'user': {'$ref': '#/components/schemas/Me'},
                     },
                 },
@@ -102,6 +103,7 @@ class RegisterView(generics.CreateAPIView):
         response = Response(
             {
                 'access': str(refresh.access_token),
+                'refresh': str(refresh),
                 'user': MeSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
@@ -132,6 +134,7 @@ class LoginView(TokenObtainPairView):
                     'type': 'object',
                     'properties': {
                         'access': {'type': 'string', 'description': 'JWT access token'},
+                        'refresh': {'type': 'string', 'description': 'JWT refresh token'},
                         'user': {'$ref': '#/components/schemas/Me'},
                     },
                 },
@@ -171,6 +174,7 @@ class LoginView(TokenObtainPairView):
         response = Response(
             {
                 'access': validated_data['access'],
+                'refresh': validated_data['refresh'],
                 'user': MeSerializer(user).data if user else None,
             },
             status=status.HTTP_200_OK,

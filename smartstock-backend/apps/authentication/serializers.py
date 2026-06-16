@@ -56,12 +56,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class CookieTokenRefreshSerializer(serializers.Serializer):
-    refresh = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(write_only=True, required=False)
     access = serializers.CharField(read_only=True)
 
     def validate(self, attrs):
         request = self.context['request']
-        refresh = request.COOKIES.get(
+        refresh = attrs.get('refresh') or request.COOKIES.get(
             getattr(settings, 'SIMPLE_JWT', {}).get('AUTH_COOKIE', 'refresh_token')
         )
         if not refresh:
