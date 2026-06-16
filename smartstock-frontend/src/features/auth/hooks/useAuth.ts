@@ -5,7 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import * as authApi from '../api';
 import type { LoginPayload, RegisterPayload } from '../types';
 
-export type AuthError = { kind: 'invalid_credentials' | 'network' | 'unknown'; message: string };
+export type AuthError = { kind: 'invalid_credentials' | 'network' | 'validation' | 'unknown'; message: string; fields?: Record<string, string[]> };
 
 function toAuthError(err: unknown): AuthError {
   if (axios.isAxiosError(err)) {
@@ -14,6 +14,11 @@ function toAuthError(err: unknown): AuthError {
     }
     if (err.response.status === 401 || err.response.status === 400) {
       return { kind: 'invalid_credentials', message: 'Invalid email or password.' };
+    }
+    if (err.response.status === 422) {
+      const rawData = err.response.data as Record<string, unknown> | undefined;
+      const fields = (rawData?.fields as Record<string, string[]>) || (rawData as Record<string, string[]>) || {};
+      return { kind: 'validation', message: 'Please fix the errors below.', fields };
     }
     return { kind: 'unknown', message: 'Something went wrong. Please try again.' };
   }

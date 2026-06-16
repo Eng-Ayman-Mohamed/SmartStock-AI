@@ -24,11 +24,13 @@ export class ApiResponseError extends Error {
   }
 }
 
+const envConfig = (window as Record<string, unknown>).__ENV__ as Record<string, string> | undefined;
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: envConfig?.VITE_API_URL || import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 let isRefreshing = false;

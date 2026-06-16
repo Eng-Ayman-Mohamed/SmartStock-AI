@@ -19,6 +19,8 @@ RUN chmod +x /entrypoint.sh
 
 COPY . .
 
+RUN python manage.py collectstatic --noinput
+
 RUN useradd -m -r appuser && chown -R appuser /app
 USER appuser
 

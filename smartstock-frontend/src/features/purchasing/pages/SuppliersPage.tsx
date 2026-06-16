@@ -119,10 +119,10 @@ export function SuppliersPage() {
       await deleteMutation.mutateAsync(id);
       addToast('Supplier deleted', 'success');
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
       if (axiosErr.response?.status === 409) {
         setErrorMessage(
-          axiosErr.response.data?.detail || 'Cannot delete supplier because they have open Purchase Orders.'
+          axiosErr.response.data?.message || 'Cannot delete supplier because they have open Purchase Orders.'
         );
       } else {
         setErrorMessage('An error occurred while attempting to delete the supplier.');

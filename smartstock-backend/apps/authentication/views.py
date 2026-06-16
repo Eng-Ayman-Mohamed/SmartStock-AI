@@ -111,7 +111,7 @@ class RegisterView(generics.CreateAPIView):
             value=str(refresh),
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=7 * 24 * 60 * 60,
         )
         return response
@@ -180,7 +180,7 @@ class LoginView(TokenObtainPairView):
             value=validated_data['refresh'],
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=7 * 24 * 60 * 60,
         )
         return response

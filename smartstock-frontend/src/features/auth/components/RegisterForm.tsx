@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../../../shared/components/Button';
-import type { ApiErrorPayload } from '../types';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -59,11 +58,12 @@ export default function RegisterForm() {
 
   function pickServerErrors(err: unknown): Fields {
     if (axios.isAxiosError(err) && err.response?.data) {
-      const data = err.response.data as ApiErrorPayload;
+      const rawData = err.response.data as Record<string, unknown>;
+      const data = (rawData.fields as Record<string, unknown>) || rawData;
       const out: Fields = {};
-      const nameErr = readError(data.name);
-      const emailErr = readError(data.email);
-      const passwordErr = readError(data.password);
+      const nameErr = readError(data.name as string[] | string | undefined);
+      const emailErr = readError(data.email as string[] | string | undefined);
+      const passwordErr = readError(data.password as string[] | string | undefined);
       if (nameErr) out.name = nameErr;
       if (emailErr) out.email = emailErr;
       if (passwordErr) out.password = passwordErr;

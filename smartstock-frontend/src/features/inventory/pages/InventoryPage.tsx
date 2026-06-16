@@ -59,10 +59,12 @@ type LowStockItem = {
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
 
-function unwrap<T>(payload: T | { data: T }): T {
-  return payload && typeof payload === "object" && "data" in payload
-    ? payload.data
-    : payload;
+function unwrap<T>(payload: T | { data: T } | { results: T }): T {
+  if (payload && typeof payload === "object") {
+    if ("data" in payload) return payload.data;
+    if ("results" in payload) return payload.results as T;
+  }
+  return payload as T;
 }
 
 type PaginationMeta = {
