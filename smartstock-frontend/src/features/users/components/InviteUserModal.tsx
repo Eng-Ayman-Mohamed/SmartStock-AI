@@ -4,6 +4,7 @@ import { useCreateUser } from '../hooks/useUsers';
 import { ROLE_META } from './RoleBadge';
 import type { Role } from '../types';
 import { useAuthStore } from '../../../store/authStore';
+import PasswordField from '../../../shared/components/PasswordField';
 
 interface InviteUserModalProps {
   open: boolean;
@@ -146,9 +147,8 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             <label htmlFor="invite-password" className="block text-caption font-medium text-gray-900 mb-1.5">
               Temporary password
             </label>
-            <input
+            <PasswordField
               id="invite-password"
-              type="password"
               autoComplete="new-password"
               required
               value={password}
@@ -156,8 +156,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                 setPassword(e.target.value);
                 if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
               }}
-              aria-invalid={Boolean(fieldErrors.password)}
-              className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+              error={Boolean(fieldErrors.password)}
               placeholder="At least 8 characters"
             />
             {fieldErrors.password && (
