@@ -390,24 +390,24 @@ export default function InventoryPage() {
       key: "actions",
       label: "Actions",
       align: "right",
-      width: "150px",
+      width: "160px",
       render: (r) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-2">
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200"
             onClick={() => openEditForm(r.product)}
             disabled={!canManage}
             aria-label={`Edit ${r.product.name}`}
             title={canManage ? "Edit product" : "Manager role required"}
           >
-            <PencilLine className="w-4 h-4" />
+            <PencilLine className="w-5 h-5" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200"
             onClick={() =>
               setAdjustingStock({ stockId: r.stockId, skuCode: r.sku.code })
             }
@@ -421,18 +421,18 @@ export default function InventoryPage() {
                   : "No stock record"
             }
           >
-            <PackagePlus className="w-4 h-4" />
+            <PackagePlus className="w-5 h-5" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200"
             onClick={() => setDeletingProduct(r.product)}
             disabled={!canDelete}
             aria-label={`Delete ${r.product.name}`}
             title={canDelete ? "Delete product" : "Admin role required"}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-5 h-5" />
           </Button>
         </div>
       ),
@@ -574,30 +574,30 @@ export default function InventoryPage() {
                 <Button
                   variant="utility"
                   size="sm"
-                  className="h-8 w-8 px-0"
+                  className="h-11 w-11 px-0"
                   onClick={() => setPage(1)}
                   disabled={!pagination.hasPrev}
                   aria-label="First page"
                   title="First page"
                 >
-                  <ChevronsLeft className="h-4 w-4" />
+                  <ChevronsLeft className="h-5 w-5" />
                 </Button>
                 <Button
                   variant="utility"
                   size="sm"
-                  className="h-8 w-8 px-0"
+                  className="h-11 w-11 px-0"
                   onClick={() => setPage((value) => Math.max(1, value - 1))}
                   disabled={!pagination.hasPrev}
                   aria-label="Previous page"
                   title="Previous page"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-5 w-5" />
                 </Button>
                 {pagination.pages.map((pageNumber, index) =>
                   pageNumber === -1 ? (
                     <span
                       key={`gap-${index}`}
-                      className="flex h-8 w-8 items-center justify-center text-caption text-ink-faint"
+                      className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
                     >
                       ...
                     </span>
@@ -606,7 +606,7 @@ export default function InventoryPage() {
                       key={pageNumber}
                       variant={pageNumber === page ? "primary" : "utility"}
                       size="sm"
-                      className="h-8 w-8 px-0 tabular-nums"
+                      className="h-11 w-11 px-0 tabular-nums"
                       onClick={() => setPage(pageNumber)}
                       aria-label={`Page ${pageNumber}`}
                       title={`Page ${pageNumber}`}
@@ -618,7 +618,7 @@ export default function InventoryPage() {
                 <Button
                   variant="utility"
                   size="sm"
-                  className="h-8 w-8 px-0"
+                  className="h-11 w-11 px-0"
                   onClick={() =>
                     setPage((value) =>
                       Math.min(pagination.totalPages, value + 1),
@@ -628,18 +628,18 @@ export default function InventoryPage() {
                   aria-label="Next page"
                   title="Next page"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-5 w-5" />
                 </Button>
                 <Button
                   variant="utility"
                   size="sm"
-                  className="h-8 w-8 px-0"
+                  className="h-11 w-11 px-0"
                   onClick={() => setPage(pagination.totalPages)}
                   disabled={!pagination.hasNext}
                   aria-label="Last page"
                   title="Last page"
                 >
-                  <ChevronsRight className="h-4 w-4" />
+                  <ChevronsRight className="h-5 w-5" />
                 </Button>
               </div>
             </div>

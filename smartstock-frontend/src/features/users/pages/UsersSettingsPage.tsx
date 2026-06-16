@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Users, UserPlus } from 'lucide-react';
 import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
@@ -7,13 +7,18 @@ import InviteUserModal from '../components/InviteUserModal';
 import UsersFilterBar from '../components/UsersFilterBar';
 import UsersTable from '../components/UsersTable';
 import { useUsers } from '../hooks/useUsers';
+import { usePagination } from '../../../shared/hooks/usePagination';
 import type { StatusFilter } from '../types';
+import type { PaginationConfig } from '../../../shared/components/DataTable';
+
+const PAGE_SIZE = 20;
 
 export default function UsersSettingsPage() {
   const { data: users, isLoading, isError, error, refetch } = useUsers();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     if (!users) return [];
@@ -26,6 +31,33 @@ export default function UsersSettingsPage() {
       return matchesQuery && matchesStatus;
     });
   }, [users, query, status]);
+
+  const pagination = usePagination({ total: filtered.length, pageSize: PAGE_SIZE, currentPage: page });
+
+  const paginatedUsers = useMemo(() => {
+    return filtered.slice(pagination.startItem - 1, pagination.endItem);
+  }, [filtered, pagination.startItem, pagination.endItem]);
+
+  const paginationConfig: PaginationConfig = {
+    currentPage: page,
+    totalPages: pagination.totalPages,
+    total: filtered.length,
+    startItem: pagination.startItem,
+    endItem: pagination.endItem,
+    hasPrev: pagination.hasPrev,
+    hasNext: pagination.hasNext,
+    pages: pagination.pages,
+    onPageChange: (p) => setPage(p),
+    itemLabel: 'team members',
+  };
+
+  // Reset page when filters shrink results below current page
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (page > maxPage) {
+      setPage(maxPage);
+    }
+  }, [filtered.length, page]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -68,7 +100,7 @@ export default function UsersSettingsPage() {
             filteredCount={filtered.length}
           />
           <UsersTable
-            users={filtered}
+            users={paginatedUsers}
             emptyState={
               users && users.length > 0 ? (
                 <EmptyState
@@ -86,6 +118,7 @@ export default function UsersSettingsPage() {
                 />
               )
             }
+            pagination={paginatedUsers.length > 0 ? paginationConfig : undefined}
           />
         </>
       )}

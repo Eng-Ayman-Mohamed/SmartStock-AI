@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Power } from 'lucide-react';
-import DataTable, { type Column } from '../../../shared/components/DataTable';
+import DataTable, { type Column, type PaginationConfig } from '../../../shared/components/DataTable';
 import Card from '../../../shared/components/Card';
 import RoleBadge from './RoleBadge';
 import RoleSelect from './RoleSelect';
@@ -12,6 +12,7 @@ import { useToastStore } from '../../../store/toastStore';
 interface UsersTableProps {
   users: User[];
   emptyState?: React.ReactNode;
+  pagination?: PaginationConfig;
 }
 
 function getInitials(name: string): string {
@@ -32,7 +33,7 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export default function UsersTable({ users, emptyState }: UsersTableProps) {
+export default function UsersTable({ users, emptyState, pagination }: UsersTableProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const updateRole = useUpdateUserRole();
   const deactivate = useDeactivateUser();
@@ -156,6 +157,7 @@ export default function UsersTable({ users, emptyState }: UsersTableProps) {
         data={users}
         keyExtractor={(u) => String(u.id)}
         caption="Team members"
+        pagination={pagination}
       />
     </Card>
   );

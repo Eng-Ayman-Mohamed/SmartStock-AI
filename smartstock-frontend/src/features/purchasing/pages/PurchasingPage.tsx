@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { ShoppingCart, Plus } from 'lucide-react';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
@@ -5,9 +6,12 @@ import Badge from '../../../shared/components/Badge';
 import EmptyState from '../../../shared/components/EmptyState';
 import Skeleton from '../../../shared/components/Skeleton';
 import DataTable from '../../../shared/components/DataTable';
-import type { Column } from '../../../shared/components/DataTable';
+import type { Column, PaginationConfig } from '../../../shared/components/DataTable';
 import POApprovalCard from '../components/POApprovalCard';
 import { usePendingPOs } from '../hooks/usePurchasing';
+import { usePagination } from '../../../shared/hooks/usePagination';
+
+const PAGE_SIZE = 20;
 
 interface POHistory {
   id: string;
@@ -40,6 +44,26 @@ const historyColumns: Column<POHistory>[] = [
 export default function PurchasingPage() {
   const { data: pendingPOsData, isLoading: isPendingLoading, isError } = usePendingPOs();
   const pendingPOs = pendingPOsData ?? [];
+  const [poPage, setPoPage] = useState(1);
+
+  const poPagination = usePagination({ total: poHistory.length, pageSize: PAGE_SIZE, currentPage: poPage });
+
+  const paginatedPoHistory = useMemo(() => {
+    return poHistory.slice(poPagination.startItem - 1, poPagination.endItem);
+  }, [poPagination.startItem, poPagination.endItem]);
+
+  const poPaginationConfig: PaginationConfig = {
+    currentPage: poPage,
+    totalPages: poPagination.totalPages,
+    total: poHistory.length,
+    startItem: poPagination.startItem,
+    endItem: poPagination.endItem,
+    hasPrev: poPagination.hasPrev,
+    hasNext: poPagination.hasNext,
+    pages: poPagination.pages,
+    onPageChange: (p) => setPoPage(p),
+    itemLabel: 'results',
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -93,17 +117,11 @@ export default function PurchasingPage() {
       <Card title="PO History">
         <DataTable
           columns={historyColumns}
-          data={poHistory}
+          data={paginatedPoHistory}
           keyExtractor={(r) => r.id}
           caption="Purchase order history"
+          pagination={poPaginationConfig}
         />
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-hairline">
-          <span className="text-caption text-ink-muted tabular-nums">Showing 1–3 of 3 results</span>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" disabled>Previous</Button>
-            <Button variant="secondary" size="sm" disabled>Next</Button>
-          </div>
-        </div>
       </Card>
     </div>
   );
