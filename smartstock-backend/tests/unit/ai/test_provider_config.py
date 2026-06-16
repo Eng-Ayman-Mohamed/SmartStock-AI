@@ -1,4 +1,5 @@
 import os
+import unittest
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -104,6 +105,10 @@ class ProviderConfigGetEmbeddingsTest(TestCase):
                 provider_config.get_embeddings()
                 mock_cls.assert_called_once()
 
+    @unittest.skipUnless(
+        __import__('importlib', fromlist=['util']).util.find_spec('langchain_google_genai'),
+        'langchain_google_genai not installed',
+    )
     @patch('langchain_google_genai.GoogleGenerativeAIEmbeddings')
     def test_gemini_embeddings(self, mock_cls):
         from ai.llm import provider_config
@@ -113,6 +118,10 @@ class ProviderConfigGetEmbeddingsTest(TestCase):
                 provider_config.get_embeddings()
                 mock_cls.assert_called_once()
 
+    @unittest.skipUnless(
+        __import__('importlib', fromlist=['util']).util.find_spec('langchain_google_genai'),
+        'langchain_google_genai not installed',
+    )
     @patch('langchain_google_genai.GoogleGenerativeAIEmbeddings')
     def test_groq_falls_back_to_gemini(self, mock_cls):
         from ai.llm import provider_config
@@ -133,6 +142,10 @@ class ProviderConfigGetEmbeddingsTest(TestCase):
 
 
 class ProviderConfigGetWhisperClientTest(TestCase):
+    @unittest.skipUnless(
+        __import__('importlib', fromlist=['util']).util.find_spec('groq'),
+        'groq not installed',
+    )
     @patch('groq.Groq')
     def test_groq_whisper(self, mock_cls):
         from ai.llm import provider_config
