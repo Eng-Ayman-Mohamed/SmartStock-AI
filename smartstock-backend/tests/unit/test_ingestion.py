@@ -76,7 +76,7 @@ class ChunkPdfPagesTest(TestCase):
             self.assertEqual(c['page_number'], 3)
 
 
-@patch('ai.rag.ingestion.OpenAIEmbeddings')
+@patch('ai.llm.provider_config.get_embeddings')
 class IngestPdfTest(TestCase):
     def setUp(self):
         writer = pypdf.PdfWriter()
@@ -118,7 +118,7 @@ class IngestPdfTest(TestCase):
         self.assertEqual(total, second_count)
 
 
-@patch('ai.rag.ingestion.OpenAIEmbeddings')
+@patch('ai.llm.provider_config.get_embeddings')
 class BatchEmbeddingTest(TestCase):
     def test_batch_delay_respected(self, mock_embeddings_cls):
         mock_instance = MagicMock()

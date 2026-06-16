@@ -269,8 +269,8 @@ class RAGQueryEndpointTests(APITestCase):
 class RAGQueryServiceTests(APITestCase):
     """Unit tests for RAGQueryService logic."""
 
-    @patch('apps.ingestion.services.OpenAIEmbeddings')
-    @patch('apps.ingestion.services.ChatOpenAI')
+    @patch('ai.llm.provider_config.get_embeddings')
+    @patch('ai.llm.provider_config.get_chat_llm')
     def test_extract_sources_deduplicates(self, mock_llm_cls, mock_emb_cls):
         from apps.ingestion.services import RAGQueryService
 
@@ -285,8 +285,8 @@ class RAGQueryServiceTests(APITestCase):
         self.assertEqual(sources[0]['document'], 'policy.pdf')
         self.assertEqual(sources[1]['document'], 'manual.pdf')
 
-    @patch('apps.ingestion.services.OpenAIEmbeddings')
-    @patch('apps.ingestion.services.ChatOpenAI')
+    @patch('ai.llm.provider_config.get_embeddings')
+    @patch('ai.llm.provider_config.get_chat_llm')
     def test_build_context_format(self, mock_llm_cls, mock_emb_cls):
         from apps.ingestion.services import RAGQueryService
 
@@ -302,8 +302,8 @@ class RAGQueryServiceTests(APITestCase):
         self.assertIn('[Source: policy.pdf, Page: 3]', context)
         self.assertIn('Return within 30 days.', context)
 
-    @patch('apps.ingestion.services.OpenAIEmbeddings')
-    @patch('apps.ingestion.services.ChatOpenAI')
+    @patch('ai.llm.provider_config.get_embeddings')
+    @patch('ai.llm.provider_config.get_chat_llm')
     def test_rerank_raises_connection_error_without_cohere(self, mock_llm_cls, mock_emb_cls):
         import os
 
@@ -318,8 +318,8 @@ class RAGQueryServiceTests(APITestCase):
         with self.assertRaises(ConnectionError):
             service.rerank('test query', chunks, top_n=2)
 
-    @patch('apps.ingestion.services.OpenAIEmbeddings')
-    @patch('apps.ingestion.services.ChatOpenAI')
+    @patch('ai.llm.provider_config.get_embeddings')
+    @patch('ai.llm.provider_config.get_chat_llm')
     def test_execute_returns_retrieved_chunks(self, mock_llm_cls, mock_emb_cls):
         from apps.ingestion.services import RAGQueryService
 

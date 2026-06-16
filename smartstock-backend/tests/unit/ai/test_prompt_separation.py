@@ -97,8 +97,8 @@ class TestIngestionRoleSeparation:
         with (
             patch.object(ChatPromptTemplate, 'from_messages', side_effect=capture_prompt),
             patch('apps.ingestion.services.RAGQueryService._get_llm'),
-            patch('apps.ingestion.services.ChatOpenAI'),
-            patch('apps.ingestion.services.OpenAIEmbeddings'),
+            patch('ai.llm.provider_config.get_chat_llm'),
+            patch('ai.llm.provider_config.get_embeddings'),
             patch(
                 'apps.ingestion.services.invoke_with_langfuse',
                 return_value=('answer', {'total_tokens': 10}),
