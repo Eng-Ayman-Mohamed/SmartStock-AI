@@ -145,7 +145,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
             <span className="ml-2 text-red-600 font-medium">At risk</span>
           )}
         </div>
-        <span className="text-caption px-1.5 py-0.5 rounded-sm bg-purple-50 text-purple-800 border border-purple-100">
+        <span className="text-caption px-1.5 py-0.5 rounded-sm bg-purple-50 text-purple-800 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:border-purple-800">
           {sku.confidence_score}% confidence
         </span>
       </div>

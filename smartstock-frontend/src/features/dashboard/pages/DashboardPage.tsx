@@ -224,7 +224,7 @@ export default function DashboardPage() {
       </div>
 
       {isError && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
+        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <p className="text-body flex-1">Failed to load dashboard data.</p>
           <button onClick={() => handleRefresh()} className="underline text-sm font-medium">Retry</button>
@@ -232,7 +232,7 @@ export default function DashboardPage() {
       )}
 
       {agentStale && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-200">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <p className="text-body">Agent pipeline may not be running.</p>
         </div>

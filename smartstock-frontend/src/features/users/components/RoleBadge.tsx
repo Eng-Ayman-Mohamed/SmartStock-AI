@@ -10,17 +10,17 @@ const ROLE_META: Record<Role, { label: string; icon: typeof Eye; className: stri
   viewer: {
     label: 'Viewer',
     icon: Eye,
-    className: 'bg-gray-100 text-gray-700',
+    className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   },
   manager: {
     label: 'Manager',
     icon: UserCog,
-    className: 'bg-brand-50 text-brand-800',
+    className: 'bg-brand-50 text-brand-800 dark:bg-brand-900/30 dark:text-brand-200',
   },
   admin: {
     label: 'Admin',
     icon: ShieldCheck,
-    className: 'bg-purple-50 text-purple-800',
+    className: 'bg-purple-50 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
   },
 };
 

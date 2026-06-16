@@ -13,8 +13,8 @@ interface ChatEmptyStateProps {
 export default function ChatEmptyState({ onSelectSuggestion }: ChatEmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-6">
-      <div className="flex items-center justify-center w-14 h-14 rounded-full bg-purple-50 mb-4">
-        <Bot className="w-7 h-7 text-purple-600" />
+      <div className="flex items-center justify-center w-14 h-14 rounded-full bg-purple-50 dark:bg-purple-900/30 mb-4">
+        <Bot className="w-7 h-7 text-purple-600 dark:text-purple-400" />
       </div>
       <h3 className="text-section-heading text-ink mb-1">Ask anything about your inventory</h3>
       <p className="text-body text-ink-muted mb-6 max-w-sm">

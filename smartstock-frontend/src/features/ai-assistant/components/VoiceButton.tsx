@@ -48,7 +48,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
     return (
       <button
         disabled
-        className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-50 text-brand-600 transition-colors cursor-wait"
+        className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400 transition-colors cursor-wait"
         aria-label="Transcribing..."
       >
         <Loader2 className="w-4 h-4 animate-spin" />
@@ -66,7 +66,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
         <Mic className="w-4 h-4" />
       </button>
       {error && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-600 rounded whitespace-nowrap pointer-events-none">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded whitespace-nowrap pointer-events-none">
           {error}
         </span>
       )}
