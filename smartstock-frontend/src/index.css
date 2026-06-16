@@ -79,14 +79,14 @@
   --color-gray-600: #615D59;
   --color-gray-700: #52514D;
   --color-gray-800: #31302E;
-  --color-gray-900: #1A1A1A;
+  --color-gray-900: #000000;
   --color-gray-950: #1A1A1A;
 
   /* ── Semantic surface aliases ─────────────────── */
   --color-canvas: #FFFFFF;
   --color-canvas-soft: #F6F5F4;
   --color-hairline: #E6E6E6;
-  --color-ink: #1A1A1A;
+  --color-ink: #000000;
   --color-ink-secondary: #31302E;
   --color-ink-muted: #504C48;
   --color-ink-faint: #A39E98;
@@ -229,7 +229,7 @@
 
   *:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px var(--color-brand-300);
+    box-shadow: 0 0 0 3px var(--color-brand-100);
     border-radius: var(--radius-md);
   }
 

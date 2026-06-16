@@ -19,7 +19,7 @@ const ForbiddenPage = lazy(() => import('../features/auth/pages/ForbiddenPage'))
 const SuppliersPage = lazy(() => import('../features/purchasing/pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
 
 const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<div className="flex items-center justify-center h-64 text-ink-muted">Loading...</div>}>
+  <Suspense fallback={<div className="flex items-center justify-center h-64 text-ink-faint">Loading...</div>}>
     {children}
   </Suspense>
 );

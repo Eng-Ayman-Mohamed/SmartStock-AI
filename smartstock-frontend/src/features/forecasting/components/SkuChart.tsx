@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import type { SkuForecast, ForecastDay } from '../hooks/useForecastDashboard';
 
-const COLORS = ['#1565C0', '#2E7D32', '#E65100', '#C62828', '#1976D2', '#6A1B9A', '#D32F2F', '#1565C0'];
+const COLORS = ['#185FA5', '#3B6D11', '#854F0B', '#A32D2D', '#378ADD', '#534AB7', '#D14545', '#2675C9'];
 
 interface SkuChartProps {
   sku: SkuForecast;
@@ -37,7 +37,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
     <div className="bg-canvas border border-hairline rounded-lg p-5 relative">
       {hasAlert && (
         <div className="absolute top-3 right-3">
-          <AlertTriangle className="w-4 h-4 text-red-700" />
+          <AlertTriangle className="w-4 h-4 text-red-600" />
         </div>
       )}
 
@@ -129,7 +129,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
             />
             <ReferenceLine
               y={sku.reorder_point}
-              stroke="#E65100"
+              stroke="#854F0B"
               strokeWidth={1}
               strokeDasharray="4 4"
             />
@@ -142,7 +142,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
           <TrendingUp className="w-3.5 h-3.5" />
           Stock: <span className="tabular-nums">{sku.current_stock}</span>
           {sku.stockout_risk && (
-            <span className="ml-2 text-red-700 font-medium">At risk</span>
+            <span className="ml-2 text-red-600 font-medium">At risk</span>
           )}
         </div>
         <span className="text-caption px-1.5 py-0.5 rounded-sm bg-purple-50 text-purple-800 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:border-purple-800">
@@ -154,10 +154,10 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
         <table className="w-full text-caption text-ink-secondary" aria-label={`Forecast data for ${sku.product_name}`}>
           <thead>
             <tr className="border-b border-hairline">
-              <th className="text-left py-1 pr-2 font-medium text-ink-muted">Date</th>
-              <th className="text-right py-1 px-2 font-medium text-ink-muted">Demand</th>
-              <th className="text-right py-1 px-2 font-medium text-ink-muted">Lower</th>
-              <th className="text-right py-1 pl-2 font-medium text-ink-muted">Upper</th>
+              <th className="text-left py-1 pr-2 font-medium text-ink-faint">Date</th>
+              <th className="text-right py-1 px-2 font-medium text-ink-faint">Demand</th>
+              <th className="text-right py-1 px-2 font-medium text-ink-faint">Lower</th>
+              <th className="text-right py-1 pl-2 font-medium text-ink-faint">Upper</th>
             </tr>
           </thead>
           <tbody>
@@ -165,10 +165,10 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
               <tr key={d.date} className="border-b border-hairline hover:bg-canvas-soft">
                 <td className="py-1 pr-2 tabular-nums">{d.date}</td>
                 <td className="text-right py-1 px-2 tabular-nums">{d.demand.toFixed(1)}</td>
-                <td className="text-right py-1 px-2 tabular-nums text-ink-muted">
+                <td className="text-right py-1 px-2 tabular-nums text-ink-faint">
                   {d.lowerBound !== null ? d.lowerBound.toFixed(1) : '—'}
                 </td>
-                <td className="text-right py-1 pl-2 tabular-nums text-ink-muted">
+                <td className="text-right py-1 pl-2 tabular-nums text-ink-faint">
                   {d.upperBound !== null ? d.upperBound.toFixed(1) : '—'}
                 </td>
               </tr>

@@ -88,7 +88,7 @@ export default function ReorderAlertList({ onRefresh, isRefreshing }: Props) {
           <Skeleton lines={4} />
         </div>
       ) : error ? (
-        <p className="text-body text-red-700">Failed to load reorder alerts.</p>
+        <p className="text-body text-red-600">Failed to load reorder alerts.</p>
       ) : !sorted || sorted.length === 0 ? (
         <p className="text-body text-ink-muted py-4">All stock levels are healthy.</p>
       ) : (
@@ -110,13 +110,13 @@ export default function ReorderAlertList({ onRefresh, isRefreshing }: Props) {
                   </p>
                   {daysLeft !== null && (
                     <p className={`text-caption tabular-nums mt-0.5 ${
-                      severity === 'critical' ? 'text-red-700' : 'text-ink-muted'
+                      severity === 'critical' ? 'text-red-600' : 'text-ink-muted'
                     }`}>
                       ~{daysLeft} day{daysLeft !== 1 ? 's' : ''} until stockout
                     </p>
                   )}
                   {item.supplier_name && (
-                    <p className="text-caption text-ink-muted mt-0.5">{item.supplier_name}</p>
+                    <p className="text-caption text-ink-faint mt-0.5">{item.supplier_name}</p>
                   )}
                 </div>
                 <Badge variant={styles.badge}>{styles.label}</Badge>

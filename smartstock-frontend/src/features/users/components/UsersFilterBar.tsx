@@ -38,7 +38,7 @@ export default function UsersFilterBar({
           onChange={(e: ChangeEvent<HTMLInputElement>) => onQueryChange(e.target.value)}
           placeholder="Search by name or email"
           aria-label="Search users"
-          className="w-full h-9 pl-9 pr-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-600 transition-colors"
+          className="w-full h-9 pl-9 pr-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
         />
       </div>
 

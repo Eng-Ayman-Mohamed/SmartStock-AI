@@ -52,7 +52,7 @@ export default function RoleSelect({
       >
         <span className="sr-only">Current role: {ROLE_META[value].label}</span>
         <ChevronDown
-          className={`w-3 h-3 text-ink-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`w-3 h-3 text-ink-faint transition-transform ${open ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
@@ -83,7 +83,7 @@ export default function RoleSelect({
                   <span className="capitalize">{meta.label}</span>
                   {isSelected && <Check className="w-3.5 h-3.5 text-brand-600" aria-hidden="true" />}
                   {isDisabled && (
-                    <span className="text-caption text-ink-muted">can't demote self</span>
+                    <span className="text-caption text-ink-faint">can't demote self</span>
                   )}
                 </button>
               </li>

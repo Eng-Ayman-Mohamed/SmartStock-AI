@@ -108,7 +108,7 @@ export default function RegisterForm() {
           }}
           aria-invalid={Boolean(fieldErrors.name)}
           aria-describedby={fieldErrors.name ? nameErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-600 transition-colors"
+          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="Jane Doe"
         />
         {fieldErrors.name && (
@@ -135,7 +135,7 @@ export default function RegisterForm() {
           }}
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? emailErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-600 transition-colors"
+          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="you@company.com"
         />
         {fieldErrors.email && (

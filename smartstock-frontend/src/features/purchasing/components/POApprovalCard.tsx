@@ -111,13 +111,13 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
         <div className="px-6 py-8 flex items-center gap-3">
           {isApproved ? (
             <>
-              <CheckCircle className="w-6 h-6 text-green-700" />
-              <span className="text-body font-medium text-green-700">Purchase order approved!</span>
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <span className="text-body font-medium text-green-600">Purchase order approved!</span>
             </>
           ) : (
             <>
-              <XCircle className="w-6 h-6 text-red-700" />
-              <span className="text-body font-medium text-red-700">Purchase order rejected!</span>
+              <XCircle className="w-6 h-6 text-red-600" />
+              <span className="text-body font-medium text-red-600">Purchase order rejected!</span>
             </>
           )}
         </div>
@@ -139,9 +139,9 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             </div>
             <div>
               <p className="text-caption text-ink-muted flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3 text-red-700" /> Predicted stockout
+                <AlertTriangle className="w-3 h-3 text-red-600" /> Predicted stockout
               </p>
-              <p className="text-body text-red-700 mt-0.5 tabular-nums">{po.predicted_stockout}</p>
+              <p className="text-body text-red-600 mt-0.5 tabular-nums">{po.predicted_stockout}</p>
             </div>
             <div>
               <p className="text-caption text-ink-muted">Estimated cost</p>

@@ -131,7 +131,7 @@ export default function DataTable<T>({ columns, data, keyExtractor, caption, emp
               pageNumber === -1 ? (
                 <span
                   key={`gap-${index}`}
-                  className="flex h-11 w-11 items-center justify-center text-caption text-ink-muted"
+                  className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
                 >
                   ...
                 </span>

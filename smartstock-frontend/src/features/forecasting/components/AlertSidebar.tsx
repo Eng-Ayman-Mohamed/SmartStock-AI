@@ -14,14 +14,14 @@ function SeverityCount({ criticalCount, warningCount }: { criticalCount: number;
   return (
     <p className="text-caption text-ink-muted mt-0.5">
       {criticalCount > 0 && (
-        <span className="text-red-700 font-medium">{criticalCount} critical</span>
+        <span className="text-red-600 font-medium">{criticalCount} critical</span>
       )}
       {criticalCount > 0 && warningCount > 0 && <span className="text-ink-faint"> · </span>}
       {warningCount > 0 && (
         <span className="text-orange-600 font-medium">{warningCount} warning</span>
       )}
       {criticalCount === 0 && warningCount === 0 && (
-        <span className="text-green-700">All clear</span>
+        <span className="text-green-600">All clear</span>
       )}
     </p>
   );

@@ -23,7 +23,7 @@ export default function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={labels[mode]}
-      className="flex items-center justify-center w-7 h-7 rounded-md text-ink-muted hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+      className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
     >
       <Icon className="w-4 h-4" aria-hidden="true" />
     </button>

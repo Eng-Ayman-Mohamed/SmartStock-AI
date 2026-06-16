@@ -3,7 +3,6 @@ import Button from '../../../shared/components/Button';
 import Skeleton from '../../../shared/components/Skeleton';
 import RoleBadge from '../../users/components/RoleBadge';
 import { useAuthStore } from '../../../store/authStore';
-import { getAvatarColor } from '../../../shared/utils/avatar';
 
 const sectionFields: Record<string, { label: string; value: string }[]> = {
   Notifications: [
@@ -42,7 +41,7 @@ export default function ProfilePage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3 pb-4 border-b-[0.5px] border-hairline">
               <div
-                className={"w-12 h-12 rounded-full " + getAvatarColor(user?.name ?? '?') + " flex items-center justify-center text-white text-card-title font-medium"}
+                className="w-12 h-12 rounded-full bg-brand-600 flex items-center justify-center text-white text-card-title font-medium"
                 aria-hidden="true"
               >
                 {(user?.name ?? '?')

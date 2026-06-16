@@ -21,7 +21,7 @@ export default function LoginPage() {
           <LoginForm />
         </div>
 
-        <p className="mt-6 text-center text-caption text-ink-muted">
+        <p className="mt-6 text-center text-caption text-ink-faint">
           Secure session via JWT · Refresh token stored in HttpOnly cookie
         </p>
       </div>

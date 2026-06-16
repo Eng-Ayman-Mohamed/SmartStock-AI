@@ -8,7 +8,6 @@ import type { User } from '../types';
 import { useDeactivateUser, useUpdateUserRole } from '../hooks/useUsers';
 import { useAuthStore } from '../../../store/authStore';
 import { useToastStore } from '../../../store/toastStore';
-import { getAvatarColor } from '../../../shared/utils/avatar';
 
 interface UsersTableProps {
   users: User[];
@@ -49,7 +48,7 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         render: (u) => (
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className={"w-8 h-8 rounded-full " + getAvatarColor(u.name) + " flex items-center justify-center text-white text-caption font-medium shrink-0"}
+              className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-caption font-medium shrink-0"
               aria-hidden="true"
             >
               {getInitials(u.name)}
@@ -58,7 +57,7 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
               <p className="text-body text-ink font-medium truncate">
                 {u.name}
                 {currentUserId === u.id && (
-                  <span className="ml-1.5 text-caption text-ink-muted font-normal">(you)</span>
+                  <span className="ml-1.5 text-caption text-ink-faint font-normal">(you)</span>
                 )}
               </p>
               <p className="text-caption text-ink-muted truncate">{u.email}</p>
@@ -103,7 +102,7 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
               Active
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-gray-600 dark:text-ink-muted">
+            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-gray-500 dark:text-ink-muted">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-ink-faint" aria-hidden="true" />
               Deactivated
             </span>

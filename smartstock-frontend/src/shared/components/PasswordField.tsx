@@ -15,7 +15,7 @@ export default function PasswordField({ error, className, id: idProp, ...rest }:
         id={id}
         type={visible ? 'text' : 'password'}
         aria-invalid={error || undefined}
-        className={`w-full h-9 px-3 pr-9 rounded-md border bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-600 transition-colors ${error ? 'border-red-300' : 'border-hairline'} ${className ?? ''}`}
+        className={`w-full h-9 px-3 pr-9 rounded-md border bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors ${error ? 'border-red-300' : 'border-hairline'} ${className ?? ''}`}
         {...rest}
       />
       <button

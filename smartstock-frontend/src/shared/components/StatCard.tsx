@@ -34,7 +34,7 @@ export default function StatCard({ label, value, trend, icon: Icon, accent = 'no
         {trend && (
           <span className={`text-caption tabular-nums ${
             trend.direction === 'up'
-              ? (trend.color || 'text-green-700')
+              ? (trend.color || 'text-green-600')
               : (trend.color || 'text-red-600')
           }`}>
             {trend.direction === 'up' ? '\u2191' : '\u2193'} {trend.percentage}

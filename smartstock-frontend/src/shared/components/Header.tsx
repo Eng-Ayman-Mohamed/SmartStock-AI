@@ -7,7 +7,6 @@ import { useAuth } from '../../features/auth/hooks/useAuth';
 import { useServerHealth } from '../../shared/hooks/useServerHealth';
 import RoleBadge from '../../features/users/components/RoleBadge';
 import ThemeToggle from './ThemeToggle';
-import { getAvatarColor } from '../../shared/utils/avatar';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -84,7 +83,7 @@ export default function Header() {
       <div className="flex items-center gap-2">
         <button
           onClick={toggleSidebar}
-          className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-ink-muted hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+          className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
           aria-label="Toggle navigation"
         >
           <Menu className="w-4 h-4" />
@@ -92,7 +91,7 @@ export default function Header() {
         <nav aria-label="Breadcrumb">
           <ol className="flex items-center gap-1.5 text-caption text-ink-muted">
             <li>SmartStock AI</li>
-            <li aria-hidden="true" className="text-ink-muted">/</li>
+            <li aria-hidden="true" className="text-ink-faint">/</li>
             <li className="text-ink font-medium" aria-current="page">{title}</li>
           </ol>
         </nav>
@@ -111,7 +110,7 @@ export default function Header() {
       <div className="flex items-center gap-3">
         <ThemeToggle />
         <button
-          className="relative flex items-center justify-center w-7 h-7 rounded-md text-ink-muted hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+          className="relative flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4" />
@@ -127,7 +126,7 @@ export default function Header() {
               className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-canvas-soft transition-colors"
             >
               <div
-                className={`w-7 h-7 rounded-full ${getAvatarColor(user.name)} flex items-center justify-center text-white text-[11px] font-medium`}
+                className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-medium"
                 aria-hidden="true"
               >
                 {getInitials(user.name)}
