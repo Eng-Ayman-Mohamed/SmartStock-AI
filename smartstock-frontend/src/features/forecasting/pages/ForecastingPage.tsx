@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Bell, RefreshCw, TrendingUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForecastDashboard } from '../hooks/useForecastDashboard';
@@ -27,9 +27,7 @@ export default function ForecastingPage() {
     .filter((a): a is AlertInfo => a !== null)
     .filter(a => !dismissed.has(a.sku.id));
 
-  useEffect(() => {
-    if (alerts.length === 0) setIsAlertModalOpen(false);
-  }, [alerts.length]);
+  if (alerts.length === 0 && isAlertModalOpen) setIsAlertModalOpen(false);
 
   const totalSkus = pagination?.total ?? 0;
   const paginationControls = usePagination({

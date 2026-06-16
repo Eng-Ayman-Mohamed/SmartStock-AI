@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Edit3, ExternalLink, Plus, Search, Trash2, Truck, X } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
@@ -159,13 +159,8 @@ export function SuppliersPage() {
     itemLabel: 'suppliers',
   };
 
-  // Reset page when filtered results shrink below current page
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(sortedSuppliers.length / PAGE_SIZE));
-    if (page > maxPage) {
-      setPage(maxPage);
-    }
-  }, [sortedSuppliers.length, page]);
+  const maxPage = Math.max(1, Math.ceil(sortedSuppliers.length / PAGE_SIZE));
+  if (page > maxPage) setPage(maxPage);
 
   const columns: Column<Supplier>[] = [
     {

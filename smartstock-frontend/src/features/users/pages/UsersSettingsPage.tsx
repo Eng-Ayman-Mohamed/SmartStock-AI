@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Users, UserPlus } from 'lucide-react';
 import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
@@ -51,13 +51,8 @@ export default function UsersSettingsPage() {
     itemLabel: 'team members',
   };
 
-  // Reset page when filters shrink results below current page
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    if (page > maxPage) {
-      setPage(maxPage);
-    }
-  }, [filtered.length, page]);
+  const maxPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (page > maxPage) setPage(maxPage);
 
   return (
     <div className="space-y-6 animate-fadeIn">
