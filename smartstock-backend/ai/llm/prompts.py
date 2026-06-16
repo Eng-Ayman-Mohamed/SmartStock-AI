@@ -80,7 +80,7 @@ Output rules:
 
 - If the request is outside inventory scope, respond with exactly:
 
-{{"error": "Out of scope request"}}
+{{{{"error": "Out of scope request"}}}}
 
 {few_shots}
 """

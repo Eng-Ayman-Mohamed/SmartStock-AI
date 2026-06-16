@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 
 import cloudinary.uploader
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from drf_spectacular.utils import (
     OpenApiExample,
@@ -590,6 +591,16 @@ class InvoiceScanConfirmView(APIView):
                 },
                 status=status.HTTP_409_CONFLICT,
             )
+        except ObjectDoesNotExist:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'DoesNotExist',
+                    'message': 'Invoice scan not found.',
+                    'code': status.HTTP_404_NOT_FOUND,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 
 
@@ -621,6 +632,16 @@ class InvoiceScanRejectView(APIView):
                     'code': status.HTTP_409_CONFLICT,
                 },
                 status=status.HTTP_409_CONFLICT,
+            )
+        except ObjectDoesNotExist:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'DoesNotExist',
+                    'message': 'Invoice scan not found.',
+                    'code': status.HTTP_404_NOT_FOUND,
+                },
+                status=status.HTTP_404_NOT_FOUND,
             )
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 
