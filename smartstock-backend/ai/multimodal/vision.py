@@ -1,8 +1,5 @@
 import json
-import os
 import re
-
-from openai import OpenAI
 
 
 class VisionExtractor:
@@ -14,13 +11,27 @@ class VisionExtractor:
         'supplier_name',
     ]
 
-    def __init__(self, client=None, model: str = 'gpt-4o', timeout: int = 15):
+    def __init__(self, client=None, model: str = None, timeout: int = 15):
+        from ai.llm.provider_config import get_provider_config
+
+        config = get_provider_config()
         self.client = client
-        self.model = model
+        self.model = model or config.get('vision_model')
         self.timeout = timeout
+        self._supports_vision = config.get('supports_vision', True)
 
     def extract(self, file_data_url: str) -> dict:
-        client = self.client or OpenAI(api_key=os.getenv('OPENAI_API_KEY'), timeout=self.timeout)
+        if not self._supports_vision or not self.model:
+            from ai.llm.provider_config import PROVIDER
+
+            raise ValueError(
+                f'Provider "{PROVIDER}" does not support vision/image analysis. '
+                'Switch to OpenAI or Gemini for invoice scanning.'
+            )
+
+        from ai.llm.provider_config import get_vision_client
+
+        client = self.client or get_vision_client()
         schema = {
             field: {'value': 'string or number', 'confidence': 'number from 0.0 to 1.0'}
             for field in self.REQUIRED_FIELDS

@@ -544,14 +544,20 @@ class InvoiceScanView(APIView):
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except InvoiceExtractionMalformed as exc:
+            msg = str(exc)
+            code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            err_type = 'InvoiceExtractionMalformed'
+            if 'does not support vision' in msg:
+                code = status.HTTP_501_NOT_IMPLEMENTED
+                err_type = 'ProviderNotSupported'
             return Response(
                 {
                     'status': 'error',
-                    'error': 'InvoiceExtractionMalformed',
-                    'message': str(exc),
-                    'code': status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    'error': err_type,
+                    'message': msg,
+                    'code': code,
                 },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status=code,
             )
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 

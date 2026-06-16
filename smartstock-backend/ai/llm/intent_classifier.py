@@ -1,11 +1,9 @@
 import json
 import logging
-import os
 from dataclasses import dataclass
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 
 from ai.observability.langfuse import invoke_with_langfuse
 
@@ -17,10 +15,9 @@ _ClassifierLLM = None
 def _get_classifier_llm():
     global _ClassifierLLM
     if _ClassifierLLM is None:
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            raise ValueError('OPENAI_API_KEY is missing.')
-        _ClassifierLLM = ChatOpenAI(model='gpt-4o-mini', temperature=0, api_key=api_key)
+        from ai.llm.provider_config import get_chat_llm_mini
+
+        _ClassifierLLM = get_chat_llm_mini()
     return _ClassifierLLM
 
 
