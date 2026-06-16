@@ -24,7 +24,7 @@ export class ApiResponseError extends Error {
   }
 }
 
-const envConfig = (window as Record<string, unknown>).__ENV__ as Record<string, string> | undefined;
+const envConfig = (window as unknown as Record<string, unknown>).__ENV__ as Record<string, string> | undefined;
 const api = axios.create({
   baseURL: envConfig?.VITE_API_URL || import.meta.env.VITE_API_URL || '/api',
   headers: {

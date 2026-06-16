@@ -5,7 +5,7 @@ export { type ChatMode, type ChatResponse } from './types';
 
 export interface ChatRequest {
   query: string;
-  mode?: 'auto' | 'nl' | 'rag';
+  mode?: 'auto' | 'nl_query' | 'rag';
 }
 
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
