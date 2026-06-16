@@ -3,6 +3,7 @@ import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../../../shared/components/Button';
+import PasswordField from '../../../shared/components/PasswordField';
 
 type LocationState = { from?: Location };
 
@@ -79,10 +80,9 @@ export default function LoginForm() {
         <label htmlFor="password" className="block text-caption font-medium text-gray-900 mb-1.5">
           Password
         </label>
-        <input
+        <PasswordField
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           value={password}
@@ -90,9 +90,8 @@ export default function LoginForm() {
             setPassword(e.target.value);
             if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
           }}
-          aria-invalid={Boolean(fieldErrors.password)}
+          error={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? passwordErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="••••••••"
         />
         {fieldErrors.password && (
