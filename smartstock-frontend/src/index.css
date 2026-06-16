@@ -157,7 +157,8 @@
   /* ── Animations ──────────────────────────────── */
   --animate-fadeIn: fadeIn 150ms ease-out;
   --animate-slideUp: slideUp 150ms ease-out;
-  --animate-sidebar-expand: width 200ms ease;
+  --animate-slideOut: slideOut 200ms ease-in forwards;
+  --animate-slideLeft: slideLeft 250ms ease-out;
   --animate-skeleton: skeletonPulse 1.5s ease-in-out infinite;
   --animate-spin: spin 700ms linear infinite;
 }
@@ -170,6 +171,16 @@
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideOut {
+  from { opacity: 1; transform: translateX(0); max-height: 80px; }
+  to { opacity: 0; transform: translateX(12px); max-height: 0; }
+}
+
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes skeletonPulse {
@@ -196,6 +207,16 @@
     line-height: 1.5;
   }
 
+  html.dark {
+    --color-canvas: #2C2C2A;
+    --color-canvas-soft: #1A1A1A;
+    --color-hairline: #444441;
+    --color-ink: #FFFFFF;
+    --color-ink-secondary: #F6F5F4;
+    --color-ink-muted: #A39E98;
+    --color-ink-faint: #615D59;
+  }
+
   body {
     background-color: var(--color-canvas-soft);
     color: var(--color-ink-secondary);
@@ -217,3 +238,4 @@
   ::-webkit-scrollbar-thumb { background: var(--color-hairline); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-faint); }
 }
+

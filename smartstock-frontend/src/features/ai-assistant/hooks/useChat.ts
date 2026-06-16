@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { ChatMode, Message } from '../types';
-import { sendChat } from '../api';
+import { sendChatMessage } from '../api';
 
 let nextId = 0;
 function createId(): string {
@@ -31,7 +31,7 @@ export default function useChat() {
       setError(null);
 
       try {
-        const response = await sendChat(trimmed, mode);
+        const response = await sendChatMessage({ query: trimmed, mode });
         const aiMessage: Message = {
           id: createId(),
           role: 'ai',

@@ -4,6 +4,7 @@ import { Edit3, ExternalLink, Plus, Search, Trash2, Truck, X } from 'lucide-reac
 import { useAuthStore } from '../../../store/authStore';
 import { useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier } from '../hooks/useSuppliers';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
+import { usePagination } from '../../../shared/hooks/usePagination';
 import { useToastStore } from '../../../store/toastStore';
 import type { Supplier, CreateSupplierPayload } from '../types';
 import Card from '../../../shared/components/Card';
@@ -13,7 +14,9 @@ import Badge from '../../../shared/components/Badge';
 import Skeleton from '../../../shared/components/Skeleton';
 import Modal from '../../../shared/components/Modal';
 import DataTable from '../../../shared/components/DataTable';
-import type { Column } from '../../../shared/components/DataTable';
+import type { Column, PaginationConfig } from '../../../shared/components/DataTable';
+
+const PAGE_SIZE = 20;
 
 export function SuppliersPage() {
   const navigate = useNavigate();
@@ -25,7 +28,7 @@ export function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const { data: suppliers, isLoading, error: queryError } = useSuppliers(debouncedSearch || undefined);
+  const { data: suppliers, isLoading, error: queryError, refetch } = useSuppliers(debouncedSearch || undefined);
   const createMutation = useCreateSupplier();
   const updateMutation = useUpdateSupplier();
   const deleteMutation = useDeleteSupplier();
@@ -119,10 +122,10 @@ export function SuppliersPage() {
       await deleteMutation.mutateAsync(id);
       addToast('Supplier deleted', 'success');
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
       if (axiosErr.response?.status === 409) {
         setErrorMessage(
-          axiosErr.response.data?.detail || 'Cannot delete supplier because they have open Purchase Orders.'
+          axiosErr.response.data?.message || 'Cannot delete supplier because they have open Purchase Orders.'
         );
       } else {
         setErrorMessage('An error occurred while attempting to delete the supplier.');
@@ -130,10 +133,34 @@ export function SuppliersPage() {
     }
   };
 
+  const [page, setPage] = useState(1);
+
   const sortedSuppliers = useMemo(() => {
     if (!suppliers) return [];
     return [...suppliers].sort((a, b) => a.name.localeCompare(b.name));
   }, [suppliers]);
+
+  const pagination = usePagination({ total: sortedSuppliers.length, pageSize: PAGE_SIZE, currentPage: page });
+
+  const paginatedSuppliers = useMemo(() => {
+    return sortedSuppliers.slice(pagination.startItem - 1, pagination.endItem);
+  }, [sortedSuppliers, pagination.startItem, pagination.endItem]);
+
+  const paginationConfig: PaginationConfig = {
+    currentPage: page,
+    totalPages: pagination.totalPages,
+    total: sortedSuppliers.length,
+    startItem: pagination.startItem,
+    endItem: pagination.endItem,
+    hasPrev: pagination.hasPrev,
+    hasNext: pagination.hasNext,
+    pages: pagination.pages,
+    onPageChange: (p) => setPage(p),
+    itemLabel: 'suppliers',
+  };
+
+  const maxPage = Math.max(1, Math.ceil(sortedSuppliers.length / PAGE_SIZE));
+  if (page > maxPage) setPage(maxPage);
 
   const columns: Column<Supplier>[] = [
     {
@@ -171,19 +198,41 @@ export function SuppliersPage() {
     {
       key: 'actions',
       label: 'Actions',
-      width: '120px',
+      align: 'right',
+      width: '160px',
       render: (r) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => navigate(`/inventory?supplierId=${r.id}`)} aria-label="View products">
-            <ExternalLink className="w-4 h-4" />
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200"
+            onClick={() => navigate(`/inventory?supplierId=${r.id}`)}
+            aria-label="View products"
+            title="View products"
+          >
+            <ExternalLink className="w-5 h-5" />
           </Button>
           {isManagerOrAbove && (
             <>
-              <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => openEditModal(r)} aria-label="Edit supplier">
-                <Edit3 className="w-4 h-4" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200"
+                onClick={() => openEditModal(r)}
+                aria-label="Edit supplier"
+                title="Edit supplier"
+              >
+                <Edit3 className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="sm" className="w-7 px-0" onClick={() => handleDeleteClick(r)} aria-label="Delete supplier">
-                <Trash2 className="w-4 h-4" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200"
+                onClick={() => handleDeleteClick(r)}
+                aria-label="Delete supplier"
+                title="Delete supplier"
+              >
+                <Trash2 className="w-5 h-5" />
               </Button>
             </>
           )}
@@ -210,8 +259,9 @@ export function SuppliersPage() {
       )}
 
       {queryError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
-          Failed to load suppliers. Please try again later.
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
+          <span>Failed to load suppliers. Please try again later.</span>
+          <button onClick={() => refetch()} className="underline text-sm font-medium">Retry</button>
         </div>
       )}
 
@@ -245,9 +295,10 @@ export function SuppliersPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={sortedSuppliers}
+            data={paginatedSuppliers}
             keyExtractor={(r) => String(r.id)}
             caption="Suppliers list"
+            pagination={paginatedSuppliers.length > 0 ? paginationConfig : undefined}
           />
         )}
       </Card>

@@ -14,6 +14,7 @@ import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
 import { useInvoiceScan } from '../hooks/useInvoiceScan';
+import { useToastStore } from '../../../store/toastStore';
 import type { InvoiceFieldKey, InvoiceFields, InvoiceScanResult } from '../types';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -96,6 +97,8 @@ export default function InvoiceScanPage() {
   const [fields, setFields] = useState<InvoiceFields>(emptyFields);
   const [confirmedResult, setConfirmedResult] = useState<InvoiceScanResult | null>(null);
   const { scan, confirm, reject, isProcessing } = useInvoiceScan();
+  const addToast = useToastStore((s) => s.addToast);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const missingFields = useMemo(
     () => new Set(scanResult?.missing_fields ?? []),
@@ -125,6 +128,7 @@ export default function InvoiceScanPage() {
   function selectFile(file: File) {
     const error = validateFile(file);
     setFileError(error);
+    setErrorMessage('');
     setConfirmedResult(null);
     setScanResult(null);
     setFields(emptyFields);
@@ -152,6 +156,8 @@ export default function InvoiceScanPage() {
       setFields(normalizeFields(result));
     } catch {
       setScanResult(null);
+      addToast('Failed to scan invoice', 'error');
+      setErrorMessage('Failed to scan invoice. Please try again.');
     }
   }
 
@@ -174,6 +180,7 @@ export default function InvoiceScanPage() {
       return null;
     });
     setFileError('');
+    setErrorMessage('');
     setScanResult(null);
     setFields(emptyFields);
     setConfirmedResult(null);
@@ -193,6 +200,8 @@ export default function InvoiceScanPage() {
       setConfirmedResult(result);
     } catch {
       setConfirmedResult(null);
+      addToast('Failed to confirm scan', 'error');
+      setErrorMessage('Failed to confirm scan. Please try again.');
     }
   }
 
@@ -205,7 +214,8 @@ export default function InvoiceScanPage() {
       await reject.mutateAsync(scanResult.scan_id);
       resetFlow();
     } catch {
-      return;
+      addToast('Failed to reject scan', 'error');
+      setErrorMessage('Failed to reject scan. Please try again.');
     }
   }
 
@@ -224,6 +234,12 @@ export default function InvoiceScanPage() {
           <RotateCcw className="w-4 h-4" /> Reset
         </Button>
       </div>
+
+      {errorMessage && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+          {errorMessage}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-6 items-start">
         <Card title="Original Upload" subtitle="JPEG, PNG, or PDF. Maximum 5 MB.">

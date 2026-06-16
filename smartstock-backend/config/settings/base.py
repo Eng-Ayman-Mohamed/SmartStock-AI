@@ -59,7 +59,8 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # CSRF disabled — JWT-only auth (no session cookies, no CSRF tokens sent)
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -150,6 +151,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'authentication.CustomUser'
 
+AUTHENTICATION_BACKENDS = [
+    'apps.authentication.authentication_backends.EmailAuthBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'SmartStock AI API',
     'DESCRIPTION': 'Inventory forecasting and management API',
@@ -237,11 +243,13 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
     'AUTH_COOKIE_HTTP_ONLY': True,
-    'AUTH_COOKIE_SECURE': os.environ.get('DJANGO_DEBUG', 'True') != 'True',
-    'AUTH_COOKIE_SAMESITE': 'Strict',
+    'AUTH_COOKIE_SECURE': not DEBUG,
+    'AUTH_COOKIE_SAMESITE': 'None' if not DEBUG else 'Lax',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000'
+).split(',')
 CORS_ALLOW_HEADERS = [
     'accept',
     'authorization',

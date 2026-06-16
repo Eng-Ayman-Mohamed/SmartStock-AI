@@ -527,6 +527,10 @@ class ForecastingServiceEdgeTests(TestCase):
         result = ForecastingService().get_dashboard_data()
         self.assertIn('skus', result)
         self.assertEqual(len(result['skus']), 0)
+        self.assertEqual(result['total'], 0)
+        self.assertEqual(result['alerts'], [])
+        self.assertEqual(result['page'], 1)
+        self.assertEqual(result['per_page'], 6)
 
 
 class PurchasingServiceEdgeTests(TestCase):

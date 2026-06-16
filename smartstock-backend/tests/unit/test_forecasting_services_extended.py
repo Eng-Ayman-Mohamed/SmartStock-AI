@@ -149,10 +149,19 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
 
     @patch('apps.forecasting.services.cache')
     def test_returns_cached_data(self, mock_cache):
-        cached_data = {'skus': []}
+        cached_data = {
+            'skus': [
+                {'id': 'SKU1', 'stockout_risk': False, 'current_stock': 10, 'reorder_point': 5}
+            ]
+        }
         mock_cache.get.return_value = cached_data
         result = self.service.get_dashboard_data()
-        self.assertEqual(result, cached_data)
+        self.assertIn('skus', result)
+        self.assertEqual(result['skus'], cached_data['skus'])
+        self.assertEqual(result['total'], 1)
+        self.assertEqual(result['page'], 1)
+        self.assertEqual(result['per_page'], 6)
+        self.assertIn('alerts', result)
         mock_cache.get.assert_called_once_with('forecast_dashboard_data_v2')
 
     @patch('apps.forecasting.services.cache')
@@ -160,7 +169,10 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
         mock_cache.get.return_value = None
         with patch.object(self.service, '_compute_dashboard', return_value={'skus': []}):
             result = self.service.get_dashboard_data()
-            self.assertEqual(result, {'skus': []})
+            self.assertIn('skus', result)
+            self.assertEqual(result['skus'], [])
+            self.assertEqual(result['total'], 0)
+            self.assertEqual(result['alerts'], [])
             mock_cache.set.assert_called_once_with(
                 'forecast_dashboard_data_v2', {'skus': []}, timeout=3600
             )

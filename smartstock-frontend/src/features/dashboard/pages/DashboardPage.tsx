@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import StatCard from '../../../shared/components/StatCard';
 import Card from '../../../shared/components/Card';
+import Skeleton from '../../../shared/components/Skeleton';
 import { Package, AlertTriangle, ShoppingCart, TrendingUp, RefreshCw, AlertCircle } from 'lucide-react';
 import { useReorderAlerts } from '../hooks/useReorderAlerts';
 import { usePendingPOs } from '../hooks/usePendingPOs';
@@ -33,7 +34,7 @@ interface ChartPoint {
 function ForecastChart({ data: allSkus }: { data: ChartPoint[] | null }) {
   const chartData = allSkus ?? [];
   return (
-    <div className="h-[280px]">
+    <div className="h-[clamp(200px,32vh,400px)]">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hairline)" horizontal={true} vertical={false} />
@@ -131,18 +132,20 @@ function isAgentPipelineStale(runs: { created_at: string }[] | undefined): boole
   const now = new Date();
   const mostRecent = new Date(runs[0].created_at);
   const diffMs = now.getTime() - mostRecent.getTime();
-  const STALE_THRESHOLD_MS = 25 * 60 * 60 * 1000;
+  const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
   return diffMs >= STALE_THRESHOLD_MS;
 }
 
 export default function DashboardPage() {
   const qc = useQueryClient();
-  const { data: alerts } = useReorderAlerts();
-  const { data: pendingPOs } = usePendingPOs();
-  const { data: forecastData } = useForecastDashboard();
-  const { data: agentRuns } = useAgentRuns();
+  const { data: alerts, isLoading: alertsLoading, isError: alertsError } = useReorderAlerts();
+  const { data: pendingPOs, isLoading: pendingLoading, isError: pendingError } = usePendingPOs();
+  const { data: forecastData, isError: forecastError } = useForecastDashboard();
+  const { data: agentRuns, isError: agentError } = useAgentRuns();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const isError = alertsError || pendingError || forecastError || agentError;
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
@@ -151,6 +154,8 @@ export default function DashboardPage() {
       qc.invalidateQueries({ queryKey: ['reorder-alerts'] }),
       qc.invalidateQueries({ queryKey: ['agent-runs'] }),
       qc.invalidateQueries({ queryKey: ['pending-pos'] }),
+      qc.invalidateQueries({ queryKey: ['forecast-dashboard'] }),
+      qc.invalidateQueries({ queryKey: ['overdue-suppliers'] }),
     ]);
     setIsRefreshing(false);
   }, [qc, isRefreshing]);
@@ -198,12 +203,20 @@ export default function DashboardPage() {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-ink-secondary bg-white border border-hairline rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-ink-secondary bg-canvas border border-hairline rounded-lg hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
+
+      {isError && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <p className="text-body flex-1">Failed to load dashboard data.</p>
+          <button onClick={() => handleRefresh()} className="underline text-sm font-medium">Retry</button>
+        </div>
+      )}
 
       {agentStale && (
         <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
@@ -216,14 +229,22 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Total SKUs" value="1,247" icon={Package} />
-        <StatCard
-          label="Low Stock Alerts"
-          value={String(lowStockCount)}
-          accent="orange"
-          icon={AlertTriangle}
-          trend={lowStockCount > 0 ? { direction: 'up', percentage: `${lowStockCount}`, color: 'text-orange-600' } : undefined}
-        />
-        <StatCard label="Pending POs" value={String(pendingPOCount)} accent="orange" icon={ShoppingCart} />
+        {alertsLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
+          <StatCard
+            label="Low Stock Alerts"
+            value={String(lowStockCount)}
+            accent="orange"
+            icon={AlertTriangle}
+            trend={lowStockCount > 0 ? { direction: 'up', percentage: `${lowStockCount}`, color: 'text-orange-600' } : undefined}
+          />
+        )}
+        {pendingLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
+          <StatCard label="Pending POs" value={String(pendingPOCount)} accent="orange" icon={ShoppingCart} />
+        )}
         <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
       </div>
 

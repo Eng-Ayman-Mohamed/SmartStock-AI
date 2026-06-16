@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../../../shared/components/Button';
-import type { ApiErrorPayload } from '../types';
+import PasswordField from '../../../shared/components/PasswordField';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -59,11 +59,12 @@ export default function RegisterForm() {
 
   function pickServerErrors(err: unknown): Fields {
     if (axios.isAxiosError(err) && err.response?.data) {
-      const data = err.response.data as ApiErrorPayload;
+      const rawData = err.response.data as Record<string, unknown>;
+      const data = (rawData.fields as Record<string, unknown>) || rawData;
       const out: Fields = {};
-      const nameErr = readError(data.name);
-      const emailErr = readError(data.email);
-      const passwordErr = readError(data.password);
+      const nameErr = readError(data.name as string[] | string | undefined);
+      const emailErr = readError(data.email as string[] | string | undefined);
+      const passwordErr = readError(data.password as string[] | string | undefined);
       if (nameErr) out.name = nameErr;
       if (emailErr) out.email = emailErr;
       if (passwordErr) out.password = passwordErr;
@@ -91,7 +92,7 @@ export default function RegisterForm() {
   return (
     <form noValidate onSubmit={onSubmit} className="space-y-5" aria-describedby={error ? formErrorId : undefined}>
       <div>
-        <label htmlFor="name" className="block text-caption font-medium text-gray-900 mb-1.5">
+        <label htmlFor="name" className="block text-caption font-medium text-ink mb-1.5">
           Full name
         </label>
         <input
@@ -107,7 +108,7 @@ export default function RegisterForm() {
           }}
           aria-invalid={Boolean(fieldErrors.name)}
           aria-describedby={fieldErrors.name ? nameErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="Jane Doe"
         />
         {fieldErrors.name && (
@@ -118,7 +119,7 @@ export default function RegisterForm() {
       </div>
 
       <div>
-        <label htmlFor="email" className="block text-caption font-medium text-gray-900 mb-1.5">
+        <label htmlFor="email" className="block text-caption font-medium text-ink mb-1.5">
           Email
         </label>
         <input
@@ -134,7 +135,7 @@ export default function RegisterForm() {
           }}
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? emailErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="you@company.com"
         />
         {fieldErrors.email && (
@@ -145,13 +146,12 @@ export default function RegisterForm() {
       </div>
 
       <div>
-        <label htmlFor="password" className="block text-caption font-medium text-gray-900 mb-1.5">
+        <label htmlFor="password" className="block text-caption font-medium text-ink mb-1.5">
           Password
         </label>
-        <input
+        <PasswordField
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           value={password}
@@ -159,9 +159,8 @@ export default function RegisterForm() {
             setPassword(e.target.value);
             if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
           }}
-          aria-invalid={Boolean(fieldErrors.password)}
+          error={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? passwordErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="At least 8 characters"
         />
         {fieldErrors.password && (
@@ -172,13 +171,12 @@ export default function RegisterForm() {
       </div>
 
       <div>
-        <label htmlFor="confirm" className="block text-caption font-medium text-gray-900 mb-1.5">
+        <label htmlFor="confirm" className="block text-caption font-medium text-ink mb-1.5">
           Confirm password
         </label>
-        <input
+        <PasswordField
           id="confirm"
           name="confirm"
-          type="password"
           autoComplete="new-password"
           required
           value={confirm}
@@ -186,9 +184,8 @@ export default function RegisterForm() {
             setConfirm(e.target.value);
             if (fieldErrors.confirm) setFieldErrors((p) => ({ ...p, confirm: undefined }));
           }}
-          aria-invalid={Boolean(fieldErrors.confirm)}
+          error={Boolean(fieldErrors.confirm)}
           aria-describedby={fieldErrors.confirm ? confirmErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="Repeat password"
         />
         {fieldErrors.confirm && (
@@ -219,7 +216,7 @@ export default function RegisterForm() {
         )}
       </Button>
 
-      <p className="text-center text-caption text-gray-600">
+      <p className="text-center text-caption text-ink-muted">
         Already have an account?{' '}
         <button
           type="button"

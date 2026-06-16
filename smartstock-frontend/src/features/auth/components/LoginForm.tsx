@@ -3,6 +3,7 @@ import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../../../shared/components/Button';
+import PasswordField from '../../../shared/components/PasswordField';
 
 type LocationState = { from?: Location };
 
@@ -49,7 +50,7 @@ export default function LoginForm() {
   return (
     <form noValidate onSubmit={onSubmit} className="space-y-5" aria-describedby={error ? formErrorId : undefined}>
       <div>
-        <label htmlFor="email" className="block text-caption font-medium text-gray-900 mb-1.5">
+        <label htmlFor="email" className="block text-caption font-medium text-ink mb-1.5">
           Email
         </label>
         <input
@@ -65,7 +66,7 @@ export default function LoginForm() {
           }}
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? emailErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="you@company.com"
         />
         {fieldErrors.email && (
@@ -76,13 +77,12 @@ export default function LoginForm() {
       </div>
 
       <div>
-        <label htmlFor="password" className="block text-caption font-medium text-gray-900 mb-1.5">
+        <label htmlFor="password" className="block text-caption font-medium text-ink mb-1.5">
           Password
         </label>
-        <input
+        <PasswordField
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           value={password}
@@ -90,9 +90,8 @@ export default function LoginForm() {
             setPassword(e.target.value);
             if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
           }}
-          aria-invalid={Boolean(fieldErrors.password)}
+          error={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? passwordErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-gray-100 bg-white text-body text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="••••••••"
         />
         {fieldErrors.password && (
@@ -123,7 +122,7 @@ export default function LoginForm() {
         )}
       </Button>
 
-      <p className="text-center text-caption text-gray-600">
+      <p className="text-center text-caption text-ink-muted">
         Don't have an account?{' '}
         <button
           type="button"

@@ -68,7 +68,7 @@ function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
 }
 
 export default function PendingPOQueue() {
-  const { data: pos, isLoading, error } = usePendingPOs();
+  const { data: pos, isLoading, error, refetch } = usePendingPOs();
   const user = useAuthStore((s) => s.user);
   const canAct = user ? MANAGER_ROLES.includes(user.role) : false;
   const approvePO = useApprovePO();
@@ -99,7 +99,10 @@ export default function PendingPOQueue() {
           <Skeleton lines={3} />
         </div>
       ) : error ? (
-        <p className="text-body text-red-600">Failed to load purchase orders.</p>
+        <div className="flex items-center justify-between">
+          <p className="text-body text-red-600">{error?.message ?? 'Failed to load purchase orders.'}</p>
+          <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600">Try again</button>
+        </div>
       ) : !pos || pos.length === 0 ? (
         <EmptyState
           icon={ShoppingCart}
@@ -107,7 +110,7 @@ export default function PendingPOQueue() {
           body="No purchase orders are pending approval."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[360px] overflow-y-auto overscroll-contain">
           {pos.map((po) => (
             <PendingPOItem
               key={po.id}

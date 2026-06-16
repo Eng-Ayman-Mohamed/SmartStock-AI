@@ -35,12 +35,12 @@ class ResponseEnvelopeRenderer(JSONRenderer):
         if isinstance(data, dict) and 'results' in data and 'count' in data:
             wrapped = {
                 'status': 'success',
-                'data': data.pop('results'),
+                'data': data.get('results'),
                 'meta': {
                     'page': page_param,
                     'total': data.get('count', 0),
                     'per_page': per_page_param,
-                    **{k: v for k, v in data.items() if k != 'count'},
+                    **{k: v for k, v in data.items() if k not in ('count', 'results')},
                 },
             }
             return super().render(wrapped, accepted_media_type, renderer_context)

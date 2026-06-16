@@ -1,62 +1,79 @@
+import { useMemo, useState } from 'react';
 import { ShoppingCart, Plus } from 'lucide-react';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 import Badge from '../../../shared/components/Badge';
 import EmptyState from '../../../shared/components/EmptyState';
+import Skeleton from '../../../shared/components/Skeleton';
 import DataTable from '../../../shared/components/DataTable';
-import type { Column } from '../../../shared/components/DataTable';
+import type { Column, PaginationConfig } from '../../../shared/components/DataTable';
 import POApprovalCard from '../components/POApprovalCard';
 import { usePendingPOs } from '../hooks/usePurchasing';
-import type { PendingPO } from '../types';
+import { usePagination } from '../../../shared/hooks/usePagination';
 
-const mockPendingPOs: PendingPO[] = [
-  {
-    id: 'PO-1042', product: 'Wireless Mouse', sku: 'WM-2024-001',
-    supplier: 'TechSupply Co.',
-    predicted_stockout: '15 Jun 2025', recommended_qty: 250,
-    unit_cost: 21.25, estimated_total_cost: '$5,312.50',
-    agent_reasoning: 'Wireless Mouse has a 30-day moving average of 185 units. Current stock of 28 units will last approximately 5 days based on current velocity. The AI recommends ordering 250 units to maintain 30 days of buffer stock.',
-  },
-  {
-    id: 'PO-1044', product: 'Mechanical Keyboard', sku: 'MK-2024-017',
-    supplier: 'Global Parts Inc.',
-    predicted_stockout: '22 Jun 2025', recommended_qty: 100,
-    unit_cost: 42.00, estimated_total_cost: '$4,200.00',
-    agent_reasoning: null,
-  },
-];
+const PAGE_SIZE = 20;
 
 interface POHistory {
   id: string;
-  product: string;
+  product_name: string;
   supplier: string;
-  qty: number;
+  quantity: number;
   total: string;
   status: string;
-  created: string;
-  approvedBy: string;
+  created_at: string;
+  approved_by: string;
 }
 
 const poHistory: POHistory[] = [
-  { id: 'PO-1043', product: 'USB-C Hub', supplier: 'Warehouse Direct', qty: 100, total: '$1,800.00', status: 'Approved', created: '01 Jun 2025', approvedBy: 'John Doe' },
-  { id: 'PO-1045', product: 'Monitor Stand', supplier: 'Local Distributors', qty: 50, total: '$950.00', status: 'Approved', created: '30 May 2025', approvedBy: 'John Doe' },
-  { id: 'PO-1046', product: 'Webcam HD', supplier: 'TechSupply Co.', qty: 150, total: '$2,800.00', status: 'Sent', created: '28 May 2025', approvedBy: '\u2014' },
+  { id: 'PO-1043', product_name: 'USB-C Hub', supplier: 'Warehouse Direct', quantity: 100, total: '$1,800.00', status: 'Approved', created_at: '01 Jun 2025', approved_by: 'John Doe' },
+  { id: 'PO-1045', product_name: 'Monitor Stand', supplier: 'Local Distributors', quantity: 50, total: '$950.00', status: 'Approved', created_at: '30 May 2025', approved_by: 'John Doe' },
+  { id: 'PO-1046', product_name: 'Webcam HD', supplier: 'TechSupply Co.', quantity: 150, total: '$2,800.00', status: 'Sent', created_at: '28 May 2025', approved_by: '—' },
 ];
 
 const historyColumns: Column<POHistory>[] = [
-  { key: 'po', label: 'PO #', width: '100px', render: (r) => <span className="text-mono text-ink-muted">{r.id}</span> },
-  { key: 'product', label: 'Product', render: (r) => <span className="truncate block">{r.product}</span> },
+  { key: 'id', label: 'PO #', width: '100px', render: (r) => <span className="text-mono text-ink-muted">{r.id}</span> },
+  { key: 'product_name', label: 'Product', render: (r) => <span className="truncate block">{r.product_name}</span> },
   { key: 'supplier', label: 'Supplier', width: '150px', render: (r) => <span className="truncate block text-ink-muted">{r.supplier}</span> },
-  { key: 'qty', label: 'Qty', align: 'right', width: '60px', render: (r) => <span className="tabular-nums">{r.qty}</span> },
+  { key: 'quantity', label: 'Qty', align: 'right', width: '60px', render: (r) => <span className="tabular-nums">{r.quantity}</span> },
   { key: 'total', label: 'Total', align: 'right', width: '100px', render: (r) => <span className="tabular-nums">{r.total}</span> },
   { key: 'status', label: 'Status', width: '120px', render: (r) => <Badge>{r.status}</Badge> },
-  { key: 'created', label: 'Created', width: '110px', render: (r) => <span className="text-caption text-ink-muted tabular-nums">{r.created}</span> },
-  { key: 'approvedBy', label: 'Approved By', width: '120px', render: (r) => <span className="text-caption text-ink-muted">{r.approvedBy}</span> },
+  { key: 'created_at', label: 'Created', width: '110px', render: (r) => <span className="text-caption text-ink-muted tabular-nums">{r.created_at}</span> },
+  { key: 'approved_by', label: 'Approved By', width: '120px', render: (r) => <span className="text-caption text-ink-muted">{r.approved_by}</span> },
 ];
 
 export default function PurchasingPage() {
   const { data: pendingPOsData, isLoading: isPendingLoading, isError } = usePendingPOs();
-  const pendingPOs = isPendingLoading ? mockPendingPOs : (pendingPOsData ?? []);
+  const pendingPOs = useMemo(() => pendingPOsData ?? [], [pendingPOsData]);
+  const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
+  const [poPage, setPoPage] = useState(1);
+
+  // Derive selected PO: user's pick if it still exists in the list, otherwise the first PO
+  const selectedPO = useMemo(() => {
+    if (selectedPoId) {
+      const found = pendingPOs.find((po) => po.id === selectedPoId);
+      if (found) return found;
+    }
+    return pendingPOs[0] ?? null;
+  }, [pendingPOs, selectedPoId]);
+
+  const poPagination = usePagination({ total: poHistory.length, pageSize: PAGE_SIZE, currentPage: poPage });
+
+  const paginatedPoHistory = useMemo(() => {
+    return poHistory.slice(poPagination.startItem - 1, poPagination.endItem);
+  }, [poPagination.startItem, poPagination.endItem]);
+
+  const poPaginationConfig: PaginationConfig = {
+    currentPage: poPage,
+    totalPages: poPagination.totalPages,
+    total: poHistory.length,
+    startItem: poPagination.startItem,
+    endItem: poPagination.endItem,
+    hasPrev: poPagination.hasPrev,
+    hasNext: poPagination.hasNext,
+    pages: poPagination.pages,
+    onPageChange: (p) => setPoPage(p),
+    itemLabel: 'results',
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -74,49 +91,58 @@ export default function PurchasingPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Pending Approval" subtitle={`${pendingPOs.length} orders awaiting review`}>
-          {pendingPOs.length === 0 && !isError ? (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <Card title="Pending Approval" subtitle={isPendingLoading ? undefined : `${pendingPOs.length} orders awaiting review`}>
+          {isPendingLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}
+            </div>
+          ) : pendingPOs.length === 0 && !isError ? (
             <EmptyState
               icon={ShoppingCart}
               heading="All caught up on approvals"
               body="The AI's watching your stock levels — new purchase orders will appear here when something needs restocking."
             />
           ) : (
-            <div className="space-y-3">
-              {pendingPOs.map((po) => (
-                <div key={po.id} className="flex items-start gap-3 p-3 rounded-md border border-hairline hover:bg-canvas-soft transition-colors cursor-pointer">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-body font-medium text-ink truncate">{po.product}</span>
-                      <Badge variant="AI Generated" />
+            <div className="max-h-[360px] overflow-y-auto overscroll-contain space-y-3">
+              {pendingPOs.map((po) => {
+                const isSelected = po.id === selectedPoId;
+                return (
+                  <div
+                    key={po.id}
+                    onClick={() => setSelectedPoId(po.id)}
+                    className={`flex items-start gap-3 p-3 rounded-md border transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
+                        : 'border-hairline hover:bg-canvas-soft'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-body font-medium text-ink truncate">{po.product}</span>
+                        <Badge variant="AI Generated" />
+                      </div>
+                      <p className="text-caption text-ink-muted mt-0.5 tabular-nums">{po.recommended_qty} units — {po.supplier}</p>
                     </div>
-                    <p className="text-caption text-ink-muted mt-0.5 tabular-nums">{po.recommended_qty} units — {po.supplier}</p>
+                    <span className="text-mono text-ink-muted shrink-0">{po.id}</span>
                   </div>
-                  <span className="text-mono text-ink-muted shrink-0">{po.id}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
 
-        {pendingPOs[0] && <POApprovalCard key={pendingPOs[0].id} po={pendingPOs[0]} readOnly={isPendingLoading} />}
+        {selectedPO && <POApprovalCard key={selectedPO.id} po={selectedPO} readOnly={isPendingLoading} />}
       </div>
 
       <Card title="PO History">
         <DataTable
           columns={historyColumns}
-          data={poHistory}
+          data={paginatedPoHistory}
           keyExtractor={(r) => r.id}
           caption="Purchase order history"
+          pagination={poPaginationConfig}
         />
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-hairline">
-          <span className="text-caption text-ink-muted tabular-nums">Showing 1–3 of 3 results</span>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" disabled>Previous</Button>
-            <Button variant="secondary" size="sm" disabled>Next</Button>
-          </div>
-        </div>
       </Card>
     </div>
   );

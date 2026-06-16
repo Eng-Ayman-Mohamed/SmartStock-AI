@@ -9,7 +9,7 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   access: string;
-  refresh?: string;
+  refresh: string;
   user: User;
 }
 

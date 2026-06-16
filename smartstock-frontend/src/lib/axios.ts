@@ -24,11 +24,13 @@ export class ApiResponseError extends Error {
   }
 }
 
+const envConfig = (window as unknown as Record<string, unknown>).__ENV__ as Record<string, string> | undefined;
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: envConfig?.VITE_API_URL || import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -111,14 +113,20 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post<{ access: string }>(
-          '/api/auth/refresh/',
-          {},
+        const storedRefresh = sessionStorage.getItem('refreshToken');
+        const body = storedRefresh ? { refresh: storedRefresh } : null;
+        const { data } = await api.post<{ access: string; refresh?: string }>(
+          '/auth/refresh/',
+          body,
           { withCredentials: true }
         );
         const newToken = data.access;
         lastRefreshedToken = newToken;
         useAuthStore.getState().setToken(newToken);
+        if (data.refresh) {
+          useAuthStore.getState().setRefreshToken(data.refresh);
+          sessionStorage.setItem('refreshToken', data.refresh);
+        }
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);

@@ -53,6 +53,16 @@ class LoginTests(AuthTestBase):
         self.assertIn('access', resp.data)
         self.assertIn('user', resp.data)
 
+    def test_login_with_email_success(self):
+        resp = self.client.post(
+            '/api/auth/login/',
+            {'email': 'auth_admin@test.com', 'password': 'pass123'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn('access', resp.data)
+        self.assertIn('user', resp.data)
+
     def test_login_wrong_password(self):
         resp = self.client.post(
             '/api/auth/login/',

@@ -65,6 +65,7 @@ class RegisterView(generics.CreateAPIView):
                     'type': 'object',
                     'properties': {
                         'access': {'type': 'string', 'description': 'JWT access token'},
+                        'refresh': {'type': 'string', 'description': 'JWT refresh token'},
                         'user': {'$ref': '#/components/schemas/Me'},
                     },
                 },
@@ -102,6 +103,7 @@ class RegisterView(generics.CreateAPIView):
         response = Response(
             {
                 'access': str(refresh.access_token),
+                'refresh': str(refresh),
                 'user': MeSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
@@ -111,7 +113,7 @@ class RegisterView(generics.CreateAPIView):
             value=str(refresh),
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=7 * 24 * 60 * 60,
         )
         return response
@@ -132,6 +134,7 @@ class LoginView(TokenObtainPairView):
                     'type': 'object',
                     'properties': {
                         'access': {'type': 'string', 'description': 'JWT access token'},
+                        'refresh': {'type': 'string', 'description': 'JWT refresh token'},
                         'user': {'$ref': '#/components/schemas/Me'},
                     },
                 },
@@ -171,6 +174,7 @@ class LoginView(TokenObtainPairView):
         response = Response(
             {
                 'access': validated_data['access'],
+                'refresh': validated_data['refresh'],
                 'user': MeSerializer(user).data if user else None,
             },
             status=status.HTTP_200_OK,
@@ -180,7 +184,7 @@ class LoginView(TokenObtainPairView):
             value=validated_data['refresh'],
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='None' if not settings.DEBUG else 'Lax',
             max_age=7 * 24 * 60 * 60,
         )
         return response
@@ -232,7 +236,6 @@ class MeView(APIView):
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = CustomUser.objects.all().order_by('-date_joined')
     permission_classes = (IsAdminOnly,)
-    envelope_exempt = True
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -277,7 +280,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
     permission_classes = (IsAdminOnly,)
     lookup_field = 'pk'
-    envelope_exempt = True
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):

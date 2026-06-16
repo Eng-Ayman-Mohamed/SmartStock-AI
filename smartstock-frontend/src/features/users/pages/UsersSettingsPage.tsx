@@ -7,13 +7,18 @@ import InviteUserModal from '../components/InviteUserModal';
 import UsersFilterBar from '../components/UsersFilterBar';
 import UsersTable from '../components/UsersTable';
 import { useUsers } from '../hooks/useUsers';
+import { usePagination } from '../../../shared/hooks/usePagination';
 import type { StatusFilter } from '../types';
+import type { PaginationConfig } from '../../../shared/components/DataTable';
+
+const PAGE_SIZE = 20;
 
 export default function UsersSettingsPage() {
   const { data: users, isLoading, isError, error, refetch } = useUsers();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     if (!users) return [];
@@ -27,12 +32,34 @@ export default function UsersSettingsPage() {
     });
   }, [users, query, status]);
 
+  const pagination = usePagination({ total: filtered.length, pageSize: PAGE_SIZE, currentPage: page });
+
+  const paginatedUsers = useMemo(() => {
+    return filtered.slice(pagination.startItem - 1, pagination.endItem);
+  }, [filtered, pagination.startItem, pagination.endItem]);
+
+  const paginationConfig: PaginationConfig = {
+    currentPage: page,
+    totalPages: pagination.totalPages,
+    total: filtered.length,
+    startItem: pagination.startItem,
+    endItem: pagination.endItem,
+    hasPrev: pagination.hasPrev,
+    hasNext: pagination.hasNext,
+    pages: pagination.pages,
+    onPageChange: (p) => setPage(p),
+    itemLabel: 'team members',
+  };
+
+  const maxPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (page > maxPage) setPage(maxPage);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-page-heading text-gray-900">Team & permissions</h1>
-          <p className="text-body text-gray-600 mt-1">
+          <h1 className="text-page-heading text-ink">Team & permissions</h1>
+          <p className="text-body text-ink-muted mt-1">
             Manage who can access SmartStock AI and what they can do.
           </p>
         </div>
@@ -43,13 +70,13 @@ export default function UsersSettingsPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white border border-gray-100 rounded-lg p-5 space-y-3">
+        <div className="bg-canvas border border-hairline rounded-lg p-5 space-y-3">
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-4 w-1/2" />
         </div>
       ) : isError ? (
-        <div className="bg-white border border-red-100 rounded-lg p-5">
+        <div className="bg-canvas border border-red-100 rounded-lg p-5">
           <p className="text-body text-red-600">
             Couldn't load users. {(error as Error)?.message ?? 'Unknown error.'}
           </p>
@@ -68,7 +95,7 @@ export default function UsersSettingsPage() {
             filteredCount={filtered.length}
           />
           <UsersTable
-            users={filtered}
+            users={paginatedUsers}
             emptyState={
               users && users.length > 0 ? (
                 <EmptyState
@@ -86,6 +113,7 @@ export default function UsersSettingsPage() {
                 />
               )
             }
+            pagination={paginatedUsers.length > 0 ? paginationConfig : undefined}
           />
         </>
       )}

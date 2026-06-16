@@ -92,7 +92,7 @@ export default function ReorderAlertList({ onRefresh, isRefreshing }: Props) {
       ) : !sorted || sorted.length === 0 ? (
         <p className="text-body text-ink-muted py-4">All stock levels are healthy.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[360px] overflow-y-auto overscroll-contain">
           {sorted.map((item) => {
             const severity = classifySeverity(item);
             const styles = severityStyles[severity];

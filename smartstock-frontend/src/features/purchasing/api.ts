@@ -3,18 +3,18 @@ import type { Supplier, CreateSupplierPayload, UpdateSupplierPayload, PendingPO 
 
 export async function listSuppliers(searchQuery?: string): Promise<Supplier[]> {
   const params = searchQuery ? { search: searchQuery } : {};
-  const { data } = await api.get<{ status: string; data: Supplier[] }>('/purchasing/suppliers/', { params });
-  return data.data ?? data;
+  const { data } = await api.get<Supplier[]>('/purchasing/suppliers/', { params });
+  return data;
 }
 
 export async function createSupplier(payload: CreateSupplierPayload): Promise<Supplier> {
-  const { data } = await api.post<{ status: string; data: Supplier }>('/purchasing/suppliers/', payload);
-  return data.data ?? data;
+  const { data } = await api.post<Supplier>('/purchasing/suppliers/', payload);
+  return data;
 }
 
 export async function updateSupplier(id: number, payload: UpdateSupplierPayload): Promise<Supplier> {
-  const { data } = await api.patch<{ status: string; data: Supplier }>(`/purchasing/suppliers/${id}/`, payload);
-  return data.data ?? data;
+  const { data } = await api.patch<Supplier>(`/purchasing/suppliers/${id}/`, payload);
+  return data;
 }
 
 export async function deleteSupplier(id: number): Promise<void> {
@@ -34,11 +34,11 @@ interface RawPO {
 }
 
 export async function listPendingPOs(): Promise<PendingPO[]> {
-  const { data } = await api.get<{ status: string; data: RawPO[] }>(
+  const { data } = await api.get<RawPO[]>(
     '/purchasing/orders/',
     { params: { status: 'pending_approval', page_size: 100 } }
   );
-  const items = data.data ?? [];
+  const items = data ?? [];
   return items.map((item) => {
     const total = parseFloat(item.total_cost) || 0;
     const qty = item.quantity || 1;

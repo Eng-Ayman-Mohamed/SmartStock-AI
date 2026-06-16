@@ -185,6 +185,8 @@ class ForecastingEndpointTests(APITestCase):
         self.assertIn('status', data)
         self.assertIn('data', data)
         self.assertEqual(data['data']['skus'], [])
+        self.assertEqual(data['data']['total'], 0)
+        self.assertEqual(data['data']['alerts'], [])
 
     # === ERROR ENVELOPE ===
 

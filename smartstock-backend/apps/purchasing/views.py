@@ -311,7 +311,11 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                         'properties': {
                             'supplier_id': {'type': 'integer'},
                             'supplier_name': {'type': 'string'},
-                            'overdue_pos': {'type': 'integer'},
+                            'overdue_pos': {
+                                'type': 'array',
+                                'items': {'type': 'object'},
+                                'description': 'List of overdue purchase orders',
+                            },
                         },
                     },
                 },

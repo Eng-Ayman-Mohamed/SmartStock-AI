@@ -224,7 +224,9 @@ class ForecastDashboardView(APIView):
     )
     def get(self, request):
         service = ForecastingService()
-        data = service.get_dashboard_data()
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 6))
+        data = service.get_dashboard_data(page=page, page_size=page_size)
         return Response(data)
 
 
