@@ -111,6 +111,7 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState(
     searchParams.get("status") ?? "",
   );
+  const supplierId = searchParams.get("supplierId") ?? "";
   const [page, setPage] = useState(Number(searchParams.get("page") ?? 1));
   const [sortField] = useState(searchParams.get("sort") ?? "");
   const [sortOrder] = useState(searchParams.get("order") ?? "");
@@ -149,6 +150,7 @@ export default function InventoryPage() {
       "inventory",
       debouncedSearch,
       statusFilter,
+      supplierId,
       sortField,
       sortOrder,
       page,
@@ -160,12 +162,10 @@ export default function InventoryPage() {
         ...orderingParam,
       };
       if (debouncedSearch) params.search = debouncedSearch;
+      if (supplierId) params.supplier = supplierId;
       if (statusFilter)
         params.stock_status = statusParamByLabel[statusFilter as Status];
-      const [productsRes, lowStockRes] = await Promise.all([
-        api.get("/inventory/products/", { params }),
-        api.get("/inventory/stock-levels/low_stock/"),
-      ]);
+      const productsRes = await api.get("/inventory/products/", { params });
       const products = unwrap<Product[]>(productsRes.data);
       const meta = productsRes._meta ?? {};
 
@@ -178,7 +178,7 @@ export default function InventoryPage() {
           next: typeof meta.next === "string" ? meta.next : null,
           previous: typeof meta.previous === "string" ? meta.previous : null,
         } satisfies PaginationMeta,
-        lowStock: unwrap<LowStockItem[]>(lowStockRes.data),
+        lowStock: (productsRes.data as Record<string, unknown>).low_stock as LowStockItem[] ?? [],
       };
     },
   });

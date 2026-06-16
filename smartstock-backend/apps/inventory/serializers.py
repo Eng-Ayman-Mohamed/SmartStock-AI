@@ -14,49 +14,29 @@ class CategorySerializer(serializers.ModelSerializer):
 class SKUCompactSerializer(serializers.ModelSerializer):
     """Compact SKU serializer for nesting inside ProductSerializer."""
 
-    stock_level_id = serializers.SerializerMethodField()
-    quantity_on_hand = serializers.SerializerMethodField()
-    quantity_reserved = serializers.SerializerMethodField()
-    stock_reorder_point = serializers.SerializerMethodField()
-
     class Meta:
         model = SKU
         fields = (
             'id',
             'code',
-            'attributes',
             'created_at',
-            'stock_level_id',
-            'quantity_on_hand',
-            'quantity_reserved',
-            'stock_reorder_point',
         )
 
-    def _get_stock_level(self, obj):
-        if not hasattr(self, '_stock_level_cache'):
-            self._stock_level_cache = {}
-        if obj.pk not in self._stock_level_cache:
-            try:
-                self._stock_level_cache[obj.pk] = obj.stock_level
-            except StockLevel.DoesNotExist:
-                self._stock_level_cache[obj.pk] = None
-        return self._stock_level_cache[obj.pk]
-
-    def get_stock_level_id(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.id if stock else None
-
-    def get_quantity_on_hand(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.quantity_on_hand if stock else 0
-
-    def get_quantity_reserved(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.quantity_reserved if stock else 0
-
-    def get_stock_reorder_point(self, obj):
-        stock = self._get_stock_level(obj)
-        return stock.reorder_point if stock else None
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        try:
+            stock = instance.stock_level
+        except StockLevel.DoesNotExist:
+            ret['stock_level_id'] = None
+            ret['quantity_on_hand'] = 0
+            ret['quantity_reserved'] = 0
+            ret['stock_reorder_point'] = None
+        else:
+            ret['stock_level_id'] = stock.id
+            ret['quantity_on_hand'] = stock.quantity_on_hand
+            ret['quantity_reserved'] = stock.quantity_reserved
+            ret['stock_reorder_point'] = stock.reorder_point
+        return ret
 
 
 class ProductSerializer(serializers.ModelSerializer):
