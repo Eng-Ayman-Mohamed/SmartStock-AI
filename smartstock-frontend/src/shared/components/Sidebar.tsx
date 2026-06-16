@@ -97,7 +97,7 @@ export default function Sidebar() {
           <span className="text-card-title font-medium text-ink">SmartStock AI</span>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-muted hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
             aria-label="Close navigation"
           >
             <X className="w-4 h-4" />
@@ -119,7 +119,7 @@ export default function Sidebar() {
               }
             >
               <item.icon
-                className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-600' : ''}`}
+                className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-500' : ''}`}
                 aria-hidden="true"
               />
               <span className="truncate">{item.label}</span>
@@ -161,7 +161,7 @@ export default function Sidebar() {
                 }
               >
                 <item.icon
-                  className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-600' : ''}`}
+                  className={`w-[18px] h-[18px] shrink-0 ${item.accent ? 'text-purple-500' : ''}`}
                   aria-hidden="true"
                 />
                 {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
@@ -182,7 +182,7 @@ export default function Sidebar() {
         <div className="px-2 py-2 border-t border-hairline">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex items-center justify-center w-full h-9 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors duration-150"
+            className="flex items-center justify-center w-full h-9 rounded-md text-ink-muted hover:text-ink-secondary hover:bg-canvas-soft transition-colors duration-150"
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}

@@ -21,7 +21,7 @@ export default function RegisterPage() {
           <RegisterForm />
         </div>
 
-        <p className="mt-6 text-center text-caption text-ink-faint">
+        <p className="mt-6 text-center text-caption text-ink-muted">
           Secure session via JWT · Refresh token stored in HttpOnly cookie
         </p>
       </div>

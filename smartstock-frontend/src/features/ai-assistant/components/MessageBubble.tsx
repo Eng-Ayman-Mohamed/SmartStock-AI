@@ -82,7 +82,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         </div>
 
         {!isUser && message.engine && (
-          <span className="inline-block mt-1 ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-canvas-soft text-ink-faint">
+          <span className="inline-block mt-1 ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-canvas-soft text-ink-muted">
             {engineLabels[message.engine] || message.engine}
           </span>
         )}

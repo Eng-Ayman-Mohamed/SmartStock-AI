@@ -37,7 +37,7 @@ export default function AIAssistantPage() {
                     <div className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${
                       item.quantity < item.reorder_point ? 'bg-orange-50' : 'bg-green-50'
                     }`}>
-                      <Package className={`w-4 h-4 ${item.quantity < item.reorder_point ? 'text-orange-600' : 'text-green-600'}`} />
+                      <Package className={`w-4 h-4 ${item.quantity < item.reorder_point ? 'text-orange-600' : 'text-green-700'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-body text-ink truncate">{item.product_name}</p>

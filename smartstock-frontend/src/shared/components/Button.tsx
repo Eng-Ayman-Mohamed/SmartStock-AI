@@ -5,19 +5,19 @@ type Size = 'sm' | 'md' | 'lg';
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint ' +
+    'bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-muted disabled:opacity-40 ' +
     'rounded-full',
   secondary:
-    'bg-canvas border border-hairline text-ink hover:bg-canvas-soft disabled:bg-canvas-soft disabled:text-ink-faint disabled:border-hairline ' +
+    'bg-canvas border border-hairline text-ink hover:bg-canvas-soft disabled:bg-canvas-soft disabled:text-ink-muted disabled:opacity-40 disabled:border-hairline ' +
     'shadow-soft rounded-full',
   danger:
-    'bg-red-600 text-white hover:bg-red-800 disabled:bg-canvas-soft disabled:text-ink-faint ' +
+    'bg-red-600 text-white hover:bg-red-800 disabled:bg-canvas-soft disabled:text-ink-muted disabled:opacity-40 ' +
     'rounded-full',
   ghost:
-    'bg-transparent text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 disabled:text-ink-faint disabled:hover:bg-transparent ' +
+    'bg-transparent text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-900/30 disabled:text-ink-muted disabled:opacity-40 disabled:hover:bg-transparent ' +
     'rounded-full',
   utility:
-    'bg-canvas border border-hairline text-ink hover:bg-canvas-soft disabled:bg-canvas-soft disabled:text-ink-faint ' +
+    'bg-canvas border border-hairline text-ink hover:bg-canvas-soft disabled:bg-canvas-soft disabled:text-ink-muted disabled:opacity-40 ' +
     'rounded-full',
 };
 

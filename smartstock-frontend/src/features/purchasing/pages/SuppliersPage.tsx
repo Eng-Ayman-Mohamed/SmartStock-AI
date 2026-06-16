@@ -334,7 +334,7 @@ export function SuppliersPage() {
               placeholder="Acme Supplies"
               aria-label="Supplier name"
             />
-            {formErrors.name && <p className="text-caption text-red-600 mt-1">{formErrors.name}</p>}
+            {formErrors.name && <p className="text-caption text-red-700 mt-1">{formErrors.name}</p>}
           </div>
           <div>
             <label className="block text-caption text-ink-muted mb-1">Contact Email *</label>
@@ -346,7 +346,7 @@ export function SuppliersPage() {
               placeholder="contact@acme.com"
               aria-label="Contact email"
             />
-            {formErrors.contact_email && <p className="text-caption text-red-600 mt-1">{formErrors.contact_email}</p>}
+            {formErrors.contact_email && <p className="text-caption text-red-700 mt-1">{formErrors.contact_email}</p>}
           </div>
           <div>
             <label className="block text-caption text-ink-muted mb-1">Contact Phone</label>
@@ -380,7 +380,7 @@ export function SuppliersPage() {
               placeholder="7"
               aria-label="Default lead time in days"
             />
-            {formErrors.default_lead_time_days && <p className="text-caption text-red-600 mt-1">{formErrors.default_lead_time_days}</p>}
+            {formErrors.default_lead_time_days && <p className="text-caption text-red-700 mt-1">{formErrors.default_lead_time_days}</p>}
           </div>
           <div className="flex items-center gap-2">
             <input

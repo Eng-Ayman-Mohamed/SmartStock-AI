@@ -112,7 +112,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                 if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: undefined }));
               }}
               aria-invalid={Boolean(fieldErrors.name)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-600 transition-colors"
               placeholder="Jane Doe"
             />
             {fieldErrors.name && (
@@ -135,7 +135,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                 if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
               }}
               aria-invalid={Boolean(fieldErrors.email)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-600 transition-colors"
               placeholder="user@company.com"
             />
             {fieldErrors.email && (
@@ -188,7 +188,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                     }`}
                   >
                     <span className="block capitalize">{meta.label}</span>
-                    <span className="block text-caption text-ink-faint mt-0.5">
+                    <span className="block text-caption text-ink-muted mt-0.5">
                       {r === 'viewer' && 'Read-only'}
                       {r === 'manager' && 'Approvals + edits'}
                       {r === 'admin' && 'Full access'}
@@ -216,7 +216,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             <button
               type="submit"
               disabled={createUser.isPending}
-              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {createUser.isPending ? (
                 <>

@@ -597,7 +597,7 @@ export default function InventoryPage() {
                   pageNumber === -1 ? (
                     <span
                       key={`gap-${index}`}
-                      className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
+                      className="flex h-11 w-11 items-center justify-center text-caption text-ink-muted"
                     >
                       ...
                     </span>

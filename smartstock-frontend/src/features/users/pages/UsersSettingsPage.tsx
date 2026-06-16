@@ -77,7 +77,7 @@ export default function UsersSettingsPage() {
         </div>
       ) : isError ? (
         <div className="bg-canvas border border-red-100 rounded-lg p-5">
-          <p className="text-body text-red-600">
+          <p className="text-body text-red-700">
             Couldn't load users. {(error as Error)?.message ?? 'Unknown error.'}
           </p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={() => refetch()}>

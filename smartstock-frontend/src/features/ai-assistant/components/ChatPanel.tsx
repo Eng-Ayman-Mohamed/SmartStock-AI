@@ -73,7 +73,7 @@ export default function ChatPanel() {
           <button
             onClick={() => handleSend()}
             disabled={isLoading || !input.trim()}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint transition-colors shrink-0"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-muted transition-colors shrink-0"
             aria-label="Send message"
           >
             <Send className="w-4 h-4" />

@@ -14,7 +14,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
       <div className="relative group">
         <button
           disabled
-          className="flex items-center justify-center w-9 h-9 rounded-full bg-canvas-soft text-ink-faint transition-colors cursor-not-allowed"
+          className="flex items-center justify-center w-9 h-9 rounded-full bg-canvas-soft text-ink-muted transition-colors cursor-not-allowed"
           aria-label="Voice input not supported"
         >
           <Mic className="w-4 h-4" />
@@ -66,7 +66,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
         <Mic className="w-4 h-4" />
       </button>
       {error && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded whitespace-nowrap pointer-events-none">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200 rounded whitespace-nowrap pointer-events-none">
           {error}
         </span>
       )}
