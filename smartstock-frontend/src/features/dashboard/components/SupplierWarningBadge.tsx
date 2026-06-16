@@ -11,7 +11,7 @@ export default function SupplierWarningBadge() {
 
   if (error) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
+      <div className="flex items-center gap-3 px-4 py-3 bg-canvas-soft border border-hairline rounded-lg text-ink-muted">
         <AlertTriangle className="w-4 h-4 shrink-0" />
         <p className="text-caption">Unable to check supplier status.</p>
       </div>

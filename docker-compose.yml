@@ -131,11 +131,11 @@ services:
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.development
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import os; [print(p) for p in os.listdir('/proc') if p.isdigit() and 'celery' in open(f'/proc/{p}/cmdline').read()]\" || exit 1"]
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping", "--destination", "celery@beat"]
       interval: 30s
       timeout: 10s
-      start_period: 40s
       retries: 3
+      start_period: 30s
     volumes:
       - ./smartstock-backend:/app
     networks:

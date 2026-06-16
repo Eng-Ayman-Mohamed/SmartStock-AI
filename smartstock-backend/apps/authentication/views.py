@@ -232,7 +232,6 @@ class MeView(APIView):
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = CustomUser.objects.all().order_by('-date_joined')
     permission_classes = (IsAdminOnly,)
-    envelope_exempt = True
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

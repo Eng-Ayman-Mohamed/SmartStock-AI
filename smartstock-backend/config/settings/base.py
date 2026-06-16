@@ -242,7 +242,10 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_SAMESITE': 'None' if not DEBUG else 'Lax',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:5173,http://localhost:3000'
+).split(',')
 CORS_ALLOW_HEADERS = [
     'accept',
     'authorization',

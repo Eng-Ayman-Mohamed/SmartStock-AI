@@ -145,7 +145,11 @@ export default function DashboardPage() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const isLoading = alertsLoading || pendingLoading || forecastLoading || agentLoading;
+  const isAlertsStatsLoading = alertsLoading;
+  const isPOStatsLoading = pendingLoading;
+  const isForecastStatsLoading = forecastLoading;
+  const isAgentStatsLoading = agentLoading;
+
   const isError = alertsError || pendingError || forecastError || agentError;
 
   const handleRefresh = useCallback(async () => {
@@ -228,15 +232,15 @@ export default function DashboardPage() {
 
       <SupplierWarningBadge />
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {isAlertsStatsLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
           <StatCard label="Total SKUs" value="1,247" icon={Package} />
+        )}
+        {isPOStatsLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
           <StatCard
             label="Low Stock Alerts"
             value={String(lowStockCount)}
@@ -244,10 +248,18 @@ export default function DashboardPage() {
             icon={AlertTriangle}
             trend={lowStockCount > 0 ? { direction: 'up', percentage: `${lowStockCount}`, color: 'text-orange-600' } : undefined}
           />
+        )}
+        {isForecastStatsLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
           <StatCard label="Pending POs" value={String(pendingPOCount)} accent="orange" icon={ShoppingCart} />
+        )}
+        {isAgentStatsLoading ? (
+          <Skeleton className="h-24" />
+        ) : (
           <StatCard label="Forecast Accuracy" value="87.4%" accent="purple" icon={TrendingUp} trend={{ direction: 'up', percentage: '2.1%' }} />
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <Card title="30-Day Demand Forecast">
