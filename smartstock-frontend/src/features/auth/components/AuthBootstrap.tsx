@@ -19,7 +19,7 @@ export default function AuthBootstrap({ children }: AuthBootstrapProps) {
   if (isBootstrapping) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center bg-gray-50"
+        className="min-h-screen flex items-center justify-center bg-canvas-soft"
         role="status"
         aria-live="polite"
         aria-label="Loading application"
@@ -28,7 +28,7 @@ export default function AuthBootstrap({ children }: AuthBootstrapProps) {
           <div className="w-8 h-8 rounded-md bg-brand-600 flex items-center justify-center text-white text-body font-semibold">
             S
           </div>
-          <span className="text-body text-gray-600">Loading SmartStock AI…</span>
+          <span className="text-body text-ink-muted">Loading SmartStock AI…</span>
         </div>
       </div>
     );

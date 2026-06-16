@@ -33,3 +33,15 @@ export function useRejectPO() {
     },
   });
 }
+
+export const poHistoryQueryKey = ['po-history'] as const;
+
+export function usePOHistory() {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: poHistoryQueryKey,
+    queryFn: () => purchasingApi.listPOHistory(),
+    enabled: !!token,
+    retry: false,
+  });
+}

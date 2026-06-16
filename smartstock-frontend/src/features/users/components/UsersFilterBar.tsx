@@ -53,7 +53,7 @@ export default function UsersFilterBar({
                 onClick={() => onStatusChange(s.value)}
                 className={`inline-flex items-center gap-1 px-2.5 h-8 rounded text-caption font-medium transition-colors ${
                   isSelected
-                    ? 'bg-brand-50 text-brand-800'
+                    ? 'bg-brand-50 text-brand-800 dark:bg-brand-900/30 dark:text-brand-200'
                     : 'text-ink-muted hover:text-ink'
                 }`}
                 aria-pressed={isSelected}

@@ -23,8 +23,8 @@ export default function SupplierWarningBadge() {
   }
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-md border border-orange-200 bg-orange-50">
-      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-orange-100 shrink-0">
+    <div className="flex items-start gap-3 p-3 rounded-md border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/30">
+      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-orange-100 dark:bg-orange-900/50 shrink-0">
         <AlertTriangle className="w-4 h-4 text-orange-600" />
       </div>
       <div className="flex-1 min-w-0">
@@ -36,7 +36,7 @@ export default function SupplierWarningBadge() {
         </p>
         {overdue.map((item) => (
           <div key={item.supplier_id} className="mt-1">
-            <p className="text-caption text-orange-700 tabular-nums">
+            <p className="text-caption text-orange-700 dark:text-orange-300 tabular-nums">
               {item.supplier_name} — overdue by {item.days_overdue} day{item.days_overdue > 1 ? 's' : ''}
             </p>
             {item.overdue_pos.map((po) => (

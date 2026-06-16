@@ -239,6 +239,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         if cached is not None:
             return Response(cached)
         response = super().list(request, *args, **kwargs)
+        low_stock = InventoryService().get_low_stock_items()
+        response.data['low_stock'] = low_stock
         cache.set(cache_key, response.data, timeout=300)
         return response
 

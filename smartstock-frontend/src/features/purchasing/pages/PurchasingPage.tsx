@@ -1,49 +1,95 @@
-import { useMemo, useState } from 'react';
-import { ShoppingCart, Plus } from 'lucide-react';
-import Card from '../../../shared/components/Card';
-import Button from '../../../shared/components/Button';
-import Badge from '../../../shared/components/Badge';
-import EmptyState from '../../../shared/components/EmptyState';
-import Skeleton from '../../../shared/components/Skeleton';
-import DataTable from '../../../shared/components/DataTable';
-import type { Column, PaginationConfig } from '../../../shared/components/DataTable';
-import POApprovalCard from '../components/POApprovalCard';
-import { usePendingPOs } from '../hooks/usePurchasing';
-import { usePagination } from '../../../shared/hooks/usePagination';
+import { useMemo, useState } from "react";
+import { ShoppingCart, Plus } from "lucide-react";
+import Card from "../../../shared/components/Card";
+import Button from "../../../shared/components/Button";
+import Badge from "../../../shared/components/Badge";
+import EmptyState from "../../../shared/components/EmptyState";
+import Skeleton from "../../../shared/components/Skeleton";
+import DataTable from "../../../shared/components/DataTable";
+import type {
+  Column,
+  PaginationConfig,
+} from "../../../shared/components/DataTable";
+import POApprovalCard from "../components/POApprovalCard";
+import { usePendingPOs, usePOHistory } from "../hooks/usePurchasing";
+import type { POHistoryItem } from "../api";
+import { usePagination } from "../../../shared/hooks/usePagination";
 
 const PAGE_SIZE = 20;
 
-interface POHistory {
-  id: string;
-  product_name: string;
-  supplier: string;
-  quantity: number;
-  total: string;
-  status: string;
-  created_at: string;
-  approved_by: string;
-}
-
-const poHistory: POHistory[] = [
-  { id: 'PO-1043', product_name: 'USB-C Hub', supplier: 'Warehouse Direct', quantity: 100, total: '$1,800.00', status: 'Approved', created_at: '01 Jun 2025', approved_by: 'John Doe' },
-  { id: 'PO-1045', product_name: 'Monitor Stand', supplier: 'Local Distributors', quantity: 50, total: '$950.00', status: 'Approved', created_at: '30 May 2025', approved_by: 'John Doe' },
-  { id: 'PO-1046', product_name: 'Webcam HD', supplier: 'TechSupply Co.', quantity: 150, total: '$2,800.00', status: 'Sent', created_at: '28 May 2025', approved_by: '—' },
-];
-
-const historyColumns: Column<POHistory>[] = [
-  { key: 'id', label: 'PO #', width: '100px', render: (r) => <span className="text-mono text-ink-muted">{r.id}</span> },
-  { key: 'product_name', label: 'Product', render: (r) => <span className="truncate block">{r.product_name}</span> },
-  { key: 'supplier', label: 'Supplier', width: '150px', render: (r) => <span className="truncate block text-ink-muted">{r.supplier}</span> },
-  { key: 'quantity', label: 'Qty', align: 'right', width: '60px', render: (r) => <span className="tabular-nums">{r.quantity}</span> },
-  { key: 'total', label: 'Total', align: 'right', width: '100px', render: (r) => <span className="tabular-nums">{r.total}</span> },
-  { key: 'status', label: 'Status', width: '120px', render: (r) => <Badge>{r.status}</Badge> },
-  { key: 'created_at', label: 'Created', width: '110px', render: (r) => <span className="text-caption text-ink-muted tabular-nums">{r.created_at}</span> },
-  { key: 'approved_by', label: 'Approved By', width: '120px', render: (r) => <span className="text-caption text-ink-muted">{r.approved_by}</span> },
+const historyColumns: Column<POHistoryItem>[] = [
+  {
+    key: "id",
+    label: "PO #",
+    width: "100px",
+    render: (r) => <span className="text-mono text-ink-muted">{r.id}</span>,
+  },
+  {
+    key: "product_name",
+    label: "Product",
+    render: (r) => <span className="truncate block">{r.product_name}</span>,
+  },
+  {
+    key: "supplier",
+    label: "Supplier",
+    width: "150px",
+    render: (r) => (
+      <span className="truncate block text-ink-muted">{r.supplier}</span>
+    ),
+  },
+  {
+    key: "quantity",
+    label: "Qty",
+    align: "right",
+    width: "60px",
+    render: (r) => <span className="tabular-nums">{r.quantity}</span>,
+  },
+  {
+    key: "total",
+    label: "Total",
+    align: "right",
+    width: "100px",
+    render: (r) => <span className="tabular-nums">{r.total}</span>,
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "120px",
+    render: (r) => <Badge>{r.status}</Badge>,
+  },
+  {
+    key: "created_at",
+    label: "Created",
+    width: "110px",
+    render: (r) => (
+      <span className="text-caption text-ink-muted tabular-nums">
+        {r.created_at}
+      </span>
+    ),
+  },
+  {
+    key: "approved_by",
+    label: "Approved By",
+    width: "120px",
+    render: (r) => (
+      <span className="text-caption text-ink-muted">{r.approved_by}</span>
+    ),
+  },
 ];
 
 export default function PurchasingPage() {
-  const { data: pendingPOsData, isLoading: isPendingLoading, isError } = usePendingPOs();
+  const {
+    data: pendingPOsData,
+    isLoading: isPendingLoading,
+    isError,
+  } = usePendingPOs();
+  const {
+    data: poHistoryData,
+    isLoading: isHistoryLoading,
+    isError: isHistoryError,
+  } = usePOHistory();
   const pendingPOs = useMemo(() => pendingPOsData ?? [], [pendingPOsData]);
+  const poHistory = useMemo(() => poHistoryData ?? [], [poHistoryData]);
   const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
   const [poPage, setPoPage] = useState(1);
 
@@ -56,11 +102,15 @@ export default function PurchasingPage() {
     return pendingPOs[0] ?? null;
   }, [pendingPOs, selectedPoId]);
 
-  const poPagination = usePagination({ total: poHistory.length, pageSize: PAGE_SIZE, currentPage: poPage });
+  const poPagination = usePagination({
+    total: poHistory.length,
+    pageSize: PAGE_SIZE,
+    currentPage: Math.min(poPage, Math.max(1, Math.ceil(poHistory.length / PAGE_SIZE))),
+  });
 
   const paginatedPoHistory = useMemo(() => {
     return poHistory.slice(poPagination.startItem - 1, poPagination.endItem);
-  }, [poPagination.startItem, poPagination.endItem]);
+  }, [poHistory, poPagination.startItem, poPagination.endItem]);
 
   const poPaginationConfig: PaginationConfig = {
     currentPage: poPage,
@@ -72,7 +122,7 @@ export default function PurchasingPage() {
     hasNext: poPagination.hasNext,
     pages: poPagination.pages,
     onPageChange: (p) => setPoPage(p),
-    itemLabel: 'results',
+    itemLabel: "results",
   };
 
   return (
@@ -80,22 +130,35 @@ export default function PurchasingPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-page-heading text-ink">Purchase Orders</h1>
-          <p className="text-body text-ink-muted mt-1">Keep the shelves stocked — approve, edit, and track supplier orders</p>
+          <p className="text-body text-ink-muted mt-1">
+            Keep the shelves stocked — approve, edit, and track supplier orders
+          </p>
         </div>
-        <Button variant="primary" size="md"><Plus className="w-4 h-4" /> New Order</Button>
+        <Button variant="primary" size="md">
+          <Plus className="w-4 h-4" /> New Order
+        </Button>
       </div>
 
       {isError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
           Failed to load pending purchase orders.
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <Card title="Pending Approval" subtitle={isPendingLoading ? undefined : `${pendingPOs.length} orders awaiting review`}>
+        <Card
+          title="Pending Approval"
+          subtitle={
+            isPendingLoading
+              ? undefined
+              : `${pendingPOs.length} orders awaiting review`
+          }
+        >
           {isPendingLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
             </div>
           ) : pendingPOs.length === 0 && !isError ? (
             <EmptyState
@@ -113,18 +176,24 @@ export default function PurchasingPage() {
                     onClick={() => setSelectedPoId(po.id)}
                     className={`flex items-start gap-3 p-3 rounded-md border transition-colors cursor-pointer ${
                       isSelected
-                        ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
-                        : 'border-hairline hover:bg-canvas-soft'
+                        ? "border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30"
+                        : "border-hairline hover:bg-canvas-soft"
                     }`}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-body font-medium text-ink truncate">{po.product}</span>
+                        <span className="text-body font-medium text-ink truncate">
+                          {po.product}
+                        </span>
                         <Badge variant="AI Generated" />
                       </div>
-                      <p className="text-caption text-ink-muted mt-0.5 tabular-nums">{po.recommended_qty} units — {po.supplier}</p>
+                      <p className="text-caption text-ink-muted mt-0.5 tabular-nums">
+                        {po.recommended_qty} units — {po.supplier}
+                      </p>
                     </div>
-                    <span className="text-mono text-ink-muted shrink-0">{po.id}</span>
+                    <span className="text-mono text-ink-muted shrink-0">
+                      {po.id}
+                    </span>
                   </div>
                 );
               })}
@@ -132,17 +201,37 @@ export default function PurchasingPage() {
           )}
         </Card>
 
-        {selectedPO && <POApprovalCard key={selectedPO.id} po={selectedPO} readOnly={isPendingLoading} />}
+        {selectedPO && (
+          <POApprovalCard
+            key={selectedPO.id}
+            po={selectedPO}
+            readOnly={isPendingLoading}
+          />
+        )}
       </div>
 
+      {isHistoryError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+          Failed to load purchase order history.
+        </div>
+      )}
+
       <Card title="PO History">
-        <DataTable
-          columns={historyColumns}
-          data={paginatedPoHistory}
-          keyExtractor={(r) => r.id}
-          caption="Purchase order history"
-          pagination={poPaginationConfig}
-        />
+        {isHistoryLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-10" />
+            ))}
+          </div>
+        ) : (
+          <DataTable
+            columns={historyColumns}
+            data={paginatedPoHistory}
+            keyExtractor={(r) => r.id}
+            caption="Purchase order history"
+            pagination={poPaginationConfig}
+          />
+        )}
       </Card>
     </div>
   );

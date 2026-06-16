@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.db.models import Prefetch
 
 from core.base_repository import BaseRepository
 
@@ -28,16 +29,27 @@ class CategoryRepository(BaseRepository):
 class InventoryRepository(BaseRepository):
     """Repository for Product model."""
 
+    _sku_prefetch = Prefetch(
+        'skus',
+        queryset=SKU.objects.only('id', 'code', 'created_at', 'product'),
+    )
+    _stock_prefetch = Prefetch(
+        'skus__stock_level',
+        queryset=StockLevel.objects.only(
+            'id', 'quantity_on_hand', 'quantity_reserved', 'reorder_point', 'sku'
+        ),
+    )
+
     def get_by_id(self, id: int):
         return (
             Product.objects.select_related('category', 'supplier')
-            .prefetch_related('skus__stock_level')
+            .prefetch_related(self._sku_prefetch, self._stock_prefetch)
             .get(pk=id)
         )
 
     def get_all(self, include_inactive: bool = False):
         qs = Product.objects.select_related('category', 'supplier').prefetch_related(
-            'skus__stock_level'
+            self._sku_prefetch, self._stock_prefetch
         )
         if not include_inactive:
             qs = qs.filter(is_active=True)
@@ -45,7 +57,7 @@ class InventoryRepository(BaseRepository):
 
     def get_all_queryset(self, include_inactive: bool = False):
         qs = Product.objects.select_related('category', 'supplier').prefetch_related(
-            'skus__stock_level'
+            self._sku_prefetch, self._stock_prefetch
         )
         if not include_inactive:
             qs = qs.filter(is_active=True)

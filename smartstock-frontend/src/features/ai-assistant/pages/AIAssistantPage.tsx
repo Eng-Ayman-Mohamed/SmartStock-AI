@@ -1,8 +1,13 @@
-import { Package, AlertTriangle, FileText, TrendingUp } from 'lucide-react';
+import { Package, AlertTriangle } from 'lucide-react';
 import Card from '../../../shared/components/Card';
+import Skeleton from '../../../shared/components/Skeleton';
 import ChatPanel from '../components/ChatPanel';
+import { useInventorySnapshot } from '../hooks/useInventorySnapshot';
 
 export default function AIAssistantPage() {
+  const { data: snapshot, isLoading: snapshotLoading } = useInventorySnapshot();
+  const items = snapshot ?? [];
+
   return (
     <div className="h-[calc(100vh-40px-64px)] animate-fadeIn flex flex-col">
       <div className="flex items-center justify-between mb-6">
@@ -20,42 +25,28 @@ export default function AIAssistantPage() {
         <div className="space-y-4 overflow-y-auto">
           <Card title="Current Inventory Snapshot">
             <div className="space-y-3">
-              {[
-                { name: 'Wireless Mouse', stock: 12, threshold: 50, icon: Package },
-                { name: 'USB-C Hub 6-in-1', stock: 28, threshold: 60, icon: Package },
-                { name: 'Mechanical Keyboard', stock: 15, threshold: 30, icon: Package },
-                { name: '27" Monitor Stand', stock: 8, threshold: 20, icon: Package },
-                { name: 'Webcam HD', stock: 42, threshold: 35, icon: Package },
-              ].map((item) => (
-                <div key={item.name} className="flex items-center gap-3 pb-2 border-b border-hairline last:border-0 last:pb-0">
-                  <div className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${
-                    item.stock < item.threshold ? 'bg-orange-50' : 'bg-green-50'
-                  }`}>
-                    <item.icon className={`w-4 h-4 ${item.stock < item.threshold ? 'text-orange-600' : 'text-green-600'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body text-ink truncate">{item.name}</p>
-                    <p className="text-caption text-ink-muted tabular-nums">{item.stock} units</p>
-                  </div>
-                  {item.stock < item.threshold && <AlertTriangle className="w-4 h-4 text-orange-600" />}
+              {snapshotLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-9" />)}
                 </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card title="Data Sources">
-            <div className="space-y-2">
-              {[
-                { name: 'Inventory DB', status: 'Connected', icon: Package },
-                { name: 'Sales Pipeline', status: 'Connected', icon: TrendingUp },
-                { name: 'Supplier Catalog', status: 'Synced 2h ago', icon: FileText },
-              ].map((src) => (
-                <div key={src.name} className="flex items-center gap-2 text-body text-ink-muted">
-                  <src.icon className="w-4 h-4 text-ink-faint" />
-                  <span className="flex-1">{src.name}</span>
-                  <span className="text-caption text-green-600">{src.status}</span>
-                </div>
-              ))}
+              ) : items.length === 0 ? (
+                <p className="text-caption text-ink-muted">No inventory data available.</p>
+              ) : (
+                items.map((item) => (
+                  <div key={item.sku_code} className="flex items-center gap-3 pb-2 border-b border-hairline last:border-0 last:pb-0">
+                    <div className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${
+                      item.quantity < item.reorder_point ? 'bg-orange-50' : 'bg-green-50'
+                    }`}>
+                      <Package className={`w-4 h-4 ${item.quantity < item.reorder_point ? 'text-orange-600' : 'text-green-600'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body text-ink truncate">{item.product_name}</p>
+                      <p className="text-caption text-ink-muted tabular-nums">{item.quantity} units</p>
+                    </div>
+                    {item.quantity < item.reorder_point && <AlertTriangle className="w-4 h-4 text-orange-600" />}
+                  </div>
+                ))
+              )}
             </div>
           </Card>
         </div>
