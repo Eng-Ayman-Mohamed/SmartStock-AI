@@ -6,6 +6,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import { useServerHealth } from '../../shared/hooks/useServerHealth';
 import RoleBadge from '../../features/users/components/RoleBadge';
+import { getAvatarColor } from '../../shared/utils/avatar';
 import ThemeToggle from './ThemeToggle';
 
 const pageTitles: Record<string, string> = {
@@ -126,7 +127,7 @@ export default function Header() {
               className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-canvas-soft transition-colors"
             >
               <div
-                className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-medium"
+                className={`w-7 h-7 rounded-full ${getAvatarColor(user.name)} flex items-center justify-center text-white text-[11px] font-medium`}
                 aria-hidden="true"
               >
                 {getInitials(user.name)}

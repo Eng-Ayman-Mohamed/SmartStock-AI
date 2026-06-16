@@ -66,7 +66,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
         <Mic className="w-4 h-4" />
       </button>
       {error && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded whitespace-nowrap pointer-events-none">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded whitespace-nowrap pointer-events-none">
           {error}
         </span>
       )}
