@@ -117,11 +117,7 @@ def get_embeddings():
         return OpenAIEmbeddings(
             model=config['embedding_model'],
             api_key=get_api_key(),
-            **(
-                {'base_url': config['base_url']}
-                if config['base_url']
-                else {}
-            ),
+            **({'base_url': config['base_url']} if config['base_url'] else {}),
         )
 
     # Fallback: use Gemini for embeddings if provider doesn't support them
