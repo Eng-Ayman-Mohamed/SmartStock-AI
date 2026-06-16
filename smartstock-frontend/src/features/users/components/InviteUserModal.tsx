@@ -149,6 +149,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             </label>
             <PasswordField
               id="invite-password"
+              name="password"
               autoComplete="new-password"
               required
               value={password}
