@@ -121,7 +121,7 @@ function ForecastChart({ data: allSkus }: { data: ChartPoint[] | null }) {
           <span className="w-3 h-0.5" style={{ borderTop: '1.5px dashed var(--color-ink-secondary)', height: 0 }} /> Actual sales
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-[9px] bg-brand-50 border-[0.5px] border-brand-100" /> Confidence interval
+          <span className="w-3 h-[9px] bg-brand-50 border-[0.5px] border-brand-100 dark:bg-brand-900/30 dark:border-brand-800" /> Confidence interval
         </span>
       </div>
     </div>
