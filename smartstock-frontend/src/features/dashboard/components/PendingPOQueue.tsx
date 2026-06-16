@@ -49,7 +49,7 @@ function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
             <Button
               variant="ghost"
               size="sm"
-              className="text-red-600 hover:bg-red-50"
+              className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
               onClick={onReject}
               disabled={isMutating}
             >

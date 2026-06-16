@@ -6,22 +6,22 @@ import type { AgentRun } from '../types';
 
 const statusConfig: Record<AgentRun['status'], { color: string; icon: typeof Clock; label: string }> = {
   running: {
-    color: 'bg-brand-50 text-brand-800 border-brand-200',
+    color: 'bg-brand-50 text-brand-800 border-brand-200 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-700',
     icon: Loader2,
     label: 'Running',
   },
   completed: {
-    color: 'bg-green-50 text-green-800 border-green-200',
+    color: 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-700',
     icon: CheckCircle,
     label: 'Completed',
   },
   failed: {
-    color: 'bg-red-50 text-red-800 border-red-200',
+    color: 'bg-red-50 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700',
     icon: XCircle,
     label: 'Failed',
   },
   pending: {
-    color: 'bg-orange-50 text-orange-800 border-orange-200',
+    color: 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:border-orange-700',
     icon: Clock,
     label: 'Pending',
   },

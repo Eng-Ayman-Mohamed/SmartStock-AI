@@ -8,9 +8,9 @@ const iconMap: Record<ToastType, typeof CheckCircle> = {
 };
 
 const colorMap: Record<ToastType, string> = {
-  success: 'border-l-green-600 bg-green-50 text-green-800',
-  error: 'border-l-red-600 bg-red-50 text-red-800',
-  info: 'border-l-brand-600 bg-brand-50 text-brand-800',
+  success: 'border-l-green-600 bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200 dark:border-l-green-400',
+  error: 'border-l-red-600 bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200 dark:border-l-red-400',
+  info: 'border-l-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-900/30 dark:text-brand-200 dark:border-l-brand-400',
 };
 
 export default function ToastContainer() {
@@ -37,7 +37,7 @@ export default function ToastContainer() {
             <p className="text-body flex-1">{toast.message}</p>
             <button
               onClick={() => removeToast(toast.id)}
-              className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/5 transition-colors"
+              className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               aria-label="Dismiss notification"
             >
               <X className="w-3 h-3" />

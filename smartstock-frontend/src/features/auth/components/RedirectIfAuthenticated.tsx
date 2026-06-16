@@ -10,7 +10,7 @@ export default function RedirectIfAuthenticated() {
   if (isBootstrapping) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center bg-gray-50"
+        className="min-h-screen flex items-center justify-center bg-canvas-soft"
         role="status"
         aria-live="polite"
         aria-label="Loading session"

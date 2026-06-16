@@ -14,7 +14,7 @@ const variantClasses: Record<Variant, string> = {
     'bg-red-600 text-white hover:bg-red-800 disabled:bg-canvas-soft disabled:text-ink-faint ' +
     'rounded-full',
   ghost:
-    'bg-transparent text-brand-600 hover:bg-brand-50 disabled:text-ink-faint disabled:hover:bg-transparent ' +
+    'bg-transparent text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 disabled:text-ink-faint disabled:hover:bg-transparent ' +
     'rounded-full',
   utility:
     'bg-canvas border border-hairline text-ink hover:bg-canvas-soft disabled:bg-canvas-soft disabled:text-ink-faint ' +

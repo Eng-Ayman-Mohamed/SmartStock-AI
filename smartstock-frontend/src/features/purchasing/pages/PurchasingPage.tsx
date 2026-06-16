@@ -140,7 +140,7 @@ export default function PurchasingPage() {
       </div>
 
       {isError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
           Failed to load pending purchase orders.
         </div>
       )}
@@ -211,7 +211,7 @@ export default function PurchasingPage() {
       </div>
 
       {isHistoryError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
           Failed to load purchase order history.
         </div>
       )}

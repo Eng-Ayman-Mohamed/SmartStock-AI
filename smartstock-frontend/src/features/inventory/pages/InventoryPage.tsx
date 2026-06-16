@@ -338,7 +338,7 @@ export default function InventoryPage() {
       render: (r) => (
         <div className="flex items-center gap-2 justify-end">
           <span className="tabular-nums">{r.quantity}</span>
-          <div className="w-16 h-2 rounded-full bg-gray-100 overflow-hidden shrink-0">
+          <div className="w-16 h-2 rounded-full bg-hairline overflow-hidden shrink-0">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
                 r.quantity <= 0
@@ -396,7 +396,7 @@ export default function InventoryPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
             onClick={() => openEditForm(r.product)}
             disabled={!canManage}
             aria-label={`Edit ${r.product.name}`}
@@ -407,7 +407,7 @@ export default function InventoryPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200 dark:hover:text-green-300 dark:hover:border-green-600"
             onClick={() =>
               setAdjustingStock({ stockId: r.stockId, skuCode: r.sku.code })
             }
@@ -426,7 +426,7 @@ export default function InventoryPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200 dark:hover:text-red-300 dark:hover:border-red-600"
             onClick={() => setDeletingProduct(r.product)}
             disabled={!canDelete}
             aria-label={`Delete ${r.product.name}`}
@@ -514,7 +514,7 @@ export default function InventoryPage() {
       </div>
 
       {inventoryQuery.isError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200 flex items-center justify-between">
           <span>Failed to load inventory data.</span>
           <button onClick={() => inventoryQuery.refetch()} className="underline text-sm font-medium">Retry</button>
         </div>

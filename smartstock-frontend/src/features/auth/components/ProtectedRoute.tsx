@@ -15,14 +15,14 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   if (isBootstrapping) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center bg-gray-50"
+        className="min-h-screen flex items-center justify-center bg-canvas-soft"
         role="status"
         aria-live="polite"
         aria-label="Loading session"
       >
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 text-brand-600 animate-spin" aria-hidden="true" />
-          <span className="text-caption text-gray-600">Restoring your session…</span>
+          <span className="text-caption text-ink-muted">Restoring your session…</span>
         </div>
       </div>
     );
