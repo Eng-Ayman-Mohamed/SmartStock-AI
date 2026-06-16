@@ -216,6 +216,7 @@ _HOMOGLYPH_MAP = str.maketrans(
 
 _INSTRUCTION_OVERRIDE_PATTERNS = [
     'ignore previous instructions',
+    'ignore all previous instructions',
     'ignore all instructions',
     'ignore your instructions',
     'ignore above instructions',
@@ -224,6 +225,7 @@ _INSTRUCTION_OVERRIDE_PATTERNS = [
     'disregard your system prompt',
     'disregard all previous',
     'forget your instructions',
+    'forget your rules',
     'forget all instructions',
     'override your instructions',
     'override your system prompt',
