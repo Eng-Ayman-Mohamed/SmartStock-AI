@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AlertTriangle, Info, X } from 'lucide-react';
 import type { AlertInfo } from '../utils/classifyAlert';
 
@@ -7,15 +8,29 @@ interface AlertBannerProps {
 }
 
 export default function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
+  const [isExiting, setIsExiting] = useState(false);
   const isCritical = alert.severity === 'critical';
+
+  const handleDismiss = () => {
+    setIsExiting(true);
+  };
 
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm ${
+      className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm transition-all duration-200 ease-out ${
+        isExiting
+          ? 'opacity-0 translate-x-4 max-h-0 py-0 mb-0 overflow-hidden border-transparent'
+          : 'animate-slideUp'
+      } ${
         isCritical
           ? 'bg-red-50 border-red-200 text-red-800'
           : 'bg-orange-50 border-orange-200 text-orange-800'
       }`}
+      onTransitionEnd={(e) => {
+        if (e.propertyName === 'opacity' && isExiting) {
+          onDismiss(alert.sku.id);
+        }
+      }}
     >
       {isCritical ? (
         <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -24,7 +39,7 @@ export default function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
       )}
       <p className="text-sm flex-1">{alert.message}</p>
       <button
-        onClick={() => onDismiss(alert.sku.id)}
+        onClick={handleDismiss}
         className="shrink-0 p-0.5 rounded hover:bg-gray-800/60 transition-colors"
         aria-label="Dismiss alert"
       >
