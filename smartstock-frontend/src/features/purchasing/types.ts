@@ -32,3 +32,5 @@ export interface PendingPO {
   estimated_total_cost: string;
   agent_reasoning: string | null;
 }
+
+export type POStatus = 'draft' | 'pending_approval' | 'approved' | 'email_sent' | 'sent' | 'waiting_confirmation' | 'confirmed' | 'rejected' | 'cancelled' | 'failed' | 'timeout';

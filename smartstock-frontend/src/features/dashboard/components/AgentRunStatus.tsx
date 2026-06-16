@@ -53,7 +53,7 @@ function AgentRunIndicator({ run }: { run: AgentRun }) {
 }
 
 export default function AgentRunStatus() {
-  const { data: runs, isLoading, error } = useAgentRuns();
+  const { data: runs, isLoading, error, refetch } = useAgentRuns();
 
   return (
     <Card title="Agent Run Status" subtitle="Recent AI agent activity">
@@ -62,7 +62,10 @@ export default function AgentRunStatus() {
           <Skeleton lines={3} />
         </div>
       ) : error ? (
-        <p className="text-body text-red-600">Failed to load agent runs.</p>
+        <div className="flex items-center justify-between">
+          <p className="text-body text-red-600">Failed to load agent runs.</p>
+          <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600">Try again</button>
+        </div>
       ) : !runs || runs.length === 0 ? (
         <div className="flex items-center gap-3 py-6">
           <Activity className="w-5 h-5 text-ink-faint" />

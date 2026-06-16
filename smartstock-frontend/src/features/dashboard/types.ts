@@ -30,7 +30,7 @@ export interface PurchaseOrder {
   supplier_name: string;
   quantity: number;
   total_cost: string;
-  status: string;
+  status: import('../purchasing/types').POStatus;
   requested_by: number | null;
   requested_by_name: string | null;
   approved_by: number | null;

@@ -1,10 +1,24 @@
 import { AlertTriangle } from 'lucide-react';
 import { useOverdueSuppliers } from '../hooks/useOverdueSuppliers';
+import Skeleton from '../../../shared/components/Skeleton';
 
 export default function SupplierWarningBadge() {
   const { data: overdue, isLoading, error } = useOverdueSuppliers();
 
-  if (isLoading || error || !overdue || overdue.length === 0) {
+  if (isLoading) {
+    return <Skeleton className="h-16" />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <p className="text-caption">Unable to check supplier status.</p>
+      </div>
+    );
+  }
+
+  if (!overdue || overdue.length === 0) {
     return null;
   }
 

@@ -38,6 +38,13 @@ type Product = {
   reorder_point: number;
   safety_stock: number;
   skus: ProductSku[];
+  unit_price?: number;
+  unit_of_measure?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  category_id?: number;
+  supplier_id?: number;
 };
 
 type ProductSku = {
@@ -55,6 +62,10 @@ type LowStockItem = {
   sku_code: string;
   quantity: number;
   reorder_point: number;
+  product_id: number;
+  reorder_quantity: number;
+  supplier_name?: string;
+  predicted_stockout_date?: string;
 };
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
@@ -503,8 +514,9 @@ export default function InventoryPage() {
       </div>
 
       {inventoryQuery.isError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
-          Failed to load inventory data.
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
+          <span>Failed to load inventory data.</span>
+          <button onClick={() => inventoryQuery.refetch()} className="underline text-sm font-medium">Retry</button>
         </div>
       )}
 
@@ -515,7 +527,7 @@ export default function InventoryPage() {
               <Skeleton key={item} className="h-10" />
             ))}
           </div>
-        ) : rows.length === 0 ? (
+        ) : rows.length === 0 && !inventoryQuery.isError ? (
           <EmptyState
             icon={Package}
             heading="No products yet"

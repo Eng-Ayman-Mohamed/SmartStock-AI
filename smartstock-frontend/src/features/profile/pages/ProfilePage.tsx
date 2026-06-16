@@ -1,5 +1,6 @@
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
+import Skeleton from '../../../shared/components/Skeleton';
 import RoleBadge from '../../users/components/RoleBadge';
 import { useAuthStore } from '../../../store/authStore';
 
@@ -17,6 +18,16 @@ const sectionFields: Record<string, { label: string; value: string }[]> = {
 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
+  const isBootstrapping = useAuthStore((s) => s.isBootstrapping);
+
+  if (isBootstrapping) {
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fadeIn">

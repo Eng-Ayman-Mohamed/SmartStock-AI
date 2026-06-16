@@ -25,7 +25,7 @@ export function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const { data: suppliers, isLoading, error: queryError } = useSuppliers(debouncedSearch || undefined);
+  const { data: suppliers, isLoading, error: queryError, refetch } = useSuppliers(debouncedSearch || undefined);
   const createMutation = useCreateSupplier();
   const updateMutation = useUpdateSupplier();
   const deleteMutation = useDeleteSupplier();
@@ -210,8 +210,9 @@ export function SuppliersPage() {
       )}
 
       {queryError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
-          Failed to load suppliers. Please try again later.
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
+          <span>Failed to load suppliers. Please try again later.</span>
+          <button onClick={() => refetch()} className="underline text-sm font-medium">Retry</button>
         </div>
       )}
 

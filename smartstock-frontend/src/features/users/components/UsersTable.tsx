@@ -7,6 +7,7 @@ import RoleSelect from './RoleSelect';
 import type { User } from '../types';
 import { useDeactivateUser, useUpdateUserRole } from '../hooks/useUsers';
 import { useAuthStore } from '../../../store/authStore';
+import { useToastStore } from '../../../store/toastStore';
 
 interface UsersTableProps {
   users: User[];
@@ -35,6 +36,7 @@ export default function UsersTable({ users, emptyState }: UsersTableProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const updateRole = useUpdateUserRole();
   const deactivate = useDeactivateUser();
+  const addToast = useToastStore((s) => s.addToast);
 
   const columns: Column<User>[] = useMemo(
     () => [
@@ -73,7 +75,15 @@ export default function UsersTable({ users, emptyState }: UsersTableProps) {
               value={u.role}
               currentUserId={currentUserId}
               selfId={u.id}
-              onChange={(role) => updateRole.mutate({ id: u.id, role })}
+              onChange={(role) =>
+                updateRole.mutate(
+                  { id: u.id, role },
+                  {
+                    onSuccess: () => addToast('Role updated successfully', 'success'),
+                    onError: () => addToast('Failed to update role', 'error'),
+                  },
+                )
+              }
               disabled={updateRole.isPending}
               ariaLabel={`Change role for ${u.name}`}
             />
@@ -115,7 +125,12 @@ export default function UsersTable({ users, emptyState }: UsersTableProps) {
           return (
             <button
               type="button"
-              onClick={() => deactivate.mutate(u.id)}
+              onClick={() =>
+                deactivate.mutate(u.id, {
+                  onSuccess: () => addToast('User deactivated successfully', 'success'),
+                  onError: () => addToast('Failed to deactivate user', 'error'),
+                })
+              }
               disabled={!u.is_active || isSelf || deactivate.isPending}
               title={isSelf ? "You can't deactivate your own account" : 'Deactivate user'}
               className="inline-flex items-center gap-1 px-2 py-1 rounded text-caption font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -127,7 +142,7 @@ export default function UsersTable({ users, emptyState }: UsersTableProps) {
         },
       },
     ],
-    [currentUserId, updateRole, deactivate],
+    [currentUserId, updateRole, deactivate, addToast],
   );
 
   if (users.length === 0 && emptyState) {

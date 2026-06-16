@@ -8,6 +8,7 @@ export interface User {
   email: string;
   name: string;
   role: Role;
+  is_active?: boolean;
 }
 
 interface AuthState {
@@ -48,10 +49,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           );
           set({ user: me });
         } catch {
+          console.warn('Bootstrap: /auth/me/ failed');
           set({ user: null });
         }
       }
-    } catch {
+    } catch (err) {
+      console.warn('Bootstrap: refresh failed', err);
       set({ user: null, token: null });
     } finally {
       set({ isBootstrapping: false });
