@@ -28,10 +28,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: smartstock_redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env} --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redisdata:/data
-    command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
     networks:
       smartstock_net:
         aliases:

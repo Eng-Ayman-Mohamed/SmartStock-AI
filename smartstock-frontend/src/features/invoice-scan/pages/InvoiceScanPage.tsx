@@ -180,6 +180,7 @@ export default function InvoiceScanPage() {
       return null;
     });
     setFileError('');
+    setErrorMessage('');
     setScanResult(null);
     setFields(emptyFields);
     setConfirmedResult(null);

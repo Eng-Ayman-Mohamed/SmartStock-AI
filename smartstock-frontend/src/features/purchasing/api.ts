@@ -3,8 +3,8 @@ import type { Supplier, CreateSupplierPayload, UpdateSupplierPayload, PendingPO 
 
 export async function listSuppliers(searchQuery?: string): Promise<Supplier[]> {
   const params = searchQuery ? { search: searchQuery } : {};
-  const { data } = await api.get<{ results?: Supplier[] }>('/purchasing/suppliers/', { params });
-  return data.results ?? [];
+  const { data } = await api.get<Supplier[]>('/purchasing/suppliers/', { params });
+  return data;
 }
 
 export async function createSupplier(payload: CreateSupplierPayload): Promise<Supplier> {
@@ -34,11 +34,11 @@ interface RawPO {
 }
 
 export async function listPendingPOs(): Promise<PendingPO[]> {
-  const { data } = await api.get<{ results?: RawPO[] }>(
+  const { data } = await api.get<RawPO[]>(
     '/purchasing/orders/',
     { params: { status: 'pending_approval', page_size: 100 } }
   );
-  const items = data.results ?? [];
+  const items = data ?? [];
   return items.map((item) => {
     const total = parseFloat(item.total_cost) || 0;
     const qty = item.quantity || 1;

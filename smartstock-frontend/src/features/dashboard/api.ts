@@ -9,19 +9,19 @@ export async function fetchLowStockItems(): Promise<ReorderAlert[]> {
 }
 
 export async function fetchAgentRuns(): Promise<AgentRun[]> {
-  const { data } = await api.get<{ results?: AgentRun[] }>(
+  const { data } = await api.get<AgentRun[]>(
     '/audit/logs/agent-runs/',
     { params: { page_size: 100 } }
   );
-  return data.results ?? [];
+  return data;
 }
 
 export async function fetchPendingPOs(): Promise<PurchaseOrder[]> {
-  const { data } = await api.get<{ results?: PurchaseOrder[] }>(
+  const { data } = await api.get<PurchaseOrder[]>(
     '/purchasing/orders/',
     { params: { status: 'pending_approval', page_size: 100 } }
   );
-  return data.results ?? [];
+  return data;
 }
 
 export async function approvePO(poId: number): Promise<void> {
