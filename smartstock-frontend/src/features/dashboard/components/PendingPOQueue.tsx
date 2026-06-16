@@ -110,7 +110,7 @@ export default function PendingPOQueue() {
           body="No purchase orders are pending approval."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[360px] overflow-y-auto overscroll-contain">
           {pos.map((po) => (
             <PendingPOItem
               key={po.id}

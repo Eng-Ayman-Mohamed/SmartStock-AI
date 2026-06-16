@@ -34,7 +34,7 @@ interface ChartPoint {
 function ForecastChart({ data: allSkus }: { data: ChartPoint[] | null }) {
   const chartData = allSkus ?? [];
   return (
-    <div className="h-[280px]">
+    <div className="h-[clamp(200px,32vh,400px)]">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hairline)" horizontal={true} vertical={false} />
