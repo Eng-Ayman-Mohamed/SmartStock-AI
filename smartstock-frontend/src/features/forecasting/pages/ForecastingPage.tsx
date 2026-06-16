@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshCw, TrendingUp } from 'lucide-react';
+import { RefreshCw, TrendingUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForecastDashboard } from '../hooks/useForecastDashboard';
 import SkuChart from '../components/SkuChart';
@@ -7,17 +7,31 @@ import AlertBanner from '../components/AlertBanner';
 import { classifyAlert } from '../utils/classifyAlert';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
+import { usePagination } from '../../../shared/hooks/usePagination';
+
+const PAGE_SIZE = 6;
 
 export default function ForecastingPage() {
-  const { data, isLoading, isError } = useForecastDashboard();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isError } = useForecastDashboard(page, PAGE_SIZE);
   const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const skus = data?.skus ?? [];
-  const alerts = skus
+  const allAlertSkus = data?.alerts ?? [];
+  const pagination = data?.pagination;
+
+  const alerts = allAlertSkus
     .map(classifyAlert)
     .filter(Boolean)
     .filter(a => !dismissed.has(a!.sku.id)) as ReturnType<typeof classifyAlert>[];
+
+  const totalSkus = pagination?.total ?? 0;
+  const paginationControls = usePagination({
+    total: totalSkus,
+    pageSize: PAGE_SIZE,
+    currentPage: page,
+  });
 
   const handleDismiss = (id: string) =>
     setDismissed(prev => new Set([...prev, id]));
@@ -70,12 +84,102 @@ export default function ForecastingPage() {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          {skus.map((sku, i) => (
-            <SkuChart key={sku.id} sku={sku} colorIdx={i}
-              hasAlert={alerts.some(a => a!.sku.id === sku.id)} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            {skus.map((sku, i) => (
+              <SkuChart key={sku.id} sku={sku} colorIdx={(page - 1) * PAGE_SIZE + i}
+                hasAlert={alerts.some(a => a!.sku.id === sku.id)} />
+            ))}
+          </div>
+
+          {totalSkus > PAGE_SIZE && (
+            <div className="flex flex-col gap-3 border-t border-hairline px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-caption text-ink-muted">
+                Showing{" "}
+                <span className="tabular-nums text-ink-secondary">
+                  {paginationControls.startItem}
+                </span>
+                {" - "}
+                <span className="tabular-nums text-ink-secondary">
+                  {paginationControls.endItem}
+                </span>
+                {" of "}
+                <span className="tabular-nums text-ink-secondary">
+                  {totalSkus}
+                </span>
+                {" SKUs"}
+              </p>
+              <div className="flex items-center gap-1" aria-label="Forecast pagination">
+                <Button
+                  variant="utility"
+                  size="sm"
+                  className="h-11 w-11 px-0"
+                  onClick={() => setPage(1)}
+                  disabled={!paginationControls.hasPrev}
+                  aria-label="First page"
+                  title="First page"
+                >
+                  <ChevronsLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="utility"
+                  size="sm"
+                  className="h-11 w-11 px-0"
+                  onClick={() => setPage((value) => Math.max(1, value - 1))}
+                  disabled={!paginationControls.hasPrev}
+                  aria-label="Previous page"
+                  title="Previous page"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                {paginationControls.pages.map((pageNumber, index) =>
+                  pageNumber === -1 ? (
+                    <span
+                      key={`gap-${index}`}
+                      className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <Button
+                      key={pageNumber}
+                      variant={pageNumber === page ? 'primary' : 'utility'}
+                      size="sm"
+                      className="h-11 w-11 px-0 tabular-nums"
+                      onClick={() => setPage(pageNumber)}
+                      aria-label={`Page ${pageNumber}`}
+                      title={`Page ${pageNumber}`}
+                    >
+                      {pageNumber}
+                    </Button>
+                  )
+                )}
+                <Button
+                  variant="utility"
+                  size="sm"
+                  className="h-11 w-11 px-0"
+                  onClick={() => setPage((value) => Math.min(paginationControls.totalPages, value + 1))}
+                  disabled={!paginationControls.hasNext}
+                  aria-label="Next page"
+                  title="Next page"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="utility"
+                  size="sm"
+                  className="h-11 w-11 px-0"
+                  onClick={() => setPage(paginationControls.totalPages)}
+                  disabled={!paginationControls.hasNext}
+                  aria-label="Last page"
+                  title="Last page"
+                >
+                  <ChevronsRight className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

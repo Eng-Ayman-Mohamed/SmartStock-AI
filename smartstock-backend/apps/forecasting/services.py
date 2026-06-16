@@ -38,14 +38,29 @@ class ForecastingService:
             logger.exception('Failed to calculate stockout risk for SKU %s', sku_code)
             return False
 
-    def get_dashboard_data(self):
+    def get_dashboard_data(self, page: int = 1, page_size: int = 6):
         cache_key = f'forecast_dashboard_data_v{DASHBOARD_CACHE_VERSION}'
-        data = cache.get(cache_key)
-        if data is not None:
-            return data
-        data = self._compute_dashboard()
-        cache.set(cache_key, data, timeout=3600)
-        return data
+        full_data = cache.get(cache_key)
+        if full_data is None:
+            full_data = self._compute_dashboard()
+            cache.set(cache_key, full_data, timeout=3600)
+
+        all_skus = full_data['skus']
+        total = len(all_skus)
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_skus = all_skus[start:end]
+
+        # Alerts computed from ALL SKUs (not paginated)
+        alerts = [sku for sku in all_skus if sku.get('stockout_risk') or sku.get('current_stock', 0) <= sku.get('reorder_point', 0)]
+
+        return {
+            'skus': paginated_skus,
+            'alerts': alerts,
+            'total': total,
+            'page': page,
+            'per_page': page_size,
+        }
 
     def _compute_dashboard(self):
         import datetime
