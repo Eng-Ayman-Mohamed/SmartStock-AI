@@ -23,7 +23,6 @@ RUN useradd -m -r appuser && chown -R appuser /app
 COPY --chown=appuser:appuser . .
 
 USER appuser
-RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 

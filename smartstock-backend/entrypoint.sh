@@ -7,5 +7,6 @@ until pg_isready -h "${DB_HOST:-db}" -p "${DB_PORT:-5432}" -U "${DB_USER:-smarts
 done
 
 python manage.py migrate --noinput
+python manage.py collectstatic --noinput
 
 exec "$@"
