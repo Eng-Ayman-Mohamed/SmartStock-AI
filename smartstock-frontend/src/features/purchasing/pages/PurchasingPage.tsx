@@ -43,8 +43,18 @@ const historyColumns: Column<POHistory>[] = [
 
 export default function PurchasingPage() {
   const { data: pendingPOsData, isLoading: isPendingLoading, isError } = usePendingPOs();
-  const pendingPOs = pendingPOsData ?? [];
+  const pendingPOs = useMemo(() => pendingPOsData ?? [], [pendingPOsData]);
+  const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
   const [poPage, setPoPage] = useState(1);
+
+  // Derive selected PO: user's pick if it still exists in the list, otherwise the first PO
+  const selectedPO = useMemo(() => {
+    if (selectedPoId) {
+      const found = pendingPOs.find((po) => po.id === selectedPoId);
+      if (found) return found;
+    }
+    return pendingPOs[0] ?? null;
+  }, [pendingPOs, selectedPoId]);
 
   const poPagination = usePagination({ total: poHistory.length, pageSize: PAGE_SIZE, currentPage: poPage });
 
@@ -81,7 +91,7 @@ export default function PurchasingPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <Card title="Pending Approval" subtitle={isPendingLoading ? undefined : `${pendingPOs.length} orders awaiting review`}>
           {isPendingLoading ? (
             <div className="space-y-3">
@@ -94,24 +104,35 @@ export default function PurchasingPage() {
               body="The AI's watching your stock levels — new purchase orders will appear here when something needs restocking."
             />
           ) : (
-            <div className="space-y-3">
-              {pendingPOs.map((po) => (
-                <div key={po.id} className="flex items-start gap-3 p-3 rounded-md border border-hairline hover:bg-canvas-soft transition-colors cursor-pointer">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-body font-medium text-ink truncate">{po.product}</span>
-                      <Badge variant="AI Generated" />
+            <div className="max-h-[360px] overflow-y-auto overscroll-contain space-y-3">
+              {pendingPOs.map((po) => {
+                const isSelected = po.id === selectedPoId;
+                return (
+                  <div
+                    key={po.id}
+                    onClick={() => setSelectedPoId(po.id)}
+                    className={`flex items-start gap-3 p-3 rounded-md border transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
+                        : 'border-hairline hover:bg-canvas-soft'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-body font-medium text-ink truncate">{po.product}</span>
+                        <Badge variant="AI Generated" />
+                      </div>
+                      <p className="text-caption text-ink-muted mt-0.5 tabular-nums">{po.recommended_qty} units — {po.supplier}</p>
                     </div>
-                    <p className="text-caption text-ink-muted mt-0.5 tabular-nums">{po.recommended_qty} units — {po.supplier}</p>
+                    <span className="text-mono text-ink-muted shrink-0">{po.id}</span>
                   </div>
-                  <span className="text-mono text-ink-muted shrink-0">{po.id}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
 
-        {pendingPOs[0] && <POApprovalCard key={pendingPOs[0].id} po={pendingPOs[0]} readOnly={isPendingLoading} />}
+        {selectedPO && <POApprovalCard key={selectedPO.id} po={selectedPO} readOnly={isPendingLoading} />}
       </div>
 
       <Card title="PO History">

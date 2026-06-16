@@ -88,7 +88,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
     <div
       role="region"
       aria-label={`Purchase order ${po.id}`}
-      className="bg-canvas border-l-[3px] border-l-amber-600 rounded-lg shadow-elevated overflow-hidden"
+      className="bg-canvas border-l-[3px] border-l-orange-600 rounded-lg shadow-soft overflow-hidden"
     >
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b border-hairline flex items-start justify-between">
@@ -211,7 +211,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             <Button
               variant="ghost"
               size="md"
-              className="text-red-600 hover:bg-red-50"
+              className="text-red-600 hover:bg-red-50 border border-red-200"
               disabled={isLoading || showRejectReason}
               onClick={handleRejectClick}
             >
@@ -233,7 +233,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             <Button
               variant="primary"
               size="md"
-              className={`flex-1 ${pendingConfirm ? 'bg-green-800 hover:bg-green-900' : 'bg-green-600 hover:bg-green-800'} text-white`}
+              className="flex-1"
               disabled={isLoading || showRejectReason}
               aria-disabled={isLoading || showRejectReason}
               onClick={handleApprove}
