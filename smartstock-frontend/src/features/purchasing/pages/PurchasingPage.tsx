@@ -27,7 +27,7 @@ const poHistory: POHistory[] = [
 ];
 
 const historyColumns: Column<POHistory>[] = [
-  { key: 'po', label: 'PO #', width: '100px', render: (r) => <span className="text-mono text-ink-muted">{r.id}</span> },
+  { key: 'id', label: 'PO #', width: '100px', render: (r) => <span className="text-mono text-ink-muted">{r.id}</span> },
   { key: 'product_name', label: 'Product', render: (r) => <span className="truncate block">{r.product_name}</span> },
   { key: 'supplier', label: 'Supplier', width: '150px', render: (r) => <span className="truncate block text-ink-muted">{r.supplier}</span> },
   { key: 'quantity', label: 'Qty', align: 'right', width: '60px', render: (r) => <span className="tabular-nums">{r.quantity}</span> },

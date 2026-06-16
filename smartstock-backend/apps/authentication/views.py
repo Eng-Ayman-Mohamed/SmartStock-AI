@@ -276,7 +276,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
     permission_classes = (IsAdminOnly,)
     lookup_field = 'pk'
-    envelope_exempt = True
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):

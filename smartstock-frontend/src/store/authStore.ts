@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { data: refreshData } = await api.post<{ access: string }>(
         '/auth/refresh/',
-        {},
+        null,
         { withCredentials: true },
       );
       if (refreshData?.access) {
