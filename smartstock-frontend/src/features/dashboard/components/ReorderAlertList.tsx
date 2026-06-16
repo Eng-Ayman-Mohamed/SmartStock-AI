@@ -37,10 +37,10 @@ function daysUntilStockout(alert: ReorderAlert): number | null {
 }
 
 const severityStyles: Record<Severity, { icon: string; badge: string; label: string }> = {
-  critical: { icon: 'bg-red-50 text-red-600', badge: 'Out of Stock', label: 'Critical' },
-  high: { icon: 'bg-orange-50 text-orange-600', badge: 'Low Stock', label: 'High' },
-  medium: { icon: 'bg-yellow-50 text-yellow-600', badge: 'Low Stock', label: 'Medium' },
-  low: { icon: 'bg-gray-50 text-gray-600', badge: 'Low Stock', label: 'Low' },
+  critical: { icon: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400', badge: 'Out of Stock', label: 'Critical' },
+  high: { icon: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400', badge: 'Low Stock', label: 'High' },
+  medium: { icon: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400', badge: 'Low Stock', label: 'Medium' },
+  low: { icon: 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400', badge: 'Low Stock', label: 'Low' },
 };
 
 interface Props {
@@ -75,7 +75,7 @@ export default function ReorderAlertList({ onRefresh, isRefreshing }: Props) {
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="p-1.5 rounded-md text-ink-muted hover:text-ink hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md text-ink-muted hover:text-ink hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Refresh alerts"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />

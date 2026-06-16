@@ -205,7 +205,7 @@ export function SuppliersPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200"
+            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
             onClick={() => navigate(`/inventory?supplierId=${r.id}`)}
             aria-label="View products"
             title="View products"
@@ -217,7 +217,7 @@ export function SuppliersPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200"
+                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200 dark:hover:text-green-300 dark:hover:border-green-600"
                 onClick={() => openEditModal(r)}
                 aria-label="Edit supplier"
                 title="Edit supplier"
@@ -227,7 +227,7 @@ export function SuppliersPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200"
+                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200 dark:hover:text-red-300 dark:hover:border-red-600"
                 onClick={() => handleDeleteClick(r)}
                 aria-label="Delete supplier"
                 title="Delete supplier"
@@ -253,13 +253,13 @@ export function SuppliersPage() {
       </div>
 
       {errorMessage && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
           {errorMessage}
         </div>
       )}
 
       {queryError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 flex items-center justify-between">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200 flex items-center justify-between">
           <span>Failed to load suppliers. Please try again later.</span>
           <button onClick={() => refetch()} className="underline text-sm font-medium">Retry</button>
         </div>

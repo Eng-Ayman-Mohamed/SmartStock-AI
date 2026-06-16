@@ -7,6 +7,7 @@ import RoleSelect from './RoleSelect';
 import type { User } from '../types';
 import { useDeactivateUser, useUpdateUserRole } from '../hooks/useUsers';
 import { useAuthStore } from '../../../store/authStore';
+import { getAvatarColor } from '../../../shared/utils/avatar';
 import { useToastStore } from '../../../store/toastStore';
 
 interface UsersTableProps {
@@ -48,19 +49,19 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         render: (u) => (
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-caption font-medium shrink-0"
+              className={"w-8 h-8 rounded-full " + getAvatarColor(u.name) + " flex items-center justify-center text-white text-caption font-medium shrink-0"}
               aria-hidden="true"
             >
               {getInitials(u.name)}
             </div>
             <div className="min-w-0">
-              <p className="text-body text-gray-900 font-medium truncate">
+              <p className="text-body text-ink font-medium truncate">
                 {u.name}
                 {currentUserId === u.id && (
-                  <span className="ml-1.5 text-caption text-gray-400 font-normal">(you)</span>
+                  <span className="ml-1.5 text-caption text-ink-faint font-normal">(you)</span>
                 )}
               </p>
-              <p className="text-caption text-gray-600 truncate">{u.email}</p>
+              <p className="text-caption text-ink-muted truncate">{u.email}</p>
             </div>
           </div>
         ),
@@ -97,13 +98,13 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         width: '14%',
         render: (u) =>
           u.is_active ? (
-            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-green-700">
+            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-green-700 dark:text-green-400">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
               Active
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-gray-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-gray-600 dark:text-ink-muted">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-ink-faint" aria-hidden="true" />
               Deactivated
             </span>
           ),
@@ -113,7 +114,7 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         label: 'Joined',
         width: '18%',
         render: (u) => (
-          <span className="text-caption text-gray-600">{formatDate(u.date_joined)}</span>
+          <span className="text-caption text-ink-muted">{formatDate(u.date_joined)}</span>
         ),
       },
       {
@@ -134,7 +135,7 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
               }
               disabled={!u.is_active || isSelf || deactivate.isPending}
               title={isSelf ? "You can't deactivate your own account" : 'Deactivate user'}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-caption font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded text-caption font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             >
               <Power className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Deactivate</span>

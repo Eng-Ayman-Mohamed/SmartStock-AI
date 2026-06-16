@@ -183,7 +183,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                     onClick={() => setRole(r)}
                     className={`px-3 py-2 rounded-md border text-caption font-medium text-left transition-colors ${
                       isSelected
-                        ? 'border-brand-600 bg-brand-50 text-brand-800'
+                        ? 'border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-900/30 dark:text-brand-200'
                         : 'border-hairline bg-canvas text-ink-secondary hover:border-ink-faint'
                     }`}
                   >
@@ -200,7 +200,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
           </div>
 
           {formError && (
-            <div role="alert" className="rounded-md border border-red-100 bg-red-50 px-3 py-2 text-caption text-red-600">
+            <div role="alert" className="rounded-md border border-red-100 bg-red-50 px-3 py-2 text-caption text-red-600 dark:bg-red-900/30 dark:text-red-400">
               {formError}
             </div>
           )}

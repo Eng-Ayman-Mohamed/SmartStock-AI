@@ -30,7 +30,7 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-black/50 animate-fadeIn"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
       role="dialog"
       aria-modal="true"

@@ -58,13 +58,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`flex items-center justify-center w-7 h-7 rounded-full shrink-0 ${
-          isUser ? 'bg-brand-600' : 'bg-purple-50'
+          isUser ? 'bg-brand-600' : 'bg-purple-50 dark:bg-purple-900/30'
         }`}
       >
         {isUser ? (
           <User className="w-4 h-4 text-white" />
         ) : (
-          <Bot className="w-4 h-4 text-purple-600" />
+          <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
         )}
       </div>
 

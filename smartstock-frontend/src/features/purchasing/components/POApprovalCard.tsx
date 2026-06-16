@@ -101,7 +101,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
 
       {/* Error banner */}
       {localError && (
-        <div className="mx-6 mt-4 bg-red-50 text-red-800 text-caption p-3 rounded-md">
+        <div className="mx-6 mt-4 bg-red-50 text-red-800 text-caption p-3 rounded-md dark:bg-red-900/30 dark:text-red-200">
           {localError}
         </div>
       )}
@@ -168,7 +168,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
               <summary className="text-caption text-ink-muted cursor-pointer hover:text-ink transition-colors">
                 Why did the AI flag this?
               </summary>
-              <div className="mt-2 p-3 rounded-md bg-purple-50 border-l-2 border-purple-500">
+              <div className="mt-2 p-3 rounded-md bg-purple-50 border-l-2 border-purple-500 dark:bg-purple-900/30">
                 <p className="text-caption text-ink-muted italic leading-relaxed whitespace-pre-line">{po.agent_reasoning}</p>
               </div>
             </details>
@@ -211,7 +211,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             <Button
               variant="ghost"
               size="md"
-              className="text-red-600 hover:bg-red-50 border border-red-200"
+              className="text-red-600 hover:bg-red-50 border border-red-200 dark:hover:bg-red-900/30"
               disabled={isLoading || showRejectReason}
               onClick={handleRejectClick}
             >

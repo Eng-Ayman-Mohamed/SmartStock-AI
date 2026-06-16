@@ -69,21 +69,21 @@ function confidenceTone(value = 0) {
   if (value >= 0.9) {
     return {
       label: 'High',
-      className: 'bg-green-50 text-green-800',
-      dot: 'bg-green-600',
+      className: 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+      dot: 'bg-green-600 dark:bg-green-400',
     };
   }
   if (value >= 0.7) {
     return {
       label: 'Review',
-      className: 'bg-amber-50 text-amber-800',
-      dot: 'bg-amber-600',
+      className: 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+      dot: 'bg-amber-600 dark:bg-amber-400',
     };
   }
   return {
     label: 'Please verify',
-    className: 'bg-red-50 text-red-800',
-    dot: 'bg-red-600',
+    className: 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+    dot: 'bg-red-600 dark:bg-red-400',
   };
 }
 
@@ -236,7 +236,7 @@ export default function InvoiceScanPage() {
       </div>
 
       {errorMessage && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
           {errorMessage}
         </div>
       )}
@@ -289,7 +289,7 @@ export default function InvoiceScanPage() {
           </button>
 
           {fileError && (
-            <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800">
+            <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
               {fileError}
             </div>
           )}
@@ -344,7 +344,7 @@ export default function InvoiceScanPage() {
           ) : (
             <>
               {scanResult.status === 'partial' && (
-                <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-body text-amber-900">
+                <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-body text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
                   Some fields were missing from the scan. Fill them in before confirming.
                 </div>
               )}
@@ -388,7 +388,7 @@ export default function InvoiceScanPage() {
               </div>
 
               {confirmedResult?.inventory_result && (
-                <div className="mt-5 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-body text-green-900">
+                <div className="mt-5 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-body text-green-900 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
                   Inventory updated. Current on-hand quantity:{' '}
                   <span className="font-medium tabular-nums">
                     {confirmedResult.inventory_result.quantity_on_hand ?? 'updated'}

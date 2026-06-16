@@ -628,26 +628,28 @@ All API errors follow the standard shape:
 
 ## 7. Priority Remediation Plan
 
+> **Updated:** June 16, 2026 recheck — status changes marked with ↕️
+
 ### Tier 0 — Critical (fix before demo)
-| Task | Issue | Effort |
-|------|-------|--------|
-| **O9** — CD Pipeline | No deployment automation exists | Large |
-| **A9** — CI Pipeline | Coverage not scoped to ai/apps; timeout not 5 min | Small |
-| **MW9** — Production Deploy | Missing vercel.json and smoke test | Medium |
+| Task | Issue | Effort | Status |
+|------|-------|--------|--------|
+| **O9** — CD Pipeline | No deployment automation exists | Large | ❌ Unchanged |
+| **A9** — CI Pipeline | Coverage not scoped to ai/apps; timeout not 5 min | Small | ❌ Unchanged |
+| **MW9** — Production Deploy | Missing vercel.json and smoke test | Medium | ↕️ Axios baseURL fixed, 2 issues remain |
 
 ### Tier 1 — High (compliance gaps)
-| Task | Issue | Effort |
-|------|-------|--------|
-| **MA2** — Inventory Dashboard | No column sorting, no useInventory hook, no category filter | Medium |
-| **A6** — Purchasing Tools | Email template orphaned; timed_out field missing | Small |
-| **MA1** — Forecast Endpoint | SKU endpoint lacks Redis caching | Small |
-| **MA3** — LangChain Chain | Missing 2 few-shot examples; not singleton; wrong exception | Small |
+| Task | Issue | Effort | Status |
+|------|-------|--------|--------|
+| **MA2** — Inventory Dashboard | No column sorting, no useInventory hook, no category filter | Medium | ❌ All 3 issues unchanged |
+| **A6** — Purchasing Tools | Email template orphaned; timed_out field missing | Small | ❌ Unchanged |
+| **MA1** — Forecast Endpoint | SKU endpoint lacks Redis caching | Small | ↕️ Dashboard cache invalidation works; SKU cache still missing |
+| **MA3** — LangChain Chain | Missing 2 few-shot examples; singleton partial; wrong exception | Small | ↕️ Singleton partially resolved (1 of 2 views) |
 
 ### Tier 2 — Medium (polish)
-| Task | Issue | Effort |
-|------|-------|--------|
-| **A1** — Schema | verbose_name missing on 14/15 models | Small |
-| **MQ8** — Langfuse Alerts | Alerts via Prometheus not Langfuse SDK; faithfulness heuristic | Medium |
+| Task | Issue | Effort | Status |
+|------|-------|--------|--------|
+| **A1** — Schema | verbose_name missing on 20/21 models (worse than reported: 14/15) | Small | ↕️ Count corrected upward |
+| **MQ8** — Langfuse Alerts | Alerts via Prometheus not Langfuse SDK; faithfulness heuristic; dead agent success rate metric | Medium | ↕️ Agent success rate is dead code — `record_agent_run_task` never called |
 
 ---
 
@@ -659,3 +661,36 @@ All API errors follow the standard shape:
 | ⚠️ Partial | Core functionality exists but some criteria unmet |
 | ❌ Not Started | No implementation found |
 | *(Fixed)* | Resolved during June 15 verification session |
+| ↕️ | Status changed during June 16 recheck |
+
+---
+
+## 8. June 16 Recheck Summary
+
+### Status Changes
+
+| Issue | Was | Now | Notes |
+|-------|-----|-----|-------|
+| **MW9** Axios baseURL | ⚠️ Open | ✅ Fixed | Reads `VITE_API_URL` via 3-tier fallback chain |
+| **A1** verbose_name count | 14/15 missing | **20/21 missing** | Only `Category` has `verbose_name_plural`; no model has `verbose_name` |
+| **MA1** Cache invalidation | ❌ Missing | ⚠️ Partial | Dashboard cache IS invalidated in `run_forecast_single_sku()`; SKU cache doesn't exist |
+| **MA3** Singleton | ❌ Per-request | ⚠️ Partial | Inventory view uses `get_nl_chain()` singleton; ingestion view still creates per request |
+| **MQ8** Agent success rate | ⚠️ Counts `outcome` | ❌ Dead code | `record_agent_run_task` never called — table always empty, gauge perpetually `1.0` |
+
+### Issues Still Open (unchanged)
+
+| Task | Issue |
+|------|-------|
+| **O9** | No CD pipeline (no `deploy.yml` / `cd.yml`) |
+| **A9** | `--cov` unscoped; `timeout-minutes: 10` not 5 |
+| **MW9** | No `vercel.json`; no smoke test script |
+| **MA2** | No column sorting; no `useInventory()` hook; no category filter |
+| **A6** | Orphaned `po_email.txt` template; `timed_out` field missing |
+| **MA3** | 8/10 few-shot examples; `ValueError` not `ConfigurationError` |
+| **MQ8** | Langfuse SDK not used for alerts; token-overlap faithfulness; dead agent metric |
+
+### New Findings
+
+1. **A1 verbose_name**: Original report understated the scope — 20/21 models missing, not 14/15. Additionally, `CustomUser` and `DocumentChunk` lack `Meta.ordering`.
+2. **MQ8 dead metric**: The `record_agent_run_task` is defined in `apps/monitoring/tasks.py` but never called from any production code path. The purchasing agent calls `trace_agent_run()` for Langfuse logging but never invokes the monitoring task. This means `AgentRunLog` is always empty and the `ai_agent_success_rate_current` Prometheus gauge is always `1.0`.
+3. **MW9 Axios**: The report's claim that Axios hardcodes `/api` was incorrect — the code already has a proper `window.__ENV__` → `import.meta.env` → `/api` fallback chain.

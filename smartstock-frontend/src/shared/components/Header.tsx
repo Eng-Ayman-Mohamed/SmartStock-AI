@@ -4,7 +4,9 @@ import { Bell, LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../features/auth/hooks/useAuth';
+import { useServerHealth } from '../../shared/hooks/useServerHealth';
 import RoleBadge from '../../features/users/components/RoleBadge';
+import { getAvatarColor } from '../../shared/utils/avatar';
 import ThemeToggle from './ThemeToggle';
 
 const pageTitles: Record<string, string> = {
@@ -33,6 +35,7 @@ export default function Header() {
   const user = useAuthStore((s) => s.user);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const { logout, isSubmitting } = useAuth();
+  const { data: isAlive, isLoading: healthLoading } = useServerHealth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const title = pageTitles[location.pathname] || 'SmartStock AI';
@@ -95,6 +98,16 @@ export default function Header() {
         </nav>
       </div>
 
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5" title={healthLoading ? 'Checking...' : isAlive ? 'Server online' : 'Server offline'}>
+          <span className={`w-2 h-2 rounded-full ${
+            healthLoading ? 'bg-gray-300' : isAlive ? 'bg-green-500' : 'bg-red-500'
+          }`} />
+          <span className="text-caption text-ink-muted hidden sm:inline">
+            {healthLoading ? '...' : isAlive ? 'Online' : 'Offline'}
+          </span>
+        </div>
+
       <div className="flex items-center gap-3">
         <ThemeToggle />
         <button
@@ -114,7 +127,7 @@ export default function Header() {
               className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-canvas-soft transition-colors"
             >
               <div
-                className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-medium"
+                className={`w-7 h-7 rounded-full ${getAvatarColor(user.name)} flex items-center justify-center text-white text-[11px] font-medium`}
                 aria-hidden="true"
               >
                 {getInitials(user.name)}
@@ -164,6 +177,7 @@ export default function Header() {
             )}
           </div>
         )}
+      </div>
       </div>
     </header>
   );

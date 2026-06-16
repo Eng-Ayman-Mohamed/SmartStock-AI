@@ -44,7 +44,7 @@ function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: (
           collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
         } ${
           isActive
-            ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
+            ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-400'
             : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
         }`
       }
@@ -52,7 +52,7 @@ function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: (
       <Icon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
       {!collapsed && <span className="truncate">{label}</span>}
       {collapsed && (
-        <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
+        <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
           {label}
         </span>
       )}
@@ -113,7 +113,7 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-3 h-10 px-3 rounded-md text-body transition-colors duration-150 ${
                   isActive
-                    ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
+                    ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-400'
                     : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
                 }`
               }
@@ -155,7 +155,7 @@ export default function Sidebar() {
                     sidebarCollapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
                   } ${
                     isActive
-                      ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600'
+                      ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-400'
                       : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
                   }`
                 }
@@ -166,7 +166,7 @@ export default function Sidebar() {
                 />
                 {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                 {sidebarCollapsed && (
-                  <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
+                  <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-caption whitespace-nowrap z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
                     {item.label}
                   </span>
                 )}

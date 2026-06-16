@@ -38,3 +38,9 @@ export async function fetchOverdueSuppliers(): Promise<OverdueSupplier[]> {
   );
   return data;
 }
+
+export async function fetchSKUCount(): Promise<number> {
+  const response = await api.get('/inventory/skus/', { params: { page_size: 1 } });
+  const total = (response._meta?.total as number) ?? 0;
+  return total;
+}
