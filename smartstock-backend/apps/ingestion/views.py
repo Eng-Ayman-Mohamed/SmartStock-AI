@@ -361,10 +361,13 @@ class RAGQueryView(APIView):
                 {'status': 'error', 'message': e.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception as e:
+        except Exception:
             logger.exception('RAG pipeline failed')
             return Response(
-                {'status': 'error', 'message': str(e)},
+                {
+                    'status': 'error',
+                    'message': 'An internal error occurred. Please try again later.',
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

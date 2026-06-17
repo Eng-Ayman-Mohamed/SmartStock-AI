@@ -84,7 +84,7 @@ export default function AlertSidebar({ alerts, onDismiss, isModalOpen, onModalCl
               </div>
 
               <div className="p-3 space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto">
-                {alerts.sort((a) => (a.severity === 'critical' ? -1 : 1)).map(alert => (
+                {[...alerts].sort((a, b) => (a.severity === 'critical' ? -1 : b.severity === 'critical' ? 1 : 0)).map(alert => (
                   <AlertBanner key={alert.sku.id} alert={alert} onDismiss={onDismiss} />
                 ))}
               </div>
@@ -117,7 +117,7 @@ export default function AlertSidebar({ alerts, onDismiss, isModalOpen, onModalCl
             </div>
 
             <div className="p-5 space-y-2 overflow-y-auto">
-              {alerts.sort((a) => (a.severity === 'critical' ? -1 : 1)).map(alert => (
+              {[...alerts].sort((a, b) => (a.severity === 'critical' ? -1 : b.severity === 'critical' ? 1 : 0)).map(alert => (
                 <AlertBanner key={alert.sku.id} alert={alert} onDismiss={onDismiss} />
               ))}
             </div>

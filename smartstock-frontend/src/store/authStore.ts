@@ -35,7 +35,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user) => set({ user }),
   setBootstrapping: (value) => set({ isBootstrapping: value }),
   clearAuth: () => {
-    sessionStorage.removeItem('refreshToken');
     set({ user: null, token: null, refreshToken: null });
   },
 
@@ -43,18 +42,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!get().isBootstrapping) return;
     set({ isBootstrapping: true });
     try {
-      const storedRefresh = sessionStorage.getItem('refreshToken');
-      const body = storedRefresh ? { refresh: storedRefresh } : null;
       const { data: refreshData } = await api.post<{ access: string; refresh?: string }>(
         '/auth/refresh/',
-        body,
+        null,
         { withCredentials: true },
       );
       if (refreshData?.access) {
         set({ token: refreshData.access });
         if (refreshData.refresh) {
           set({ refreshToken: refreshData.refresh });
-          sessionStorage.setItem('refreshToken', refreshData.refresh);
         }
         try {
           const { data: me } = await api.get<{ id: number; email: string; name: string; role: Role }>(

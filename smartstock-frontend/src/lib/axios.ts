@@ -97,7 +97,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !AUTH_EXEMPT_PATHS.some((p) => originalRequest.url?.includes(p))) {
       const currentToken = useAuthStore.getState().token;
 
-      // Prevent refresh loop: if we already refreshed this exact token and it still fails, bail
       if (currentToken && currentToken === lastRefreshedToken) {
         return Promise.reject(error);
       }
@@ -118,11 +117,9 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const storedRefresh = sessionStorage.getItem('refreshToken');
-        const body = storedRefresh ? { refresh: storedRefresh } : null;
         const { data } = await api.post<{ access: string; refresh?: string }>(
           '/auth/refresh/',
-          body,
+          null,
           { withCredentials: true }
         );
         const newToken = data.access;
@@ -130,7 +127,6 @@ api.interceptors.response.use(
         useAuthStore.getState().setToken(newToken);
         if (data.refresh) {
           useAuthStore.getState().setRefreshToken(data.refresh);
-          sessionStorage.setItem('refreshToken', data.refresh);
         }
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;

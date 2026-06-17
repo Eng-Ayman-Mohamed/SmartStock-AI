@@ -6,6 +6,7 @@ from rest_framework.views import exception_handler as drf_exception_handler
 from core.exceptions import (
     DuplicatePOError,
     ForecastingModelError,
+    IllegalPOTransitionError,
     InsufficientStockError,
     StockNotFoundException,
     SupplierNotFoundException,
@@ -125,10 +126,10 @@ def custom_exception_handler(exc, context):
                 'status': 'error',
                 'error': 'ValidationError',
                 'message': 'Validation failed.',
-                'code': 409,
+                'code': 422,
                 'fields': {'detail': exc.messages if hasattr(exc, 'messages') else [str(exc)]},
             },
-            status=409,
+            status=422,
         )
 
     if isinstance(exc, IntegrityError):
@@ -143,6 +144,7 @@ def custom_exception_handler(exc, context):
         StockNotFoundException: 404,
         InsufficientStockError: 409,
         DuplicatePOError: 409,
+        IllegalPOTransitionError: 409,
         ForecastingModelError: 500,
         SupplierNotFoundException: 404,
     }

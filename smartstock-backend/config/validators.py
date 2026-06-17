@@ -52,4 +52,4 @@ def validate_required_env_vars():
 
     for var, default in OPTIONAL_ENV_VARS.items():
         value = os.getenv(var, default)
-        logger.info('[CONFIG] %s: %s', var, value)
+        logger.info('[CONFIG] %s: %s', var, _mask_value(value) if value else '(empty)')

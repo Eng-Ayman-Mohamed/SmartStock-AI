@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
 import * as purchasingApi from '../api';
 
-export const purchasingQueryKey = ['pending-pos'] as const;
+export const purchasingQueryKey = ['purchasing-pending-pos'] as const;
 
 export function usePendingPOs() {
   const token = useAuthStore((s) => s.token);

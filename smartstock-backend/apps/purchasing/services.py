@@ -53,7 +53,9 @@ class PurchasingService:
     def approve_po(self, po_id: int, user):
         po = self.repo.get_by_id(po_id)
         if po.status not in ('draft', 'pending_approval'):
-            raise ValidationError('Only draft or pending approval orders can be approved.')
+            raise IllegalPOTransitionError(
+                f'Only draft or pending approval orders can be approved. Current status: {po.status}'
+            )
         po = self.repo.update(po_id, {'status': 'approved', 'approved_by_id': user.id})
         po_approved.send(sender=self.__class__, po=po, user=user)
         return po
@@ -61,7 +63,9 @@ class PurchasingService:
     def reject_po(self, po_id: int, user):
         po = self.repo.get_by_id(po_id)
         if po.status not in ('draft', 'pending_approval'):
-            raise ValidationError('Only draft or pending approval orders can be rejected.')
+            raise IllegalPOTransitionError(
+                f'Only draft or pending approval orders can be rejected. Current status: {po.status}'
+            )
         po = self.repo.update(po_id, {'status': 'rejected'})
         po_rejected.send(sender=self.__class__, po=po, user=user)
         return po

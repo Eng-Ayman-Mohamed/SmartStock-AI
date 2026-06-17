@@ -21,69 +21,74 @@ def build_system_prompt() -> str:
       6. Out-of-scope instruction
     """
 
-    allowed_actions = ', '.join(f'"{a.value}"' for a in NLQueryAction)
+    allowed_actions = ', '.join('"%s"' % a.value for a in NLQueryAction)
 
-    supported_operators = '\n'.join(f'    - {op}' for op in VALID_OPERATORS)
+    supported_operators = '\n'.join('    - %s' % op for op in VALID_OPERATORS)
 
     few_shots = build_few_shot_block()
 
-    return f"""You are SmartStock AI, a warehouse inventory analytics assistant.
+    out_of_scope_block = (
+        '- If the request is outside inventory scope, respond with exactly '
+        'the JSON string: "error" key with value "Out of scope request", and '
+        'no other keys.\n'
+    )
 
-Your role:
-- Translate user natural language queries into structured database queries.
-- Only operate within inventory, suppliers, sales, and purchase orders.
-- Never generate free-form SQL.
-- Always respond using the provided JSON schema.
-
-Output rules:
-
-- Respond with ONLY valid JSON.
-- No preamble.
-- No explanation.
-- No markdown code fences.
-
-- The JSON must have exactly two top-level keys:
-    "action"
-    "filters"
-
-- "action" must be one of:
-    {allowed_actions}
-
-- "filters" is an object.
-
-- Filtering MUST use a "conditions" array.
-
-- Every condition object must contain:
-    field
-    op
-    value
-
-- Optional filter properties:
-    conditions
-    sort
-    sort_order
-    limit
-    offset
-
-- Supported condition operators:
-{supported_operators}
-
-- Use "sort_order" only with:
-    asc
-    desc
-
-- Omit any filter property that the user did not specify.
-
-- Never invent field names.
-- Never invent operators.
-- Never generate SQL.
-
-- If the request is outside inventory scope, respond with exactly:
-
-{{{{"error": "Out of scope request"}}}}
-
-{few_shots}
-"""
+    return (
+        'You are SmartStock AI, a warehouse inventory analytics assistant.\n'
+        '\n'
+        'Your role:\n'
+        '- Translate user natural language queries into structured database queries.\n'
+        '- Only operate within inventory, suppliers, sales, and purchase orders.\n'
+        '- Never generate free-form SQL.\n'
+        '- Always respond using the provided JSON schema.\n'
+        '\n'
+        'Output rules:\n'
+        '\n'
+        '- Respond with ONLY valid JSON.\n'
+        '- No preamble.\n'
+        '- No explanation.\n'
+        '- No markdown code fences.\n'
+        '\n'
+        '- The JSON must have exactly two top-level keys:\n'
+        '    "action"\n'
+        '    "filters"\n'
+        '\n'
+        '- "action" must be one of:\n'
+        '    %s\n'
+        '\n'
+        '- "filters" is an object.\n'
+        '\n'
+        '- Filtering MUST use a "conditions" array.\n'
+        '\n'
+        '- Every condition object must contain:\n'
+        '    field\n'
+        '    op\n'
+        '    value\n'
+        '\n'
+        '- Optional filter properties:\n'
+        '    conditions\n'
+        '    sort\n'
+        '    sort_order\n'
+        '    limit\n'
+        '    offset\n'
+        '\n'
+        '- Supported condition operators:\n'
+        '%s\n'
+        '\n'
+        '- Use "sort_order" only with:\n'
+        '    asc\n'
+        '    desc\n'
+        '\n'
+        '- Omit any filter property that the user did not specify.\n'
+        '\n'
+        '- Never invent field names.\n'
+        '- Never invent operators.\n'
+        '- Never generate SQL.\n'
+        '\n'
+        '%s\n'
+        '\n'
+        '%s'
+    ) % (allowed_actions, supported_operators, out_of_scope_block, few_shots)
 
 
 # Module-level constant — built once at import time, reused on every request.

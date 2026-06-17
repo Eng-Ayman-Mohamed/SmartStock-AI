@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.purchasing.services import PurchasingService
+from core.exceptions import IllegalPOTransitionError
 
 
 class PurchasingServiceDraftPoTest(TestCase):
@@ -73,28 +74,28 @@ class PurchasingServiceApprovePoTest(TestCase):
 
     def test_approve_rejects_sent_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='sent')
-        with self.assertRaises(ValidationError) as ctx:
+        with self.assertRaises(IllegalPOTransitionError) as ctx:
             self.service.approve_po(po_id=1, user=self.user)
         self.assertIn('draft or pending approval', str(ctx.exception))
 
     def test_approve_rejects_approved_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='approved')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
     def test_approve_rejects_rejected_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='rejected')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
     def test_approve_rejects_cancelled_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='cancelled')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
     def test_approve_rejects_confirmed_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='confirmed')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
 
@@ -124,18 +125,18 @@ class PurchasingServiceRejectPoTest(TestCase):
 
     def test_reject_rejects_sent_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='sent')
-        with self.assertRaises(ValidationError) as ctx:
+        with self.assertRaises(IllegalPOTransitionError) as ctx:
             self.service.reject_po(po_id=1, user=self.user)
         self.assertIn('draft or pending approval', str(ctx.exception))
 
     def test_reject_rejects_approved_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='approved')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IllegalPOTransitionError):
             self.service.reject_po(po_id=1, user=self.user)
 
     def test_reject_rejects_cancelled_po(self):
         self.repo.get_by_id.return_value = MagicMock(status='cancelled')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IllegalPOTransitionError):
             self.service.reject_po(po_id=1, user=self.user)
 
 
