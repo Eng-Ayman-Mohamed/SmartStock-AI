@@ -1,9 +1,17 @@
 import api from '../../lib/axios';
 import type { Supplier, CreateSupplierPayload, UpdateSupplierPayload, PendingPO } from './types';
 
-export async function listSuppliers(searchQuery?: string): Promise<Supplier[]> {
-  const params = searchQuery ? { search: searchQuery } : {};
-  const { data } = await api.get<Supplier[]>('/purchasing/suppliers/', { params });
+export async function listSuppliers(
+  searchQuery?: string,
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<PaginatedResponse<Supplier>> {
+  const params: Record<string, string | number | undefined> = {
+    page,
+    page_size: pageSize,
+    search: searchQuery || undefined,
+  };
+  const { data } = await api.get<PaginatedResponse<Supplier>>('/purchasing/suppliers/', { params });
   return data;
 }
 
