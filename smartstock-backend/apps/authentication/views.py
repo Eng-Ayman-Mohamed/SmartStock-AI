@@ -163,9 +163,7 @@ class LoginView(TokenObtainPairView):
             error_detail = exc.detail if hasattr(exc, 'detail') else str(exc)
             if isinstance(error_detail, dict):
                 has_missing_field = any(
-                    'required' in str(v).lower()
-                    if isinstance(v, (list, str))
-                    else False
+                    'required' in str(v).lower() if isinstance(v, (list, str)) else False
                     for v in error_detail.values()
                 )
                 if has_missing_field:
