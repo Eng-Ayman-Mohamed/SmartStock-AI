@@ -1,11 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Package,
   PackagePlus,
   PencilLine,
@@ -30,6 +25,8 @@ import type { Column } from "../../../shared/components/DataTable";
 import { useToastStore } from "../../../store/toastStore";
 import { useInventory } from "../hooks/useInventory";
 import type { Product } from "../hooks/useInventory";
+import AddEditProductModal from "../components/AddEditProductModal";
+import AdjustStockModal from "../components/AdjustStockModal";
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
 
@@ -66,12 +63,6 @@ export default function InventoryPage() {
     stockId: number;
     skuCode: string;
   } | null>(null);
-  const [stockDelta, setStockDelta] = useState("");
-  const [stockReason, setStockReason] = useState("");
-  const [formName, setFormName] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formReorder, setFormReorder] = useState(10);
-  const [formSafety, setFormSafety] = useState(10);
 
   const addToast = useToastStore((s) => s.addToast);
 
@@ -114,24 +105,24 @@ export default function InventoryPage() {
   });
 
   const saveProduct = useMutation({
-    mutationFn: async (product?: Product) => {
-      const payload = {
-        name: formName,
-        description: formDescription,
-        reorder_point: formReorder,
-        safety_stock: formSafety,
-      };
+    mutationFn: async ({
+      product,
+      data,
+    }: {
+      product?: Product;
+      data: { name: string; description: string; reorder_point: number; safety_stock: number };
+    }) => {
       if (product) {
-        await api.patch(`/inventory/products/${product.id}/`, payload);
+        await api.patch(`/inventory/products/${product.id}/`, data);
       } else {
-        await api.post("/inventory/products/", payload);
+        await api.post("/inventory/products/", data);
       }
     },
-    onSuccess: (_data, product) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setEditingProduct(null);
       addToast(
-        product ? `Updated ${product.name}` : "Product created",
+        variables.product ? `Updated ${variables.product.name}` : "Product created",
         "success",
       );
     },
@@ -158,8 +149,6 @@ export default function InventoryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setAdjustingStock(null);
-      setStockDelta("");
-      setStockReason("");
       addToast("Stock adjusted", "success");
     },
     onError: () => {
@@ -181,45 +170,28 @@ export default function InventoryPage() {
     },
   });
 
-  function openNewProductForm() {
-    setFormName("");
-    setFormDescription("");
-    setFormReorder(10);
-    setFormSafety(10);
-    setEditingProduct("new");
-  }
-
-  function openEditForm(product: Product) {
-    setFormName(product.name);
-    setFormDescription(product.description);
-    setFormReorder(product.reorder_point);
-    setFormSafety(product.safety_stock);
-    setEditingProduct(product);
-  }
 
   const rows = useMemo(() => {
-    return inventoryQuery.products
-      .flatMap((product) => {
-        const skus = product.skus.length
-          ? product.skus
-          : [{ id: 0, code: "No SKU", stock_level_id: null }];
-        return skus.map((sku) => {
-          const quantity = sku.quantity_on_hand ?? 0;
-          const reorderPoint = sku.stock_reorder_point ?? product.reorder_point;
-          const status = statusFor(quantity, reorderPoint);
-          return {
-            product,
-            sku,
-            quantity,
-            quantity_reserved: sku.quantity_reserved ?? 0,
-            reorderPoint,
-            status,
-            stockId: sku.stock_level_id ?? 0,
-          };
-        });
-      })
-      .filter((row) => !statusFilter || row.status === statusFilter);
-  }, [inventoryQuery.products, statusFilter]);
+    return inventoryQuery.products.flatMap((product) => {
+      const skus = product.skus.length
+        ? product.skus
+        : [{ id: 0, code: "No SKU", stock_level_id: null }];
+      return skus.map((sku) => {
+        const quantity = sku.quantity_on_hand ?? 0;
+        const reorderPoint = sku.stock_reorder_point ?? product.reorder_point;
+        const status = statusFor(quantity, reorderPoint);
+        return {
+          product,
+          sku,
+          quantity,
+          quantity_reserved: sku.quantity_reserved ?? 0,
+          reorderPoint,
+          status,
+          stockId: sku.stock_level_id ?? 0,
+        };
+      });
+    });
+  }, [inventoryQuery.products]);
 
   const totalProducts = inventoryQuery.pagination.total;
   const currentPageSize = inventoryQuery.pagination.perPage;
@@ -228,12 +200,10 @@ export default function InventoryPage() {
     pageSize: currentPageSize,
     currentPage: page,
   });
-  const firstVisibleItem = totalProducts === 0 ? 0 : pagination.startItem;
-  const lastVisibleItem = totalProducts === 0 ? 0 : pagination.endItem;
 
   type Row = (typeof rows)[number];
 
-  const columns: Column<Row>[] = [
+  const columns = useMemo<Column<Row>[]>(() => [
     {
       key: "sku",
       label: "SKU",
@@ -340,7 +310,7 @@ export default function InventoryPage() {
             variant="ghost"
             size="sm"
             className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
-            onClick={() => openEditForm(r.product)}
+            onClick={() => setEditingProduct(r.product)}
             disabled={!canManage}
             aria-label={`Edit ${r.product.name}`}
             title={canManage ? "Edit product" : "Manager role required"}
@@ -380,7 +350,7 @@ export default function InventoryPage() {
         </div>
       ),
     },
-  ];
+  ], [sortField, sortOrder]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -396,7 +366,7 @@ export default function InventoryPage() {
         <Button
           variant="primary"
           size="md"
-          onClick={openNewProductForm}
+          onClick={() => setEditingProduct("new")}
           disabled={!canManage}
         >
           <Plus className="w-4 h-4" /> Add Product
@@ -492,211 +462,45 @@ export default function InventoryPage() {
             heading="No products yet"
             body="Add your first product to start tracking inventory."
             actionLabel={canManage ? "Add Product" : undefined}
-            onAction={canManage ? openNewProductForm : undefined}
+            onAction={canManage ? () => setEditingProduct("new") : undefined}
           />
         ) : (
-          <>
-            <div
-              className={
-                inventoryQuery.isFetching
-                  ? "opacity-70 transition-opacity"
-                  : "transition-opacity"
-              }
-            >
-              <DataTable
-                columns={columns}
-                data={rows}
-                keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
-                caption="Inventory products and stock levels"
-                onSort={handleSort}
-              />
-            </div>
-            <div className="flex flex-col gap-3 border-t border-hairline px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-caption text-ink-muted">
-                Showing{" "}
-                <span className="tabular-nums text-ink-secondary">
-                  {firstVisibleItem}
-                </span>
-                {" - "}
-                <span className="tabular-nums text-ink-secondary">
-                  {lastVisibleItem}
-                </span>
-                {" of "}
-                <span className="tabular-nums text-ink-secondary">
-                  {totalProducts}
-                </span>{" "}
-                products
-              </p>
-              <div
-                className="flex items-center gap-1"
-                aria-label="Inventory pagination"
-              >
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage(1)}
-                  disabled={!pagination.hasPrev}
-                  aria-label="First page"
-                  title="First page"
-                >
-                  <ChevronsLeft className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  disabled={!pagination.hasPrev}
-                  aria-label="Previous page"
-                  title="Previous page"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                {pagination.pages.map((pageNumber, index) =>
-                  pageNumber === -1 ? (
-                    <span
-                      key={`gap-${index}`}
-                      className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
-                    >
-                      ...
-                    </span>
-                  ) : (
-                    <Button
-                      key={pageNumber}
-                      variant={pageNumber === page ? "primary" : "utility"}
-                      size="sm"
-                      className="h-11 w-11 px-0 tabular-nums"
-                      onClick={() => setPage(pageNumber)}
-                      aria-label={`Page ${pageNumber}`}
-                      title={`Page ${pageNumber}`}
-                    >
-                      {pageNumber}
-                    </Button>
-                  ),
-                )}
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() =>
-                    setPage((value) =>
-                      Math.min(pagination.totalPages, value + 1),
-                    )
-                  }
-                  disabled={!pagination.hasNext}
-                  aria-label="Next page"
-                  title="Next page"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage(pagination.totalPages)}
-                  disabled={!pagination.hasNext}
-                  aria-label="Last page"
-                  title="Last page"
-                >
-                  <ChevronsRight className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
+          <div
+            className={
+              inventoryQuery.isFetching
+                ? "opacity-70 transition-opacity"
+                : "transition-opacity"
+            }
+          >
+            <DataTable
+              columns={columns}
+              data={rows}
+              keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
+              caption="Inventory products and stock levels"
+              onSort={handleSort}
+              pagination={{
+                ...pagination,
+                currentPage: page,
+                total: totalProducts,
+                onPageChange: (p) => setPage(p),
+              }}
+            />
+          </div>
+        )} 
       </Card>
 
-      <Modal
+      <AddEditProductModal
         open={editingProduct !== null}
+        product={editingProduct}
         onClose={() => setEditingProduct(null)}
-        title={
-          editingProduct && editingProduct !== "new"
-            ? "Edit Product"
-            : "New Product"
+        onSave={(data) =>
+          saveProduct.mutate({
+            product: editingProduct && editingProduct !== "new" ? editingProduct : undefined,
+            data,
+          })
         }
-        footer={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => setEditingProduct(null)}
-            >
-              <X className="w-4 h-4" /> Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() =>
-                saveProduct.mutate(
-                  editingProduct && editingProduct !== "new"
-                    ? editingProduct
-                    : undefined,
-                )
-              }
-              disabled={!formName.trim() || saveProduct.isPending}
-            >
-              <Plus className="w-4 h-4" />{" "}
-              {editingProduct ? "Save Changes" : "Create Product"}
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-caption text-ink-muted mb-1">
-              Product Name
-            </label>
-            <input
-              type="text"
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-              placeholder="Wireless Mouse"
-              aria-label="Product name"
-            />
-          </div>
-          <div>
-            <label className="block text-caption text-ink-muted mb-1">
-              Description
-            </label>
-            <input
-              type="text"
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-              placeholder="Optional description"
-              aria-label="Product description"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-caption text-ink-muted mb-1">
-                Reorder Point
-              </label>
-              <input
-                type="number"
-                value={formReorder}
-                onChange={(e) => setFormReorder(Number(e.target.value))}
-                className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-                aria-label="Reorder point"
-              />
-            </div>
-            <div>
-              <label className="block text-caption text-ink-muted mb-1">
-                Safety Stock
-              </label>
-              <input
-                type="number"
-                value={formSafety}
-                onChange={(e) => setFormSafety(Number(e.target.value))}
-                className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-                aria-label="Safety stock"
-              />
-            </div>
-          </div>
-        </div>
-      </Modal>
+        isPending={saveProduct.isPending}
+      />
 
       <Modal
         open={deletingProduct !== null}
@@ -731,76 +535,19 @@ export default function InventoryPage() {
         </p>
       </Modal>
 
-      <Modal
+      <AdjustStockModal
         open={adjustingStock !== null}
-        onClose={() => {
-          setAdjustingStock(null);
-          setStockDelta("");
-          setStockReason("");
-        }}
-        title={`Adjust Stock — ${adjustingStock?.skuCode ?? ""}`}
-        footer={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => {
-                setAdjustingStock(null);
-                setStockDelta("");
-                setStockReason("");
-              }}
-            >
-              <X className="w-4 h-4" /> Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                if (adjustingStock && stockDelta) {
-                  adjustStock.mutate({
-                    stockId: adjustingStock.stockId,
-                    delta: Number(stockDelta),
-                    reason: stockReason,
-                  });
-                }
-              }}
-              disabled={adjustStock.isPending || !stockDelta}
-            >
-              <ArrowUpDown className="w-4 h-4" /> Adjust
-            </Button>
-          </div>
+        stockInfo={adjustingStock}
+        onClose={() => setAdjustingStock(null)}
+        onAdjust={({ delta, reason }) =>
+          adjustStock.mutate({
+            stockId: adjustingStock!.stockId,
+            delta,
+            reason,
+          })
         }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-caption font-medium text-ink-secondary mb-1">
-              Quantity Delta
-            </label>
-            <input
-              type="number"
-              value={stockDelta}
-              onChange={(e) => setStockDelta(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
-              placeholder="e.g. 10 or -5"
-            />
-            <p className="text-caption text-ink-muted mt-1">
-              Positive to add stock, negative to remove.
-            </p>
-          </div>
-          <div>
-            <label className="block text-caption font-medium text-ink-secondary mb-1">
-              Reason (optional)
-            </label>
-            <input
-              type="text"
-              value={stockReason}
-              onChange={(e) => setStockReason(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
-              placeholder="e.g. Received shipment"
-            />
-          </div>
-        </div>
-      </Modal>
+        isPending={adjustStock.isPending}
+      />
     </div>
   );
 }

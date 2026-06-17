@@ -205,7 +205,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             self._cached_queryset = (
                 InventoryRepository()
                 .get_all_queryset(include_inactive=is_admin)
-                .defer('description')
             )
         return self._cached_queryset
 
@@ -226,18 +225,23 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [IsManagerOrAbove()]
 
     def list(self, request, *args, **kwargs):
+        from urllib.parse import urlencode
         from .services import get_product_cache_version
 
+        cache_params = {
+            k: request.query_params.get(k)
+            for k in ['search', 'stock_status', 'ordering', 'page', 'page_size']
+            if k in request.query_params
+        }
         cache_key = (
             f'product_list_v{get_product_cache_version()}'
-            f'_{request.user.role}_{request.get_full_path()}'
+            f'_{request.user.role}_'
+            + urlencode(sorted(cache_params.items()))
         )
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
         response = super().list(request, *args, **kwargs)
-        low_stock = InventoryService().get_low_stock_items()
-        response.data['low_stock'] = low_stock
         cache.set(cache_key, response.data, timeout=300)
         return response
 

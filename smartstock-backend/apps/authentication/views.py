@@ -250,8 +250,11 @@ class MeView(APIView):
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    queryset = CustomUser.objects.all().order_by('-date_joined')
+    queryset = CustomUser.objects.all().prefetch_related('groups', 'user_permissions').order_by('-date_joined')
     permission_classes = (IsAdminOnly,)
+    search_fields = ['email', 'username', 'first_name', 'last_name']
+    ordering_fields = ['date_joined', 'email', 'username', 'is_active']
+    filterset_fields = ['is_active', 'role']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

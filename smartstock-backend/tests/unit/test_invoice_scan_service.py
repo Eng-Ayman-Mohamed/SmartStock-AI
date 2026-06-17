@@ -378,6 +378,7 @@ def inventory_service(repo, stock_repo, sku_repo, supplier_repo, monkeypatch):
     )
 
 
+@pytest.mark.django_db
 def test_apply_confirmed_invoice_updates_existing_sku_stock_and_product(monkeypatch):
     supplier = SimpleNamespace(id=9, name='TechSupply')
     product = SimpleNamespace(id=10)
@@ -407,6 +408,7 @@ def test_apply_confirmed_invoice_updates_existing_sku_stock_and_product(monkeypa
     assert result['quantity_on_hand'] == 12
 
 
+@pytest.mark.django_db
 def test_apply_confirmed_invoice_creates_product_sku_and_stock(monkeypatch):
     repo = FakeProductRepo(created_product=SimpleNamespace(id=11))
     stock_repo = FakeStockRepo()
@@ -430,6 +432,7 @@ def test_apply_confirmed_invoice_creates_product_sku_and_stock(monkeypatch):
     assert result['product_id'] == 11
 
 
+@pytest.mark.django_db
 def test_apply_confirmed_invoice_creates_missing_stock_for_existing_sku(monkeypatch):
     product = SimpleNamespace(id=10)
     sku = SimpleNamespace(id=20, code='WM-001', product=product)
@@ -462,6 +465,7 @@ def test_apply_confirmed_invoice_creates_missing_stock_for_existing_sku(monkeypa
         ('unit_price', '-1.00', 'Unit price cannot be negative.'),
     ],
 )
+@pytest.mark.django_db
 def test_apply_confirmed_invoice_validates_quantity_and_price(field, value, message, monkeypatch):
     service = inventory_service(
         FakeProductRepo(),

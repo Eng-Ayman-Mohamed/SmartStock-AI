@@ -41,27 +41,28 @@ interface RawPO {
   [key: string]: unknown;
 }
 
-export async function listPendingPOs(): Promise<PendingPO[]> {
-  const { data } = await api.get<RawPO[]>(
-    '/purchasing/orders/',
-    { params: { status: 'pending_approval', page_size: 100 } }
-  );
-  const items = data ?? [];
-  return items.map((item) => {
-    const total = parseFloat(item.total_cost) || 0;
-    const qty = item.quantity || 1;
-    return {
-      id: `PO-${item.id}`,
-      product: item.product_name,
-      sku: item.sku_code,
-      supplier: item.supplier_name,
-      predicted_stockout: 'N/A',
-      recommended_qty: qty,
-      unit_cost: Math.round((total / qty) * 100) / 100,
-      estimated_total_cost: `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      agent_reasoning: item.agent_reasoning,
-    };
+export async function listPendingPOs(page = 1, pageSize = 20): Promise<PaginatedResponse<PendingPO>> {
+  const { data } = await api.get<PaginatedResponse<RawPO>>('/purchasing/orders/', {
+    params: { status: 'pending_approval', page, page_size: pageSize },
   });
+  return {
+    ...data,
+    results: data.results.map((item) => {
+      const total = parseFloat(item.total_cost) || 0;
+      const qty = item.quantity || 1;
+      return {
+        id: `PO-${item.id}`,
+        product: item.product_name,
+        sku: item.sku_code,
+        supplier: item.supplier_name,
+        predicted_stockout: 'N/A',
+        recommended_qty: qty,
+        unit_cost: Math.round((total / qty) * 100) / 100,
+        estimated_total_cost: `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        agent_reasoning: item.agent_reasoning,
+      };
+    }),
+  };
 }
 
 export async function approvePO(id: string): Promise<void> {
@@ -106,21 +107,23 @@ function formatTotal(cost: string): string {
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export async function listPOHistory(): Promise<POHistoryItem[]> {
-  const { data } = await api.get<POHistoryRaw[]>('/purchasing/orders/', {
-    params: { page_size: 100 },
+export async function listPOHistory(page = 1, pageSize = 20): Promise<PaginatedResponse<POHistoryItem>> {
+  const { data } = await api.get<PaginatedResponse<POHistoryRaw>>('/purchasing/orders/', {
+    params: { page, page_size: pageSize },
   });
-  const items = data ?? [];
-  return items
-    .filter((item) => item.status !== 'pending_approval' && item.status !== 'draft')
-    .map((item) => ({
-      id: `PO-${item.id}`,
-      product_name: item.product_name,
-      supplier: item.supplier_name,
-      quantity: item.quantity,
-      total: formatTotal(item.total_cost),
-      status: item.status,
-      created_at: formatPODate(item.created_at),
-      approved_by: item.approved_by_name ?? '—',
-    }));
+  return {
+    ...data,
+    results: data.results
+      .filter((item) => item.status !== 'pending_approval' && item.status !== 'draft')
+      .map((item) => ({
+        id: `PO-${item.id}`,
+        product_name: item.product_name,
+        supplier: item.supplier_name,
+        quantity: item.quantity,
+        total: formatTotal(item.total_cost),
+        status: item.status,
+        created_at: formatPODate(item.created_at),
+        approved_by: item.approved_by_name ?? '—',
+      })),
+  };
 }

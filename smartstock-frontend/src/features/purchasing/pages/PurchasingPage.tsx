@@ -16,6 +16,7 @@ import type { POHistoryItem } from "../api";
 import { usePagination } from "../../../shared/hooks/usePagination";
 
 const PAGE_SIZE = 20;
+const EMPTY_ARRAY: [] = [];
 
 const historyColumns: Column<POHistoryItem>[] = [
   {
@@ -78,6 +79,9 @@ const historyColumns: Column<POHistoryItem>[] = [
 ];
 
 export default function PurchasingPage() {
+  const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
+  const [poPage, setPoPage] = useState(1);
+
   const {
     data: pendingPOsData,
     isLoading: isPendingLoading,
@@ -87,11 +91,9 @@ export default function PurchasingPage() {
     data: poHistoryData,
     isLoading: isHistoryLoading,
     isError: isHistoryError,
-  } = usePOHistory();
-  const pendingPOs = useMemo(() => pendingPOsData ?? [], [pendingPOsData]);
-  const poHistory = useMemo(() => poHistoryData ?? [], [poHistoryData]);
-  const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
-  const [poPage, setPoPage] = useState(1);
+  } = usePOHistory(poPage, PAGE_SIZE);
+  const pendingPOs = pendingPOsData?.results ?? EMPTY_ARRAY;
+  const poHistory = poHistoryData?.results ?? EMPTY_ARRAY;
 
   // Derive selected PO: user's pick if it still exists in the list, otherwise the first PO
   const selectedPO = useMemo(() => {
@@ -102,20 +104,17 @@ export default function PurchasingPage() {
     return pendingPOs[0] ?? null;
   }, [pendingPOs, selectedPoId]);
 
+  const poTotalCount = poHistoryData?.count ?? 0;
   const poPagination = usePagination({
-    total: poHistory.length,
+    total: poTotalCount,
     pageSize: PAGE_SIZE,
-    currentPage: Math.min(poPage, Math.max(1, Math.ceil(poHistory.length / PAGE_SIZE))),
+    currentPage: Math.min(poPage, Math.max(1, Math.ceil(poTotalCount / PAGE_SIZE))),
   });
-
-  const paginatedPoHistory = useMemo(() => {
-    return poHistory.slice(poPagination.startItem - 1, poPagination.endItem);
-  }, [poHistory, poPagination.startItem, poPagination.endItem]);
 
   const poPaginationConfig: PaginationConfig = {
     currentPage: poPage,
     totalPages: poPagination.totalPages,
-    total: poHistory.length,
+    total: poTotalCount,
     startItem: poPagination.startItem,
     endItem: poPagination.endItem,
     hasPrev: poPagination.hasPrev,
@@ -226,7 +225,7 @@ export default function PurchasingPage() {
         ) : (
           <DataTable
             columns={historyColumns}
-            data={paginatedPoHistory}
+            data={poHistory}
             keyExtractor={(r) => r.id}
             caption="Purchase order history"
             pagination={poPaginationConfig}
