@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp } from 'lucide-react';
 import Button from './Button';
 
@@ -36,7 +36,7 @@ interface DataTableProps<T> {
   onSort?: (key: string) => void;
 }
 
-export default function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagination, onSort }: DataTableProps<T>) {
+function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagination, onSort }: DataTableProps<T>) {
   if (data.length === 0 && emptyState) {
     return <>{emptyState}</>;
   }
@@ -197,4 +197,6 @@ export default function DataTable<T>({ columns, data, keyExtractor, caption, emp
       )}
     </div>
   );
-}
+};
+
+export default memo(DataTable) as typeof DataTable;

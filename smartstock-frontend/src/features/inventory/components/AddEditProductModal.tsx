@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import Modal from "../../../shared/components/Modal";
 import Button from "../../../shared/components/Button";
@@ -17,6 +17,18 @@ interface AddEditProductModalProps {
   isPending: boolean;
 }
 
+function formStateFromProduct(product: Product | "new" | null) {
+  if (product === "new" || !product) {
+    return { name: "", description: "", reorder_point: 10, safety_stock: 10 };
+  }
+  return {
+    name: product.name,
+    description: product.description,
+    reorder_point: product.reorder_point,
+    safety_stock: product.safety_stock,
+  };
+}
+
 export default function AddEditProductModal({
   open,
   product,
@@ -24,26 +36,14 @@ export default function AddEditProductModal({
   onSave,
   isPending,
 }: AddEditProductModalProps) {
-  const [formName, setFormName] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formReorder, setFormReorder] = useState(10);
-  const [formSafety, setFormSafety] = useState(10);
-
-  useEffect(() => {
-    if (product === "new") {
-      setFormName("");
-      setFormDescription("");
-      setFormReorder(10);
-      setFormSafety(10);
-    } else if (product) {
-      setFormName(product.name);
-      setFormDescription(product.description);
-      setFormReorder(product.reorder_point);
-      setFormSafety(product.safety_stock);
-    }
-  }, [product]);
-
+  const [form, setForm] = useState(() => formStateFromProduct(product));
   const isEditing = product !== null && product !== "new";
+
+  function update(field: "name" | "description", value: string): void;
+  function update(field: "reorder_point" | "safety_stock", value: number): void;
+  function update(field: string, value: string | number) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
 
   return (
     <Modal
@@ -60,13 +60,13 @@ export default function AddEditProductModal({
             size="md"
             onClick={() =>
               onSave({
-                name: formName,
-                description: formDescription,
-                reorder_point: formReorder,
-                safety_stock: formSafety,
+                name: form.name,
+                description: form.description,
+                reorder_point: form.reorder_point,
+                safety_stock: form.safety_stock,
               })
             }
-            disabled={!formName.trim() || isPending}
+            disabled={!form.name.trim() || isPending}
           >
             <Plus className="w-4 h-4" />{" "}
             {isEditing ? "Save Changes" : "Create Product"}
@@ -81,8 +81,8 @@ export default function AddEditProductModal({
           </label>
           <input
             type="text"
-            value={formName}
-            onChange={(e) => setFormName(e.target.value)}
+            value={form.name}
+            onChange={(e) => update("name", e.target.value)}
             className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
             placeholder="Wireless Mouse"
             aria-label="Product name"
@@ -94,8 +94,8 @@ export default function AddEditProductModal({
           </label>
           <input
             type="text"
-            value={formDescription}
-            onChange={(e) => setFormDescription(e.target.value)}
+            value={form.description}
+            onChange={(e) => update("description", e.target.value)}
             className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
             placeholder="Optional description"
             aria-label="Product description"
@@ -108,8 +108,8 @@ export default function AddEditProductModal({
             </label>
             <input
               type="number"
-              value={formReorder}
-              onChange={(e) => setFormReorder(Number(e.target.value))}
+              value={form.reorder_point}
+              onChange={(e) => update("reorder_point", Number(e.target.value))}
               className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               aria-label="Reorder point"
             />
@@ -120,8 +120,8 @@ export default function AddEditProductModal({
             </label>
             <input
               type="number"
-              value={formSafety}
-              onChange={(e) => setFormSafety(Number(e.target.value))}
+              value={form.safety_stock}
+              onChange={(e) => update("safety_stock", Number(e.target.value))}
               className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               aria-label="Safety stock"
             />

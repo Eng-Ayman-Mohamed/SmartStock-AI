@@ -17,4 +17,6 @@ class CustomUser(AbstractUser):
         ordering = ['-date_joined']
         indexes = [
             models.Index(fields=['role'], name='idx_user_role'),
+            models.Index(fields=['email']),
+            models.Index(fields=['is_active']),
         ]

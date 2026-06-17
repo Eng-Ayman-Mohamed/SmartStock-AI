@@ -5,11 +5,16 @@ import type { CreateUserPayload, UpdateUserRolePayload } from '../types';
 
 export const usersQueryKey = ['users'] as const;
 
-export function useUsers() {
+export function useUsers(
+  searchQuery?: string,
+  page: number = 1,
+  pageSize: number = 20,
+  isActive?: boolean,
+) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
-    queryKey: usersQueryKey,
-    queryFn: usersApi.listUsers,
+    queryKey: [...usersQueryKey, page, pageSize, searchQuery, isActive],
+    queryFn: () => usersApi.listUsers(page, pageSize, searchQuery ?? '', isActive),
     enabled: !!token,
     retry: false,
   });

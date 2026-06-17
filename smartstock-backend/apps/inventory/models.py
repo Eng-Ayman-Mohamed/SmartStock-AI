@@ -108,9 +108,7 @@ class SalesRecord(models.Model):
         verbose_name = 'sales record'
         verbose_name_plural = 'sales records'
         ordering = ['-date', 'sku']
-        indexes = [
-            models.Index(fields=['sku', 'date']),
-        ]
+        indexes = []
         unique_together = [('sku', 'date')]
 
     def __str__(self):
@@ -134,3 +132,7 @@ class Supplier(models.Model):
         verbose_name = 'supplier'
         verbose_name_plural = 'suppliers'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['is_active']),
+        ]

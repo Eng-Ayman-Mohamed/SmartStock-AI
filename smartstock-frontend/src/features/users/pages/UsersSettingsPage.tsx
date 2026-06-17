@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Users, UserPlus } from 'lucide-react';
 import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
@@ -7,52 +7,69 @@ import InviteUserModal from '../components/InviteUserModal';
 import UsersFilterBar from '../components/UsersFilterBar';
 import UsersTable from '../components/UsersTable';
 import { useUsers } from '../hooks/useUsers';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import type { StatusFilter } from '../types';
 import type { PaginationConfig } from '../../../shared/components/DataTable';
 
 const PAGE_SIZE = 20;
 
+/** Map UI status filter to backend `is_active` param. */
+function statusToIsActive(status: StatusFilter): boolean | undefined {
+  if (status === 'active') return true;
+  if (status === 'deactivated') return false;
+  return undefined;
+}
+
 export default function UsersSettingsPage() {
-  const { data: users, isLoading, isError, error, refetch } = useUsers();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
 
-  const filtered = useMemo(() => {
-    if (!users) return [];
-    const q = query.trim().toLowerCase();
-    return users.filter((u) => {
-      const matchesQuery =
-        !q || u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q);
-      const matchesStatus =
-        status === 'all' || (status === 'active' ? u.is_active : !u.is_active);
-      return matchesQuery && matchesStatus;
-    });
-  }, [users, query, status]);
+  const debouncedSearch = useDebounce(query, 300);
+  const isActive = statusToIsActive(status);
 
-  const pagination = usePagination({ total: filtered.length, pageSize: PAGE_SIZE, currentPage: page });
+  const { data, isLoading, isError, error, refetch } = useUsers(
+    debouncedSearch || undefined,
+    page,
+    PAGE_SIZE,
+    isActive,
+  );
 
-  const paginatedUsers = useMemo(() => {
-    return filtered.slice(pagination.startItem - 1, pagination.endItem);
-  }, [filtered, pagination.startItem, pagination.endItem]);
+  const users = data?.results ?? [];
+  const totalCount = data?.count ?? 0;
+  const maxPage = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(page, maxPage);
 
-  const paginationConfig: PaginationConfig = {
-    currentPage: page,
+  const pagination = usePagination({ total: totalCount, pageSize: PAGE_SIZE, currentPage });
+
+  const handlePageChange = useCallback((p: number) => {
+    setPage(p);
+  }, []);
+
+  const paginationConfig = useMemo<PaginationConfig>(() => ({
+    currentPage,
     totalPages: pagination.totalPages,
-    total: filtered.length,
+    total: totalCount,
     startItem: pagination.startItem,
     endItem: pagination.endItem,
     hasPrev: pagination.hasPrev,
     hasNext: pagination.hasNext,
     pages: pagination.pages,
-    onPageChange: (p) => setPage(p),
+    onPageChange: handlePageChange,
     itemLabel: 'team members',
-  };
-
-  const maxPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  if (page > maxPage) setPage(maxPage);
+  }), [
+    currentPage,
+    pagination.totalPages,
+    pagination.startItem,
+    pagination.endItem,
+    pagination.hasPrev,
+    pagination.hasNext,
+    pagination.pages,
+    totalCount,
+    handlePageChange,
+  ]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -88,16 +105,16 @@ export default function UsersSettingsPage() {
         <>
           <UsersFilterBar
             query={query}
-            onQueryChange={setQuery}
+            onQueryChange={(v) => { setQuery(v); setPage(1); }}
             status={status}
-            onStatusChange={setStatus}
-            totalCount={users?.length ?? 0}
-            filteredCount={filtered.length}
+            onStatusChange={(v) => { setStatus(v); setPage(1); }}
+            totalCount={totalCount}
+            filteredCount={totalCount}
           />
           <UsersTable
-            users={paginatedUsers}
+            users={users}
             emptyState={
-              users && users.length > 0 ? (
+              totalCount > 0 ? (
                 <EmptyState
                   icon={Users}
                   heading="No matches"
@@ -113,7 +130,7 @@ export default function UsersSettingsPage() {
                 />
               )
             }
-            pagination={paginatedUsers.length > 0 ? paginationConfig : undefined}
+            pagination={users.length > 0 ? paginationConfig : undefined}
           />
         </>
       )}

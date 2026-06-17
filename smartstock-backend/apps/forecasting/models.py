@@ -18,7 +18,7 @@ class ForecastResult(models.Model):
         verbose_name_plural = 'forecast results'
         ordering = ['-created_at', '-id']
         indexes = [
-            models.Index(fields=['sku', 'forecast_date']),
+            models.Index(fields=['forecast_date']),
         ]
         unique_together = [('sku', 'forecast_date')]
 

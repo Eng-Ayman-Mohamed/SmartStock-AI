@@ -42,7 +42,18 @@ class TokenRefreshView(BaseTokenRefreshView):
         auth=[],
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        response = super().post(request, *args, **kwargs)
+        refresh_token = response.data.get('refresh')
+        if refresh_token:
+            response.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='None' if not settings.DEBUG else 'Lax',
+                max_age=3 * 24 * 60 * 60,
+            )
+        return response
 
 
 User = get_user_model()

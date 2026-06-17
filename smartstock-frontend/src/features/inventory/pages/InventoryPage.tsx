@@ -350,7 +350,7 @@ export default function InventoryPage() {
         </div>
       ),
     },
-  ], [sortField, sortOrder]);
+  ], [sortField, sortOrder, canDelete, canManage]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -490,6 +490,7 @@ export default function InventoryPage() {
       </Card>
 
       <AddEditProductModal
+        key={editingProduct === "new" ? "new" : editingProduct?.id ?? "none"}
         open={editingProduct !== null}
         product={editingProduct}
         onClose={() => setEditingProduct(null)}

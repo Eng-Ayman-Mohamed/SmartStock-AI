@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import Button from './Button';
 
@@ -9,7 +10,7 @@ interface EmptyStateProps {
   onAction?: () => void;
 }
 
-export default function EmptyState({ icon: Icon, heading, body, actionLabel, onAction }: EmptyStateProps) {
+const EmptyState = memo(function EmptyState({ icon: Icon, heading, body, actionLabel, onAction }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <Icon className="w-12 h-12 text-ink-faint mb-4" aria-hidden="true" />
@@ -20,4 +21,6 @@ export default function EmptyState({ icon: Icon, heading, body, actionLabel, onA
       )}
     </div>
   );
-}
+});
+
+export default EmptyState;

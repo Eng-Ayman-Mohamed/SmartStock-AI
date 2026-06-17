@@ -132,6 +132,12 @@ if not DATABASES.get('default') or not DATABASES['default'].get('ENGINE'):
             }
         }
 
+# Apply statement timeout to all PostgreSQL connections to prevent runaway queries
+for _db_config in DATABASES.values():
+    if _db_config.get('ENGINE', '').endswith('postgresql'):
+        _db_config.setdefault('OPTIONS', {})
+        _db_config['OPTIONS']['options'] = '-c statement_timeout=30000'
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -274,7 +280,7 @@ CACHES = {
         'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'IGNORE_EXCEPTIONS': True,
+            'IGNORE_EXCEPTIONS': os.environ.get('REDIS_IGNORE_EXCEPTIONS', 'True').lower() == 'true',
         },
         'KEY_PREFIX': 'smartstock',
         'TIMEOUT': 300,
@@ -282,6 +288,21 @@ CACHES = {
 }
 
 CACHE_MIDDLEWARE_SECONDS = 300
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {},
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
 
 CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '')
 

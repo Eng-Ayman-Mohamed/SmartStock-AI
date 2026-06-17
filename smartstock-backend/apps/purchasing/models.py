@@ -56,4 +56,8 @@ class PurchaseOrder(models.Model):
         ordering = ['-created_at', '-id']
         indexes = [
             models.Index(fields=['status', '-created_at'], name='idx_po_status_created'),
+            models.Index(fields=['sku']),
+            models.Index(fields=['supplier']),
+            models.Index(fields=['requested_by']),
+            models.Index(fields=['approved_by']),
         ]
