@@ -45,8 +45,12 @@ def run_forecast_single_sku(sku_id: int):
         result = service.run_forecast(sku_id=sku_id)
         try:
             cache.delete_pattern('forecast_dashboard_*')
+            if result:
+                sku_code = result[0].get('sku')
+                if sku_code:
+                    cache.delete(f'forecast_sku_{sku_code}')
         except Exception:
-            logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
+            logger.warning('Failed to invalidate forecast cache', exc_info=True)
         return {'sku_id': sku_id, 'status': 'success', 'result': result}
     except Exception as e:
         logger.exception('Forecast failed for SKU %s: %s', sku_id, e)

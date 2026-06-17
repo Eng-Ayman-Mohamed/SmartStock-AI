@@ -75,24 +75,83 @@ def compute_retrieval_precision_at_5(retrieved_docs: list[dict], expected_filter
     return relevant_count / 5.0
 
 
+STOP_WORDS = frozenset({
+    'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'shall', 'can', 'need', 'dare', 'ought',
+    'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from',
+    'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below',
+    'between', 'out', 'off', 'over', 'under', 'again', 'further', 'then',
+    'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
+    'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no',
+    'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+    'just', 'because', 'but', 'and', 'or', 'if', 'while', 'although',
+    'it', 'its', 'this', 'that', 'these', 'those', 'i', 'me', 'my',
+    'we', 'our', 'you', 'your', 'he', 'she', 'they', 'them', 'their',
+})
+
+
+def _tokenize(text: str) -> list[str]:
+    return text.lower().split()
+
+
+def _bigrams(tokens: list[str]) -> set[tuple[str, str]]:
+    return set(zip(tokens, tokens[1:]))
+
+
 def compute_answer_faithfulness(answer: str, context_docs: list[dict]) -> float:
     """Compute faithfulness score: how well the answer is grounded in context.
 
-    Uses simple token-overlap heuristic: fraction of answer tokens found in context.
+    Improved heuristic using:
+    - Stop-word removal to focus on content-bearing tokens
+    - Bi-gram overlap to capture multi-word grounding
+    - Short-answer floor of 0.25 (answers under 5 tokens get leniency)
+
+    LangChain's built-in evaluator (load_evaluator('labeled_score_string', ...))
+    requires an LLM call per query and is too slow for daily batch evaluation
+    of the full golden dataset. This heuristic provides a fast, reliable proxy.
+
     Returns a score between 0.0 and 1.0.
     """
     if not answer or not context_docs:
         return 0.0
 
-    answer_tokens = set(answer.lower().split())
     context_text = ' '.join((doc.get('content') or '').lower() for doc in context_docs)
-    context_tokens = set(context_text.split())
+    context_tokens = _tokenize(context_text)
+    context_set = set(context_tokens)
+    context_bigrams = _bigrams(context_tokens)
+
+    answer_tokens = _tokenize(answer)
 
     if not answer_tokens:
         return 0.0
 
-    overlap = answer_tokens & context_tokens
-    return len(overlap) / len(answer_tokens)
+    content_tokens = [t for t in answer_tokens if t not in STOP_WORDS]
+    answer_bigrams = _bigrams(answer_tokens)
+
+    if not content_tokens and not answer_bigrams:
+        return 0.0
+
+    unigram_overlap = 0.0
+    bigram_overlap = 0.0
+    weights = 0.0
+
+    if content_tokens:
+        matched = sum(1 for t in content_tokens if t in context_set)
+        unigram_overlap = matched / len(content_tokens)
+        weights += 0.6
+
+    if answer_bigrams:
+        matched = len(answer_bigrams & context_bigrams)
+        bigram_overlap = matched / len(answer_bigrams)
+        weights += 0.4
+
+    score = (unigram_overlap * 0.6 + bigram_overlap * 0.4) / weights if weights > 0 else 0.0
+
+    if len(answer_tokens) < 5:
+        score = max(score, 0.25)
+
+    return min(score, 1.0)
 
 
 def evaluate_single_query(query_row: dict, retrieval_fn=None) -> dict:

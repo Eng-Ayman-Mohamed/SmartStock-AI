@@ -318,8 +318,9 @@ class StubToolTests(TestCase):
             repo = SimpleNamespace(
                 get_by_id=lambda po_id: SimpleNamespace(
                     id=po_id,
+                    po_number=None,
                     status='approved',
-                    sku=SimpleNamespace(code='SKU-1', product=SimpleNamespace(name='Widget')),
+                    sku=SimpleNamespace(code='SKU-1', product=SimpleNamespace(name='Widget', unit_price='10.00')),
                     supplier=SimpleNamespace(name='Acme', contact_email='a@b.com'),
                     quantity=10,
                     total_cost='100.00',

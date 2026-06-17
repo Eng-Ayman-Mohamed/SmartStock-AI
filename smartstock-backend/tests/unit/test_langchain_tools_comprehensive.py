@@ -351,8 +351,9 @@ class EmailSendToolTest(TestCase):
         mock_task.delay.return_value = mock_result
         mock_po = SimpleNamespace(
             id=1,
+            po_number=None,
             status='approved',
-            sku=SimpleNamespace(code='SKU-001', product=SimpleNamespace(name='Widget')),
+            sku=SimpleNamespace(code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')),
             quantity=100,
             total_cost=500.00,
             requested_by='admin',
@@ -396,15 +397,14 @@ class EmailSendToolTest(TestCase):
 
     def test_build_email_body(self):
         tool = EmailSendTool()
-        body = tool._build_email_body(
-            po_id=1,
-            sku_code='SKU-001',
-            product_name='Widget',
+        po = SimpleNamespace(
+            id=1,
+            po_number=None,
+            sku=SimpleNamespace(code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')),
             quantity=100,
             total_cost=500.00,
-            requested_by='admin',
-            supplier_name='Acme',
         )
+        body = tool._build_email_body(po, 'Acme')
         self.assertIn('Purchase Order PO-1', body)
         self.assertIn('SKU-001', body)
         self.assertIn('Widget', body)

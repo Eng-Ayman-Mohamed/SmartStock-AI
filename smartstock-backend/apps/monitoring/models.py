@@ -28,6 +28,8 @@ class AlertRule(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'alert rule'
+        verbose_name_plural = 'alert rules'
         ordering = ['name']
 
     def __str__(self):
@@ -47,6 +49,8 @@ class AlertEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = 'alert event'
+        verbose_name_plural = 'alert events'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['rule', 'status']),
@@ -74,6 +78,8 @@ class DashboardBanner(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        verbose_name = 'dashboard banner'
+        verbose_name_plural = 'dashboard banners'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['dismissed', 'level']),
@@ -92,6 +98,8 @@ class TokenUsageLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = 'token usage log'
+        verbose_name_plural = 'token usage logs'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['logged_at']),
@@ -113,6 +121,8 @@ class AgentRunLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = 'agent run log'
+        verbose_name_plural = 'agent run logs'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['agent_name', 'outcome']),

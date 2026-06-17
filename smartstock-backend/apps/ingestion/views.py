@@ -860,7 +860,7 @@ class ChatEndpointView(APIView):
 
     def _run_nl_query(self, query: str, user) -> dict:
         """Execute the NL Query pipeline — mirrors NLQueryEndpointView._run_pipeline."""
-        from ai.llm.chain import NLQueryChain, call_gpt4o_formatter
+        from ai.llm.chain import get_nl_chain, call_gpt4o_formatter
         from apps.inventory.views import (
             _handle_forecast_demand,
             _handle_get_inventory,
@@ -873,7 +873,7 @@ class ChatEndpointView(APIView):
 
         # Step B: LangChain Processing
         try:
-            chain_instance = NLQueryChain()
+            chain_instance = get_nl_chain()
             chain_result = chain_instance.run(query)
             chain_dict = chain_result.to_dict()
             action_type = chain_dict.get('action')

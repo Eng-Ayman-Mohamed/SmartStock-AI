@@ -28,76 +28,10 @@ import Modal from "../../../shared/components/Modal";
 import DataTable from "../../../shared/components/DataTable";
 import type { Column } from "../../../shared/components/DataTable";
 import { useToastStore } from "../../../store/toastStore";
-
-type Product = {
-  id: number;
-  name: string;
-  description: string;
-  category_name?: string | null;
-  supplier_name?: string | null;
-  reorder_point: number;
-  safety_stock: number;
-  skus: ProductSku[];
-  unit_price?: number;
-  unit_of_measure?: string;
-  is_active?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  category_id?: number;
-  supplier_id?: number;
-};
-
-type ProductSku = {
-  id: number;
-  code: string;
-  stock_level_id?: number | null;
-  quantity_on_hand?: number;
-  quantity_reserved?: number;
-  stock_reorder_point?: number | null;
-};
-
-type LowStockItem = {
-  id: number;
-  product_name: string;
-  sku_code: string;
-  quantity: number;
-  reorder_point: number;
-  product_id: number;
-  reorder_quantity: number;
-  supplier_name?: string;
-  predicted_stockout_date?: string;
-};
+import { useInventory } from "../hooks/useInventory";
+import type { Product } from "../hooks/useInventory";
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
-
-function unwrap<T>(payload: T | { data: T } | { results: T }): T {
-  if (payload && typeof payload === "object") {
-    if ("data" in payload) return payload.data;
-    if ("results" in payload) return payload.results as T;
-  }
-  return payload as T;
-}
-
-type PaginationMeta = {
-  page: number;
-  total: number;
-  perPage: number;
-  next: string | null;
-  previous: string | null;
-};
-
-const PAGE_SIZE = 20;
-
-const statusParamByLabel: Record<Status, string> = {
-  "In Stock": "in_stock",
-  "Low Stock": "low_stock",
-  "Out of Stock": "out_of_stock",
-};
-
-function numberFromMeta(value: unknown, fallback: number): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
 
 function statusFor(quantity: number, reorderPoint: number): Status {
   if (quantity <= 0) return "Out of Stock";
@@ -111,10 +45,13 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState(
     searchParams.get("status") ?? "",
   );
+  const [categoryFilter, setCategoryFilter] = useState(
+    searchParams.get("category") ?? "",
+  );
   const supplierId = searchParams.get("supplierId") ?? "";
   const [page, setPage] = useState(Number(searchParams.get("page") ?? 1));
-  const [sortField] = useState(searchParams.get("sort") ?? "");
-  const [sortOrder] = useState(searchParams.get("order") ?? "");
+  const [sortField, setSortField] = useState(searchParams.get("sort") ?? "");
+  const [sortOrder, setSortOrder] = useState(searchParams.get("order") ?? "");
   const debouncedSearch = useDebounce(search, 300);
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -138,49 +75,42 @@ export default function InventoryPage() {
 
   const addToast = useToastStore((s) => s.addToast);
 
-  const ordering = sortField
-    ? sortOrder === "desc"
-      ? `-${sortField}`
-      : sortField
-    : "";
-  const orderingParam = ordering ? { ordering } : {};
+  function handleSort(key: string) {
+    if (sortField === key && sortOrder === "asc") {
+      setSortOrder("desc");
+    } else if (sortField === key && sortOrder === "desc") {
+      setSortField("");
+      setSortOrder("");
+    } else {
+      setSortField(key);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  }
 
-  const inventoryQuery = useQuery({
-    queryKey: [
-      "inventory",
-      debouncedSearch,
-      statusFilter,
-      supplierId,
-      sortField,
-      sortOrder,
-      page,
-    ],
+  const inventoryQuery = useInventory({
+    search: debouncedSearch,
+    statusFilter,
+    supplierId,
+    sortField,
+    sortOrder,
+    page,
+    categoryFilter,
+  });
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
     queryFn: async () => {
-      const params: Record<string, unknown> = {
-        page,
-        page_size: PAGE_SIZE,
-        ...orderingParam,
-      };
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (supplierId) params.supplier = supplierId;
-      if (statusFilter)
-        params.stock_status = statusParamByLabel[statusFilter as Status];
-      const productsRes = await api.get("/inventory/products/", { params });
-      const products = unwrap<Product[]>(productsRes.data);
-      const meta = productsRes._meta ?? {};
-
-      return {
-        products,
-        pagination: {
-          page: numberFromMeta(meta.page, page),
-          total: numberFromMeta(meta.total, products.length),
-          perPage: numberFromMeta(meta.per_page, PAGE_SIZE),
-          next: typeof meta.next === "string" ? meta.next : null,
-          previous: typeof meta.previous === "string" ? meta.previous : null,
-        } satisfies PaginationMeta,
-        lowStock: (productsRes.data as Record<string, unknown>).low_stock as LowStockItem[] ?? [],
-      };
+      const res = await api.get("/inventory/categories/", {
+        params: { page_size: 100 },
+      });
+      const data = res.data;
+      if (data && typeof data === "object" && "results" in data) {
+        return data.results as Array<{ id: number; name: string }>;
+      }
+      return Array.isArray(data) ? data : [];
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const saveProduct = useMutation({
@@ -268,10 +198,7 @@ export default function InventoryPage() {
   }
 
   const rows = useMemo(() => {
-    const data = inventoryQuery.data;
-    if (!data) return [];
-
-    return data.products
+    return inventoryQuery.products
       .flatMap((product) => {
         const skus = product.skus.length
           ? product.skus
@@ -292,10 +219,10 @@ export default function InventoryPage() {
         });
       })
       .filter((row) => !statusFilter || row.status === statusFilter);
-  }, [inventoryQuery.data, statusFilter]);
+  }, [inventoryQuery.products, statusFilter]);
 
-  const totalProducts = inventoryQuery.data?.pagination.total ?? 0;
-  const currentPageSize = inventoryQuery.data?.pagination.perPage ?? PAGE_SIZE;
+  const totalProducts = inventoryQuery.pagination.total;
+  const currentPageSize = inventoryQuery.pagination.perPage;
   const pagination = usePagination({
     total: totalProducts,
     pageSize: currentPageSize,
@@ -311,6 +238,8 @@ export default function InventoryPage() {
       key: "sku",
       label: "SKU",
       width: "130px",
+      sortable: true,
+      sortOrder: sortField === "sku" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="text-mono text-ink-secondary">{r.sku.code}</span>
       ),
@@ -318,12 +247,16 @@ export default function InventoryPage() {
     {
       key: "product",
       label: "Product",
+      sortable: true,
+      sortOrder: sortField === "product" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <span className="truncate block">{r.product.name}</span>,
     },
     {
       key: "category",
       label: "Category",
       width: "130px",
+      sortable: true,
+      sortOrder: sortField === "category" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="truncate block text-ink-muted">
           {r.product.category_name ?? "Unassigned"}
@@ -335,6 +268,8 @@ export default function InventoryPage() {
       label: "On Hand",
       align: "right",
       width: "160px",
+      sortable: true,
+      sortOrder: sortField === "qty" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <div className="flex items-center gap-2 justify-end">
           <span className="tabular-nums">{r.quantity}</span>
@@ -360,6 +295,8 @@ export default function InventoryPage() {
       label: "Reserved",
       align: "right",
       width: "80px",
+      sortable: true,
+      sortOrder: sortField === "reserved" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="tabular-nums">{r.quantity_reserved ?? 0}</span>
       ),
@@ -369,11 +306,15 @@ export default function InventoryPage() {
       label: "Reorder",
       align: "right",
       width: "80px",
+      sortable: true,
+      sortOrder: sortField === "reorder" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <span className="tabular-nums">{r.reorderPoint}</span>,
     },
     {
       key: "supplier",
       label: "Supplier",
+      sortable: true,
+      sortOrder: sortField === "supplier" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="truncate block text-ink-muted">
           {r.product.supplier_name ?? "Unassigned"}
@@ -384,6 +325,8 @@ export default function InventoryPage() {
       key: "status",
       label: "Status",
       width: "120px",
+      sortable: true,
+      sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <Badge variant={r.status}>{r.status}</Badge>,
     },
     {
@@ -446,7 +389,7 @@ export default function InventoryPage() {
           <h1 className="text-page-heading text-ink">Inventory</h1>
           <p className="text-body text-ink-muted mt-1">
             Stock's lookin' thin in places —{" "}
-            {inventoryQuery.data?.lowStock.length ?? "some"} SKUs could use a
+            {inventoryQuery.lowStock.length || "some"} SKUs could use a
             top-up.
           </p>
         </div>
@@ -460,9 +403,9 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      {inventoryQuery.data?.lowStock.length ? (
+      {inventoryQuery.lowStock.length ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {inventoryQuery.data.lowStock.slice(0, 6).map((item) => (
+          {inventoryQuery.lowStock.slice(0, 6).map((item) => (
             <Card key={item.id}>
               <p className="text-body font-medium text-ink truncate">
                 {item.product_name}
@@ -511,6 +454,22 @@ export default function InventoryPage() {
           <option>Low Stock</option>
           <option>Out of Stock</option>
         </select>
+        <select
+          className="h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
+          value={categoryFilter}
+          onChange={(e) => {
+            setCategoryFilter(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Category filter"
+        >
+          <option value="">All categories</option>
+          {categoriesQuery.data?.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {inventoryQuery.isError && (
@@ -549,6 +508,7 @@ export default function InventoryPage() {
                 data={rows}
                 keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
                 caption="Inventory products and stock levels"
+                onSort={handleSort}
               />
             </div>
             <div className="flex flex-col gap-3 border-t border-hairline px-4 py-3 sm:flex-row sm:items-center sm:justify-between">

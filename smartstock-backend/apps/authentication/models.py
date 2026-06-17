@@ -11,6 +11,9 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.VIEWER)
 
     class Meta:
+        verbose_name = 'user'
+        verbose_name_plural = 'users'
+        ordering = ['-date_joined']
         indexes = [
             models.Index(fields=['role'], name='idx_user_role'),
         ]

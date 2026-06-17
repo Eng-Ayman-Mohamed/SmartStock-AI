@@ -4,6 +4,15 @@ P95 latency and error-rate alerts are handled natively by Prometheus via
 histogram_quantile() and rate() respectively.  This module only evaluates
 alerts that require database queries or business logic not expressible in
 PromQL (token spend caps, agent success rate).
+
+The Langfuse Python SDK (v4.x) does not expose a programmatic API for
+creating or updating alert thresholds — alert rules are configured in the
+Langfuse UI/dashboard.  Our approach is therefore:
+  1. Evaluate alert conditions in Python (this module).
+  2. Fire Prometheus alerts via prometheus_client gauges.
+  3. Log firing/resolved events to Langfuse as traces + scores via
+     _log_alert_to_langfuse() for observability.
+This is the correct architecture given SDK constraints.
 """
 
 import logging

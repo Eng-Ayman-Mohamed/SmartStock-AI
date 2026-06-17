@@ -31,6 +31,8 @@ class EscalationNotification(models.Model):
     sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        verbose_name = 'escalation notification'
+        verbose_name_plural = 'escalation notifications'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['reason', 'status']),
