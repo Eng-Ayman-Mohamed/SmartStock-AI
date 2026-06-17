@@ -364,7 +364,7 @@ class RAGQueryView(APIView):
         except Exception as e:
             logger.exception('RAG pipeline failed')
             return Response(
-                {'status': 'error', 'message': str(e)},
+                {'status': 'error', 'message': 'An internal error occurred. Please try again later.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

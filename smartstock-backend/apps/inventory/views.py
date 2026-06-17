@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
@@ -40,7 +41,7 @@ from .serializers import (
 from .services import InventoryService, SalesRecordService, SKUService
 
 _nl_chain = None
-_nl_chain_lock = None
+_nl_chain_lock = threading.Lock()
 
 # P0-1: Pattern cache for common NL queries — short-circuits the first LLM call.
 # Maps lowercase substring patterns to (action, filters_dict) tuples.
@@ -73,12 +74,8 @@ def _match_cached_query(query: str) -> tuple[str, dict] | None:
 
 
 def get_nl_chain():
-    global _nl_chain, _nl_chain_lock
+    global _nl_chain
     if _nl_chain is None:
-        import threading
-
-        if _nl_chain_lock is None:
-            _nl_chain_lock = threading.Lock()
         with _nl_chain_lock:
             if _nl_chain is None:
                 from ai.llm.chain import NLQueryChain

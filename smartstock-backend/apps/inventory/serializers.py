@@ -92,6 +92,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'unit_of_measure',
             'reorder_point',
             'safety_stock',
+            'max_warehouse_capacity',
         )
         read_only_fields = ('id',)
 

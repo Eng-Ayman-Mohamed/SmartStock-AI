@@ -224,8 +224,16 @@ class ForecastDashboardView(APIView):
     )
     def get(self, request):
         service = ForecastingService()
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 6))
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 6))
+        except (ValueError, TypeError):
+            page = 1
+            page_size = 6
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 6
         data = service.get_dashboard_data(page=page, page_size=page_size)
         return Response(data)
 

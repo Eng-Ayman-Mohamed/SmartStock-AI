@@ -114,7 +114,7 @@ class RegisterView(generics.CreateAPIView):
             httponly=True,
             secure=not settings.DEBUG,
             samesite='None' if not settings.DEBUG else 'Lax',
-            max_age=7 * 24 * 60 * 60,
+            max_age=3 * 24 * 60 * 60,
         )
         return response
 
@@ -159,7 +159,25 @@ class LoginView(TokenObtainPairView):
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
-        except Exception:
+        except Exception as exc:
+            error_detail = exc.detail if hasattr(exc, 'detail') else str(exc)
+            if isinstance(error_detail, dict):
+                has_missing_field = any(
+                    'required' in str(v).lower()
+                    if isinstance(v, (list, str))
+                    else False
+                    for v in error_detail.values()
+                )
+                if has_missing_field:
+                    return Response(
+                        {
+                            'status': 'error',
+                            'error': 'ValidationError',
+                            'message': 'Email and password are required.',
+                            'code': 400,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
             return Response(
                 {
                     'status': 'error',
@@ -185,7 +203,7 @@ class LoginView(TokenObtainPairView):
             httponly=True,
             secure=not settings.DEBUG,
             samesite='None' if not settings.DEBUG else 'Lax',
-            max_age=7 * 24 * 60 * 60,
+            max_age=3 * 24 * 60 * 60,
         )
         return response
 
