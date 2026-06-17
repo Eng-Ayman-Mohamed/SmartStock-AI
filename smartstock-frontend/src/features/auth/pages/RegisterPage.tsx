@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
 import RegisterForm from '../components/RegisterForm';
 
 export default function RegisterPage() {
@@ -8,9 +7,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center mb-8">
           <Link to="/" className="flex items-center gap-2 mb-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-md bg-brand-600">
-              <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />
-            </div>
+            <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" />
             <span className="text-card-title font-semibold text-ink">SmartStock AI</span>
           </Link>
           <h1 className="text-section-title font-semibold text-ink">Create your account</h1>
