@@ -76,6 +76,57 @@ def seed_users(scale: int) -> list[CustomUser]:
     users = []
     managers = []
 
+    DEV_USERS = [
+        {
+            'username': 'admin',
+            'email': 'admin@smartstock.ai',
+            'password': 'Admin123!',
+            'first_name': 'Dev',
+            'last_name': 'Admin',
+            'role': CustomUser.Role.ADMIN,
+            'is_staff': True,
+            'is_superuser': True,
+        },
+        {
+            'username': 'manager',
+            'email': 'manager@smartstock.ai',
+            'password': 'Manager123!',
+            'first_name': 'Dev',
+            'last_name': 'Manager',
+            'role': CustomUser.Role.MANAGER,
+            'is_staff': True,
+            'is_superuser': False,
+        },
+        {
+            'username': 'viewer',
+            'email': 'viewer@smartstock.ai',
+            'password': 'Viewer123!',
+            'first_name': 'Dev',
+            'last_name': 'Viewer',
+            'role': CustomUser.Role.VIEWER,
+            'is_staff': True,
+            'is_superuser': False,
+        },
+    ]
+
+    for dev in DEV_USERS:
+        user = CustomUser(
+            username=dev['username'],
+            email=dev['email'],
+            password=make_password(dev['password']),
+            first_name=dev['first_name'],
+            last_name=dev['last_name'],
+            role=dev['role'],
+            is_active=True,
+            is_staff=dev['is_staff'],
+            is_superuser=dev['is_superuser'],
+            date_joined=aware_dt(start_date='-2y', end_date='-1d'),
+        )
+        emails.add(dev['email'])
+        users.append(user)
+        if dev['role'] in (CustomUser.Role.MANAGER, CustomUser.Role.ADMIN):
+            managers.append(user)
+
     for i in range(count):
         first_name = fake.first_name()
         last_name = fake.last_name()
