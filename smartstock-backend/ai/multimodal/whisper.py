@@ -1,6 +1,5 @@
 import io
 import logging
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -11,20 +10,28 @@ class SpeechTranscriber:
 
     def _get_client(self):
         if self._client is None:
-            from openai import OpenAI
+            from ai.llm.provider_config import PROVIDER, get_whisper_client
 
-            api_key = os.getenv('OPENAI_API_KEY')
-            if not api_key:
-                raise ValueError('OPENAI_API_KEY is missing.')
-            self._client = OpenAI(api_key=api_key)
+            self._client = get_whisper_client()
+            self._provider = PROVIDER
         return self._client
 
     def transcribe(self, audio_data: bytes, filename: str = 'audio.webm') -> str:
+        from ai.llm.provider_config import get_provider_config
+
         client = self._get_client()
+        config = get_provider_config()
         audio_file = io.BytesIO(audio_data)
         audio_file.name = filename
-        response = client.audio.transcriptions.create(
-            model='whisper-1',
-            file=audio_file,
-        )
+
+        if self._provider == 'groq':
+            response = client.audio.transcriptions.create(
+                model=config['whisper_model'],
+                file=audio_file,
+            )
+        else:
+            response = client.audio.transcriptions.create(
+                model=config['whisper_model'],
+                file=audio_file,
+            )
         return response.text

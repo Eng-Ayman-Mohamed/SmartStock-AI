@@ -1417,7 +1417,7 @@ class NLQueryEndpointView(APIView):
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(self._run_pipeline, query, request.user)
-                return future.result(timeout=10)
+                return future.result(timeout=30)
         except TimeoutError:
             return Response(
                 {'status': 'error', 'message': 'Gateway Timeout: AI pipeline took too long.'},

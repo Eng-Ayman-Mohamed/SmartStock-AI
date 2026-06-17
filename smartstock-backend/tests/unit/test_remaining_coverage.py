@@ -548,25 +548,26 @@ class IntentClassifierTests(unittest.TestCase):
         self.assertEqual(result.intent, 'nl_query')
         self.assertEqual(result.confidence, 0.5)
 
-    @patch('ai.llm.intent_classifier.os.getenv', return_value=None)
-    def test_get_classifier_llm_missing_key(self, mock_getenv):
+    @patch('ai.llm.provider_config.get_chat_llm_mini')
+    def test_get_classifier_llm_missing_key(self, mock_get_llm):
         import ai.llm.intent_classifier as mod
 
         mod._ClassifierLLM = None
+        mock_get_llm.side_effect = ValueError('API key is missing.')
         with self.assertRaises(ValueError):
             mod._get_classifier_llm()
         mod._ClassifierLLM = None
 
-    @patch('ai.llm.intent_classifier.ChatOpenAI')
-    @patch('ai.llm.intent_classifier.os.getenv', return_value='test-key')
-    def test_get_classifier_llm_caches(self, mock_getenv, mock_cls):
+    @patch('ai.llm.provider_config.get_chat_llm_mini')
+    def test_get_classifier_llm_caches(self, mock_get_llm):
         import ai.llm.intent_classifier as mod
 
         mod._ClassifierLLM = None
+        mock_get_llm.return_value = MagicMock()
         llm1 = mod._get_classifier_llm()
         llm2 = mod._get_classifier_llm()
         self.assertIs(llm1, llm2)
-        mock_cls.assert_called_once()
+        mock_get_llm.assert_called_once()
         mod._ClassifierLLM = None
 
     @patch('ai.llm.intent_classifier.invoke_with_langfuse')

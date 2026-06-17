@@ -136,3 +136,122 @@ User input
 | Cohere rerank requires separate `COHERE_API_KEY` | Info | Already documented in `.env.example` and `validators.py` |
 | Langfuse wraps all OpenAI calls (token usage tracing) | Info | Enables cost monitoring — keep enabled |
 | CI runs real OpenAI calls via GitHub Secrets | Info | Rotate the `OPENAI_API_KEY` secret periodically |
+
+---
+
+## 6. Multi-Provider Setup (Testing Phase) — 2026-06-16
+
+### 6a. Why Multi-Provider
+
+The original OpenAI API key ran out of credit (`429 insufficient_quota`). To continue testing all AI endpoints before production, we added support for **Groq** and **Google Gemini** as alternative providers. Controlled by a single `LLM_PROVIDER` env var.
+
+### 6b. New File: `ai/llm/provider_config.py`
+
+Central provider configuration module. Switches between OpenAI, Groq, and Gemini:
+
+| Capability | OpenAI | Groq | Gemini |
+|---|---|---|---|
+| Chat/LLM | `gpt-4o` | `llama-3.3-70b-versatile` | `gemini-2.0-flash` |
+| Intent Classification | `gpt-4o-mini` | `llama-3.1-8b-instant` | `gemini-2.0-flash` |
+| Embeddings | `text-embedding-3-small` | fallback → Gemini | `gemini-embedding-001` |
+| Whisper (STT) | `whisper-1` | `whisper-large-v3` | — |
+| Vision | `gpt-4o` | — (no vision model) | `gemini-2.0-flash` |
+| Reranking | — | — | — (uses Cohere) |
+
+**To switch:** Change `LLM_PROVIDER=groq` in `.env` to `openai` or `gemini`. No code changes needed.
+
+### 6c. API Keys Used
+
+| Provider | Key Env Var | Purpose |
+|---|---|---|
+| OpenAI | `OPENAI_API_KEY` | Chat, NL query, embeddings, whisper, vision |
+| Groq | `GROQ_API_KEY` | Chat, intent classification, whisper |
+| Google | `GOOGLE_API_KEY` | Embeddings (fallback when Groq), vision, chat |
+| Cohere | `COHERE_API_KEY` | Reranking for RAG pipeline |
+
+### 6d. Files Modified for Multi-Provider
+
+| File | Change | Why |
+|---|---|---|
+| `ai/llm/provider_config.py` | **NEW** — central provider config | Single source of truth for model selection |
+| `ai/llm/chain.py` | `get_llm()` now calls `provider_config.get_chat_llm()` | Removed hardcoded OpenAI dependency |
+| `ai/llm/intent_classifier.py` | `_get_classifier_llm()` now calls `provider_config.get_chat_llm_mini()` | Removed hardcoded OpenAI dependency |
+| `ai/multimodal/whisper.py` | Uses `provider_config.get_whisper_client()` | Supports both OpenAI and Groq Whisper |
+| `ai/multimodal/vision.py` | Uses `provider_config.get_vision_client()`, added `supports_vision` check | Returns 501 if provider has no vision model |
+| `ai/rag/ingestion.py` | Uses `provider_config.get_embeddings()` instead of `OpenAIEmbeddings` directly | Supports Gemini embeddings |
+| `ai/rag/retrieval.py` | Uses `provider_config.get_embeddings()` instead of `OpenAIEmbeddings` directly | Supports Gemini embeddings |
+| `apps/ingestion/services.py` | `RAGQueryService._get_llm()` and `_get_embeddings()` use provider config | Removed hardcoded OpenAI imports |
+| `apps/ingestion/views.py` | Added `ObjectDoesNotExist` catch for invoice scan endpoints, improved error messages | Better error handling |
+| `ai/llm/prompts.py` | Fixed brace escaping for ChatPromptTemplate | Bug fix — double-escaped braces |
+| `ai/llm/chain.py` | Added missing injection patterns (`ignore all previous`, `forget your rules`) | Security fix |
+| `.env` | Added `GROQ_API_KEY`, `GOOGLE_API_KEY`, `LLM_PROVIDER` | Provider configuration |
+| `requirements.txt` | Added `langchain-google-genai`, `google-genai`, `groq` | New provider dependencies |
+
+### 6e. Testing Results (Groq Provider)
+
+All AI endpoints tested on 2026-06-16 using `LLM_PROVIDER=groq`:
+
+| # | Endpoint | HTTP | Result |
+|---|----------|------|--------|
+| 1 | `GET /api/health/live/` | 200 | ✅ Liveness probe OK |
+| 2 | `POST /api/auth/login/` | 200 | ✅ JWT token issued |
+| 3 | `POST /api/ai/chat/` (auto) | 200 | ✅ Classified as nl_query, executed chain |
+| 4 | `POST /api/ai/nlquery/` | 200 | ✅ Tool calling worked, returned structured result |
+| 5 | `POST /api/ai/rag-query/` | 200 | ✅ Empty corpus handled gracefully |
+| 6 | `POST /api/ai/transcribe/` | 200 | ✅ Groq whisper-large-v3 transcribed audio |
+| 7 | `POST /api/ai/invoice-scan/` | 501 | ⚠️ Expected — Groq has no vision model |
+| 8 | `POST /api/ai/invoice-scan/confirm/` | 404 | ✅ Correct 404 for non-existent scan |
+| 9 | `POST /api/ai/invoice-scan/{id}/reject/` | 404 | ✅ Correct 404 for non-existent scan |
+| 10 | `GET /api/ai/documents/` | 200 | ✅ Empty list returned |
+| 11 | Prompt injection test | 400 | ✅ Blocked correctly |
+| 12 | Unauthenticated access | 401 | ✅ Auth check working |
+| 13 | Validation (empty query) | 422 | ✅ Proper validation errors |
+
+**12/13 passed, 0 failed, 1 expected limitation.**
+
+### 6f. Bugs Found and Fixed During Testing
+
+| Bug | File | Fix |
+|---|---|---|
+| `ChatPromptTemplate` missing variable `{"error"}` — braces only escaped for f-string, not LangChain | `ai/llm/prompts.py:83` | Changed `{{...}}` to `{{{{...}}}}` (quadruple escape) |
+| Prompt injection filter missed `"ignore all previous instructions"` and `"forget your rules"` | `ai/llm/chain.py:217-227` | Added missing patterns to `_INSTRUCTION_OVERRIDE_PATTERNS` |
+| `InvoiceScanConfirmView` returned 500 for non-existent scans | `apps/ingestion/views.py` | Added `except ObjectDoesNotExist` → 404 |
+| `InvoiceScanRejectView` returned 500 for non-existent scans | `apps/ingestion/views.py` | Added `except ObjectDoesNotExist` → 404 |
+| `RAGQueryService.rerank()` crashed on empty document list | `apps/ingestion/services.py` | Added `if not chunks: return []` guard |
+| NL query timeout too short (10s) for Groq | `apps/inventory/views.py:1418` | Increased from 10s to 30s |
+
+### 6g. Architecture — Provider Call Flow
+
+```
+User input
+│
+├─► Chat text ───────────► intent_classifier.py ──► get_chat_llm_mini()
+│                              │                       ├─ groq: llama-3.1-8b
+│                              │                       ├─ openai: gpt-4o-mini
+│                              │                       └─ gemini: gemini-2.0-flash
+│                    ┌─────────┴─────────┐
+│                    ▼                    ▼
+│               chain.py            RAGQueryService
+│               get_chat_llm()      ├─ get_embeddings()
+│               ├─ groq: llama-3.3   │   ├─ groq: → Gemini fallback
+│               ├─ openai: gpt-4o    │   ├─ openai: text-embedding-3-small
+│               └─ gemini: flash     │   └─ gemini: gemini-embedding-001
+│                    │               ├─ Cohere rerank (unchanged)
+│                    │               └─ get_chat_llm() → answer
+│                    ▼
+│               DB response
+│
+├─► Invoice image ────► vision.py ──► get_vision_client()
+│                                      ├─ groq: 501 (no vision support)
+│                                      ├─ openai: gpt-4o
+│                                      └─ gemini: gemini-2.0-flash
+│
+├─► Audio ────────────► whisper.py ──► get_whisper_client()
+│                                      ├─ groq: whisper-large-v3
+│                                      └─ openai: whisper-1
+│
+└─► PDF upload ───────► ingestion.py ──► get_embeddings()
+                                         ├─ groq: → Gemini fallback
+                                         ├─ openai: text-embedding-3-small
+                                         └─ gemini: gemini-embedding-001
+```

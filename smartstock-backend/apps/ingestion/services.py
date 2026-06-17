@@ -6,13 +6,12 @@ import time
 from django.core.exceptions import ValidationError
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from openai import APITimeoutError
 
 from ai.llm.output_validator import validate_response_safety
 from ai.multimodal.vision import VisionExtractor
 from ai.observability.langfuse import invoke_with_langfuse
-from ai.rag.ingestion import EMBEDDING_MODEL, ingest_pdf
+from ai.rag.ingestion import ingest_pdf
 from apps.audit.models import AuditEvent
 from apps.audit.utils import log_ai_action
 from apps.inventory.services import InventoryService
@@ -82,7 +81,7 @@ class InvoiceScanService:
             )
         except ValueError as exc:
             self._mark_failed(scan, user, 'malformed_json', str(exc))
-            raise InvoiceExtractionMalformed('Vision response was not valid JSON.')
+            raise InvoiceExtractionMalformed(str(exc))
 
         if not isinstance(extracted, dict):
             self._mark_failed(
@@ -361,15 +360,16 @@ class RAGQueryService:
 
     def _get_llm(self):
         if self._llm is None:
-            api_key = os.getenv('OPENAI_API_KEY')
-            if not api_key:
-                raise ValueError('OPENAI_API_KEY is missing.')
-            self._llm = ChatOpenAI(model='gpt-4o', temperature=0, api_key=api_key)
+            from ai.llm.provider_config import get_chat_llm
+
+            self._llm = get_chat_llm()
         return self._llm
 
     def _get_embeddings(self):
         if self._embeddings is None:
-            self._embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
+            from ai.llm.provider_config import get_embeddings
+
+            self._embeddings = get_embeddings()
         return self._embeddings
 
     def embed_query(self, query: str) -> list[float]:
@@ -382,6 +382,9 @@ class RAGQueryService:
         return hybrid_search(query, top_k=top_k)
 
     def rerank(self, query: str, chunks: list[dict], top_n: int = 3) -> list[dict]:
+        if not chunks:
+            return []
+
         cohere_key = os.getenv('COHERE_API_KEY')
         if not cohere_key:
             raise ConnectionError('COHERE_API_KEY is not set. Cohere reranking unavailable.')

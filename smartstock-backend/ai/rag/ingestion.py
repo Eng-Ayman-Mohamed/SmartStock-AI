@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 
 import pypdf
 from django.db import transaction
-from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from apps.ingestion.models import DocumentChunk
@@ -16,8 +15,13 @@ BATCH_SIZE = 100
 BATCH_DELAY_SECONDS = 1
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 50
-EMBEDDING_MODEL = 'text-embedding-3-small'
-EMBEDDING_DIMENSIONS = 1536
+
+
+def _get_embedding_config():
+    from ai.llm.provider_config import get_provider_config
+
+    config = get_provider_config()
+    return config['embedding_model'], config['embedding_dimensions']
 
 
 def extract_text_from_pdf(file_path: str) -> list[dict]:
@@ -51,10 +55,9 @@ def chunk_pdf_pages(pages: list[dict]) -> list[dict]:
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
-    embeddings = OpenAIEmbeddings(
-        model=EMBEDDING_MODEL,
-        chunk_size=BATCH_SIZE,
-    )
+    from ai.llm.provider_config import get_embeddings
+
+    embeddings = get_embeddings()
     all_embeddings = []
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i : i + BATCH_SIZE]

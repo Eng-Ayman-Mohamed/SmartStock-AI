@@ -8,15 +8,13 @@ import logging
 
 from django.db import connection
 
-from ai.rag.ingestion import EMBEDDING_MODEL
-
 logger = logging.getLogger(__name__)
 
 
 def _get_embedding_model():
-    from langchain_openai import OpenAIEmbeddings
+    from ai.llm.provider_config import get_embeddings
 
-    return OpenAIEmbeddings(model=EMBEDDING_MODEL)
+    return get_embeddings()
 
 
 def _dense_search(query: str, query_embedding: list[float], top_k: int = 10) -> list[dict]:

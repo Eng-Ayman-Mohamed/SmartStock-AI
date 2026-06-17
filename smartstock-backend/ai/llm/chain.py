@@ -2,7 +2,6 @@ import base64
 import binascii
 import json
 import logging
-import os
 import re
 import unicodedata
 from typing import Optional
@@ -65,10 +64,9 @@ def get_llm() -> ChatOpenAI:
             _llm_lock = threading.Lock()
         with _llm_lock:
             if _cached_llm is None:
-                api_key = os.getenv('OPENAI_API_KEY')
-                if not api_key:
-                    raise ValueError('OPENAI_API_KEY is missing. Check your .env file.')
-                _cached_llm = ChatOpenAI(model='gpt-4o', temperature=0, api_key=api_key)
+                from ai.llm.provider_config import get_chat_llm
+
+                _cached_llm = get_chat_llm()
     return _cached_llm
 
 
