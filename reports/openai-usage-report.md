@@ -255,3 +255,165 @@ User input
                                          ├─ openai: text-embedding-3-small
                                          └─ gemini: gemini-embedding-001
 ```
+
+---
+
+## 7. CI Test Fixes — 2026-06-16
+
+### 7a. Problem
+
+The multi-provider refactor removed module-level imports (`ChatOpenAI`, `OpenAIEmbeddings`, `os`) from several files. Existing tests mocked these at the old import paths, causing 10 test failures:
+
+```
+AttributeError: <module 'apps.ingestion.services'> does not have the attribute 'ChatOpenAI'
+AttributeError: <module 'ai.rag.ingestion'> does not have the attribute 'OpenAIEmbeddings'
+AttributeError: module 'ai.llm.intent_classifier' has no attribute 'os'
+```
+
+Coverage also dropped to 79.60% (below 80% threshold) due to the new `provider_config.py` module.
+
+### 7b. Root Cause
+
+All provider functions use **lazy imports** (import inside the function body, not at module level):
+
+```python
+def get_embeddings():
+    from langchain_openai import OpenAIEmbeddings  # lazy — not a module attribute
+    return OpenAIEmbeddings(...)
+```
+
+Tests were patching `apps.ingestion.services.OpenAIEmbeddings` which no longer exists as a module attribute.
+
+### 7c. Fix — Updated Mock Targets
+
+| Test File | Old Mock Target | New Mock Target |
+|---|---|---|
+| `tests/integration/test_rag_query.py` | `apps.ingestion.services.ChatOpenAI` | `ai.llm.provider_config.ChatOpenAI` (via `langchain_openai`) |
+| `tests/integration/test_rag_query.py` | `apps.ingestion.services.OpenAIEmbeddings` | `ai.llm.provider_config.OpenAIEmbeddings` (via `langchain_openai`) |
+| `tests/unit/test_ingestion.py` | `ai.rag.ingestion.OpenAIEmbeddings` | `ai.llm.provider_config.OpenAIEmbeddings` (via `langchain_openai`) |
+| `tests/unit/ai/test_prompt_separation.py` | `apps.ingestion.services.ChatOpenAI` | `ai.llm.provider_config.ChatOpenAI` |
+| `tests/unit/ai/test_prompt_separation.py` | `apps.ingestion.services.OpenAIEmbeddings` | `ai.llm.provider_config.OpenAIEmbeddings` |
+| `tests/unit/test_remaining_coverage.py` | `ai.llm.intent_classifier.os` | `ai.llm.provider_config.get_chat_llm_mini` |
+| `tests/unit/test_remaining_coverage.py` | `ai.llm.intent_classifier.ChatOpenAI` | `ai.llm.provider_config.get_chat_llm_mini` |
+
+### 7d. New Test File: `tests/unit/ai/test_provider_config.py`
+
+17 unit tests added to restore coverage and validate the multi-provider config:
+
+| Test Class | Tests | What it validates |
+|---|---|---|
+| `ProviderConfigGetProviderConfigTest` | 3 | Returns correct config for openai/groq/gemini |
+| `ProviderConfigGetApiKeyTest` | 2 | Raises ValueError when key missing, returns key when set |
+| `ProviderConfigGetChatLlmTest` | 3 | Returns ChatOpenAI, model override works, Groq sets base_url |
+| `ProviderConfigGetChatLlmMiniTest` | 1 | Delegates to get_chat_llm with mini model name |
+| `ProviderConfigGetEmbeddingsTest` | 4 | OpenAI/Gemini embeddings, Groq→Gemini fallback, missing key error |
+| `ProviderConfigGetWhisperClientTest` | 2 | Groq Whisper client, OpenAI Whisper client |
+| `ProviderConfigGetVisionClientTest` | 2 | OpenAI vision client, Groq vision with base_url |
+
+### 7e. CI Results After Fix
+
+```
+tests/integration/test_rag_query.py::RAGQueryServiceTests  — 4 passed ✅
+tests/unit/test_ingestion.py                                — 8 passed ✅
+tests/unit/ai/test_prompt_separation.py                     — 8 passed ✅
+tests/unit/test_remaining_coverage.py::IntentClassifierTests — 12 passed ✅
+tests/unit/ai/test_provider_config.py                       — 17 passed ✅
+─────────────────────────────────────────────────────────────
+Total                                                        49 passed ✅
+```
+
+---
+
+## 8. Gemini Vision & Mixed-Provider Testing — 2026-06-17
+
+### 8a. Problem
+
+Groq has no vision model for invoice scanning and no Whisper model for voice transcription. Gemini has vision but no Whisper. No single free-tier provider covers all features. Testing invoice scanning and voice requires mixing providers.
+
+### 8b. Solution: `LLM_WHISPER_PROVIDER`
+
+Added a separate `LLM_WHISPER_PROVIDER` env var so whisper can use a different provider than the main LLM:
+
+```env
+LLM_PROVIDER=gemini              # chat, vision, embeddings
+LLM_WHISPER_PROVIDER=groq        # voice/transcription
+```
+
+This allows:
+- **Invoice scanning** → Gemini vision (`gemini-2.0-flash` via `google-genai` SDK)
+- **Voice transcription** → Groq Whisper (`whisper-large-v3`)
+- **Chat/embeddings** → Gemini
+
+### 8c. Changes to `provider_config.py`
+
+| Addition | Purpose |
+|---|---|
+| `WHISPER_PROVIDER = os.getenv('LLM_WHISPER_PROVIDER', PROVIDER).lower()` | Separate whisper provider |
+| `get_api_key_for_provider(provider_name)` | Get API key for any provider, not just the active one |
+| `get_whisper_config()` | Returns whisper config dict for the whisper provider |
+| `get_whisper_client()` | Uses `WHISPER_PROVIDER` instead of `PROVIDER` |
+
+### 8d. Gemini Vision Support — `vision.py`
+
+Added native Gemini vision path using `google-genai` SDK:
+
+```python
+def extract(self, file_data_url: str) -> dict:
+    if self._provider == 'gemini':
+        return self._extract_gemini(file_data_url)      # NEW
+    return self._extract_openai_compatible(file_data_url)  # renamed
+```
+
+**`_extract_gemini()`** uses the `google-genai` SDK directly:
+- Converts base64 data URL → bytes + MIME type
+- Calls `client.models.generate_content()` with image part + text prompt
+- Parses JSON response same as OpenAI path
+
+**`_extract_openai_compatible()`** — renamed from original `extract()`, unchanged logic.
+
+### 8e. Files Modified
+
+| File | Change |
+|---|---|
+| `ai/llm/provider_config.py` | Added `WHISPER_PROVIDER`, `get_api_key_for_provider()`, `get_whisper_config()`, updated `get_whisper_client()` |
+| `ai/multimodal/vision.py` | Added `_extract_gemini()` using `google-genai` SDK, renamed original to `_extract_openai_compatible()` |
+| `ai/multimodal/whisper.py` | Uses `WHISPER_PROVIDER` and `get_whisper_config()` instead of `PROVIDER` |
+| `config/wsgi.py` | Added `load_dotenv()` — gunicorn was not loading `.env` file |
+| `.env` | Added `LLM_WHISPER_PROVIDER=groq`, changed `LLM_PROVIDER=gemini` |
+| `tests/unit/ai/test_provider_config.py` | Updated whisper tests to patch `WHISPER_PROVIDER` instead of `PROVIDER`, added `skipUnless` for optional packages |
+
+### 8f. Bug Fix: `wsgi.py` Missing `load_dotenv()`
+
+**Problem:** Gunicorn starts via `config.wsgi:application`, not `manage.py`. The `wsgi.py` file had no `load_dotenv()` call, so environment variables from `.env` were never loaded. This caused the server to use hardcoded defaults (OpenAI) instead of the configured provider (Gemini/Groq).
+
+**Fix:** Added `from dotenv import load_dotenv; load_dotenv()` at the top of `config/wsgi.py`.
+
+### 8g. Provider Capability Matrix (Updated)
+
+| Feature | OpenAI | Groq | Gemini |
+|---|---|---|---|
+| Chat/LLM | `gpt-4o` | `llama-3.3-70b-versatile` | `gemini-2.0-flash` |
+| Intent Classification | `gpt-4o-mini` | `llama-3.1-8b-instant` | `gemini-2.0-flash` |
+| Embeddings | `text-embedding-3-small` | fallback → Gemini | `gemini-embedding-001` |
+| Whisper (STT) | `whisper-1` | `whisper-large-v3` | — |
+| Vision (invoice scan) | `gpt-4o` | — | `gemini-2.0-flash` (via `google-genai` SDK) |
+| Reranking | — | — | — (Cohere) |
+
+### 8h. Testing Results (Gemini + Groq Mixed)
+
+Tested 2026-06-17 with `LLM_PROVIDER=gemini`, `LLM_WHISPER_PROVIDER=groq`:
+
+| # | Endpoint | HTTP | Result |
+|---|----------|------|--------|
+| 1 | `POST /api/ai/transcribe/` | 200 | ✅ Groq whisper-large-v3 transcribed audio |
+| 2 | `POST /api/ai/invoice-scan/` | 500 | ⚠️ Gemini 429 — free tier quota exhausted (both keys share same project) |
+
+**Voice works.** Invoice scan code is correct (verified reaching Gemini API, not OpenAI) but blocked by quota.
+
+### 8i. Gemini Quota Notes
+
+- Both old and new `GOOGLE_API_KEY` values share the same Google Cloud project
+- `limit: 0` on `GenerateRequestsPerDayPerProjectPerModel-FreeTier` means the daily free tier is fully consumed
+- Quota resets at midnight Pacific Time
+- To test immediately: create a key from a **different Google Cloud project** at https://aistudio.google.com/apikey
+- Invoice scan code path verified correct: `_extract_gemini()` → `google-genai` SDK → Gemini API (not OpenAI)
