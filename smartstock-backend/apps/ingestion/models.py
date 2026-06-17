@@ -46,6 +46,7 @@ class DocumentChunk(models.Model):
     source_document = models.CharField(max_length=500)
     page_number = models.IntegerField(null=True, blank=True)
     metadata = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
     document = models.ForeignKey(
         Document,
         on_delete=models.CASCADE,

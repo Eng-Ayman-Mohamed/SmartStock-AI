@@ -47,6 +47,7 @@ class AlertEvent(models.Model):
     dashboard_notified = models.BooleanField(default=False)
     resolved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'alert event'
@@ -76,6 +77,7 @@ class DashboardBanner(models.Model):
     dismissed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'dashboard banner'

@@ -9,6 +9,7 @@ class CustomUser(AbstractUser):
         ADMIN = 'admin', 'Admin'
 
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.VIEWER)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'user'
