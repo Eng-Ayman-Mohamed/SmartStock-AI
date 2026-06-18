@@ -230,7 +230,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         cache_params = {
             k: request.query_params.get(k)
-            for k in ['search', 'stock_status', 'ordering', 'page', 'page_size']
+            for k in ['search', 'stock_status', 'ordering', 'page', 'page_size', 'include_inactive']
             if k in request.query_params
         }
         cache_key = f'product_list_v{get_product_cache_version()}_{request.user.role}_' + urlencode(
