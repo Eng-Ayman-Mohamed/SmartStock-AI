@@ -131,13 +131,6 @@ if not DATABASES.get('default') or not DATABASES['default'].get('ENGINE'):
                 'CONN_HEALTH_CHECKS': True,
             }
         }
-
-# Apply statement timeout to all PostgreSQL connections to prevent runaway queries
-for _db_config in DATABASES.values():
-    if _db_config.get('ENGINE', '').endswith('postgresql'):
-        _db_config.setdefault('OPTIONS', {})
-        _db_config['OPTIONS']['options'] = '-c statement_timeout=30000'
-
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
