@@ -180,6 +180,37 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return UserSerializer(instance).data
 
 
+class MeUpdateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(write_only=True, min_length=1, max_length=255, required=False)
+    email = serializers.EmailField(write_only=True, required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = ('name', 'email')
+
+    def validate_email(self, value: str) -> str:
+        User = get_user_model()
+        if User.objects.filter(email__iexact=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError(
+                'A user with this email already exists. Please use a different email address.'
+            )
+        return value
+
+    def update(self, instance, validated_data):
+        name = validated_data.pop('name', None)
+        if name:
+            name = name.strip()
+            first_name, _, last_name = name.partition(' ')
+            instance.first_name = first_name
+            instance.last_name = last_name
+        email = validated_data.get('email')
+        if email:
+            instance.email = email
+            instance.username = email
+        instance.save()
+        return instance
+
+
 class RoleUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
