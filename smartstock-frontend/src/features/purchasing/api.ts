@@ -11,8 +11,13 @@ export async function listSuppliers(
     page_size: pageSize,
     search: searchQuery || undefined,
   };
-  const { data } = await api.get<PaginatedResponse<Supplier>>('/purchasing/suppliers/', { params });
-  return data;
+  const res = await api.get<Supplier[]>('/purchasing/suppliers/', { params });
+  return {
+    results: res.data,
+    count: res._meta?.total as number ?? 0,
+    next: null,
+    previous: null,
+  };
 }
 
 export async function createSupplier(payload: CreateSupplierPayload): Promise<Supplier> {
@@ -42,12 +47,11 @@ interface RawPO {
 }
 
 export async function listPendingPOs(page = 1, pageSize = 20): Promise<PaginatedResponse<PendingPO>> {
-  const { data } = await api.get<PaginatedResponse<RawPO>>('/purchasing/orders/', {
+  const res = await api.get<RawPO[]>('/purchasing/orders/', {
     params: { status: 'pending_approval', page, page_size: pageSize },
   });
   return {
-    ...data,
-    results: data.results.map((item) => {
+    results: (res.data ?? []).map((item) => {
       const total = parseFloat(item.total_cost) || 0;
       const qty = item.quantity || 1;
       return {
@@ -62,6 +66,9 @@ export async function listPendingPOs(page = 1, pageSize = 20): Promise<Paginated
         agent_reasoning: item.agent_reasoning,
       };
     }),
+    count: res._meta?.total as number ?? 0,
+    next: null,
+    previous: null,
   };
 }
 
@@ -108,12 +115,11 @@ function formatTotal(cost: string): string {
 }
 
 export async function listPOHistory(page = 1, pageSize = 20): Promise<PaginatedResponse<POHistoryItem>> {
-  const { data } = await api.get<PaginatedResponse<POHistoryRaw>>('/purchasing/orders/', {
+  const res = await api.get<POHistoryRaw[]>('/purchasing/orders/', {
     params: { page, page_size: pageSize },
   });
   return {
-    ...data,
-    results: data.results
+    results: (res.data ?? [])
       .filter((item) => item.status !== 'pending_approval' && item.status !== 'draft')
       .map((item) => ({
         id: `PO-${item.id}`,
@@ -125,5 +131,8 @@ export async function listPOHistory(page = 1, pageSize = 20): Promise<PaginatedR
         created_at: formatPODate(item.created_at),
         approved_by: item.approved_by_name ?? '—',
       })),
+    count: res._meta?.total as number ?? 0,
+    next: null,
+    previous: null,
   };
 }
