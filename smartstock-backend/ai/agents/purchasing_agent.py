@@ -73,8 +73,15 @@ class PurchasingAgent:
             }
         trace_agent_run('purchasing_agent', context, result, trace_spans)
         _duration = round((time.time() - _started_at) * 1000)
-        _outcome = 'failure' if result.get('status') in ('failed', 'rejected', 'timeout') else 'success'
-        record_agent_run_task.delay(agent_name='purchasing_agent', outcome=_outcome, duration_ms=_duration, error_message=result.get('error', ''))
+        _outcome = (
+            'failure' if result.get('status') in ('failed', 'rejected', 'timeout') else 'success'
+        )
+        record_agent_run_task.delay(
+            agent_name='purchasing_agent',
+            outcome=_outcome,
+            duration_ms=_duration,
+            error_message=result.get('error', ''),
+        )
         return result
 
     def _execute_workflow(self, context: dict, trace_spans: list) -> dict:

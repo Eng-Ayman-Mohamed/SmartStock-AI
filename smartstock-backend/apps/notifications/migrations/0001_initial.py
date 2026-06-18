@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,22 +15,61 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='EscalationNotification',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('reason', models.CharField(choices=[('email_delivery_failed', 'Email Delivery Failed'), ('supplier_timeout', 'Supplier Timeout'), ('other', 'Other')], max_length=50)),
-                ('channel', models.CharField(choices=[('email', 'Email'), ('in_app', 'In-App')], default='email', max_length=20)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('sent', 'Sent'), ('failed', 'Failed')], default='pending', max_length=20)),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
+                (
+                    'reason',
+                    models.CharField(
+                        choices=[
+                            ('email_delivery_failed', 'Email Delivery Failed'),
+                            ('supplier_timeout', 'Supplier Timeout'),
+                            ('other', 'Other'),
+                        ],
+                        max_length=50,
+                    ),
+                ),
+                (
+                    'channel',
+                    models.CharField(
+                        choices=[('email', 'Email'), ('in_app', 'In-App')],
+                        default='email',
+                        max_length=20,
+                    ),
+                ),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[('pending', 'Pending'), ('sent', 'Sent'), ('failed', 'Failed')],
+                        default='pending',
+                        max_length=20,
+                    ),
+                ),
                 ('recipient_email', models.EmailField(blank=True, max_length=254)),
                 ('message', models.TextField(blank=True)),
                 ('error_message', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('sent_at', models.DateTimeField(blank=True, null=True)),
-                ('po', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='escalation_notifications', to='purchasing.purchaseorder')),
+                (
+                    'po',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='escalation_notifications',
+                        to='purchasing.purchaseorder',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'escalation notification',
                 'verbose_name_plural': 'escalation notifications',
                 'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['reason', 'status'], name='notificatio_reason_63d33c_idx'), models.Index(fields=['po', 'reason'], name='notificatio_po_id_386c80_idx')],
+                'indexes': [
+                    models.Index(fields=['reason', 'status'], name='notificatio_reason_63d33c_idx'),
+                    models.Index(fields=['po', 'reason'], name='notificatio_po_id_386c80_idx'),
+                ],
             },
         ),
     ]

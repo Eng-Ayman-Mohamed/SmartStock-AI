@@ -15,7 +15,9 @@ class FakePurchasingServiceForTools:
             id=po_id,
             po_number=None,
             status=po_status,
-            sku=SimpleNamespace(code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')),
+            sku=SimpleNamespace(
+                code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')
+            ),
             supplier=SimpleNamespace(name='Acme Corp', contact_email='supplier@example.com'),
             quantity=100,
             total_cost='5000.00',

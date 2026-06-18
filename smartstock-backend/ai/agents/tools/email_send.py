@@ -36,7 +36,6 @@ class EmailSendTool(BaseTool):
                 supplier_name = supplier.name
 
             sku_code = po.sku.code
-            product_name = po.sku.product.name
             subject = f'Purchase Order PO-{po_id} - {sku_code}'
             body = self._build_email_body(po, supplier_name)
 

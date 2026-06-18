@@ -9,7 +9,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -24,10 +23,26 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Document',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('filename', models.CharField(max_length=500)),
                 ('original_filename', models.CharField(max_length=500)),
-                ('doc_type', models.CharField(choices=[('policy', 'Policy'), ('contract', 'Contract'), ('procedure', 'Procedure'), ('specification', 'Specification')], max_length=20)),
+                (
+                    'doc_type',
+                    models.CharField(
+                        choices=[
+                            ('policy', 'Policy'),
+                            ('contract', 'Contract'),
+                            ('procedure', 'Procedure'),
+                            ('specification', 'Specification'),
+                        ],
+                        max_length=20,
+                    ),
+                ),
                 ('file_size', models.BigIntegerField()),
                 ('total_chunks', models.IntegerField(default=0)),
                 ('cloudinary_url', models.URLField(max_length=1000)),
@@ -35,7 +50,16 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('uploaded_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='uploaded_documents', to=settings.AUTH_USER_MODEL)),
+                (
+                    'uploaded_by',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='uploaded_documents',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'document',
@@ -46,30 +70,75 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DocumentChunk',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('chunk_text', models.TextField()),
-                ('embedding', pgvector.django.vector.VectorField(blank=True, dimensions=1536, null=True)),
-                ('tsvector', django.contrib.postgres.search.SearchVectorField(blank=True, null=True)),
+                (
+                    'embedding',
+                    pgvector.django.vector.VectorField(blank=True, dimensions=1536, null=True),
+                ),
+                (
+                    'tsvector',
+                    django.contrib.postgres.search.SearchVectorField(blank=True, null=True),
+                ),
                 ('source_document', models.CharField(max_length=500)),
                 ('page_number', models.IntegerField(blank=True, null=True)),
                 ('metadata', models.JSONField(default=dict)),
-                ('document', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='chunks', to='ingestion.document')),
+                (
+                    'document',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='chunks',
+                        to='ingestion.document',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'document chunk',
                 'verbose_name_plural': 'document chunks',
                 'ordering': ['document', 'id'],
-                'indexes': [models.Index(fields=['source_document'], name='ingestion_d_source__e0c16e_idx'), models.Index(fields=['document'], name='ingestion_d_documen_7c5c8a_idx'), django.contrib.postgres.indexes.GinIndex(fields=['tsvector'], name='document_chunk_gin_idx')],
+                'indexes': [
+                    models.Index(fields=['source_document'], name='ingestion_d_source__e0c16e_idx'),
+                    models.Index(fields=['document'], name='ingestion_d_documen_7c5c8a_idx'),
+                    django.contrib.postgres.indexes.GinIndex(
+                        fields=['tsvector'], name='document_chunk_gin_idx'
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
             name='InvoiceScan',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('original_filename', models.CharField(max_length=500)),
                 ('content_type', models.CharField(max_length=100)),
                 ('file_size', models.BigIntegerField()),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('extracted', 'Extracted'), ('partial', 'Partial'), ('failed', 'Failed'), ('confirmed', 'Confirmed'), ('rejected', 'Rejected')], default='pending', max_length=20)),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[
+                            ('pending', 'Pending'),
+                            ('extracted', 'Extracted'),
+                            ('partial', 'Partial'),
+                            ('failed', 'Failed'),
+                            ('confirmed', 'Confirmed'),
+                            ('rejected', 'Rejected'),
+                        ],
+                        default='pending',
+                        max_length=20,
+                    ),
+                ),
                 ('extracted_data', models.JSONField(default=dict)),
                 ('confidence', models.JSONField(default=dict)),
                 ('missing_fields', models.JSONField(default=list)),
@@ -80,13 +149,25 @@ class Migration(migrations.Migration):
                 ('rejected_at', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('uploaded_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='invoice_scans', to=settings.AUTH_USER_MODEL)),
+                (
+                    'uploaded_by',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='invoice_scans',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'invoice scan',
                 'verbose_name_plural': 'invoice scans',
                 'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['uploaded_by', 'status'], name='ingestion_i_uploade_300c12_idx'), models.Index(fields=['created_at'], name='ingestion_i_created_027a4f_idx')],
+                'indexes': [
+                    models.Index(
+                        fields=['uploaded_by', 'status'], name='ingestion_i_uploade_300c12_idx'
+                    ),
+                    models.Index(fields=['created_at'], name='ingestion_i_created_027a4f_idx'),
+                ],
             },
         ),
     ]

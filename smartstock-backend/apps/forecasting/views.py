@@ -1,4 +1,5 @@
 from celery.result import AsyncResult
+from django.core.cache import cache
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiResponse,
@@ -9,8 +10,6 @@ from drf_spectacular.utils import (
 from rest_framework import serializers, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from django.core.cache import cache
 
 from apps.authentication.permissions import IsAdminOnly, IsViewerOrAbove
 from config.schema_serializers import ErrorResponseSerializer

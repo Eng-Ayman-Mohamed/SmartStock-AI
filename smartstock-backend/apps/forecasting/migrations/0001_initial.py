@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,7 +15,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ForecastResult',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('forecast_date', models.DateField()),
                 ('predicted_quantity', models.FloatField()),
                 ('lower_bound', models.FloatField(blank=True, null=True)),
@@ -26,20 +30,36 @@ class Migration(migrations.Migration):
                 ('model_version', models.CharField(blank=True, max_length=50)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('sku', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='forecasts', to='inventory.sku')),
+                (
+                    'sku',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='forecasts',
+                        to='inventory.sku',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'forecast result',
                 'verbose_name_plural': 'forecast results',
                 'ordering': ['-created_at', '-id'],
-                'indexes': [models.Index(fields=['sku', 'forecast_date'], name='forecasting_sku_id_7efcbd_idx')],
+                'indexes': [
+                    models.Index(
+                        fields=['sku', 'forecast_date'], name='forecasting_sku_id_7efcbd_idx'
+                    )
+                ],
                 'unique_together': {('sku', 'forecast_date')},
             },
         ),
         migrations.CreateModel(
             name='ReorderFlag',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('quantity_available', models.IntegerField()),
                 ('total_predicted_demand', models.FloatField()),
                 ('safety_stock', models.IntegerField(default=0)),
@@ -49,16 +69,37 @@ class Migration(migrations.Migration):
                 ('has_open_po', models.BooleanField(default=False)),
                 ('open_po_id', models.IntegerField(blank=True, null=True)),
                 ('reasoning', models.TextField()),
-                ('status', models.CharField(choices=[('open', 'Open'), ('consumed', 'Consumed'), ('dismissed', 'Dismissed')], default='open', max_length=20)),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[
+                            ('open', 'Open'),
+                            ('consumed', 'Consumed'),
+                            ('dismissed', 'Dismissed'),
+                        ],
+                        default='open',
+                        max_length=20,
+                    ),
+                ),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('sku', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='reorder_flags', to='inventory.sku')),
+                (
+                    'sku',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='reorder_flags',
+                        to='inventory.sku',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'reorder flag',
                 'verbose_name_plural': 'reorder flags',
                 'ordering': ['-created_at', '-id'],
-                'indexes': [models.Index(fields=['sku', 'status'], name='forecasting_sku_id_603fff_idx'), models.Index(fields=['created_at'], name='forecasting_created_522cf9_idx')],
+                'indexes': [
+                    models.Index(fields=['sku', 'status'], name='forecasting_sku_id_603fff_idx'),
+                    models.Index(fields=['created_at'], name='forecasting_created_522cf9_idx'),
+                ],
             },
         ),
     ]

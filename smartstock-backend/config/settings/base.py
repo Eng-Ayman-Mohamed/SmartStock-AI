@@ -280,7 +280,8 @@ CACHES = {
         'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'IGNORE_EXCEPTIONS': os.environ.get('REDIS_IGNORE_EXCEPTIONS', 'True').lower() == 'true',
+            'IGNORE_EXCEPTIONS': os.environ.get('REDIS_IGNORE_EXCEPTIONS', 'True').lower()
+            == 'true',
         },
         'KEY_PREFIX': 'smartstock',
         'TIMEOUT': 300,

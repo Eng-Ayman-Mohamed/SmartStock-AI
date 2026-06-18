@@ -202,9 +202,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 self.request.query_params.get('include_inactive', '').lower() == 'true'
             )
             is_admin = include_inactive and self.request.user.role == 'admin'
-            self._cached_queryset = (
-                InventoryRepository()
-                .get_all_queryset(include_inactive=is_admin)
+            self._cached_queryset = InventoryRepository().get_all_queryset(
+                include_inactive=is_admin
             )
         return self._cached_queryset
 
@@ -226,6 +225,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         from urllib.parse import urlencode
+
         from .services import get_product_cache_version
 
         cache_params = {
@@ -233,10 +233,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             for k in ['search', 'stock_status', 'ordering', 'page', 'page_size']
             if k in request.query_params
         }
-        cache_key = (
-            f'product_list_v{get_product_cache_version()}'
-            f'_{request.user.role}_'
-            + urlencode(sorted(cache_params.items()))
+        cache_key = f'product_list_v{get_product_cache_version()}_{request.user.role}_' + urlencode(
+            sorted(cache_params.items())
         )
         cached = cache.get(cache_key)
         if cached is not None:

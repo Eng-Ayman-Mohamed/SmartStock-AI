@@ -353,7 +353,9 @@ class EmailSendToolTest(TestCase):
             id=1,
             po_number=None,
             status='approved',
-            sku=SimpleNamespace(code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')),
+            sku=SimpleNamespace(
+                code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')
+            ),
             quantity=100,
             total_cost=500.00,
             requested_by='admin',
@@ -400,7 +402,9 @@ class EmailSendToolTest(TestCase):
         po = SimpleNamespace(
             id=1,
             po_number=None,
-            sku=SimpleNamespace(code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')),
+            sku=SimpleNamespace(
+                code='SKU-001', product=SimpleNamespace(name='Widget', unit_price='10.00')
+            ),
             quantity=100,
             total_cost=500.00,
         )

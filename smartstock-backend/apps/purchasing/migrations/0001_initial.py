@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -18,10 +17,34 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='PurchaseOrder',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('quantity', models.IntegerField()),
                 ('total_cost', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('status', models.CharField(choices=[('draft', 'Draft'), ('pending_approval', 'Pending Approval'), ('approved', 'Approved'), ('email_sent', 'Email Sent'), ('sent', 'Sent'), ('waiting_confirmation', 'Waiting Confirmation'), ('confirmed', 'Confirmed'), ('rejected', 'Rejected'), ('cancelled', 'Cancelled'), ('failed', 'Failed'), ('timeout', 'Timeout')], default='draft', max_length=20)),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[
+                            ('draft', 'Draft'),
+                            ('pending_approval', 'Pending Approval'),
+                            ('approved', 'Approved'),
+                            ('email_sent', 'Email Sent'),
+                            ('sent', 'Sent'),
+                            ('waiting_confirmation', 'Waiting Confirmation'),
+                            ('confirmed', 'Confirmed'),
+                            ('rejected', 'Rejected'),
+                            ('cancelled', 'Cancelled'),
+                            ('failed', 'Failed'),
+                            ('timeout', 'Timeout'),
+                        ],
+                        default='draft',
+                        max_length=20,
+                    ),
+                ),
                 ('agent_reasoning', models.TextField(blank=True, null=True)),
                 ('notes', models.TextField(blank=True)),
                 ('sent_at', models.DateTimeField(blank=True, null=True)),
@@ -30,10 +53,41 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('po_number', models.CharField(blank=True, max_length=20, null=True, unique=True)),
-                ('approved_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='approved_orders', to=settings.AUTH_USER_MODEL)),
-                ('requested_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='purchase_orders', to=settings.AUTH_USER_MODEL)),
-                ('sku', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='purchase_orders', to='inventory.sku')),
-                ('supplier', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='purchase_orders', to='inventory.supplier')),
+                (
+                    'approved_by',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='approved_orders',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    'requested_by',
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='purchase_orders',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    'sku',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='purchase_orders',
+                        to='inventory.sku',
+                    ),
+                ),
+                (
+                    'supplier',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='purchase_orders',
+                        to='inventory.supplier',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'purchase order',
@@ -44,15 +98,44 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='PurchaseOrderWorkflow',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('draft', 'Draft'), ('pending_approval', 'Pending Approval'), ('approved', 'Approved'), ('email_sent', 'Email Sent'), ('waiting_confirmation', 'Waiting Confirmation'), ('confirmed', 'Confirmed'), ('rejected', 'Rejected'), ('failed', 'Failed'), ('timeout', 'Timeout')], default='draft', max_length=20)),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[
+                            ('draft', 'Draft'),
+                            ('pending_approval', 'Pending Approval'),
+                            ('approved', 'Approved'),
+                            ('email_sent', 'Email Sent'),
+                            ('waiting_confirmation', 'Waiting Confirmation'),
+                            ('confirmed', 'Confirmed'),
+                            ('rejected', 'Rejected'),
+                            ('failed', 'Failed'),
+                            ('timeout', 'Timeout'),
+                        ],
+                        default='draft',
+                        max_length=20,
+                    ),
+                ),
                 ('message_id', models.CharField(blank=True, max_length=255, null=True)),
                 ('polling_attempts', models.IntegerField(default=0)),
                 ('last_poll_at', models.DateTimeField(blank=True, null=True)),
                 ('error_message', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('purchase_order', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='workflow', to='purchasing.purchaseorder')),
+                (
+                    'purchase_order',
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='workflow',
+                        to='purchasing.purchaseorder',
+                    ),
+                ),
             ],
             options={
                 'ordering': ['-created_at'],

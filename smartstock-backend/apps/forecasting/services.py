@@ -26,9 +26,7 @@ class ForecastingService:
             )
             lead_time = getattr(stock.sku.product.supplier, 'default_lead_time_days', None) or 7
             forecasts = (
-                self.repo.get_all()
-                .filter(sku=stock.sku)
-                .order_by('-forecast_date')[:lead_time]
+                self.repo.get_all().filter(sku=stock.sku).order_by('-forecast_date')[:lead_time]
             )
             total_predicted = sum(f.predicted_quantity for f in forecasts)
             safety_stock = stock.sku.product.safety_stock or 0

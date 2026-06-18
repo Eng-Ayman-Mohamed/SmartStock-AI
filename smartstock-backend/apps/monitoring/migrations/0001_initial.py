@@ -5,20 +5,34 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
             name='AlertRule',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('name', models.CharField(max_length=200, unique=True)),
                 ('description', models.TextField(blank=True)),
-                ('severity', models.CharField(choices=[('info', 'Info'), ('warning', 'Warning'), ('critical', 'Critical')], default='warning', max_length=20)),
+                (
+                    'severity',
+                    models.CharField(
+                        choices=[
+                            ('info', 'Info'),
+                            ('warning', 'Warning'),
+                            ('critical', 'Critical'),
+                        ],
+                        default='warning',
+                        max_length=20,
+                    ),
+                ),
                 ('metric_name', models.CharField(max_length=200)),
                 ('threshold', models.FloatField()),
                 ('evaluation_window_minutes', models.IntegerField(default=5)),
@@ -36,9 +50,19 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='AgentRunLog',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('agent_name', models.CharField(max_length=100)),
-                ('outcome', models.CharField(choices=[('success', 'Success'), ('failure', 'Failure')], max_length=20)),
+                (
+                    'outcome',
+                    models.CharField(
+                        choices=[('success', 'Success'), ('failure', 'Failure')], max_length=20
+                    ),
+                ),
                 ('duration_ms', models.IntegerField(blank=True, null=True)),
                 ('error_message', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
@@ -47,21 +71,49 @@ class Migration(migrations.Migration):
                 'verbose_name': 'agent run log',
                 'verbose_name_plural': 'agent run logs',
                 'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['agent_name', 'outcome'], name='monitoring__agent_n_d59d21_idx'), models.Index(fields=['created_at'], name='monitoring__created_cc0697_idx')],
+                'indexes': [
+                    models.Index(
+                        fields=['agent_name', 'outcome'], name='monitoring__agent_n_d59d21_idx'
+                    ),
+                    models.Index(fields=['created_at'], name='monitoring__created_cc0697_idx'),
+                ],
             },
         ),
         migrations.CreateModel(
             name='AlertEvent',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('firing', 'Firing'), ('resolved', 'Resolved')], default='pending', max_length=20)),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[
+                            ('pending', 'Pending'),
+                            ('firing', 'Firing'),
+                            ('resolved', 'Resolved'),
+                        ],
+                        default='pending',
+                        max_length=20,
+                    ),
+                ),
                 ('triggered_value', models.FloatField(blank=True, null=True)),
                 ('message', models.TextField(blank=True)),
                 ('email_sent', models.BooleanField(default=False)),
                 ('dashboard_notified', models.BooleanField(default=False)),
                 ('resolved_at', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('rule', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='events', to='monitoring.alertrule')),
+                (
+                    'rule',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='events',
+                        to='monitoring.alertrule',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'alert event',
@@ -72,14 +124,35 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DashboardBanner',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('title', models.CharField(max_length=200)),
                 ('message', models.TextField()),
-                ('level', models.CharField(choices=[('info', 'Info'), ('warning', 'Warning'), ('error', 'Error')], default='info', max_length=20)),
+                (
+                    'level',
+                    models.CharField(
+                        choices=[('info', 'Info'), ('warning', 'Warning'), ('error', 'Error')],
+                        default='info',
+                        max_length=20,
+                    ),
+                ),
                 ('dismissed', models.BooleanField(default=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('expires_at', models.DateTimeField(blank=True, null=True)),
-                ('alert_event', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='banners', to='monitoring.alertevent')),
+                (
+                    'alert_event',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='banners',
+                        to='monitoring.alertevent',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'dashboard banner',
@@ -90,7 +163,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='TokenUsageLog',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('total_tokens', models.IntegerField(default=0)),
                 ('input_tokens', models.IntegerField(default=0)),
                 ('output_tokens', models.IntegerField(default=0)),
@@ -102,7 +180,9 @@ class Migration(migrations.Migration):
                 'verbose_name': 'token usage log',
                 'verbose_name_plural': 'token usage logs',
                 'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['logged_at'], name='monitoring__logged__724f87_idx')],
+                'indexes': [
+                    models.Index(fields=['logged_at'], name='monitoring__logged__724f87_idx')
+                ],
             },
         ),
         migrations.AddIndex(
@@ -115,6 +195,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='dashboardbanner',
-            index=models.Index(fields=['dismissed', 'level'], name='monitoring__dismiss_c2e824_idx'),
+            index=models.Index(
+                fields=['dismissed', 'level'], name='monitoring__dismiss_c2e824_idx'
+            ),
         ),
     ]

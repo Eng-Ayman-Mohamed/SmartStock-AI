@@ -87,7 +87,12 @@ class ForecastingAgent:
             }
             trace_agent_run('forecasting_agent', payload, output, trace_spans)
             _duration = round((time.time() - _started_at) * 1000)
-            record_agent_run_task.delay(agent_name='forecasting_agent', outcome='failure', duration_ms=_duration, error_message=str(exc))
+            record_agent_run_task.delay(
+                agent_name='forecasting_agent',
+                outcome='failure',
+                duration_ms=_duration,
+                error_message=str(exc),
+            )
             return output
 
         sku_map = {s.id: s.code for s in self.repo.get_skus_by_ids(sku_ids)}
@@ -133,7 +138,12 @@ class ForecastingAgent:
         trace_agent_run('forecasting_agent', payload, output, trace_spans)
         _duration = round((time.time() - _started_at) * 1000)
         _outcome = 'failure' if output['failed'] > 0 or 'error' in output else 'success'
-        record_agent_run_task.delay(agent_name='forecasting_agent', outcome=_outcome, duration_ms=_duration, error_message=output.get('error', ''))
+        record_agent_run_task.delay(
+            agent_name='forecasting_agent',
+            outcome=_outcome,
+            duration_ms=_duration,
+            error_message=output.get('error', ''),
+        )
         return output
 
     def _forecast_for_sku(self, sku_id: int, sku_code: str, trace_spans: list) -> dict:

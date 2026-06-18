@@ -5,17 +5,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
             name='Category',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('name', models.CharField(max_length=100, unique=True)),
                 ('description', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
@@ -30,7 +33,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Supplier',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('name', models.CharField(max_length=255)),
                 ('contact_email', models.EmailField(max_length=254)),
                 ('contact_phone', models.CharField(blank=True, max_length=50)),
@@ -49,10 +57,18 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Product',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('name', models.CharField(max_length=255)),
                 ('description', models.TextField(blank=True)),
-                ('unit_price', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
+                (
+                    'unit_price',
+                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
+                ),
                 ('unit_of_measure', models.CharField(blank=True, default='units', max_length=50)),
                 ('reorder_point', models.IntegerField(default=10)),
                 ('safety_stock', models.IntegerField(default=0)),
@@ -60,8 +76,26 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('category', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='products', to='inventory.category')),
-                ('supplier', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='products', to='inventory.supplier')),
+                (
+                    'category',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='products',
+                        to='inventory.category',
+                    ),
+                ),
+                (
+                    'supplier',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='products',
+                        to='inventory.supplier',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'product',
@@ -72,12 +106,24 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='SKU',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('code', models.CharField(max_length=50, unique=True)),
                 ('attributes', models.JSONField(default=dict)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='skus', to='inventory.product')),
+                (
+                    'product',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='skus',
+                        to='inventory.product',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'SKU',
@@ -88,41 +134,74 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='SalesRecord',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('date', models.DateField()),
                 ('quantity_sold', models.IntegerField(default=0)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('sku', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sales_records', to='inventory.sku')),
+                (
+                    'sku',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='sales_records',
+                        to='inventory.sku',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'sales record',
                 'verbose_name_plural': 'sales records',
                 'ordering': ['-date', 'sku'],
-                'indexes': [models.Index(fields=['sku', 'date'], name='inventory_s_sku_id_92dcd2_idx')],
+                'indexes': [
+                    models.Index(fields=['sku', 'date'], name='inventory_s_sku_id_92dcd2_idx')
+                ],
                 'unique_together': {('sku', 'date')},
             },
         ),
         migrations.CreateModel(
             name='StockLevel',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('quantity_on_hand', models.IntegerField(default=0)),
                 ('quantity_reserved', models.IntegerField(default=0)),
                 ('reorder_point', models.IntegerField(default=10)),
                 ('reorder_quantity', models.IntegerField(default=50)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('sku', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='stock_level', to='inventory.sku')),
+                (
+                    'sku',
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='stock_level',
+                        to='inventory.sku',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'stock level',
                 'verbose_name_plural': 'stock levels',
                 'ordering': ['-updated_at'],
-                'indexes': [models.Index(fields=['quantity_on_hand'], name='idx_stocklevel_qty'), models.Index(fields=['quantity_on_hand', 'reorder_point'], name='idx_stocklevel_low')],
+                'indexes': [
+                    models.Index(fields=['quantity_on_hand'], name='idx_stocklevel_qty'),
+                    models.Index(
+                        fields=['quantity_on_hand', 'reorder_point'], name='idx_stocklevel_low'
+                    ),
+                ],
             },
         ),
         migrations.AddIndex(
             model_name='product',
-            index=models.Index(fields=['is_active', '-created_at'], name='idx_product_active_created'),
+            index=models.Index(
+                fields=['is_active', '-created_at'], name='idx_product_active_created'
+            ),
         ),
         migrations.AddIndex(
             model_name='product',
