@@ -14,6 +14,7 @@ import os
 logger = logging.getLogger(__name__)
 
 PROVIDER = os.getenv('LLM_PROVIDER', 'openai').lower()
+WHISPER_PROVIDER = os.getenv('LLM_WHISPER_PROVIDER', PROVIDER).lower()
 
 # Provider-specific configuration
 _PROVIDERS = {
@@ -60,11 +61,16 @@ def get_provider_config():
 
 def get_api_key():
     """Get the API key for the active provider."""
-    config = get_provider_config()
+    return get_api_key_for_provider(PROVIDER)
+
+
+def get_api_key_for_provider(provider_name: str) -> str:
+    """Get the API key for a specific provider."""
+    config = _PROVIDERS[provider_name]
     key = os.getenv(config['api_key_env'], '')
     if not key:
         raise ValueError(
-            f'{config["api_key_env"]} is required for {PROVIDER} provider. '
+            f'{config["api_key_env"]} is required for {provider_name} provider. '
             f'Set LLM_PROVIDER to "openai" or provide the key.'
         )
     return key
@@ -137,17 +143,25 @@ def get_embeddings():
     )
 
 
+def get_whisper_config():
+    """Get the whisper config for the whisper provider."""
+    return _PROVIDERS[WHISPER_PROVIDER]
+
+
 def get_whisper_client():
-    """Get a client for speech-to-text transcription."""
-    if PROVIDER == 'groq':
+    """Get a client for speech-to-text transcription.
+
+    Uses LLM_WHISPER_PROVIDER if set, otherwise falls back to the main provider.
+    """
+    if WHISPER_PROVIDER == 'groq':
         from groq import Groq
 
-        return Groq(api_key=get_api_key())
+        return Groq(api_key=get_api_key_for_provider('groq'))
 
     # OpenAI
     from openai import OpenAI
 
-    return OpenAI(api_key=get_api_key())
+    return OpenAI(api_key=get_api_key_for_provider('openai'))
 
 
 def get_vision_client():
