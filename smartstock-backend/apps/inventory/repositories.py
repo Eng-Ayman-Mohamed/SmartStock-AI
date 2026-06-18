@@ -142,11 +142,10 @@ class StockLevelRepository(BaseRepository):
 
     def get_by_product_id(self, product_id: int):
         """Get the StockLevel for a given product_id. Returns None if not found."""
-        sku = SKU.objects.filter(product_id=product_id).first()
-        if not sku:
-            return None
         try:
-            return StockLevel.objects.select_related('sku__product__supplier').get(sku=sku)
+            return StockLevel.objects.select_related('sku__product__supplier').get(
+                sku__product_id=product_id
+            )
         except StockLevel.DoesNotExist:
             return None
 

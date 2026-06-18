@@ -11,6 +11,7 @@ from .repositories import ForecastingRepository
 logger = logging.getLogger(__name__)
 
 DASHBOARD_CACHE_VERSION = '2'
+MAX_DASHBOARD_SKUS = 500
 
 
 class ForecastingService:
@@ -20,13 +21,12 @@ class ForecastingService:
 
     def calculate_stockout_risk(self, sku_code: str) -> bool:
         try:
-            stock = StockLevel.objects.get(sku__code=sku_code)
-            supplier = stock.sku.product.supplier
-            lead_time = getattr(supplier, 'default_lead_time_days', None) or 7
+            stock = StockLevel.objects.select_related('sku__product__supplier').get(
+                sku__code=sku_code
+            )
+            lead_time = getattr(stock.sku.product.supplier, 'default_lead_time_days', None) or 7
             forecasts = (
-                self.repo.get_all()
-                .filter(sku__code=sku_code)
-                .order_by('-forecast_date')[:lead_time]
+                self.repo.get_all().filter(sku=stock.sku).order_by('-forecast_date')[:lead_time]
             )
             total_predicted = sum(f.predicted_quantity for f in forecasts)
             safety_stock = stock.sku.product.safety_stock or 0
@@ -51,10 +51,10 @@ class ForecastingService:
         end = start + page_size
         paginated_skus = all_skus[start:end]
 
-        # Alerts computed from ALL SKUs (not paginated)
+        # Alerts computed from paginated SKUs only (avoids O(n) scan of entire dataset)
         alerts = [
             sku
-            for sku in all_skus
+            for sku in paginated_skus
             if sku.get('stockout_risk')
             or sku.get('current_stock', 0) <= sku.get('reorder_point', 0)
         ]
@@ -84,8 +84,11 @@ class ForecastingService:
             .order_by('sku', 'forecast_date')
         )
 
+        # Single pass builds forecasts_by_sku + sku_ids — eliminates duplicate query
+        forecasts_by_sku = defaultdict(list)
         sku_ids = set()
         for row in rows:
+            forecasts_by_sku[row.sku.id].append(row)
             sku_ids.add(row.sku.id)
 
         stock_map = {
@@ -95,16 +98,12 @@ class ForecastingService:
             )
         }
 
-        forecasts_by_sku = defaultdict(list)
-        for f in ForecastResult.objects.filter(
-            forecast_date__gte=today, forecast_date__lte=horizon, sku_id__in=sku_ids
-        ).order_by('sku', 'forecast_date'):
-            forecasts_by_sku[f.sku_id].append(f)
-
         skus_map = {}
         for row in rows:
             sku_id = row.sku.id
             if sku_id not in skus_map:
+                if len(skus_map) >= MAX_DASHBOARD_SKUS:
+                    continue  # Prevent unbounded cache entries
                 stock = stock_map.get(sku_id)
                 if stock:
                     supplier = stock.sku.product.supplier

@@ -13,6 +13,7 @@ from ai.observability.langfuse import (
     trace_agent_run,
 )
 from apps.forecasting.repositories import ForecastingRepository
+from apps.monitoring.tasks import record_agent_run_task
 
 try:
     from langchain.agents import create_react_agent as create_agent
@@ -66,10 +67,33 @@ class ForecastingAgent:
 
     def run(self, context: dict | None = None) -> dict:
         payload = context or {}
-        sku_ids = self._extract_sku_ids(payload)
-
+        _started_at = time.time()
         trace_spans = []
         results = []
+
+        try:
+            sku_ids = self._extract_sku_ids(payload)
+        except Exception as exc:
+            logger.exception('ForecastingAgent.run failed extracting SKU IDs')
+            output = {
+                'agent': 'forecasting_agent',
+                'status': 'completed',
+                'total_skus': 0,
+                'processed': 0,
+                'skipped': 0,
+                'failed': 0,
+                'results': [],
+                'error': str(exc),
+            }
+            trace_agent_run('forecasting_agent', payload, output, trace_spans)
+            _duration = round((time.time() - _started_at) * 1000)
+            record_agent_run_task.delay(
+                agent_name='forecasting_agent',
+                outcome='failure',
+                duration_ms=_duration,
+                error_message=str(exc),
+            )
+            return output
 
         sku_map = {s.id: s.code for s in self.repo.get_skus_by_ids(sku_ids)}
 
@@ -112,6 +136,14 @@ class ForecastingAgent:
             'results': results,
         }
         trace_agent_run('forecasting_agent', payload, output, trace_spans)
+        _duration = round((time.time() - _started_at) * 1000)
+        _outcome = 'failure' if output['failed'] > 0 or 'error' in output else 'success'
+        record_agent_run_task.delay(
+            agent_name='forecasting_agent',
+            outcome=_outcome,
+            duration_ms=_duration,
+            error_message=output.get('error', ''),
+        )
         return output
 
     def _forecast_for_sku(self, sku_id: int, sku_code: str, trace_spans: list) -> dict:

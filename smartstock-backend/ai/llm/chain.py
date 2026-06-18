@@ -70,6 +70,26 @@ def get_llm() -> ChatOpenAI:
     return _cached_llm
 
 
+# -- NL Query chain singleton --------------------------------------------------
+
+
+_cached_nl_chain = None
+_nl_chain_lock = None
+
+
+def get_nl_chain() -> 'NLQueryChain':
+    global _cached_nl_chain, _nl_chain_lock
+    if _cached_nl_chain is None:
+        import threading
+
+        if _nl_chain_lock is None:
+            _nl_chain_lock = threading.Lock()
+        with _nl_chain_lock:
+            if _cached_nl_chain is None:
+                _cached_nl_chain = NLQueryChain()
+    return _cached_nl_chain
+
+
 # -- NL Query chain -----------------------------------------------------------
 
 

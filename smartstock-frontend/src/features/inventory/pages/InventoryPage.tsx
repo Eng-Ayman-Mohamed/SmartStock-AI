@@ -1,11 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Package,
   PackagePlus,
   PencilLine,
@@ -28,76 +23,12 @@ import Modal from "../../../shared/components/Modal";
 import DataTable from "../../../shared/components/DataTable";
 import type { Column } from "../../../shared/components/DataTable";
 import { useToastStore } from "../../../store/toastStore";
-
-type Product = {
-  id: number;
-  name: string;
-  description: string;
-  category_name?: string | null;
-  supplier_name?: string | null;
-  reorder_point: number;
-  safety_stock: number;
-  skus: ProductSku[];
-  unit_price?: number;
-  unit_of_measure?: string;
-  is_active?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  category_id?: number;
-  supplier_id?: number;
-};
-
-type ProductSku = {
-  id: number;
-  code: string;
-  stock_level_id?: number | null;
-  quantity_on_hand?: number;
-  quantity_reserved?: number;
-  stock_reorder_point?: number | null;
-};
-
-type LowStockItem = {
-  id: number;
-  product_name: string;
-  sku_code: string;
-  quantity: number;
-  reorder_point: number;
-  product_id: number;
-  reorder_quantity: number;
-  supplier_name?: string;
-  predicted_stockout_date?: string;
-};
+import { useInventory } from "../hooks/useInventory";
+import type { Product } from "../hooks/useInventory";
+import AddEditProductModal from "../components/AddEditProductModal";
+import AdjustStockModal from "../components/AdjustStockModal";
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
-
-function unwrap<T>(payload: T | { data: T } | { results: T }): T {
-  if (payload && typeof payload === "object") {
-    if ("data" in payload) return payload.data;
-    if ("results" in payload) return payload.results as T;
-  }
-  return payload as T;
-}
-
-type PaginationMeta = {
-  page: number;
-  total: number;
-  perPage: number;
-  next: string | null;
-  previous: string | null;
-};
-
-const PAGE_SIZE = 20;
-
-const statusParamByLabel: Record<Status, string> = {
-  "In Stock": "in_stock",
-  "Low Stock": "low_stock",
-  "Out of Stock": "out_of_stock",
-};
-
-function numberFromMeta(value: unknown, fallback: number): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
 
 function statusFor(quantity: number, reorderPoint: number): Status {
   if (quantity <= 0) return "Out of Stock";
@@ -111,10 +42,13 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState(
     searchParams.get("status") ?? "",
   );
+  const [categoryFilter, setCategoryFilter] = useState(
+    searchParams.get("category") ?? "",
+  );
   const supplierId = searchParams.get("supplierId") ?? "";
   const [page, setPage] = useState(Number(searchParams.get("page") ?? 1));
-  const [sortField] = useState(searchParams.get("sort") ?? "");
-  const [sortOrder] = useState(searchParams.get("order") ?? "");
+  const [sortField, setSortField] = useState(searchParams.get("sort") ?? "");
+  const [sortOrder, setSortOrder] = useState(searchParams.get("order") ?? "");
   const debouncedSearch = useDebounce(search, 300);
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -129,79 +63,66 @@ export default function InventoryPage() {
     stockId: number;
     skuCode: string;
   } | null>(null);
-  const [stockDelta, setStockDelta] = useState("");
-  const [stockReason, setStockReason] = useState("");
-  const [formName, setFormName] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formReorder, setFormReorder] = useState(10);
-  const [formSafety, setFormSafety] = useState(10);
 
   const addToast = useToastStore((s) => s.addToast);
 
-  const ordering = sortField
-    ? sortOrder === "desc"
-      ? `-${sortField}`
-      : sortField
-    : "";
-  const orderingParam = ordering ? { ordering } : {};
+  function handleSort(key: string) {
+    if (sortField === key && sortOrder === "asc") {
+      setSortOrder("desc");
+    } else if (sortField === key && sortOrder === "desc") {
+      setSortField("");
+      setSortOrder("");
+    } else {
+      setSortField(key);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  }
 
-  const inventoryQuery = useQuery({
-    queryKey: [
-      "inventory",
-      debouncedSearch,
-      statusFilter,
-      supplierId,
-      sortField,
-      sortOrder,
-      page,
-    ],
+  const inventoryQuery = useInventory({
+    search: debouncedSearch,
+    statusFilter,
+    supplierId,
+    sortField,
+    sortOrder,
+    page,
+    categoryFilter,
+  });
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
     queryFn: async () => {
-      const params: Record<string, unknown> = {
-        page,
-        page_size: PAGE_SIZE,
-        ...orderingParam,
-      };
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (supplierId) params.supplier = supplierId;
-      if (statusFilter)
-        params.stock_status = statusParamByLabel[statusFilter as Status];
-      const productsRes = await api.get("/inventory/products/", { params });
-      const products = unwrap<Product[]>(productsRes.data);
-      const meta = productsRes._meta ?? {};
-
-      return {
-        products,
-        pagination: {
-          page: numberFromMeta(meta.page, page),
-          total: numberFromMeta(meta.total, products.length),
-          perPage: numberFromMeta(meta.per_page, PAGE_SIZE),
-          next: typeof meta.next === "string" ? meta.next : null,
-          previous: typeof meta.previous === "string" ? meta.previous : null,
-        } satisfies PaginationMeta,
-        lowStock: (productsRes.data as Record<string, unknown>).low_stock as LowStockItem[] ?? [],
-      };
+      const res = await api.get("/inventory/categories/", {
+        params: { page_size: 100 },
+      });
+      const data = res.data;
+      if (data && typeof data === "object" && "results" in data) {
+        return data.results as Array<{ id: number; name: string }>;
+      }
+      return Array.isArray(data) ? data : [];
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const saveProduct = useMutation({
-    mutationFn: async (product?: Product) => {
-      const payload = {
-        name: formName,
-        description: formDescription,
-        reorder_point: formReorder,
-        safety_stock: formSafety,
-      };
+    mutationFn: async ({
+      product,
+      data,
+    }: {
+      product?: Product;
+      data: { name: string; description: string; reorder_point: number; safety_stock: number };
+    }) => {
       if (product) {
-        await api.patch(`/inventory/products/${product.id}/`, payload);
+        await api.patch(`/inventory/products/${product.id}/`, data);
       } else {
-        await api.post("/inventory/products/", payload);
+        await api.post("/inventory/products/", data);
       }
     },
-    onSuccess: (_data, product) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setEditingProduct(null);
       addToast(
-        product ? `Updated ${product.name}` : "Product created",
+        variables.product ? `Updated ${variables.product.name}` : "Product created",
         "success",
       );
     },
@@ -228,8 +149,6 @@ export default function InventoryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setAdjustingStock(null);
-      setStockDelta("");
-      setStockReason("");
       addToast("Stock adjusted", "success");
     },
     onError: () => {
@@ -251,66 +170,46 @@ export default function InventoryPage() {
     },
   });
 
-  function openNewProductForm() {
-    setFormName("");
-    setFormDescription("");
-    setFormReorder(10);
-    setFormSafety(10);
-    setEditingProduct("new");
-  }
-
-  function openEditForm(product: Product) {
-    setFormName(product.name);
-    setFormDescription(product.description);
-    setFormReorder(product.reorder_point);
-    setFormSafety(product.safety_stock);
-    setEditingProduct(product);
-  }
 
   const rows = useMemo(() => {
-    const data = inventoryQuery.data;
-    if (!data) return [];
+    return inventoryQuery.products.flatMap((product) => {
+      const skus = product.skus.length
+        ? product.skus
+        : [{ id: 0, code: "No SKU", stock_level_id: null }];
+      return skus.map((sku) => {
+        const quantity = sku.quantity_on_hand ?? 0;
+        const reorderPoint = sku.stock_reorder_point ?? product.reorder_point;
+        const status = statusFor(quantity, reorderPoint);
+        return {
+          product,
+          sku,
+          quantity,
+          quantity_reserved: sku.quantity_reserved ?? 0,
+          reorderPoint,
+          status,
+          stockId: sku.stock_level_id ?? 0,
+        };
+      });
+    });
+  }, [inventoryQuery.products]);
 
-    return data.products
-      .flatMap((product) => {
-        const skus = product.skus.length
-          ? product.skus
-          : [{ id: 0, code: "No SKU", stock_level_id: null }];
-        return skus.map((sku) => {
-          const quantity = sku.quantity_on_hand ?? 0;
-          const reorderPoint = sku.stock_reorder_point ?? product.reorder_point;
-          const status = statusFor(quantity, reorderPoint);
-          return {
-            product,
-            sku,
-            quantity,
-            quantity_reserved: sku.quantity_reserved ?? 0,
-            reorderPoint,
-            status,
-            stockId: sku.stock_level_id ?? 0,
-          };
-        });
-      })
-      .filter((row) => !statusFilter || row.status === statusFilter);
-  }, [inventoryQuery.data, statusFilter]);
-
-  const totalProducts = inventoryQuery.data?.pagination.total ?? 0;
-  const currentPageSize = inventoryQuery.data?.pagination.perPage ?? PAGE_SIZE;
+  const totalProducts = inventoryQuery.pagination.total;
+  const currentPageSize = inventoryQuery.pagination.perPage;
   const pagination = usePagination({
     total: totalProducts,
     pageSize: currentPageSize,
     currentPage: page,
   });
-  const firstVisibleItem = totalProducts === 0 ? 0 : pagination.startItem;
-  const lastVisibleItem = totalProducts === 0 ? 0 : pagination.endItem;
 
   type Row = (typeof rows)[number];
 
-  const columns: Column<Row>[] = [
+  const columns = useMemo<Column<Row>[]>(() => [
     {
       key: "sku",
       label: "SKU",
       width: "130px",
+      sortable: true,
+      sortOrder: sortField === "sku" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="text-mono text-ink-secondary">{r.sku.code}</span>
       ),
@@ -318,12 +217,16 @@ export default function InventoryPage() {
     {
       key: "product",
       label: "Product",
+      sortable: true,
+      sortOrder: sortField === "product" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <span className="truncate block">{r.product.name}</span>,
     },
     {
       key: "category",
       label: "Category",
       width: "130px",
+      sortable: true,
+      sortOrder: sortField === "category" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="truncate block text-ink-muted">
           {r.product.category_name ?? "Unassigned"}
@@ -335,6 +238,8 @@ export default function InventoryPage() {
       label: "On Hand",
       align: "right",
       width: "160px",
+      sortable: true,
+      sortOrder: sortField === "qty" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <div className="flex items-center gap-2 justify-end">
           <span className="tabular-nums">{r.quantity}</span>
@@ -360,6 +265,8 @@ export default function InventoryPage() {
       label: "Reserved",
       align: "right",
       width: "80px",
+      sortable: true,
+      sortOrder: sortField === "reserved" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="tabular-nums">{r.quantity_reserved ?? 0}</span>
       ),
@@ -369,11 +276,15 @@ export default function InventoryPage() {
       label: "Reorder",
       align: "right",
       width: "80px",
+      sortable: true,
+      sortOrder: sortField === "reorder" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <span className="tabular-nums">{r.reorderPoint}</span>,
     },
     {
       key: "supplier",
       label: "Supplier",
+      sortable: true,
+      sortOrder: sortField === "supplier" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="truncate block text-ink-muted">
           {r.product.supplier_name ?? "Unassigned"}
@@ -384,6 +295,8 @@ export default function InventoryPage() {
       key: "status",
       label: "Status",
       width: "120px",
+      sortable: true,
+      sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <Badge variant={r.status}>{r.status}</Badge>,
     },
     {
@@ -397,7 +310,7 @@ export default function InventoryPage() {
             variant="ghost"
             size="sm"
             className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
-            onClick={() => openEditForm(r.product)}
+            onClick={() => setEditingProduct(r.product)}
             disabled={!canManage}
             aria-label={`Edit ${r.product.name}`}
             title={canManage ? "Edit product" : "Manager role required"}
@@ -437,7 +350,7 @@ export default function InventoryPage() {
         </div>
       ),
     },
-  ];
+  ], [sortField, sortOrder, canDelete, canManage]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -446,23 +359,23 @@ export default function InventoryPage() {
           <h1 className="text-page-heading text-ink">Inventory</h1>
           <p className="text-body text-ink-muted mt-1">
             Stock's lookin' thin in places —{" "}
-            {inventoryQuery.data?.lowStock.length ?? "some"} SKUs could use a
+            {inventoryQuery.lowStock.length || "some"} SKUs could use a
             top-up.
           </p>
         </div>
         <Button
           variant="primary"
           size="md"
-          onClick={openNewProductForm}
+          onClick={() => setEditingProduct("new")}
           disabled={!canManage}
         >
           <Plus className="w-4 h-4" /> Add Product
         </Button>
       </div>
 
-      {inventoryQuery.data?.lowStock.length ? (
+      {inventoryQuery.lowStock.length ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {inventoryQuery.data.lowStock.slice(0, 6).map((item) => (
+          {inventoryQuery.lowStock.slice(0, 6).map((item) => (
             <Card key={item.id}>
               <p className="text-body font-medium text-ink truncate">
                 {item.product_name}
@@ -511,6 +424,22 @@ export default function InventoryPage() {
           <option>Low Stock</option>
           <option>Out of Stock</option>
         </select>
+        <select
+          className="h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
+          value={categoryFilter}
+          onChange={(e) => {
+            setCategoryFilter(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Category filter"
+        >
+          <option value="">All categories</option>
+          {categoriesQuery.data?.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {inventoryQuery.isError && (
@@ -533,210 +462,46 @@ export default function InventoryPage() {
             heading="No products yet"
             body="Add your first product to start tracking inventory."
             actionLabel={canManage ? "Add Product" : undefined}
-            onAction={canManage ? openNewProductForm : undefined}
+            onAction={canManage ? () => setEditingProduct("new") : undefined}
           />
         ) : (
-          <>
-            <div
-              className={
-                inventoryQuery.isFetching
-                  ? "opacity-70 transition-opacity"
-                  : "transition-opacity"
-              }
-            >
-              <DataTable
-                columns={columns}
-                data={rows}
-                keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
-                caption="Inventory products and stock levels"
-              />
-            </div>
-            <div className="flex flex-col gap-3 border-t border-hairline px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-caption text-ink-muted">
-                Showing{" "}
-                <span className="tabular-nums text-ink-secondary">
-                  {firstVisibleItem}
-                </span>
-                {" - "}
-                <span className="tabular-nums text-ink-secondary">
-                  {lastVisibleItem}
-                </span>
-                {" of "}
-                <span className="tabular-nums text-ink-secondary">
-                  {totalProducts}
-                </span>{" "}
-                products
-              </p>
-              <div
-                className="flex items-center gap-1"
-                aria-label="Inventory pagination"
-              >
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage(1)}
-                  disabled={!pagination.hasPrev}
-                  aria-label="First page"
-                  title="First page"
-                >
-                  <ChevronsLeft className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  disabled={!pagination.hasPrev}
-                  aria-label="Previous page"
-                  title="Previous page"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                {pagination.pages.map((pageNumber, index) =>
-                  pageNumber === -1 ? (
-                    <span
-                      key={`gap-${index}`}
-                      className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
-                    >
-                      ...
-                    </span>
-                  ) : (
-                    <Button
-                      key={pageNumber}
-                      variant={pageNumber === page ? "primary" : "utility"}
-                      size="sm"
-                      className="h-11 w-11 px-0 tabular-nums"
-                      onClick={() => setPage(pageNumber)}
-                      aria-label={`Page ${pageNumber}`}
-                      title={`Page ${pageNumber}`}
-                    >
-                      {pageNumber}
-                    </Button>
-                  ),
-                )}
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() =>
-                    setPage((value) =>
-                      Math.min(pagination.totalPages, value + 1),
-                    )
-                  }
-                  disabled={!pagination.hasNext}
-                  aria-label="Next page"
-                  title="Next page"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage(pagination.totalPages)}
-                  disabled={!pagination.hasNext}
-                  aria-label="Last page"
-                  title="Last page"
-                >
-                  <ChevronsRight className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
+          <div
+            className={
+              inventoryQuery.isFetching
+                ? "opacity-70 transition-opacity"
+                : "transition-opacity"
+            }
+          >
+            <DataTable
+              columns={columns}
+              data={rows}
+              keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
+              caption="Inventory products and stock levels"
+              onSort={handleSort}
+              pagination={{
+                ...pagination,
+                currentPage: page,
+                total: totalProducts,
+                onPageChange: (p) => setPage(p),
+              }}
+            />
+          </div>
+        )} 
       </Card>
 
-      <Modal
+      <AddEditProductModal
+        key={editingProduct === "new" ? "new" : editingProduct?.id ?? "none"}
         open={editingProduct !== null}
+        product={editingProduct}
         onClose={() => setEditingProduct(null)}
-        title={
-          editingProduct && editingProduct !== "new"
-            ? "Edit Product"
-            : "New Product"
+        onSave={(data) =>
+          saveProduct.mutate({
+            product: editingProduct && editingProduct !== "new" ? editingProduct : undefined,
+            data,
+          })
         }
-        footer={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => setEditingProduct(null)}
-            >
-              <X className="w-4 h-4" /> Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() =>
-                saveProduct.mutate(
-                  editingProduct && editingProduct !== "new"
-                    ? editingProduct
-                    : undefined,
-                )
-              }
-              disabled={!formName.trim() || saveProduct.isPending}
-            >
-              <Plus className="w-4 h-4" />{" "}
-              {editingProduct ? "Save Changes" : "Create Product"}
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-caption text-ink-muted mb-1">
-              Product Name
-            </label>
-            <input
-              type="text"
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-              placeholder="Wireless Mouse"
-              aria-label="Product name"
-            />
-          </div>
-          <div>
-            <label className="block text-caption text-ink-muted mb-1">
-              Description
-            </label>
-            <input
-              type="text"
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-              placeholder="Optional description"
-              aria-label="Product description"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-caption text-ink-muted mb-1">
-                Reorder Point
-              </label>
-              <input
-                type="number"
-                value={formReorder}
-                onChange={(e) => setFormReorder(Number(e.target.value))}
-                className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-                aria-label="Reorder point"
-              />
-            </div>
-            <div>
-              <label className="block text-caption text-ink-muted mb-1">
-                Safety Stock
-              </label>
-              <input
-                type="number"
-                value={formSafety}
-                onChange={(e) => setFormSafety(Number(e.target.value))}
-                className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
-                aria-label="Safety stock"
-              />
-            </div>
-          </div>
-        </div>
-      </Modal>
+        isPending={saveProduct.isPending}
+      />
 
       <Modal
         open={deletingProduct !== null}
@@ -771,76 +536,19 @@ export default function InventoryPage() {
         </p>
       </Modal>
 
-      <Modal
+      <AdjustStockModal
         open={adjustingStock !== null}
-        onClose={() => {
-          setAdjustingStock(null);
-          setStockDelta("");
-          setStockReason("");
-        }}
-        title={`Adjust Stock — ${adjustingStock?.skuCode ?? ""}`}
-        footer={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => {
-                setAdjustingStock(null);
-                setStockDelta("");
-                setStockReason("");
-              }}
-            >
-              <X className="w-4 h-4" /> Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                if (adjustingStock && stockDelta) {
-                  adjustStock.mutate({
-                    stockId: adjustingStock.stockId,
-                    delta: Number(stockDelta),
-                    reason: stockReason,
-                  });
-                }
-              }}
-              disabled={adjustStock.isPending || !stockDelta}
-            >
-              <ArrowUpDown className="w-4 h-4" /> Adjust
-            </Button>
-          </div>
+        stockInfo={adjustingStock}
+        onClose={() => setAdjustingStock(null)}
+        onAdjust={({ delta, reason }) =>
+          adjustStock.mutate({
+            stockId: adjustingStock!.stockId,
+            delta,
+            reason,
+          })
         }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-caption font-medium text-ink-secondary mb-1">
-              Quantity Delta
-            </label>
-            <input
-              type="number"
-              value={stockDelta}
-              onChange={(e) => setStockDelta(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
-              placeholder="e.g. 10 or -5"
-            />
-            <p className="text-caption text-ink-muted mt-1">
-              Positive to add stock, negative to remove.
-            </p>
-          </div>
-          <div>
-            <label className="block text-caption font-medium text-ink-secondary mb-1">
-              Reason (optional)
-            </label>
-            <input
-              type="text"
-              value={stockReason}
-              onChange={(e) => setStockReason(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
-              placeholder="e.g. Received shipment"
-            />
-          </div>
-        </div>
-      </Modal>
+        isPending={adjustStock.isPending}
+      />
     </div>
   );
 }

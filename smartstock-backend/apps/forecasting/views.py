@@ -1,4 +1,5 @@
 from celery.result import AsyncResult
+from django.core.cache import cache
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiResponse,
@@ -115,6 +116,11 @@ class ForecastBySKUView(APIView):
         tags=['forecasting'],
     )
     def get(self, request, sku):
+        cache_key = f'forecast_sku_{sku}'
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
         service = ForecastingService()
         rows = list(service.get_forecast_by_sku_code_or_id(sku))
         if not rows:
@@ -124,25 +130,33 @@ class ForecastBySKUView(APIView):
             )
 
         first = rows[0]
-        return Response(
-            {
-                'sku_id': first.sku_id,
-                'sku_code': first.sku.code,
-                'product_name': first.sku.product.name,
-                'forecasts': [
-                    {
-                        'date': row.forecast_date.isoformat(),
-                        'predicted_quantity': row.predicted_quantity,
-                        'lower_bound': row.lower_bound,
-                        'upper_bound': row.upper_bound,
-                        'mae': row.mae,
-                        'mape': row.mape,
-                        'model_version': row.model_version,
-                    }
-                    for row in rows
-                ],
-            }
-        )
+        resolved_key = f'forecast_sku_{first.sku.code}'
+        if cache_key != resolved_key:
+            cached_data = cache.get(resolved_key)
+            if cached_data is not None:
+                return Response(cached_data)
+
+        data = {
+            'sku_id': first.sku_id,
+            'sku_code': first.sku.code,
+            'product_name': first.sku.product.name,
+            'forecasts': [
+                {
+                    'date': row.forecast_date.isoformat(),
+                    'predicted_quantity': row.predicted_quantity,
+                    'lower_bound': row.lower_bound,
+                    'upper_bound': row.upper_bound,
+                    'mae': row.mae,
+                    'mape': row.mape,
+                    'model_version': row.model_version,
+                }
+                for row in rows
+            ],
+        }
+        cache.set(resolved_key, data, timeout=3600)
+        if cache_key != resolved_key:
+            cache.set(cache_key, data, timeout=3600)
+        return Response(data)
 
 
 class RunForecastView(APIView):

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { TrendingUp, AlertTriangle } from 'lucide-react';
 import {
   AreaChart,
@@ -22,16 +23,19 @@ interface SkuChartProps {
 export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
   const color = COLORS[colorIdx % COLORS.length];
 
-  const chartData: (ForecastDay & { upperBound: number | null; lowerBound: number | null })[] =
-    sku.forecast.slice(0, 30).map((d) => ({
-      ...d,
-      date: (() => {
-        const dt = new Date(d.date);
-        return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-      })(),
-      upperBound: d.upper_bound ?? null,
-      lowerBound: d.lower_bound ?? null,
-    }));
+  const chartData = useMemo<((ForecastDay & { upperBound: number | null; lowerBound: number | null })[])>(
+    () =>
+      sku.forecast.slice(0, 30).map((d) => ({
+        ...d,
+        date: (() => {
+          const dt = new Date(d.date);
+          return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        })(),
+        upperBound: d.upper_bound ?? null,
+        lowerBound: d.lower_bound ?? null,
+      })),
+    [sku.forecast],
+  );
 
   return (
     <div className="bg-canvas border border-hairline rounded-lg p-5 relative">

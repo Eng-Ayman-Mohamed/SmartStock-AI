@@ -5,8 +5,10 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'category'
         verbose_name_plural = 'categories'
         ordering = ['-created_at']
 
@@ -44,6 +46,8 @@ class Product(models.Model):
         return self.name
 
     class Meta:
+        verbose_name = 'product'
+        verbose_name_plural = 'products'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['is_active', '-created_at'], name='idx_product_active_created'),
@@ -56,11 +60,14 @@ class SKU(models.Model):
     code = models.CharField(max_length=50, unique=True)
     attributes = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'{self.product.name} - {self.code}'
 
     class Meta:
+        verbose_name = 'SKU'
+        verbose_name_plural = 'SKUs'
         ordering = ['-created_at']
 
 
@@ -80,6 +87,8 @@ class StockLevel(models.Model):
         return f'{self.sku.code}: {self.quantity_on_hand}'
 
     class Meta:
+        verbose_name = 'stock level'
+        verbose_name_plural = 'stock levels'
         ordering = ['-updated_at']
         indexes = [
             models.Index(fields=['quantity_on_hand'], name='idx_stocklevel_qty'),
@@ -96,10 +105,10 @@ class SalesRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = 'sales record'
+        verbose_name_plural = 'sales records'
         ordering = ['-date', 'sku']
-        indexes = [
-            models.Index(fields=['sku', 'date']),
-        ]
+        indexes = []
         unique_together = [('sku', 'date')]
 
     def __str__(self):
@@ -120,4 +129,10 @@ class Supplier(models.Model):
         return self.name
 
     class Meta:
+        verbose_name = 'supplier'
+        verbose_name_plural = 'suppliers'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['is_active']),
+        ]

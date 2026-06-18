@@ -5,11 +5,11 @@ import type { CreateSupplierPayload, UpdateSupplierPayload } from '../types';
 
 export const suppliersQueryKey = ['suppliers'] as const;
 
-export function useSuppliers(searchQuery?: string) {
+export function useSuppliers(searchQuery?: string, page: number = 1, pageSize: number = 20) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
-    queryKey: [...suppliersQueryKey, searchQuery],
-    queryFn: () => suppliersApi.listSuppliers(searchQuery),
+    queryKey: [...suppliersQueryKey, page, pageSize, searchQuery],
+    queryFn: () => suppliersApi.listSuppliers(searchQuery, page, pageSize),
     enabled: !!token,
     retry: false,
   });

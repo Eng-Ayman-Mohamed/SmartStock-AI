@@ -51,7 +51,13 @@ class PurchaseOrder(models.Model):
         return f'{label}: {self.sku.code} x{self.quantity}'
 
     class Meta:
+        verbose_name = 'purchase order'
+        verbose_name_plural = 'purchase orders'
         ordering = ['-created_at', '-id']
         indexes = [
             models.Index(fields=['status', '-created_at'], name='idx_po_status_created'),
+            models.Index(fields=['sku']),
+            models.Index(fields=['supplier']),
+            models.Index(fields=['requested_by']),
+            models.Index(fields=['approved_by']),
         ]

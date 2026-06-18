@@ -318,8 +318,11 @@ class StubToolTests(TestCase):
             repo = SimpleNamespace(
                 get_by_id=lambda po_id: SimpleNamespace(
                     id=po_id,
+                    po_number=None,
                     status='approved',
-                    sku=SimpleNamespace(code='SKU-1', product=SimpleNamespace(name='Widget')),
+                    sku=SimpleNamespace(
+                        code='SKU-1', product=SimpleNamespace(name='Widget', unit_price='10.00')
+                    ),
                     supplier=SimpleNamespace(name='Acme', contact_email='a@b.com'),
                     quantity=10,
                     total_cost='100.00',
@@ -454,7 +457,8 @@ class BaseToolInvokeTests(unittest.TestCase):
 
 class ForecastingAgentTests(unittest.TestCase):
     @patch('ai.agents.forecasting_agent.trace_agent_run')
-    def test_run_completes_when_no_skus(self, mock_trace):
+    @patch('ai.agents.forecasting_agent.record_agent_run_task')
+    def test_run_completes_when_no_skus(self, mock_record, mock_trace):
         agent = ForecastingAgent()
         result = agent.run(context={'sku_ids': []})
         self.assertEqual(result['status'], 'completed')
@@ -463,7 +467,8 @@ class ForecastingAgentTests(unittest.TestCase):
         mock_trace.assert_called_once()
 
     @patch('ai.agents.forecasting_agent.trace_agent_run')
-    def test_run_with_context(self, mock_trace):
+    @patch('ai.agents.forecasting_agent.record_agent_run_task')
+    def test_run_with_context(self, mock_record, mock_trace):
         agent = ForecastingAgent()
         result = agent.run(context={'sku_ids': []})
         self.assertEqual(result['agent'], 'forecasting_agent')

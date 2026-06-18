@@ -119,7 +119,7 @@ api.interceptors.response.use(
       try {
         const { data } = await api.post<{ access: string; refresh?: string }>(
           '/auth/refresh/',
-          null,
+          {},
           { withCredentials: true }
         );
         const newToken = data.access;

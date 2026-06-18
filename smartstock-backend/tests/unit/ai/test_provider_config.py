@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
+from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
 
 
@@ -136,7 +137,7 @@ class ProviderConfigGetEmbeddingsTest(TestCase):
 
         with patch.object(provider_config, 'PROVIDER', 'groq'):
             with patch.dict(os.environ, {}, clear=True):
-                with self.assertRaises(ValueError) as ctx:
+                with self.assertRaises(ImproperlyConfigured) as ctx:
                     provider_config.get_embeddings()
                 self.assertIn('GOOGLE_API_KEY', str(ctx.exception))
 

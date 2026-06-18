@@ -15,6 +15,7 @@ from ai.observability.langfuse import (
     trace_agent_run,
 )
 from apps.forecasting.services import ForecastingService
+from apps.monitoring.tasks import record_agent_run_task
 
 try:
     from langchain.agents import create_agent
@@ -102,17 +103,33 @@ class DecisionAgent:
         self.tool_retries = tool_retries
 
     def run(self, context: dict) -> dict:
-        product_ids = self._extract_product_ids(context)
+        _started_at = time.time()
         trace_spans = []
-        results = [
-            self.evaluate_product(product_id, trace_spans=trace_spans) for product_id in product_ids
-        ]
-        output = {
-            'agent': 'decision_agent',
-            'results': results,
-            'flags_created': sum(1 for item in results if item.get('reorder_flag_id')),
-        }
+        try:
+            product_ids = self._extract_product_ids(context)
+            results = [
+                self.evaluate_product(product_id, trace_spans=trace_spans)
+                for product_id in product_ids
+            ]
+            output = {
+                'agent': 'decision_agent',
+                'results': results,
+                'flags_created': sum(1 for item in results if item.get('reorder_flag_id')),
+            }
+        except Exception as exc:
+            logger.exception('DecisionAgent.run failed')
+            output = {'agent': 'decision_agent', 'error': str(exc), 'results': []}
         trace_agent_run('decision_agent', context, output, trace_spans)
+        _duration = round((time.time() - _started_at) * 1000)
+        results = output.get('results', [])
+        _outcome = (
+            'failure'
+            if any(r.get('error') for r in results if isinstance(r, dict)) or 'error' in output
+            else 'success'
+        )
+        record_agent_run_task.delay(
+            agent_name='decision_agent', outcome=_outcome, duration_ms=_duration
+        )
         return output
 
     def evaluate_product(self, product_id: int, trace_spans: list | None = None) -> dict:

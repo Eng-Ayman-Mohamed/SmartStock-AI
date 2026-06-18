@@ -358,12 +358,13 @@ class ForecastingRepositoryGetSalesForSkuTest(ForecastingRepositoryTest):
 
 
 class ForecastingRepositoryGetSalesForAllSkusTest(ForecastingRepositoryTest):
-    def test_returns_dict_of_sku_code_to_queryset(self):
+    def test_returns_dict_of_sku_code_to_list(self):
         SalesRecord.objects.create(sku=self.sku, date=self.today, quantity_sold=10)
         result = self.repo.get_sales_for_all_skus()
         self.assertIsInstance(result, dict)
         self.assertIn('FC-SKU-001', result)
-        self.assertEqual(result['FC-SKU-001'].count(), 1)
+        self.assertIsInstance(result['FC-SKU-001'], list)
+        self.assertEqual(len(result['FC-SKU-001']), 1)
 
     def test_skus_without_sales_excluded(self):
         SKU.objects.create(product=self.product, code='NO-SALES')

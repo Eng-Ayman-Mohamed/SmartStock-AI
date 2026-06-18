@@ -11,6 +11,8 @@ Gemini uses langchain-google-genai for embeddings.
 import logging
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 logger = logging.getLogger(__name__)
 
 PROVIDER = os.getenv('LLM_PROVIDER', 'openai').lower()
@@ -137,7 +139,7 @@ def get_embeddings():
             google_api_key=gemini_key,
         )
 
-    raise ValueError(
+    raise ImproperlyConfigured(
         f'Provider {PROVIDER} has no embedding API and GOOGLE_API_KEY is not set. '
         'Set GOOGLE_API_KEY or switch to OpenAI/Gemini for embeddings.'
     )

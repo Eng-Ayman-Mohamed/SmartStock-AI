@@ -1,5 +1,7 @@
+from collections import defaultdict
+from datetime import timedelta
+
 from django.db import transaction
-from django.db.models import QuerySet
 from django.utils import timezone
 
 from apps.inventory.models import SKU, SalesRecord
@@ -75,22 +77,34 @@ class ForecastingRepository(BaseRepository):
     def get_sales_for_sku(self, sku_id: int):
         return SalesRecord.objects.filter(sku_id=sku_id).order_by('date')
 
-    def get_sales_for_all_skus(self) -> dict[str, QuerySet]:
+    def get_sales_for_all_skus(self) -> dict[str, list]:
         """
-        Returns {sku_code: SalesRecord queryset} for all active SKUs with sales data.
+        Returns {sku_code: list of SalesRecord} for all active SKUs with sales data.
+        Fetches ALL records in a single query (N+1 fix) — partitioned per SKU via defaultdict.
+
+        Only includes records from the last 365 days to bound the query size.
         Used by batch ingestion pipeline.
         """
         skus_with_sales = (
             SKU.objects.filter(sales_records__isnull=False, product__is_active=True)
             .distinct()
             .select_related('product')
-            .values_list('id', 'code')
         )
 
-        result = {}
-        for sku_id, sku_code in skus_with_sales:
-            result[sku_code] = self.get_sales_for_sku(sku_id)
-        return result
+        sku_map = {s.id: s.code for s in skus_with_sales}
+
+        if not sku_map:
+            return {}
+
+        all_records = SalesRecord.objects.filter(
+            sku_id__in=sku_map.keys(),
+            date__gte=timezone.now().date() - timedelta(days=365),
+        ).order_by('sku', 'date')
+
+        result = defaultdict(list)
+        for record in all_records:
+            result[sku_map[record.sku_id]].append(record)
+        return dict(result)
 
     def has_todays_forecast(self, sku_id: int) -> bool:
         today = timezone.localdate()

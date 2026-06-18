@@ -14,9 +14,11 @@ class ForecastResult(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'forecast result'
+        verbose_name_plural = 'forecast results'
         ordering = ['-created_at', '-id']
         indexes = [
-            models.Index(fields=['sku', 'forecast_date']),
+            models.Index(fields=['forecast_date']),
         ]
         unique_together = [('sku', 'forecast_date')]
 
@@ -45,6 +47,8 @@ class ReorderFlag(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'reorder flag'
+        verbose_name_plural = 'reorder flags'
         indexes = [
             models.Index(fields=['sku', 'status']),
             models.Index(fields=['created_at']),
