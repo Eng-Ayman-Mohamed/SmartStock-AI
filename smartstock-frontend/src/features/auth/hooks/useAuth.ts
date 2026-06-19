@@ -49,7 +49,6 @@ export function useAuth() {
         setToken(res.access);
         setRefreshToken(res.refresh);
         setUser(res.user);
-        sessionStorage.setItem('refreshToken', res.refresh);
         navigate(redirectTo, { replace: true });
       } catch (err) {
         setError(toAuthError(err));
@@ -70,7 +69,6 @@ export function useAuth() {
         setToken(res.access);
         setRefreshToken(res.refresh);
         setUser(res.user);
-        sessionStorage.setItem('refreshToken', res.refresh);
         navigate(redirectTo, { replace: true });
       } catch (err) {
         setError(toAuthError(err));
@@ -88,7 +86,6 @@ export function useAuth() {
     } catch (err) {
       console.warn('Logout request failed; clearing local session anyway.', err);
     } finally {
-      sessionStorage.removeItem('refreshToken');
       clearAuth();
       navigate('/login', { replace: true });
     }

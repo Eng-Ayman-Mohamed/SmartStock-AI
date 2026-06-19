@@ -66,9 +66,11 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
           reset();
           onClose();
         },
-        onError: (err: unknown) => {
+        onError: () => {
           setFormError('Could not create user. The email may already be in use.');
-          console.error('create user failed', err, 'currentUserId=', currentUserId);
+          if (import.meta.env.DEV) {
+            console.debug('Failed to create user');
+          }
         },
       },
     );
