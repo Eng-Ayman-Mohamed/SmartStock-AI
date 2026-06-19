@@ -64,6 +64,13 @@ function Badge({ children, variant = 'ai', small }: { children: React.ReactNode;
   );
 }
 
+const NAV_SECTIONS = [
+  { label: 'Features', id: 'features' },
+  { label: 'How it works', id: 'how-it-works' },
+  { label: 'Pricing', id: 'pricing' },
+  { label: 'Blog', id: 'footer' },
+];
+
 function Nav() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -74,6 +81,12 @@ function Nav() {
     window.addEventListener('scroll', fn);
     return () => window.removeEventListener('scroll', fn);
   }, []);
+
+  const scrollTo = (id: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <nav
@@ -87,13 +100,14 @@ function Nav() {
       </Link>
 
       <div className="hidden md:flex items-center gap-8">
-        {['Features', 'How it works', 'Pricing', 'Blog'].map((l) => (
+        {NAV_SECTIONS.map(({ label, id }) => (
           <a
-            key={l}
-            href="#"
+            key={label}
+            href={`#${id}`}
+            onClick={scrollTo(id)}
             className="text-body font-medium text-ink-muted hover:text-ink transition-colors"
           >
-            {l}
+            {label}
           </a>
         ))}
       </div>
@@ -293,7 +307,7 @@ function HowItWorks() {
   ];
 
   return (
-    <section className="py-16 px-6 md:px-10 bg-canvas border-y border-hairline">
+    <section id="how-it-works" className="py-16 px-6 md:px-10 bg-canvas border-y border-hairline">
       <div className="max-w-[880px] mx-auto">
         <p className="text-eyebrow font-bold text-ink-muted tracking-widest uppercase mb-3.5">
           How it works
@@ -338,7 +352,7 @@ function Features() {
   ];
 
   return (
-    <section className="py-16 px-6 md:px-10">
+    <section id="features" className="py-16 px-6 md:px-10">
       <div className="max-w-[880px] mx-auto">
         <p className="text-eyebrow font-bold text-ink-muted tracking-widest uppercase mb-3.5">
           Features
@@ -377,7 +391,7 @@ function KpiStrip() {
   ];
 
   return (
-    <section className="py-16 px-6 md:px-10 bg-canvas border-y border-hairline">
+    <section id="pricing" className="py-16 px-6 md:px-10 bg-canvas border-y border-hairline">
       <div className="max-w-[880px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         {kpis.map(({ stat, label, sub }) => (
           <div key={stat}>
@@ -426,7 +440,7 @@ function Footer() {
   ];
 
   return (
-    <footer className="border-t border-hairline bg-canvas-soft py-14 px-6 md:px-10">
+    <footer id="footer" className="border-t border-hairline bg-canvas-soft py-14 px-6 md:px-10">
       <div className="max-w-[880px] mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr] gap-10 mb-12">
           <div>
