@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
-from rest_framework.response import Response
 
 from config.exception_handler import _error_response, custom_exception_handler
 

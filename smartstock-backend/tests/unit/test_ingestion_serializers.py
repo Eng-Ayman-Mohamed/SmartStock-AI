@@ -1,5 +1,4 @@
-from io import BytesIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -11,7 +10,6 @@ from apps.ingestion.serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
     InvoiceScanConfirmSerializer,
-    InvoiceScanSerializer,
     InvoiceScanUploadSerializer,
     RAGQuerySerializer,
     TranscriptionSerializer,

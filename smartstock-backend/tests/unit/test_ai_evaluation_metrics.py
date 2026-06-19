@@ -1,4 +1,3 @@
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -7,7 +6,6 @@ from django.test import TestCase
 
 from ai.evaluation.metrics import (
     GOLDEN_DATASET_PATH,
-    STOP_WORDS,
     _bigrams,
     _tokenize,
     compute_answer_faithfulness,
