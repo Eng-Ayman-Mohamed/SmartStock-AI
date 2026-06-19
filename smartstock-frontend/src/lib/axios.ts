@@ -70,6 +70,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Security: Access tokens are short-lived (15 min) and stored in memory (Zustand).
+// Refresh tokens are stored in httpOnly cookies set by the backend, inaccessible to JavaScript.
+// Automatic token refresh happens via interceptor on 401 responses.
+
 api.interceptors.response.use(
   (response) => {
     if (response.data && typeof response.data === 'object' && ('data' in response.data || response.data.status === 'error')) {
