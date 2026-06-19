@@ -236,7 +236,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.exception('Document upload/ingestion failed')
             return Response(
-                {'detail': f'Upload or ingestion failed: {e}'},
+                {'detail': 'Upload or ingestion failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -508,14 +508,15 @@ class TranscribeView(APIView):
             text = transcriber.transcribe(audio_data, filename=audio_file.name)
             return Response({'status': 'success', 'data': {'text': text}})
         except ValueError as e:
+            logger.warning('Transcription validation error: %s', e)
             return Response(
-                {'status': 'error', 'message': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {'status': 'error', 'message': 'Invalid audio file. Please try again with a supported format.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception as e:
             logger.exception('Transcription failed')
             return Response(
-                {'status': 'error', 'message': f'Transcription failed: {e}'},
+                {'status': 'error', 'message': 'Transcription failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -805,7 +806,7 @@ class ChatEndpointView(APIView):
         except Exception as exc:
             logger.exception('Chat pipeline failed')
             return Response(
-                {'status': 'error', 'message': str(exc)},
+                {'status': 'error', 'message': 'An error occurred processing your request. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

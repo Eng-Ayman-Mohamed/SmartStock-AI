@@ -45,12 +45,15 @@ class TokenRefreshView(BaseTokenRefreshView):
         response = super().post(request, *args, **kwargs)
         refresh_token = response.data.get('refresh')
         if refresh_token:
+            from config.settings.base import IS_PRODUCTION
             response.set_cookie(
                 key='refresh_token',
                 value=refresh_token,
                 httponly=True,
-                secure=not settings.DEBUG,
-                samesite='None' if not settings.DEBUG else 'Lax',
+                # Security: Always use Secure in production, HTTPonly for authentication
+                secure=IS_PRODUCTION or not settings.DEBUG,
+                # Security: Use Strict SameSite in production to prevent CSRF
+                samesite='Strict' if IS_PRODUCTION else 'Lax',
                 max_age=3 * 24 * 60 * 60,
             )
         return response
@@ -119,12 +122,13 @@ class RegisterView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+        from config.settings.base import IS_PRODUCTION
         response.set_cookie(
             key='refresh_token',
             value=str(refresh),
             httponly=True,
-            secure=not settings.DEBUG,
-            samesite='None' if not settings.DEBUG else 'Lax',
+            secure=IS_PRODUCTION or not settings.DEBUG,
+            samesite='Strict' if IS_PRODUCTION else 'Lax',
             max_age=3 * 24 * 60 * 60,
         )
         return response
@@ -206,12 +210,13 @@ class LoginView(TokenObtainPairView):
             },
             status=status.HTTP_200_OK,
         )
+        from config.settings.base import IS_PRODUCTION
         response.set_cookie(
             key='refresh_token',
             value=validated_data['refresh'],
             httponly=True,
-            secure=not settings.DEBUG,
-            samesite='None' if not settings.DEBUG else 'Lax',
+            secure=IS_PRODUCTION or not settings.DEBUG,
+            samesite='Strict' if IS_PRODUCTION else 'Lax',
             max_age=3 * 24 * 60 * 60,
         )
         return response
