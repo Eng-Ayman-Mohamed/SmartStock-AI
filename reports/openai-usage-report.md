@@ -547,3 +547,81 @@ The history is capped at **10 messages** to control costs. Older messages are st
 4. **Sidebar** — click to switch conversations, rename on hover, delete on hover, toggle sidebar
 5. **New Chat** — starts fresh conversation with no history
 6. **Multi-turn** — last 10 messages injected into RAG prompt for context continuity
+
+---
+
+## 10. Groq Vision Enablement & Dotenv Fix — 2026-06-19
+
+### 10a. Problem: "Something went wrong" on every chat request
+
+On 2026-06-19, all AI chat endpoints returned `504 Gateway Timeout` / `"Sorry, something went wrong"`. No code changes had been made since the previous session.
+
+**Root cause:** Gemini free-tier API quota had been exhausted (`429 RESOURCE_EXHAUSTED`). The `langchain-google-genai` SDK performs 5 retries with exponential backoff (1.4s → 2.8s → 5.7s → 11.4s → 16.3s = ~37s total), causing the 15‑second CHAT_TIMEOUT to fire before a single request completes. Additionally, an OpenAI key was also at zero quota (`insufficient_quota`).
+
+**Secondary bug — ThreadPoolExecutor blocking:** The `with ThreadPoolExecutor() as executor:` context manager calls `executor.shutdown(wait=True)` on exit, blocking until every submitted future finishes. Because the hanging Gemini thread never completed, the executor blocked for 37+ seconds even though the main thread already timed out after 15 seconds. The timeout was effectively dead code.
+
+**Tertiary bug — dotenv override order:** The root monorepo `.env` at `/home/mawada/SmartStock-AI/.env` contained `DATABASE_URL=postgresql://postgres:postgres@localhost:5433/smartstock_ai` and a stale `LLM_PROVIDER=gemini`. Because `load_dotenv()` with default `override=False` does not replace already-set variables, whichever file was loaded *first* won. Docker Compose and Railway environments loaded the root `.env` first via Docker's `env_file` directive, silently overriding the backend's `.env` with wrong DB credentials and the wrong LLM provider.
+
+### 10b. Solution: Switch to Groq for everything
+
+All providers were evaluated on 2026-06-19:
+
+| Provider | Status | Problem |
+|---|---|---|
+| OpenAI | Exhausted | `insufficient_quota` on API key |
+| Gemini | Exhausted | `429 RESOURCE_EXHAUSTED` — both keys share same GCP project |
+| Groq | **Working** | Free tier active, no quota issues |
+
+Decision: switch `LLM_PROVIDER=groq` for all LLM features.
+
+### 10c. Groq Vision — Previously Unsupported, Now Working
+
+The earlier provider capability matrix (section 8g) listed Groq vision as **not supported**. On 2026-06-19, we discovered that **Groq now supports vision** via the `meta-llama/llama-4-scout-17b-16e-instruct` model, which accepts both text and image inputs through the OpenAI-compatible API.
+
+**Changes to `ai/llm/provider_config.py`:**
+
+| Setting | Before | After |
+|---|---|---|
+| Groq `vision_model` | (none — not set) | `meta-llama/llama-4-scout-17b-16e-instruct` |
+| Groq `supports_vision` | `False` | `True` |
+
+**Result:** `POST /api/ai/invoice-scan/` returns **200** with Groq vision (was 501 "No vision support"). Verified with a test image — correctly identified colours and extracted structured invoice data.
+
+**Updated Provider Capability Matrix:**
+
+| Feature | OpenAI | Groq | Gemini |
+|---|---|---|---|
+| Chat/LLM | `gpt-4o` | `llama-3.3-70b-versatile` | `gemini-2.0-flash` |
+| Intent Classification | `gpt-4o-mini` | `llama-3.1-8b-instant` | `gemini-2.0-flash` |
+| Embeddings | `text-embedding-3-small` | fallback → Gemini | `gemini-embedding-001` |
+| Whisper (STT) | `whisper-1` | `whisper-large-v3` | — |
+| Vision (invoice scan) | `gpt-4o` | `**llama-4-scout-17b-16e-instruct**`(NEW) | `gemini-2.0-flash` |
+| Reranking | — | — | — (Cohere) |
+
+### 10d. Files Modified
+
+| File | Change | Why |
+|---|---|---|
+| `ai/llm/provider_config.py:40-41` | Set Groq `vision_model` + `supports_vision=True` | Enable Groq vision for invoice scanning |
+| `apps/ingestion/views.py:807-841` | Replaced `with ThreadPoolExecutor` with explicit `executor.shutdown(wait=False)` | Prevent executor from blocking on hanging LLM threads — timeout now actually works |
+| `manage.py:9` | `load_dotenv(find_dotenv(), override=True)` | Backend `.env` wins over root monorepo `.env` |
+| `config/wsgi.py:5` | Same dotenv fix | Gunicorn loads backend `.env` correctly |
+| `smartstock-backend/.env` | `LLM_PROVIDER=groq`, `LLM_WHISPER_PROVIDER=groq` | Use Groq for everything |
+| `tests/unit/test_whisper.py` | Updated mocks from `openai.OpenAI` to `ai.llm.provider_config.get_whisper_client` | Tests were mocking the wrong targets after provider switch |
+| `tests/unit/ai/test_provider_config.py` | Updated Groq config assertion: `supports_vision=True`, added `vision_model` check | CI alignment |
+| `tests/unit/test_coverage_boost2.py` | **NEW** — 47 tests for metrics, repos, services, provider config | Coverage was 77.17% (below 80% threshold) |
+
+### 10e. Testing Results (Groq Provider — Full Coverage)
+
+Tested 2026-06-19 with `LLM_PROVIDER=groq`, `LLM_WHISPER_PROVIDER=groq`:
+
+| # | Endpoint | HTTP | Result |
+|---|---|---|---|
+| 1 | `POST /api/ai/chat/` | 200 | ✅ Groq answered inventory queries correctly |
+| 2 | `POST /api/ai/invoice-scan/` | 200 | ✅ **NEW** — Groq vision extracts fields via `llama-4-scout-17b-16e-instruct` |
+| 3 | `POST /api/ai/transcribe/` | 200 | ✅ Groq whisper-large-v3 transcribed audio |
+| 4 | `GET /api/health/` | 200 | ✅ Database + Redis connected |
+
+### 10f. CI Coverage
+
+Full test suite: **1395 passed**, 0 failed. Coverage: **84.88%** (above 80% threshold).

@@ -6,11 +6,11 @@ from ai.multimodal.whisper import SpeechTranscriber
 
 
 class SpeechTranscriberTest(TestCase):
-    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('openai.OpenAI')
-    def test_transcribe_calls_whisper_api(self, mock_openai_cls):
+    @patch.dict('os.environ', {'GROQ_API_KEY': 'gsk-test'})
+    @patch('ai.llm.provider_config.get_whisper_client')
+    def test_transcribe_calls_whisper_api(self, mock_get_client):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
+        mock_get_client.return_value = mock_client
         mock_client.audio.transcriptions.create.return_value = MagicMock(text='hello world')
 
         transcriber = SpeechTranscriber()
@@ -24,13 +24,13 @@ class SpeechTranscriberTest(TestCase):
         transcriber = SpeechTranscriber()
         with self.assertRaises(ValueError) as ctx:
             transcriber.transcribe(b'audio-data')
-        self.assertIn('OPENAI_API_KEY', str(ctx.exception))
+        self.assertIn('GROQ_API_KEY', str(ctx.exception))
 
-    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('openai.OpenAI')
-    def test_transcribe_passes_filename(self, mock_openai_cls):
+    @patch.dict('os.environ', {'GROQ_API_KEY': 'gsk-test'})
+    @patch('ai.llm.provider_config.get_whisper_client')
+    def test_transcribe_passes_filename(self, mock_get_client):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
+        mock_get_client.return_value = mock_client
         mock_client.audio.transcriptions.create.return_value = MagicMock(text='ok')
 
         transcriber = SpeechTranscriber()
@@ -39,24 +39,24 @@ class SpeechTranscriberTest(TestCase):
         call_kwargs = mock_client.audio.transcriptions.create.call_args
         self.assertEqual(call_kwargs.kwargs['file'].name, 'my-audio.mp3')
 
-    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('openai.OpenAI')
-    def test_client_is_lazily_initialized(self, mock_openai_cls):
+    @patch.dict('os.environ', {'GROQ_API_KEY': 'gsk-test'})
+    @patch('ai.llm.provider_config.get_whisper_client')
+    def test_client_is_lazily_initialized(self, mock_get_client):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
+        mock_get_client.return_value = mock_client
         mock_client.audio.transcriptions.create.return_value = MagicMock(text='ok')
 
         transcriber = SpeechTranscriber()
-        mock_openai_cls.assert_not_called()
+        mock_get_client.assert_not_called()
 
         transcriber.transcribe(b'data')
-        mock_openai_cls.assert_called_once()
+        mock_get_client.assert_called_once()
 
-    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
-    @patch('openai.OpenAI')
-    def test_transcribe_api_error_propagates(self, mock_openai_cls):
+    @patch.dict('os.environ', {'GROQ_API_KEY': 'gsk-test'})
+    @patch('ai.llm.provider_config.get_whisper_client')
+    def test_transcribe_api_error_propagates(self, mock_get_client):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
+        mock_get_client.return_value = mock_client
         mock_client.audio.transcriptions.create.side_effect = RuntimeError('API down')
 
         transcriber = SpeechTranscriber()
