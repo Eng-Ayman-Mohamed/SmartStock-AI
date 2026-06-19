@@ -207,7 +207,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             </div>
           )}
 
-          <div className={`flex items-center gap-3 px-6 pt-4 pb-6 ${!showRejectReason ? 'border-t border-hairline' : ''}`}>
+          <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 px-6 pt-4 pb-6 ${!showRejectReason ? 'border-t border-hairline' : ''}`}>
             <Button
               variant="ghost"
               size="md"

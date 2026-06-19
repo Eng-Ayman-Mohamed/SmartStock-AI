@@ -42,7 +42,7 @@ export default function ProfilePage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3 pb-4 border-b-[0.5px] border-hairline">
               <div
-                className={"w-12 h-12 rounded-full " + getAvatarColor(user?.name ?? '?') + " flex items-center justify-center text-white text-card-title font-medium"}
+                className={"w-12 h-12 rounded-full shrink-0 " + getAvatarColor(user?.name ?? '?') + " flex items-center justify-center text-white text-card-title font-medium"}
                 aria-hidden="true"
               >
                 {(user?.name ?? '?')
@@ -53,8 +53,8 @@ export default function ProfilePage() {
                   .slice(0, 2)}
               </div>
               <div className="min-w-0">
-                <p className="text-body text-ink font-medium">{user?.name ?? '—'}</p>
-                <p className="text-caption text-ink-muted">{user?.email ?? '—'}</p>
+                <p className="text-body text-ink font-medium truncate">{user?.name ?? '—'}</p>
+                <p className="text-caption text-ink-muted truncate">{user?.email ?? '—'}</p>
               </div>
             </div>
 

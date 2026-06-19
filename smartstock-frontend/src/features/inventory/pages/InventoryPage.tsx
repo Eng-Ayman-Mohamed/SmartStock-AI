@@ -2,10 +2,6 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Package,
   PackagePlus,
   PencilLine,
@@ -301,8 +297,6 @@ export default function InventoryPage() {
     pageSize: currentPageSize,
     currentPage: page,
   });
-  const firstVisibleItem = totalProducts === 0 ? 0 : pagination.startItem;
-  const lastVisibleItem = totalProducts === 0 ? 0 : pagination.endItem;
 
   type Row = (typeof rows)[number];
 
@@ -549,99 +543,19 @@ export default function InventoryPage() {
                 data={rows}
                 keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
                 caption="Inventory products and stock levels"
+                pagination={{
+                  currentPage: page,
+                  totalPages: pagination.totalPages,
+                  total: totalProducts,
+                  startItem: pagination.startItem,
+                  endItem: pagination.endItem,
+                  hasPrev: pagination.hasPrev,
+                  hasNext: pagination.hasNext,
+                  pages: pagination.pages,
+                  onPageChange: (p) => setPage(p),
+                  itemLabel: "products",
+                }}
               />
-            </div>
-            <div className="flex flex-col gap-3 border-t border-hairline px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-caption text-ink-muted">
-                Showing{" "}
-                <span className="tabular-nums text-ink-secondary">
-                  {firstVisibleItem}
-                </span>
-                {" - "}
-                <span className="tabular-nums text-ink-secondary">
-                  {lastVisibleItem}
-                </span>
-                {" of "}
-                <span className="tabular-nums text-ink-secondary">
-                  {totalProducts}
-                </span>{" "}
-                products
-              </p>
-              <div
-                className="flex items-center gap-1"
-                aria-label="Inventory pagination"
-              >
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage(1)}
-                  disabled={!pagination.hasPrev}
-                  aria-label="First page"
-                  title="First page"
-                >
-                  <ChevronsLeft className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  disabled={!pagination.hasPrev}
-                  aria-label="Previous page"
-                  title="Previous page"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                {pagination.pages.map((pageNumber, index) =>
-                  pageNumber === -1 ? (
-                    <span
-                      key={`gap-${index}`}
-                      className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
-                    >
-                      ...
-                    </span>
-                  ) : (
-                    <Button
-                      key={pageNumber}
-                      variant={pageNumber === page ? "primary" : "utility"}
-                      size="sm"
-                      className="h-11 w-11 px-0 tabular-nums"
-                      onClick={() => setPage(pageNumber)}
-                      aria-label={`Page ${pageNumber}`}
-                      title={`Page ${pageNumber}`}
-                    >
-                      {pageNumber}
-                    </Button>
-                  ),
-                )}
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() =>
-                    setPage((value) =>
-                      Math.min(pagination.totalPages, value + 1),
-                    )
-                  }
-                  disabled={!pagination.hasNext}
-                  aria-label="Next page"
-                  title="Next page"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="utility"
-                  size="sm"
-                  className="h-11 w-11 px-0"
-                  onClick={() => setPage(pagination.totalPages)}
-                  disabled={!pagination.hasNext}
-                  aria-label="Last page"
-                  title="Last page"
-                >
-                  <ChevronsRight className="h-5 w-5" />
-                </Button>
-              </div>
             </div>
           </>
         )}

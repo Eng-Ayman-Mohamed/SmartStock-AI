@@ -13,7 +13,7 @@ export default function RegisterPage() {
             </div>
             <span className="text-card-title font-semibold text-ink">SmartStock AI</span>
           </Link>
-          <h1 className="text-section-title font-semibold text-ink">Create your account</h1>
+          <h1 className="text-section-heading font-semibold text-ink">Create your account</h1>
           <p className="mt-1 text-body text-ink-muted">Get started in less than a minute</p>
         </div>
 

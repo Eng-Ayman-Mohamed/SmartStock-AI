@@ -150,7 +150,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
         </span>
       </div>
 
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 -mx-5 px-5 overflow-x-auto">
         <table className="w-full text-caption text-ink-secondary" aria-label={`Forecast data for ${sku.product_name}`}>
           <thead>
             <tr className="border-b border-hairline">

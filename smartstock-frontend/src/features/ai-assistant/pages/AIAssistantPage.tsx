@@ -9,7 +9,7 @@ export default function AIAssistantPage() {
   const items = snapshot ?? [];
 
   return (
-    <div className="h-[calc(100vh-40px-64px)] animate-fadeIn flex flex-col">
+    <div className="h-[calc(100vh-40px-32px)] md:h-[calc(100vh-40px-64px)] animate-fadeIn flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-page-heading text-ink">AI Assistant</h1>

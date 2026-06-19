@@ -58,7 +58,7 @@ export default function ForecastingPage() {
                 aria-label="Open alerts"
               >
                 <Bell className="w-4 h-4" />
-                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-4.5 h-4.5 rounded-full bg-red-500 text-[10px] font-semibold text-white min-w-[18px] px-1">
+                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4.5 min-w-[18px] px-1 rounded-full bg-red-500 text-[10px] font-semibold text-white">
                   {alerts.length}
                 </span>
               </button>
@@ -117,34 +117,34 @@ export default function ForecastingPage() {
                   </span>
                   {" SKUs"}
                 </p>
-                <div className="flex items-center gap-1" aria-label="Forecast pagination">
+                <div className="flex items-center gap-1 overflow-x-auto" aria-label="Forecast pagination">
                   <Button
                     variant="utility"
                     size="sm"
-                    className="h-11 w-11 px-0"
+                    className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
                     onClick={() => setPage(1)}
                     disabled={!paginationControls.hasPrev}
                     aria-label="First page"
                     title="First page"
                   >
-                    <ChevronsLeft className="h-5 w-5" />
+                    <ChevronsLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                   <Button
                     variant="utility"
                     size="sm"
-                    className="h-11 w-11 px-0"
+                    className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
                     onClick={() => setPage((value) => Math.max(1, value - 1))}
                     disabled={!paginationControls.hasPrev}
                     aria-label="Previous page"
                     title="Previous page"
                   >
-                    <ChevronLeft className="h-5 w-5" />
+                    <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                   {paginationControls.pages.map((pageNumber, index) =>
                     pageNumber === -1 ? (
                       <span
                         key={`gap-${index}`}
-                        className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
+                        className="flex h-9 w-9 items-center justify-center text-caption text-ink-faint sm:h-11 sm:w-11"
                       >
                         ...
                       </span>
@@ -153,7 +153,7 @@ export default function ForecastingPage() {
                         key={pageNumber}
                         variant={pageNumber === page ? 'primary' : 'utility'}
                         size="sm"
-                        className="h-11 w-11 px-0 tabular-nums"
+                        className="h-9 w-9 px-0 tabular-nums shrink-0 sm:h-11 sm:w-11"
                         onClick={() => setPage(pageNumber)}
                         aria-label={`Page ${pageNumber}`}
                         title={`Page ${pageNumber}`}
@@ -165,24 +165,24 @@ export default function ForecastingPage() {
                   <Button
                     variant="utility"
                     size="sm"
-                    className="h-11 w-11 px-0"
+                    className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
                     onClick={() => setPage((value) => Math.min(paginationControls.totalPages, value + 1))}
                     disabled={!paginationControls.hasNext}
                     aria-label="Next page"
                     title="Next page"
                   >
-                    <ChevronRight className="h-5 w-5" />
+                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                   <Button
                     variant="utility"
                     size="sm"
-                    className="h-11 w-11 px-0"
+                    className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
                     onClick={() => setPage(paginationControls.totalPages)}
                     disabled={!paginationControls.hasNext}
                     aria-label="Last page"
                     title="Last page"
                   >
-                    <ChevronsRight className="h-5 w-5" />
+                    <ChevronsRight className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 </div>
               </div>

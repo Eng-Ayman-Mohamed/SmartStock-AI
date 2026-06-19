@@ -40,7 +40,7 @@ function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: (
       to={to}
       onClick={onClick}
       className={({ isActive }) =>
-        `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
+        `flex items-center h-11 rounded-md text-body transition-colors duration-150 group relative ${
           collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
         } ${
           isActive
@@ -93,7 +93,7 @@ export default function Sidebar() {
         }`}
         aria-label="Navigation sidebar"
       >
-        <div className="flex items-center justify-between h-10 px-3 border-b border-hairline">
+        <div className="flex items-center justify-between h-11 px-3 border-b border-hairline">
           <span className="text-card-title font-medium text-ink">SmartStock AI</span>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -111,7 +111,7 @@ export default function Sidebar() {
               end={item.to === '/'}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 h-10 px-3 rounded-md text-body transition-colors duration-150 ${
+                `flex items-center gap-3 h-11 px-3 rounded-md text-body transition-colors duration-150 ${
                   isActive
                     ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-400'
                     : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
@@ -138,7 +138,7 @@ export default function Sidebar() {
         }`}
         aria-label="Navigation sidebar"
       >
-        <div className={`flex items-center h-10 px-3 border-b border-hairline ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
+        <div className={`flex items-center h-11 px-3 border-b border-hairline ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
           <Sparkles className="w-4 h-4 text-brand-600 shrink-0" aria-hidden="true" />
           {!sidebarCollapsed && <span className="text-card-title font-medium text-ink truncate">SmartStock AI</span>}
         </div>
@@ -151,7 +151,7 @@ export default function Sidebar() {
                 to={item.to}
                 end={item.to === '/'}
                 className={({ isActive }) =>
-                  `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
+                  `flex items-center h-11 rounded-md text-body transition-colors duration-150 group relative ${
                     sidebarCollapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
                   } ${
                     isActive
