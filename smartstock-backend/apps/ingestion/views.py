@@ -805,7 +805,10 @@ class ChatEndpointView(APIView):
         except Exception:
             logger.exception('Chat pipeline failed')
             return Response(
-                {'status': 'error', 'message': 'Chat pipeline failed. Please try again.'},
+                {
+                    'status': 'error',
+                    'message': 'An error occurred processing your request. Please try again.',
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
