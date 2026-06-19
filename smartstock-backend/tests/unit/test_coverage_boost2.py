@@ -447,6 +447,272 @@ class ProviderConfigGeminiChatLlmTests(TestCase):
             pc.PROVIDER = original
 
 
+class CoreExceptionsTests(TestCase):
+    def test_is_llm_quota_error_true(self):
+        from core.exceptions import is_llm_quota_error
+
+        self.assertTrue(is_llm_quota_error(Exception('insufficient_quota')))
+        self.assertTrue(is_llm_quota_error(Exception('rate_limit_reached')))
+        self.assertTrue(is_llm_quota_error(Exception('quota_exceeded')))
+
+    def test_is_llm_quota_error_false(self):
+        from core.exceptions import is_llm_quota_error
+
+        self.assertFalse(is_llm_quota_error(Exception('random error')))
+
+    def test_sanitize_llm_error_quota(self):
+        from core.exceptions import sanitize_llm_error
+
+        msg = sanitize_llm_error(Exception('rate_limit_reached'))
+        self.assertIn('quota', msg.lower())
+
+    def test_sanitize_llm_error_generic(self):
+        from core.exceptions import sanitize_llm_error
+
+        msg = sanitize_llm_error(Exception('some other error'))
+        self.assertIn('unexpected', msg.lower())
+
+
+class CoreThrottlesTests(TestCase):
+    def test_safe_anon_throttle_allows_options(self):
+        from unittest.mock import MagicMock
+
+        from core.throttles import SAFEAnonRateThrottle
+
+        throttle = SAFEAnonRateThrottle()
+        request = MagicMock()
+        request.method = 'OPTIONS'
+        self.assertTrue(throttle.allow_request(request, None))
+
+    def test_safe_user_throttle_allows_options(self):
+        from unittest.mock import MagicMock
+
+        from core.throttles import SAFEUserRateThrottle
+
+        throttle = SAFEUserRateThrottle()
+        request = MagicMock()
+        request.method = 'OPTIONS'
+        self.assertTrue(throttle.allow_request(request, None))
+
+
+class RendererResponseEnvelopeTests(TestCase):
+    def _render(self, data, status_code=200, query_params=None, envelope_exempt=False):
+        from unittest.mock import MagicMock
+
+        from rest_framework.request import Request
+        from rest_framework.test import APIRequestFactory
+
+        from config.renderers import ResponseEnvelopeRenderer
+
+        factory = APIRequestFactory()
+        wsgi = factory.get('/', query_params or {})
+        drf_request = Request(wsgi)
+        view = MagicMock()
+        view.envelope_exempt = envelope_exempt
+        response = MagicMock()
+        response.status_code = status_code
+        renderer = ResponseEnvelopeRenderer()
+        return renderer.render(
+            data,
+            accepted_media_type='application/json',
+            renderer_context={'view': view, 'response': response, 'request': drf_request},
+        )
+
+    def _decode(self, rendered):
+        import json
+
+        return json.loads(rendered)
+
+    def test_list_data_wraps_in_envelope(self):
+        result = self._render([1, 2, 3])
+        decoded = self._decode(result)
+        self.assertEqual(decoded['status'], 'success')
+        self.assertEqual(decoded['data'], [1, 2, 3])
+
+    def test_dict_data_wraps_in_envelope(self):
+        result = self._render({'foo': 'bar'})
+        decoded = self._decode(result)
+        self.assertEqual(decoded['status'], 'success')
+        self.assertEqual(decoded['data'], {'foo': 'bar'})
+
+    def test_paginated_dict_wraps_in_envelope(self):
+        result = self._render({'count': 10, 'results': [1, 2]})
+        decoded = self._decode(result)
+        self.assertEqual(decoded['meta']['page'], 1)
+        self.assertEqual(decoded['meta']['total'], 10)
+
+    def test_paginated_dict_without_count(self):
+        result = self._render({'results': [1, 2]})
+        decoded = self._decode(result)
+        self.assertEqual(decoded['status'], 'success')
+
+    def test_error_status_passes_through(self):
+        result = self._render({'error': 'bad'}, status_code=400)
+        import json
+
+        decoded = json.loads(result)
+        self.assertNotIn('status', decoded)
+
+    def test_already_wrapped_dict_passes_through(self):
+        result = self._render({'status': 'success', 'data': 'x'})
+        import json
+
+        decoded = json.loads(result)
+        self.assertEqual(decoded['status'], 'success')
+
+    def test_envelope_exempt_passes_through(self):
+        result = self._render('raw', envelope_exempt=True)
+        import json
+
+        decoded = json.loads(result)
+        self.assertEqual(decoded, 'raw')
+
+    def test_invalid_page_params_defaults(self):
+        result = self._render(
+            {'count': 5, 'results': ['a']}, query_params={'page': 'abc', 'page_size': 'xyz'}
+        )
+        decoded = self._decode(result)
+        self.assertEqual(decoded['meta']['page'], 1)
+        self.assertEqual(decoded['meta']['per_page'], 20)
+
+
+class AuditLogAiActionTests(TestCase):
+    def setUp(self):
+        from apps.authentication.models import CustomUser
+
+        self.user = CustomUser.objects.create_user(
+            username='audit_test_user', email='audit@test.com', password='testpass123'
+        )
+
+    def test_log_ai_action_creates_log(self):
+        from apps.audit.utils import log_ai_action
+
+        log_ai_action('AI_NL_QUERY', self.user, entity_type='product', data={'q': 'test'})
+        from apps.audit.models import AuditLog
+
+        self.assertTrue(AuditLog.objects.filter(event='AI_NL_QUERY').exists())
+
+    @patch('apps.audit.utils.AuditLog.objects.create')
+    def test_log_ai_action_handles_exception(self, mock_create):
+        from apps.audit.utils import log_ai_action
+
+        mock_create.side_effect = Exception('DB down')
+        log_ai_action('AI_NL_QUERY', self.user)
+
+
+class HealthCheckViewsTests(TestCase):
+    def test_is_internal_request_loopback(self):
+        from unittest.mock import MagicMock
+
+        from apps.health.views import _is_internal_request
+
+        request = MagicMock()
+        request.META = {'REMOTE_ADDR': '127.0.0.1'}
+        self.assertTrue(_is_internal_request(request))
+
+    def test_is_internal_request_external(self):
+        from unittest.mock import MagicMock
+
+        from apps.health.views import _is_internal_request
+
+        request = MagicMock()
+        request.META = {'REMOTE_ADDR': '8.8.8.8'}
+        self.assertFalse(_is_internal_request(request))
+
+    def test_is_internal_request_xff(self):
+        from unittest.mock import MagicMock
+
+        from apps.health.views import _is_internal_request
+
+        request = MagicMock()
+        request.META = {'HTTP_X_FORWARDED_FOR': '10.0.0.1, 8.8.8.8'}
+        self.assertTrue(_is_internal_request(request))
+
+    def test_is_internal_request_invalid_ip(self):
+        from unittest.mock import MagicMock
+
+        from apps.health.views import _is_internal_request
+
+        request = MagicMock()
+        request.META = {'REMOTE_ADDR': 'not-an-ip'}
+        self.assertFalse(_is_internal_request(request))
+
+    def test_check_database_ok(self):
+        from apps.health.views import _check_database
+
+        self.assertTrue(_check_database())
+
+    @patch('apps.health.views.connections')
+    def test_check_database_fails(self, mock_conn):
+        from apps.health.views import _check_database
+
+        mock_conn.__getitem__.side_effect = Exception('DB down')
+        self.assertFalse(_check_database())
+
+    @patch('apps.health.views.cache.set', return_value=True)
+    @patch('apps.health.views.cache.get', return_value='ok')
+    def test_check_redis_ok(self, mock_get, mock_set):
+        from apps.health.views import _check_redis
+
+        self.assertTrue(_check_redis())
+
+    @patch('apps.health.views.cache.set', side_effect=Exception('redis down'))
+    def test_check_redis_fails(self, mock_set):
+        from apps.health.views import _check_redis
+
+        self.assertFalse(_check_redis())
+
+    def test_health_check_live(self):
+        from rest_framework.test import APIRequestFactory
+
+        from apps.health.views import HealthCheckView
+
+        factory = APIRequestFactory()
+        request = factory.get('/health/live/')
+        view = HealthCheckView.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], 'ok')
+
+    def test_readiness_forbidden(self):
+        from rest_framework.test import APIRequestFactory
+
+        from apps.health.views import ReadinessView
+
+        factory = APIRequestFactory()
+        request = factory.get('/health/ready/')
+        request.META = {'REMOTE_ADDR': '8.8.8.8'}
+        view = ReadinessView.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 403)
+
+    @patch.dict('os.environ', {'HEALTH_SECRET_HEADER': ''})
+    def test_readiness_internal(self):
+        from rest_framework.test import APIRequestFactory
+
+        from apps.health.views import ReadinessView
+
+        factory = APIRequestFactory()
+        request = factory.get('/health/ready/')
+        request.META = {'REMOTE_ADDR': '127.0.0.1'}
+        view = ReadinessView.as_view()
+        response = view(request)
+        self.assertIn(response.status_code, (200, 503))
+
+    @patch.dict('os.environ', {'HEALTH_SECRET_HEADER': 'my-secret'})
+    def test_readiness_with_secret(self):
+        from rest_framework.test import APIRequestFactory
+
+        from apps.health.views import ReadinessView
+
+        factory = APIRequestFactory()
+        request = factory.get('/health/ready/')
+        request.META = {'HTTP_X_HEALTH_SECRET': 'my-secret'}
+        view = ReadinessView.as_view()
+        response = view(request)
+        self.assertIn(response.status_code, (200, 503))
+
+
 class ProviderConfigGetWhisperClientTests(TestCase):
     @unittest.skipUnless(
         __import__('importlib', fromlist=['util']).util.find_spec('groq'),
