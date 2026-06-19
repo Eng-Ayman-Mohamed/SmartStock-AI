@@ -305,5 +305,7 @@ class LogScoresToLangfuseTest(TestCase):
             mock_client.flush.assert_called_once()
 
     def test_langfuse_exception_handled(self):
-        with patch('ai.observability.langfuse.get_langfuse_client', side_effect=Exception('conn fail')):
+        with patch(
+            'ai.observability.langfuse.get_langfuse_client', side_effect=Exception('conn fail')
+        ):
             log_scores_to_langfuse({'precision_at_5': 0.5}, 100.0)

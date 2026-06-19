@@ -106,7 +106,9 @@ class TranscriptionSerializerTest(TestCase):
         self.assertTrue(s.is_valid())
 
     def test_oversized_audio_rejected(self):
-        large_audio = SimpleUploadedFile('big.mp3', b'\x00' * (26 * 1024 * 1024), content_type='audio/mpeg')
+        large_audio = SimpleUploadedFile(
+            'big.mp3', b'\x00' * (26 * 1024 * 1024), content_type='audio/mpeg'
+        )
         s = TranscriptionSerializer(data={'audio': large_audio})
         self.assertFalse(s.is_valid())
 
@@ -133,7 +135,9 @@ class InvoiceScanUploadSerializerTest(TestCase):
         self.assertFalse(s.is_valid())
 
     def test_oversized_file(self):
-        f = SimpleUploadedFile('big.pdf', b'\x00' * (6 * 1024 * 1024), content_type='application/pdf')
+        f = SimpleUploadedFile(
+            'big.pdf', b'\x00' * (6 * 1024 * 1024), content_type='application/pdf'
+        )
         s = InvoiceScanUploadSerializer(data={'file': f})
         self.assertFalse(s.is_valid())
 

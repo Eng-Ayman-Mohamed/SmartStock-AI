@@ -62,5 +62,3 @@ class RunDailyEvaluationTaskTest(TestCase):
         result = run_daily_evaluation_task()
         self.assertEqual(result['status'], 'success')
         self.assertEqual(result['total_queries'], 0)
-
-
