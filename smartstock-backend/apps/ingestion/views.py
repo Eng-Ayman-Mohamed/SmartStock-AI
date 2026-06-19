@@ -804,29 +804,35 @@ class ChatEndpointView(APIView):
 
         # --- Execute pipeline with timeout ---
         pipeline_start = time.time()
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(
+            self._run_engine, engine, query, request.user, history
+        )
         try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(
-                    self._run_engine, engine, query, request.user, history
-                )
-                result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
+            result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
+            executor.shutdown(wait=False)
         except FuturesTimeout:
+            executor.shutdown(wait=False)
+            logger.warning('Chat pipeline timed out after %ds', self.CHAT_TIMEOUT_SECONDS)
             return Response(
                 {'status': 'error', 'message': 'Request timed out. Please try a simpler question.'},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except RAGServiceUnavailable as exc:
+            executor.shutdown(wait=False)
             return Response(
                 {'status': 'error', 'message': exc.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except LLMQuotaExhaustedError as exc:
+            executor.shutdown(wait=False)
             logger.warning('LLM quota exhausted: %s', exc)
             return Response(
                 {'status': 'error', 'message': sanitize_llm_error(exc)},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
         except Exception as exc:
+            executor.shutdown(wait=False)
             logger.exception('Chat pipeline failed')
             msg = sanitize_llm_error(exc) if is_llm_quota_error(exc) else 'An unexpected error occurred while processing your request.'
             return Response(
