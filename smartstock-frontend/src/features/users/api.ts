@@ -1,10 +1,22 @@
 import api from '../../lib/axios';
 import type { CreateUserPayload, UpdateUserRolePayload, User } from './types';
 
-export async function listUsers(): Promise<User[]> {
-  const { data } = await api.get<{ results?: User[]; count?: number } | User[]>('/auth/users/');
-  if (Array.isArray(data)) return data;
-  return data.results ?? [];
+export async function listUsers(
+  page: number = 1,
+  pageSize: number = 20,
+  search: string = '',
+  isActive?: boolean,
+): Promise<PaginatedResponse<User>> {
+  const params: Record<string, string | number | boolean | undefined> = {
+    page,
+    page_size: pageSize,
+    search: search || undefined,
+  };
+  if (isActive !== undefined) {
+    params.is_active = isActive;
+  }
+  const { data } = await api.get<PaginatedResponse<User>>('/auth/users/', { params });
+  return data;
 }
 
 export async function createUser(payload: CreateUserPayload): Promise<User> {

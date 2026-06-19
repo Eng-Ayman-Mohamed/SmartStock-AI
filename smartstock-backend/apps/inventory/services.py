@@ -2,7 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.dispatch import Signal
 
 from .repositories import (
@@ -174,6 +174,7 @@ class InventoryService:
         )
         return stock
 
+    @transaction.atomic
     def apply_confirmed_invoice(self, confirmed_data: dict, user=None) -> dict:
         sku_code = str(confirmed_data['sku_code']).strip().upper()
         product_name = str(confirmed_data['product_name']).strip()

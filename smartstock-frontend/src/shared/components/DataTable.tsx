@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { memo, type ReactNode } from 'react';
+import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp } from 'lucide-react';
 import Button from './Button';
 
 export interface Column<T> {
@@ -8,6 +8,9 @@ export interface Column<T> {
   align?: 'left' | 'center' | 'right';
   width?: string;
   render: (row: T) => ReactNode;
+  sortable?: boolean;
+  sortKey?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface PaginationConfig {
@@ -30,9 +33,10 @@ interface DataTableProps<T> {
   caption?: string;
   emptyState?: ReactNode;
   pagination?: PaginationConfig;
+  onSort?: (key: string) => void;
 }
 
-export default function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagination }: DataTableProps<T>) {
+function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagination, onSort }: DataTableProps<T>) {
   if (data.length === 0 && emptyState) {
     return <>{emptyState}</>;
   }
@@ -48,12 +52,29 @@ export default function DataTable<T>({ columns, data, keyExtractor, caption, emp
                 <th
                   key={col.key}
                   scope="col"
-                  className={`h-9 px-3 text-eyebrow text-ink-secondary ${
+                  className={`h-9 px-3 text-eyebrow text-ink-secondary select-none ${
                     col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                   }`}
                   style={col.width ? { width: col.width } : undefined}
                 >
-                  {col.label}
+                  {col.sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort?.(col.key)}
+                      className="inline-flex items-center gap-1 hover:text-ink transition-colors cursor-pointer"
+                    >
+                      {col.label}
+                      {col.sortOrder === 'asc' ? (
+                        <ChevronUp className="w-3 h-3" />
+                      ) : col.sortOrder === 'desc' ? (
+                        <ChevronDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-ink-faint" />
+                      )}
+                    </button>
+                  ) : (
+                    col.label
+                  )}
                 </th>
               ))}
             </tr>
@@ -176,4 +197,6 @@ export default function DataTable<T>({ columns, data, keyExtractor, caption, emp
       )}
     </div>
   );
-}
+};
+
+export default memo(DataTable) as typeof DataTable;

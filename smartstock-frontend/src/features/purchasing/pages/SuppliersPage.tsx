@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Edit3, ExternalLink, Plus, Search, Trash2, Truck, X } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
@@ -27,8 +27,13 @@ export function SuppliersPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
+  const [page, setPage] = useState(1);
 
-  const { data: suppliers, isLoading, error: queryError, refetch } = useSuppliers(debouncedSearch || undefined);
+  const { data, isLoading, error: queryError, refetch } = useSuppliers(debouncedSearch || undefined, page, PAGE_SIZE);
+  const suppliers = data?.results ?? [];
+  const totalCount = data?.count ?? 0;
+  const maxPage = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(page, maxPage);
   const createMutation = useCreateSupplier();
   const updateMutation = useUpdateSupplier();
   const deleteMutation = useDeleteSupplier();
@@ -133,23 +138,12 @@ export function SuppliersPage() {
     }
   };
 
-  const [page, setPage] = useState(1);
-
-  const sortedSuppliers = useMemo(() => {
-    if (!suppliers) return [];
-    return [...suppliers].sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers]);
-
-  const pagination = usePagination({ total: sortedSuppliers.length, pageSize: PAGE_SIZE, currentPage: page });
-
-  const paginatedSuppliers = useMemo(() => {
-    return sortedSuppliers.slice(pagination.startItem - 1, pagination.endItem);
-  }, [sortedSuppliers, pagination.startItem, pagination.endItem]);
+  const pagination = usePagination({ total: totalCount, pageSize: PAGE_SIZE, currentPage });
 
   const paginationConfig: PaginationConfig = {
-    currentPage: page,
+    currentPage,
     totalPages: pagination.totalPages,
-    total: sortedSuppliers.length,
+    total: totalCount,
     startItem: pagination.startItem,
     endItem: pagination.endItem,
     hasPrev: pagination.hasPrev,
@@ -158,9 +152,6 @@ export function SuppliersPage() {
     onPageChange: (p) => setPage(p),
     itemLabel: 'suppliers',
   };
-
-  const maxPage = Math.max(1, Math.ceil(sortedSuppliers.length / PAGE_SIZE));
-  if (page > maxPage) setPage(maxPage);
 
   const columns: Column<Supplier>[] = [
     {
@@ -284,7 +275,7 @@ export function SuppliersPage() {
           <div className="p-6 space-y-3">
             {[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-10" />)}
           </div>
-        ) : sortedSuppliers.length === 0 ? (
+        ) : suppliers.length === 0 ? (
           <EmptyState
             icon={Truck}
             heading="No suppliers yet"
@@ -295,10 +286,10 @@ export function SuppliersPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={paginatedSuppliers}
+            data={suppliers}
             keyExtractor={(r) => String(r.id)}
             caption="Suppliers list"
-            pagination={paginatedSuppliers.length > 0 ? paginationConfig : undefined}
+            pagination={suppliers.length > 0 ? paginationConfig : undefined}
           />
         )}
       </Card>

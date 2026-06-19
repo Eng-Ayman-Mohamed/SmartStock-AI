@@ -31,6 +31,8 @@ class Document(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'document'
+        verbose_name_plural = 'documents'
         ordering = ['-created_at']
 
     def __str__(self):
@@ -44,6 +46,7 @@ class DocumentChunk(models.Model):
     source_document = models.CharField(max_length=500)
     page_number = models.IntegerField(null=True, blank=True)
     metadata = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
     document = models.ForeignKey(
         Document,
         on_delete=models.CASCADE,
@@ -53,6 +56,9 @@ class DocumentChunk(models.Model):
     )
 
     class Meta:
+        verbose_name = 'document chunk'
+        verbose_name_plural = 'document chunks'
+        ordering = ['document', 'id']
         indexes = [
             models.Index(fields=['source_document']),
             models.Index(fields=['document']),
@@ -93,6 +99,8 @@ class InvoiceScan(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'invoice scan'
+        verbose_name_plural = 'invoice scans'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['uploaded_by', 'status']),

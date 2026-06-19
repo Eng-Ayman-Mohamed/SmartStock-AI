@@ -106,6 +106,18 @@ FEW_SHOT_EXAMPLES = [
         'user': 'Show electronics products with stock below 20 sorted by name',
         'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "category", "op": "eq", "value": "electronics"}, {"field": "quantity_on_hand", "op": "lt", "value": 20}], "sort": "product_name", "sort_order": "asc"}}',
     },
+    # 11. exact match by SKU — get_inventory action filtered by sku_code
+    {
+        'action': NLQueryAction.GET_INVENTORY,
+        'user': 'Show me stock levels for SKU CHAIR-PRO-2',
+        'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "sku_code", "op": "eq", "value": "CHAIR-PRO-2"}]}}',
+    },
+    # 12. contains search — product name contains substring
+    {
+        'action': NLQueryAction.GET_INVENTORY,
+        'user': 'Find all products whose name contains chair',
+        'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "product_name", "op": "contains", "value": "chair"}]}}',
+    },
 ]
 
 

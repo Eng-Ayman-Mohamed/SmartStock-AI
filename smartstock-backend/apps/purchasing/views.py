@@ -1,3 +1,4 @@
+import django_filters
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -19,6 +20,17 @@ from config.schema_serializers import (
 from .models import PurchaseOrder
 from .serializers import PurchaseOrderSerializer
 from .services import PurchasingService
+
+
+class SupplierFilter(django_filters.FilterSet):
+    """Filter suppliers by active status and name."""
+
+    class Meta:
+        model = Supplier
+        fields = {
+            'is_active': ['exact'],
+            'name': ['icontains', 'exact'],
+        }
 
 
 @extend_schema_view(
@@ -119,6 +131,9 @@ class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
     permission_classes = [IsAuthenticated]
+    search_fields = ['name', 'contact_email', 'contact_phone']
+    filterset_class = SupplierFilter
+    ordering_fields = ['name', 'created_at', 'is_active']
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):

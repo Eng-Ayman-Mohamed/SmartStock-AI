@@ -47,6 +47,8 @@ class AuditLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = 'audit log'
+        verbose_name_plural = 'audit logs'
         indexes = [
             models.Index(fields=['event']),
             models.Index(fields=['timestamp']),
@@ -75,6 +77,8 @@ class AgentRun(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'agent run'
+        verbose_name_plural = 'agent runs'
         ordering = ['-created_at']
 
     def __str__(self):

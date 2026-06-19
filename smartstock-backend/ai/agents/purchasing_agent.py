@@ -5,6 +5,7 @@ from ai.agents.tools.confirmation_listener import ConfirmationListenerTool
 from ai.agents.tools.email_send import EmailSendTool
 from ai.agents.tools.po_draft import PODraftTool
 from ai.observability.langfuse import trace_agent_run
+from apps.monitoring.tasks import record_agent_run_task
 from apps.purchasing.services import PurchasingService
 from apps.purchasing.workflow_models import PurchaseOrderWorkflow
 from apps.purchasing.workflow_services import PurchaseOrderWorkflowService
@@ -59,6 +60,7 @@ class PurchasingAgent:
         Returns:
             dict with workflow result, status, and PO details.
         """
+        _started_at = time.time()
         trace_spans = []
         try:
             result = self._execute_workflow(context, trace_spans)
@@ -70,6 +72,16 @@ class PurchasingAgent:
                 'error': str(e),
             }
         trace_agent_run('purchasing_agent', context, result, trace_spans)
+        _duration = round((time.time() - _started_at) * 1000)
+        _outcome = (
+            'failure' if result.get('status') in ('failed', 'rejected', 'timeout') else 'success'
+        )
+        record_agent_run_task.delay(
+            agent_name='purchasing_agent',
+            outcome=_outcome,
+            duration_ms=_duration,
+            error_message=result.get('error', ''),
+        )
         return result
 
     def _execute_workflow(self, context: dict, trace_spans: list) -> dict:

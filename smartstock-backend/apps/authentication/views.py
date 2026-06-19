@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
+from config.settings.base import IS_PRODUCTION
 
 from .models import CustomUser
 from .permissions import IsAdminOnly
@@ -42,7 +43,20 @@ class TokenRefreshView(BaseTokenRefreshView):
         auth=[],
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        response = super().post(request, *args, **kwargs)
+        refresh_token = response.data.get('refresh')
+        if refresh_token:
+            response.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                httponly=True,
+                # Security: Always use Secure in production, HTTPonly for authentication
+                secure=IS_PRODUCTION or not settings.DEBUG,
+                # Security: Use Strict SameSite in production to prevent CSRF
+                samesite='Strict' if IS_PRODUCTION else 'Lax',
+                max_age=3 * 24 * 60 * 60,
+            )
+        return response
 
 
 User = get_user_model()
@@ -108,12 +122,14 @@ class RegisterView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+        from config.settings.base import IS_PRODUCTION
+
         response.set_cookie(
             key='refresh_token',
             value=str(refresh),
             httponly=True,
-            secure=not settings.DEBUG,
-            samesite='None' if not settings.DEBUG else 'Lax',
+            secure=IS_PRODUCTION or not settings.DEBUG,
+            samesite='Strict' if IS_PRODUCTION else 'Lax',
             max_age=3 * 24 * 60 * 60,
         )
         return response
@@ -199,8 +215,8 @@ class LoginView(TokenObtainPairView):
             key='refresh_token',
             value=validated_data['refresh'],
             httponly=True,
-            secure=not settings.DEBUG,
-            samesite='None' if not settings.DEBUG else 'Lax',
+            secure=IS_PRODUCTION or not settings.DEBUG,
+            samesite='Strict' if IS_PRODUCTION else 'Lax',
             max_age=3 * 24 * 60 * 60,
         )
         return response
@@ -250,8 +266,15 @@ class MeView(APIView):
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    queryset = CustomUser.objects.all().order_by('-date_joined')
+    queryset = (
+        CustomUser.objects.all()
+        .prefetch_related('groups', 'user_permissions')
+        .order_by('-date_joined')
+    )
     permission_classes = (IsAdminOnly,)
+    search_fields = ['email', 'username', 'first_name', 'last_name']
+    ordering_fields = ['date_joined', 'email', 'username', 'is_active']
+    filterset_fields = ['is_active', 'role']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

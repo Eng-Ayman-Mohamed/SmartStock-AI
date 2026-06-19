@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from ai.agents.decision_agent import DecisionAgent
 
@@ -100,11 +101,14 @@ def build_agent(quantity_available, total_predicted_demand, has_open_po=False):
 
 
 def test_decision_agent_flags_stockout_and_persists_reorder_flag():
-    agent, service, forecast_tool = build_agent(quantity_available=45, total_predicted_demand=62)
+    with patch('ai.agents.decision_agent.record_agent_run_task'):
+        agent, service, forecast_tool = build_agent(
+            quantity_available=45, total_predicted_demand=62
+        )
 
-    result = agent.run({'product_ids': [1]})
+        result = agent.run({'product_ids': [1]})
 
-    decision = result['results'][0]
+        decision = result['results'][0]
     assert result['flags_created'] == 1
     assert decision['sku_code'] == 'SKU-001'
     assert decision['reorder_required'] is True
@@ -118,11 +122,12 @@ def test_decision_agent_flags_stockout_and_persists_reorder_flag():
 
 
 def test_decision_agent_does_not_flag_sufficient_stock():
-    agent, service, _ = build_agent(quantity_available=90, total_predicted_demand=62)
+    with patch('ai.agents.decision_agent.record_agent_run_task'):
+        agent, service, _ = build_agent(quantity_available=90, total_predicted_demand=62)
 
-    result = agent.run({'product_id': 1})
+        result = agent.run({'product_id': 1})
 
-    decision = result['results'][0]
+        decision = result['results'][0]
     assert result['flags_created'] == 0
     assert decision['reorder_required'] is False
     assert service.persisted == []
@@ -133,32 +138,31 @@ def test_decision_agent_requires_agent_collected_observations():
         def invoke(self, input, config=None):
             return {'messages': [SimpleNamespace(content='stopped early')]}
 
-    agent = DecisionAgent(
-        stock_tool=FakeStockTool(45),
-        forecast_tool=FakeForecastTool(62),
-        po_status_tool=FakePOStatusTool(),
-        forecasting_service=FakeForecastingService(),
-        reasoner=FakeReasoner(),
-        llm='fake-llm',
-        agent_factory=lambda **kwargs: IncompleteAgent(),
-    )
+    with patch('ai.agents.decision_agent.record_agent_run_task'):
+        agent = DecisionAgent(
+            stock_tool=FakeStockTool(45),
+            forecast_tool=FakeForecastTool(62),
+            po_status_tool=FakePOStatusTool(),
+            forecasting_service=FakeForecastingService(),
+            reasoner=FakeReasoner(),
+            llm='fake-llm',
+            agent_factory=lambda **kwargs: IncompleteAgent(),
+        )
 
-    try:
-        agent.run({'product_id': 1})
-    except Exception as exc:
-        assert 'required observations' in str(exc)
-    else:
-        raise AssertionError('Expected missing observations to fail the decision run.')
+        result = agent.run({'product_id': 1})
+        assert 'error' in result
+        assert 'required observations' in result['error']
 
 
 def test_decision_agent_suppresses_duplicate_when_open_po_exists():
-    agent, service, _ = build_agent(
-        quantity_available=45, total_predicted_demand=62, has_open_po=True
-    )
+    with patch('ai.agents.decision_agent.record_agent_run_task'):
+        agent, service, _ = build_agent(
+            quantity_available=45, total_predicted_demand=62, has_open_po=True
+        )
 
-    result = agent.run({'product_id': 1})
+        result = agent.run({'product_id': 1})
 
-    decision = result['results'][0]
+        decision = result['results'][0]
     assert result['flags_created'] == 0
     assert decision['formula_requires_reorder'] is True
     assert decision['has_open_po'] is True

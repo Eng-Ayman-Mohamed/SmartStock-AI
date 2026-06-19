@@ -1,6 +1,8 @@
 import logging
 import uuid
 
+from django.template.loader import render_to_string
+
 from ai.agents.base_agent import BaseTool
 from apps.purchasing.email_tasks import send_email_with_retry
 from apps.purchasing.services import PurchasingService
@@ -34,17 +36,8 @@ class EmailSendTool(BaseTool):
                 supplier_name = supplier.name
 
             sku_code = po.sku.code
-            product_name = po.sku.product.name
             subject = f'Purchase Order PO-{po_id} - {sku_code}'
-            body = self._build_email_body(
-                po_id,
-                sku_code,
-                product_name,
-                po.quantity,
-                po.total_cost,
-                po.requested_by,
-                supplier_name,
-            )
+            body = self._build_email_body(po, supplier_name)
 
             message_id = f'po-{po_id}-{uuid.uuid4().hex[:8]}'
 
@@ -74,25 +67,14 @@ class EmailSendTool(BaseTool):
             logger.exception('EmailSendTool failed for PO-%s', input.get('po_id'))
             return {'status': 'failed', 'error': str(e)}
 
-    def _build_email_body(
-        self,
-        po_id,
-        sku_code,
-        product_name,
-        quantity,
-        total_cost,
-        requested_by,
-        supplier_name,
-    ) -> str:
-        return (
-            f'Purchase Order PO-{po_id}\n'
-            f'================================\n\n'
-            f'Supplier: {supplier_name}\n'
-            f'SKU: {sku_code}\n'
-            f'Product: {product_name}\n'
-            f'Quantity: {quantity}\n'
-            f'Total Cost: ${total_cost}\n'
-            f'Requested By: {requested_by}\n\n'
-            f'Please confirm receipt of this order.\n\n'
-            f'Regards,\nSmartStock AI Purchasing Agent'
-        )
+    def _build_email_body(self, po, supplier_name) -> str:
+        context = {
+            'supplier_name': supplier_name,
+            'po_number': po.po_number or f'PO-{po.id}',
+            'product_name': po.sku.product.name,
+            'sku_code': po.sku.code,
+            'quantity': po.quantity,
+            'unit_cost': po.sku.product.unit_price,
+            'total_cost': po.total_cost,
+        }
+        return render_to_string('purchasing/po_email.txt', context)

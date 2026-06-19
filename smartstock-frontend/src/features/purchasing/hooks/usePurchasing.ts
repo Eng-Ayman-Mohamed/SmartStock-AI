@@ -4,11 +4,11 @@ import * as purchasingApi from '../api';
 
 export const purchasingQueryKey = ['purchasing-pending-pos'] as const;
 
-export function usePendingPOs() {
+export function usePendingPOs(page = 1, pageSize = 20) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
-    queryKey: purchasingQueryKey,
-    queryFn: () => purchasingApi.listPendingPOs(),
+    queryKey: [...purchasingQueryKey, page, pageSize],
+    queryFn: () => purchasingApi.listPendingPOs(page, pageSize),
     enabled: !!token,
     retry: false,
   });
@@ -36,11 +36,11 @@ export function useRejectPO() {
 
 export const poHistoryQueryKey = ['po-history'] as const;
 
-export function usePOHistory() {
+export function usePOHistory(page = 1, pageSize = 20) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
-    queryKey: poHistoryQueryKey,
-    queryFn: () => purchasingApi.listPOHistory(),
+    queryKey: [...poHistoryQueryKey, page, pageSize],
+    queryFn: () => purchasingApi.listPOHistory(page, pageSize),
     enabled: !!token,
     retry: false,
   });

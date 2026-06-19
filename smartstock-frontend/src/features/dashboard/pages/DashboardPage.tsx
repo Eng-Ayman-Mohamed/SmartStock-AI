@@ -32,12 +32,14 @@ interface ChartPoint {
   lower: number;
 }
 
-function ForecastChart({ data: allSkus }: { data: ChartPoint[] | null }) {
-  const chartData = allSkus ?? [];
+function ForecastChart({ data }: { data: ChartPoint[] | null }) {
+  if (!data || data.length === 0) {
+    return <div className="h-[clamp(200px,32vh,400px)] flex items-center justify-center text-body text-ink-muted">No forecast data available</div>;
+  }
   return (
     <div className="h-[clamp(200px,32vh,400px)]">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+        <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hairline)" horizontal={true} vertical={false} />
           <XAxis
             dataKey="date"

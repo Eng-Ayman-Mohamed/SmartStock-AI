@@ -233,10 +233,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
             out = DocumentSerializer(document, context={'request': request})
             return Response(out.data, status=status.HTTP_201_CREATED)
 
-        except Exception as e:
+        except Exception:
             logger.exception('Document upload/ingestion failed')
             return Response(
-                {'detail': f'Upload or ingestion failed: {e}'},
+                {'detail': 'Upload or ingestion failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -512,10 +512,10 @@ class TranscribeView(APIView):
                 {'status': 'error', 'message': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        except Exception as e:
+        except Exception:
             logger.exception('Transcription failed')
             return Response(
-                {'status': 'error', 'message': f'Transcription failed: {e}'},
+                {'status': 'error', 'message': 'Transcription failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -802,10 +802,13 @@ class ChatEndpointView(APIView):
                 {'status': 'error', 'message': exc.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception as exc:
+        except Exception:
             logger.exception('Chat pipeline failed')
             return Response(
-                {'status': 'error', 'message': str(exc)},
+                {
+                    'status': 'error',
+                    'message': 'An error occurred processing your request. Please try again.',
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -860,7 +863,7 @@ class ChatEndpointView(APIView):
 
     def _run_nl_query(self, query: str, user) -> dict:
         """Execute the NL Query pipeline — mirrors NLQueryEndpointView._run_pipeline."""
-        from ai.llm.chain import NLQueryChain, call_gpt4o_formatter
+        from ai.llm.chain import call_gpt4o_formatter, get_nl_chain
         from apps.inventory.views import (
             _handle_forecast_demand,
             _handle_get_inventory,
@@ -873,7 +876,7 @@ class ChatEndpointView(APIView):
 
         # Step B: LangChain Processing
         try:
-            chain_instance = NLQueryChain()
+            chain_instance = get_nl_chain()
             chain_result = chain_instance.run(query)
             chain_dict = chain_result.to_dict()
             action_type = chain_dict.get('action')

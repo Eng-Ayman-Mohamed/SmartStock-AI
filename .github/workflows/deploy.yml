@@ -1,0 +1,98 @@
+name: CD — Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Deploy Backend to Railway ──────────────────────────────────────
+  deploy-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway up --service smartstock-backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        working-directory: smartstock-backend
+
+      - name: Verify backend deployment
+        run: |
+          BACKEND_URL="https://smartstock-api-production.up.railway.app"
+          echo "Waiting for backend to become healthy..."
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/health/live/" 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Backend is healthy"
+              break
+            fi
+            if [ "$i" -eq 12 ]; then
+              echo "❌ Backend health check failed after 12 retries"
+              exit 1
+            fi
+            echo "  Attempt $i/12 — status $STATUS, waiting 10s..."
+            sleep 10
+          done
+
+  # ── Deploy Frontend to Vercel ──────────────────────────────────────
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: smartstock-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: smartstock-frontend
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel
+        run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        working-directory: smartstock-frontend
+
+      - name: Verify frontend deployment
+        run: |
+          FRONTEND_URL="https://smart-stock.vercel.app"
+          echo "Checking frontend at $FRONTEND_URL..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/" 2>/dev/null || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Frontend is serving"
+          else
+            echo "❌ Frontend returned $STATUS (expected 200)"
+            exit 1
+          fi
+
+  # ── Post-deployment Smoke Tests ────────────────────────────────────
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/smoke-test.sh
+          BACKEND_URL="https://smartstock-api-production.up.railway.app" \
+          FRONTEND_URL="https://smart-stock.vercel.app" \
+            ./scripts/smoke-test.sh
+        env:
+          HEALTH_SECRET: ${{ secrets.HEALTH_SECRET }}

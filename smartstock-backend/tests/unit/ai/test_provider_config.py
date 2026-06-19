@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
+from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
 
 
@@ -136,7 +137,7 @@ class ProviderConfigGetEmbeddingsTest(TestCase):
 
         with patch.object(provider_config, 'PROVIDER', 'groq'):
             with patch.dict(os.environ, {}, clear=True):
-                with self.assertRaises(ValueError) as ctx:
+                with self.assertRaises(ImproperlyConfigured) as ctx:
                     provider_config.get_embeddings()
                 self.assertIn('GOOGLE_API_KEY', str(ctx.exception))
 
@@ -150,7 +151,7 @@ class ProviderConfigGetWhisperClientTest(TestCase):
     def test_groq_whisper(self, mock_cls):
         from ai.llm import provider_config
 
-        with patch.object(provider_config, 'PROVIDER', 'groq'):
+        with patch.object(provider_config, 'WHISPER_PROVIDER', 'groq'):
             with patch.dict(os.environ, {'GROQ_API_KEY': 'gsk-test'}):
                 provider_config.get_whisper_client()
                 mock_cls.assert_called_once()
@@ -159,7 +160,7 @@ class ProviderConfigGetWhisperClientTest(TestCase):
     def test_openai_whisper(self, mock_cls):
         from ai.llm import provider_config
 
-        with patch.object(provider_config, 'PROVIDER', 'openai'):
+        with patch.object(provider_config, 'WHISPER_PROVIDER', 'openai'):
             with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}):
                 provider_config.get_whisper_client()
                 mock_cls.assert_called_once()

@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
@@ -93,11 +92,14 @@ export default function Sidebar() {
         }`}
         aria-label="Navigation sidebar"
       >
-        <div className="flex items-center justify-between h-11 px-3 border-b border-hairline">
-          <span className="text-card-title font-medium text-ink">SmartStock AI</span>
+        <div className="flex items-center h-10 px-3 border-b border-hairline">
+          <div className="flex items-center gap-2">
+            <img src="/smart-32.png" alt="SmartStock AI" className="w-7 h-7 shrink-0" />
+            <span className="text-card-title font-medium text-ink">SmartStock AI</span>
+          </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors ml-auto"
             aria-label="Close navigation"
           >
             <X className="w-4 h-4" />
@@ -138,8 +140,8 @@ export default function Sidebar() {
         }`}
         aria-label="Navigation sidebar"
       >
-        <div className={`flex items-center h-11 px-3 border-b border-hairline ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
-          <Sparkles className="w-4 h-4 text-brand-600 shrink-0" aria-hidden="true" />
+        <div className={`flex items-center h-10 px-3 border-b border-hairline ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
+          <img src="/smart-24.png" alt="SmartStock AI" className="w-6 h-6 shrink-0" />
           {!sidebarCollapsed && <span className="text-card-title font-medium text-ink truncate">SmartStock AI</span>}
         </div>
 

@@ -25,6 +25,11 @@ if not SECRET_KEY:
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
+# Security: Determine if we're in a production environment
+# In production, only set to False if explicitly configured
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development').lower()
+IS_PRODUCTION = ENVIRONMENT == 'production'
+
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
@@ -131,7 +136,6 @@ if not DATABASES.get('default') or not DATABASES['default'].get('ENGINE'):
                 'CONN_HEALTH_CHECKS': True,
             }
         }
-
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -243,8 +247,10 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
     'AUTH_COOKIE_HTTP_ONLY': True,
-    'AUTH_COOKIE_SECURE': not DEBUG,
-    'AUTH_COOKIE_SAMESITE': 'None' if not DEBUG else 'Lax',
+    # Secure: Always require HTTPS in production, allow HTTP only in development
+    'AUTH_COOKIE_SECURE': IS_PRODUCTION or not DEBUG,
+    # SameSite: Strict is default. Only use 'None' if explicitly required for cross-origin (requires Secure=True)
+    'AUTH_COOKIE_SAMESITE': 'Strict' if IS_PRODUCTION else 'Lax',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
 CORS_ALLOWED_ORIGINS = os.environ.get(
@@ -274,7 +280,8 @@ CACHES = {
         'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'IGNORE_EXCEPTIONS': True,
+            'IGNORE_EXCEPTIONS': os.environ.get('REDIS_IGNORE_EXCEPTIONS', 'True').lower()
+            == 'true',
         },
         'KEY_PREFIX': 'smartstock',
         'TIMEOUT': 300,
@@ -282,6 +289,21 @@ CACHES = {
 }
 
 CACHE_MIDDLEWARE_SECONDS = 300
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {},
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
 
 CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '')
 

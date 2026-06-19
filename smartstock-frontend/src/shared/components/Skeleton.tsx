@@ -1,9 +1,11 @@
+import { memo } from 'react';
+
 interface SkeletonProps {
   className?: string;
   lines?: number;
 }
 
-export default function Skeleton({ className = '', lines }: SkeletonProps) {
+const Skeleton = memo(function Skeleton({ className = '', lines }: SkeletonProps) {
   if (lines) {
     return (
       <div className="space-y-3" aria-hidden="true">
@@ -25,4 +27,6 @@ export default function Skeleton({ className = '', lines }: SkeletonProps) {
       aria-hidden="true"
     />
   );
-}
+});
+
+export default Skeleton;

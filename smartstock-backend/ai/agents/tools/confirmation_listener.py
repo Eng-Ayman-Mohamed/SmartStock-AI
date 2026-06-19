@@ -20,14 +20,25 @@ class ConfirmationListenerTool(BaseTool):
 
             if po.status == 'confirmed':
                 logger.info('PO-%s confirmed', po_id)
-                return {'confirmed': True, 'po_id': po_id, 'status': 'confirmed'}
+                return {
+                    'confirmed': True,
+                    'po_id': po_id,
+                    'status': 'confirmed',
+                    'timed_out': False,
+                }
 
             if po.status in ('rejected', 'cancelled', 'failed', 'timeout'):
                 logger.info('PO-%s in terminal status: %s', po_id, po.status)
-                return {'confirmed': False, 'po_id': po_id, 'status': po.status, 'terminal': True}
+                return {
+                    'confirmed': False,
+                    'po_id': po_id,
+                    'status': po.status,
+                    'terminal': True,
+                    'timed_out': po.status == 'timeout',
+                }
 
             logger.info('PO-%s not yet confirmed (status=%s)', po_id, po.status)
-            return {'confirmed': False, 'po_id': po_id, 'status': po.status}
+            return {'confirmed': False, 'po_id': po_id, 'status': po.status, 'timed_out': False}
         except Exception as e:
             logger.exception('ConfirmationListenerTool failed for PO-%s', input.get('po_id'))
             return {'confirmed': False, 'error': str(e)}
