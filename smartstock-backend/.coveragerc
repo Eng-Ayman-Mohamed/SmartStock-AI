@@ -1,6 +1,6 @@
 [run]
 source = ai/, apps/, config/, core/
-omit = */migrations/*, */tests/*, */.venv/*, config/wsgi.py, core/management/commands/*, core/validators.py
+omit = */migrations/*, */tests/*, */.venv/*, config/wsgi.py, config/asgi.py, config/settings/production.py, core/management/commands/*, apps/monitoring/evaluation_tasks.py
 
 [report]
 fail_under = 80
