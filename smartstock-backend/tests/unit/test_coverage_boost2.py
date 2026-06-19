@@ -713,6 +713,203 @@ class HealthCheckViewsTests(TestCase):
         self.assertIn(response.status_code, (200, 503))
 
 
+class CoreValidatorsTests(TestCase):
+    def test_validate_sku_code_valid(self):
+        from core.validators import validate_sku_code
+
+        self.assertTrue(validate_sku_code('ABC-123'))
+        self.assertTrue(validate_sku_code('SKU-001'))
+
+    def test_validate_sku_code_invalid(self):
+        from core.validators import validate_sku_code
+
+        self.assertFalse(validate_sku_code('abc_123'))
+        self.assertFalse(validate_sku_code(''))
+
+
+class AuditSignalsErrorHandlingTests(TestCase):
+    def setUp(self):
+        from apps.authentication.models import CustomUser
+
+        self.user = CustomUser.objects.create_user(
+            username='signal_test_user', email='signal@test.com', password='testpass123'
+        )
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_po_approval_handles_exception(self, mock_create):
+        from unittest.mock import MagicMock
+
+        from apps.audit.signals import log_po_approval
+
+        mock_create.side_effect = Exception('DB down')
+        mock_po = MagicMock()
+        mock_po.supplier.name = 'Test Supplier'
+        mock_po.total_cost = 100.0
+        mock_po.id = 1
+        log_po_approval(sender=None, po=mock_po, user=self.user)
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_po_approval_skips_non_customuser(self, mock_create):
+        from apps.audit.signals import log_po_approval
+
+        log_po_approval(sender=None, po=None, user='not_a_user_object')
+        mock_create.assert_not_called()
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_po_confirmed_handles_exception(self, mock_create):
+        from unittest.mock import MagicMock
+
+        from apps.audit.signals import log_po_confirmed
+
+        mock_create.side_effect = Exception('DB down')
+        mock_po = MagicMock()
+        mock_po.supplier.name = 'S'
+        mock_po.sku.code = 'SKU-1'
+        mock_po.total_cost = 50.0
+        mock_po.id = 1
+        log_po_confirmed(sender=None, po=mock_po)
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_po_rejection_handles_exception(self, mock_create):
+        from unittest.mock import MagicMock
+
+        from apps.audit.signals import log_po_rejection
+
+        mock_create.side_effect = Exception('DB down')
+        mock_po = MagicMock()
+        mock_po.supplier.name = 'S'
+        mock_po.total_cost = 50.0
+        mock_po.id = 1
+        log_po_rejection(sender=None, po=mock_po, user=self.user)
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_po_sent_handles_exception(self, mock_create):
+        from unittest.mock import MagicMock
+
+        from apps.audit.signals import log_po_sent
+
+        mock_create.side_effect = Exception('DB down')
+        mock_po = MagicMock()
+        mock_po.supplier.name = 'S'
+        mock_po.sku.code = 'SKU-1'
+        mock_po.total_cost = 50.0
+        mock_po.id = 1
+        log_po_sent(sender=None, po=mock_po)
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_stock_adjustment_handles_exception(self, mock_create):
+        from unittest.mock import MagicMock
+
+        from apps.audit.signals import log_stock_adjustment
+
+        mock_create.side_effect = Exception('DB down')
+        mock_stock_level = MagicMock()
+        mock_stock_level.id = 1
+        mock_stock_level.sku.code = 'SKU-1'
+        mock_stock_level.quantity_on_hand = 10
+        log_stock_adjustment(
+            sender=None, stock_level=mock_stock_level, delta=-1, user=self.user, reason='sale'
+        )
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_stock_adjustment_skips_non_customuser(self, mock_create):
+        from apps.audit.signals import log_stock_adjustment
+
+        log_stock_adjustment(
+            sender=None, stock_level=None, delta=0, user='not_a_user', reason='test'
+        )
+        mock_create.assert_not_called()
+
+    @patch('apps.audit.signals.AuditLog.objects.create')
+    def test_log_event_handles_exception(self, mock_create):
+        from apps.audit.signals import log_event
+
+        mock_create.side_effect = Exception('DB down')
+        log_event('TEST_EVENT', self.user)
+
+    def test_log_event_creates_log_entry(self):
+        from apps.audit.signals import log_event
+
+        log_event('TEST_EVENT', self.user, entity_id=42, data_snapshot={'key': 'val'})
+        from apps.audit.models import AuditLog
+
+        self.assertTrue(AuditLog.objects.filter(event='TEST_EVENT').exists())
+
+
+class ExceptionHandlerCoverageTests(TestCase):
+    def test_django_validation_error(self):
+        from django.core.exceptions import ValidationError
+
+        from config.exception_handler import custom_exception_handler
+
+        exc = ValidationError('invalid input')
+        response = custom_exception_handler(exc, {'view': MagicMock()})
+        self.assertEqual(response.status_code, 422)
+
+    def test_integrity_error_unique(self):
+        from django.db import IntegrityError
+
+        from config.exception_handler import custom_exception_handler
+
+        exc = IntegrityError('unique constraint violation')
+        response = custom_exception_handler(exc, {'view': MagicMock()})
+        self.assertEqual(response.status_code, 409)
+
+    def test_integrity_error_non_unique(self):
+        from django.db import IntegrityError
+
+        from config.exception_handler import custom_exception_handler
+
+        exc = IntegrityError('some other constraint error')
+        response = custom_exception_handler(exc, {'view': MagicMock()})
+        self.assertEqual(response.status_code, 500)
+
+    @patch('config.exception_handler.drf_exception_handler')
+    def test_404_string_detail(self, mock_drf):
+        from config.exception_handler import custom_exception_handler
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.data = 'Not found string'
+        mock_drf.return_value = mock_resp
+        response = custom_exception_handler(ValueError(), {'view': MagicMock()})
+        self.assertEqual(response.status_code, 404)
+
+    @patch('config.exception_handler.drf_exception_handler')
+    def test_401_string_detail(self, mock_drf):
+        from config.exception_handler import custom_exception_handler
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 401
+        mock_resp.data = 'Unauthorized string'
+        mock_drf.return_value = mock_resp
+        response = custom_exception_handler(ValueError(), {'view': MagicMock()})
+        self.assertEqual(response.status_code, 401)
+
+    @patch('config.exception_handler.drf_exception_handler')
+    def test_400_with_duplicate_string(self, mock_drf):
+        from config.exception_handler import custom_exception_handler
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 400
+        mock_resp.data = {'field': ['A record already exists']}
+        mock_drf.return_value = mock_resp
+        response = custom_exception_handler(ValueError(), {'view': MagicMock()})
+        self.assertEqual(response.status_code, 409)
+
+    @patch('config.exception_handler.drf_exception_handler')
+    def test_422_with_non_list_field(self, mock_drf):
+        from config.exception_handler import custom_exception_handler
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 422
+        mock_resp.data = {'field': ('tuple', 1)}
+        mock_drf.return_value = mock_resp
+        response = custom_exception_handler(ValueError(), {'view': MagicMock()})
+        self.assertEqual(response.status_code, 422)
+        self.assertIn('fields', response.data)
+
+
 class ProviderConfigGetWhisperClientTests(TestCase):
     @unittest.skipUnless(
         __import__('importlib', fromlist=['util']).util.find_spec('groq'),
