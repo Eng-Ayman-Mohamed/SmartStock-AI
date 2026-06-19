@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
+from config.settings.base import IS_PRODUCTION
 
 from .models import CustomUser
 from .permissions import IsAdminOnly
