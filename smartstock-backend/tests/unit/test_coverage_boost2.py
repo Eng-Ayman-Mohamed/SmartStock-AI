@@ -97,6 +97,9 @@ class EvaluationMetricsAnswerFaithfulnessTests(TestCase):
         score = compute_answer_faithfulness(answer, context)
         self.assertGreater(score, 0.0)
 
+    def test_whitespace_only_answer_returns_zero(self):
+        self.assertEqual(compute_answer_faithfulness('   ', [{'content': 'context'}]), 0.0)
+
     def test_stop_words_contain_common_words(self):
         self.assertIn('the', STOP_WORDS)
         self.assertNotIn('widget', STOP_WORDS)

@@ -513,6 +513,33 @@ class InventoryRepositoryTests(TestCase):
         result = SalesRecordRepository().bulk_create(records)
         self.assertEqual(len(result), 1)
 
+    def test_category_repository_crud(self):
+        from apps.inventory.repositories import CategoryRepository
+        from django.core.exceptions import ObjectDoesNotExist
+
+        repo = CategoryRepository()
+        created = repo.create({'name': 'CRUD Category'})
+        self.assertEqual(created.name, 'CRUD Category')
+
+        updated = repo.update(created.id, {'name': 'Updated Category'})
+        self.assertEqual(updated.name, 'Updated Category')
+
+        repo.delete(created.id)
+        with self.assertRaises(ObjectDoesNotExist):
+            repo.get_by_id(created.id)
+
+    def test_stock_level_repository_get_by_sku_id(self):
+        from apps.inventory.repositories import StockLevelRepository
+
+        result = StockLevelRepository().get_by_sku_id(self.sku.id)
+        self.assertEqual(result.id, self.stock.id)
+
+    def test_supplier_repository_get_by_name(self):
+        from apps.inventory.repositories import SupplierRepository
+
+        result = SupplierRepository().get_by_name('Sup')
+        self.assertEqual(result.id, self.supplier.id)
+
 
 class ForecastingServiceEdgeTests(TestCase):
     def test_calculate_stockout_risk_no_stock(self):
