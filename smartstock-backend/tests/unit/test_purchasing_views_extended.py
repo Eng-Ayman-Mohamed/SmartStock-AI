@@ -56,7 +56,7 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
     def test_approve_action(self, MockService):
         mock_service = MockService.return_value
         mock_service.approve_po.return_value = MagicMock(id=self.po.id)
-        response = self.client.post(f'/api/purchasing/purchase-orders/{self.po.id}/approve/')
+        response = self.client.post(f'/api/purchasing/orders/{self.po.id}/approve/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['status'], 'approved')
 
@@ -64,7 +64,7 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
     def test_reject_action(self, MockService):
         mock_service = MockService.return_value
         mock_service.reject_po.return_value = MagicMock(id=self.po.id)
-        response = self.client.post(f'/api/purchasing/purchase-orders/{self.po.id}/reject/')
+        response = self.client.post(f'/api/purchasing/orders/{self.po.id}/reject/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['status'], 'rejected')
 
@@ -72,13 +72,13 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
     def test_overdue_suppliers_action(self, MockService):
         mock_service = MockService.return_value
         mock_service.get_overdue_suppliers.return_value = []
-        response = self.client.get('/api/purchasing/purchase-orders/overdue-suppliers/')
+        response = self.client.get('/api/purchasing/orders/overdue-suppliers/')
         self.assertEqual(response.status_code, 200)
 
     @patch('ai.agents.purchasing_agent.PurchasingAgent')
     def test_agent_workflow_missing_fields(self, MockAgent):
         response = self.client.post(
-            '/api/purchasing/purchase-orders/agent-workflow/',
+            '/api/purchasing/orders/agent-workflow/',
             {'sku_id': 1},
             format='json',
         )
@@ -89,7 +89,7 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
         mock_agent = MockAgent.return_value
         mock_agent.run.return_value = {'status': 'completed', 'po_id': self.po.id}
         response = self.client.post(
-            '/api/purchasing/purchase-orders/agent-workflow/',
+            '/api/purchasing/orders/agent-workflow/',
             {
                 'sku_id': self.sku.id,
                 'quantity': 10,
@@ -105,7 +105,7 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
         mock_agent = MockAgent.return_value
         mock_agent.run.return_value = {'status': 'failed', 'error': 'boom'}
         response = self.client.post(
-            '/api/purchasing/purchase-orders/agent-workflow/',
+            '/api/purchasing/orders/agent-workflow/',
             {
                 'sku_id': self.sku.id,
                 'quantity': 10,
@@ -120,7 +120,7 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
         mock_agent = MockAgent.return_value
         mock_agent.run.return_value = {'status': 'pending_approval'}
         response = self.client.post(
-            '/api/purchasing/purchase-orders/agent-workflow/',
+            '/api/purchasing/orders/agent-workflow/',
             {
                 'sku_id': self.sku.id,
                 'quantity': 10,
@@ -135,7 +135,7 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
         mock_agent = MockAgent.return_value
         mock_agent.run.return_value = {'status': 'rejected'}
         response = self.client.post(
-            '/api/purchasing/purchase-orders/agent-workflow/',
+            '/api/purchasing/orders/agent-workflow/',
             {
                 'sku_id': self.sku.id,
                 'quantity': 10,
@@ -150,7 +150,7 @@ class PurchaseOrderViewSetActionsTest(APITestCase):
         mock_agent = MockAgent.return_value
         mock_agent.run.return_value = {'status': 'timeout'}
         response = self.client.post(
-            '/api/purchasing/purchase-orders/agent-workflow/',
+            '/api/purchasing/orders/agent-workflow/',
             {
                 'sku_id': self.sku.id,
                 'quantity': 10,
