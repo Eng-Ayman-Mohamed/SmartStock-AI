@@ -507,11 +507,12 @@ class TranscribeView(APIView):
             transcriber = SpeechTranscriber()
             text = transcriber.transcribe(audio_data, filename=audio_file.name)
             return Response({'status': 'success', 'data': {'text': text}})
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         except Exception:
-            # Audio input is already validated by TranscriptionSerializer above, so
-            # any failure here (missing API key, Whisper/provider error, etc.) is a
-            # server-side error -> 500. Keep the message generic to avoid leaking
-            # exception details; the full traceback is captured server-side.
             logger.exception('Transcription failed')
             return Response(
                 {'status': 'error', 'message': 'Transcription failed. Please try again.'},
