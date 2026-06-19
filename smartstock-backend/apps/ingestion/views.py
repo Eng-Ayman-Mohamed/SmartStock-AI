@@ -236,7 +236,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         except Exception:
             logger.exception('Document upload/ingestion failed')
             return Response(
-                {'detail': f'Upload or ingestion failed: {e}'},
+                {'detail': 'Upload or ingestion failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -515,7 +515,7 @@ class TranscribeView(APIView):
         except Exception:
             logger.exception('Transcription failed')
             return Response(
-                {'status': 'error', 'message': f'Transcription failed: {e}'},
+                {'status': 'error', 'message': 'Transcription failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -805,7 +805,7 @@ class ChatEndpointView(APIView):
         except Exception:
             logger.exception('Chat pipeline failed')
             return Response(
-                {'status': 'error', 'message': str(exc)},
+                {'status': 'error', 'message': 'Chat pipeline failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
