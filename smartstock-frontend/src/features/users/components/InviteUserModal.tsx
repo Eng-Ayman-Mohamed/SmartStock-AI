@@ -17,7 +17,6 @@ const ROLES: Role[] = ['viewer', 'manager', 'admin'];
 
 export default function InviteUserModal({ open, onClose }: InviteUserModalProps) {
   const createUser = useCreateUser();
-  const currentUserId = useAuthStore((s) => s.user?.id);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
