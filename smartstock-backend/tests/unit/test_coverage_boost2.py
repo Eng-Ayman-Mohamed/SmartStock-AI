@@ -129,7 +129,11 @@ class EvaluationMetricsEvaluateSingleQueryTests(TestCase):
             return [{'content': 'match'}]
 
         result = evaluate_single_query(
-            {'id': 7, 'query': 'find match', 'expected_filters': {'conditions': [{'field': 'name', 'value': 'match'}]}},
+            {
+                'id': 7,
+                'query': 'find match',
+                'expected_filters': {'conditions': [{'field': 'name', 'value': 'match'}]},
+            },
             retrieval_fn=mock_fn,
         )
         self.assertGreater(result['precision_at_5'], 0.0)
@@ -181,7 +185,12 @@ class EvaluationMetricsLogScoresToLangfuseTests(TestCase):
 
         from ai.evaluation.metrics import log_scores_to_langfuse
 
-        results = {'precision_at_5': 0.85, 'faithfulness': 0.92, 'total_queries': 10, 'successful_queries': 8}
+        results = {
+            'precision_at_5': 0.85,
+            'faithfulness': 0.92,
+            'total_queries': 10,
+            'successful_queries': 8,
+        }
         log_scores_to_langfuse(results, duration_ms=500.0)
 
         mock_client.trace.assert_called_once()
@@ -426,6 +435,7 @@ class ProviderConfigGeminiChatLlmTests(TestCase):
     @patch('langchain_google_genai.ChatGoogleGenerativeAI')
     def test_get_chat_llm_gemini(self, mock_google, mock_key):
         import ai.llm.provider_config as pc
+
         original = pc.PROVIDER
         try:
             pc.PROVIDER = 'gemini'
@@ -441,6 +451,7 @@ class ProviderConfigGetWhisperClientTests(TestCase):
     @patch('groq.Groq')
     def test_get_whisper_client_groq(self, mock_groq, mock_key):
         import ai.llm.provider_config as pc
+
         original = pc.WHISPER_PROVIDER
         try:
             pc.WHISPER_PROVIDER = 'groq'
