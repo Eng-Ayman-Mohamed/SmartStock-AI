@@ -41,7 +41,7 @@ export function useAuth() {
   const isAuthenticated = useMemo(() => Boolean(token && user), [token, user]);
 
   const login = useCallback(
-    async (payload: LoginPayload, redirectTo: string = '/') => {
+    async (payload: LoginPayload, redirectTo: string = '/dashboard') => {
       setError(null);
       setIsSubmitting(true);
       try {
@@ -62,7 +62,7 @@ export function useAuth() {
   );
 
   const register = useCallback(
-    async (payload: RegisterPayload, redirectTo: string = '/') => {
+    async (payload: RegisterPayload, redirectTo: string = '/dashboard') => {
       setError(null);
       setIsSubmitting(true);
       try {

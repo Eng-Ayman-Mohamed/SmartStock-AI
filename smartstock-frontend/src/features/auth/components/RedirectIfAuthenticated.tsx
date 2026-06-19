@@ -22,7 +22,7 @@ export default function RedirectIfAuthenticated() {
 
   if (isAuthenticated) {
     const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-    return <Navigate to={from && from !== '/login' && from !== '/register' ? from : '/'} replace />;
+    return <Navigate to={from && from !== '/login' && from !== '/register' ? from : '/dashboard'} replace />;
   }
 
   return <Outlet />;
