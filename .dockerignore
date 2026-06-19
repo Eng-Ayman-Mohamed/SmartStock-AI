@@ -1,0 +1,83 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Environment variables (never include in image)
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+.venv
+venv
+node_modules
+
+# Dependencies
+pip-log.txt
+pip-delete-this-directory.txt
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.egg-info
+dist
+build
+.eggs
+*.egg
+.mypy_cache
+.pytest_cache
+.coverage
+htmlcov
+
+# Node
+dist
+build
+.next
+out
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+
+# Documentation
+*.md
+README
+LICENSE
+CHANGELOG
+
+# Test files
+tests
+test
+spec
+__tests__
+e2e
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Project files
+*.pem
+*.key
+.aws
+.docker
+
+# OS
+.DS_Store
+Thumbs.db
