@@ -1,3 +1,4 @@
+import unittest
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
@@ -447,6 +448,10 @@ class ProviderConfigGeminiChatLlmTests(TestCase):
 
 
 class ProviderConfigGetWhisperClientTests(TestCase):
+    @unittest.skipUnless(
+        __import__('importlib', fromlist=['util']).util.find_spec('groq'),
+        'groq not installed',
+    )
     @patch('ai.llm.provider_config.get_api_key_for_provider', return_value='gsk-test')
     @patch('groq.Groq')
     def test_get_whisper_client_groq(self, mock_groq, mock_key):

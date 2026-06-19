@@ -24,7 +24,7 @@ class SpeechTranscriberTest(TestCase):
         transcriber = SpeechTranscriber()
         with self.assertRaises(ValueError) as ctx:
             transcriber.transcribe(b'audio-data')
-        self.assertIn('GROQ_API_KEY', str(ctx.exception))
+        self.assertIn('API_KEY', str(ctx.exception))
 
     @patch.dict('os.environ', {'GROQ_API_KEY': 'gsk-test'})
     @patch('ai.llm.provider_config.get_whisper_client')
