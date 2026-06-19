@@ -233,7 +233,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             out = DocumentSerializer(document, context={'request': request})
             return Response(out.data, status=status.HTTP_201_CREATED)
 
-        except Exception as e:
+        except Exception:
             logger.exception('Document upload/ingestion failed')
             return Response(
                 {'detail': f'Upload or ingestion failed: {e}'},
@@ -512,7 +512,7 @@ class TranscribeView(APIView):
                 {'status': 'error', 'message': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        except Exception as e:
+        except Exception:
             logger.exception('Transcription failed')
             return Response(
                 {'status': 'error', 'message': f'Transcription failed: {e}'},
@@ -802,7 +802,7 @@ class ChatEndpointView(APIView):
                 {'status': 'error', 'message': exc.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception as exc:
+        except Exception:
             logger.exception('Chat pipeline failed')
             return Response(
                 {'status': 'error', 'message': str(exc)},
