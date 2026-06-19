@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
+from config.settings.base import IS_PRODUCTION
 
 from .models import CustomUser
 from .permissions import IsAdminOnly
@@ -45,7 +46,6 @@ class TokenRefreshView(BaseTokenRefreshView):
         response = super().post(request, *args, **kwargs)
         refresh_token = response.data.get('refresh')
         if refresh_token:
-            from config.settings.base import IS_PRODUCTION
             response.set_cookie(
                 key='refresh_token',
                 value=refresh_token,
@@ -210,7 +210,6 @@ class LoginView(TokenObtainPairView):
             },
             status=status.HTTP_200_OK,
         )
-        from config.settings.base import IS_PRODUCTION
         response.set_cookie(
             key='refresh_token',
             value=validated_data['refresh'],
