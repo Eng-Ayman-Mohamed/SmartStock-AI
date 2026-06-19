@@ -62,8 +62,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ user: null });
         }
       }
-    } catch (err) {
-      console.warn('Bootstrap: refresh failed', err);
+    } catch {
+      if (import.meta.env.DEV) {
+        console.debug('Bootstrap: refresh failed');
+      }
       set({ user: null, token: null, refreshToken: null });
     } finally {
       set({ isBootstrapping: false });
