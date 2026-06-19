@@ -429,7 +429,7 @@ class ProviderConfigGeminiChatLlmTests(TestCase):
         original = pc.PROVIDER
         try:
             pc.PROVIDER = 'gemini'
-            llm = pc.get_chat_llm()
+            pc.get_chat_llm()
             mock_google.assert_called_once()
             self.assertEqual(mock_google.call_args.kwargs['model'], 'gemini-2.0-flash')
         finally:
@@ -444,7 +444,7 @@ class ProviderConfigGetWhisperClientTests(TestCase):
         original = pc.WHISPER_PROVIDER
         try:
             pc.WHISPER_PROVIDER = 'groq'
-            client = pc.get_whisper_client()
+            pc.get_whisper_client()
             mock_groq.assert_called_once()
         finally:
             pc.WHISPER_PROVIDER = original
