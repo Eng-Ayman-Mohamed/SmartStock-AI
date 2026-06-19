@@ -233,10 +233,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
             out = DocumentSerializer(document, context={'request': request})
             return Response(out.data, status=status.HTTP_201_CREATED)
 
-        except Exception as e:
+        except Exception:
             logger.exception('Document upload/ingestion failed')
             return Response(
-                {'detail': f'Upload or ingestion failed: {e}'},
+                {'detail': 'Upload or ingestion failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -507,15 +507,14 @@ class TranscribeView(APIView):
             transcriber = SpeechTranscriber()
             text = transcriber.transcribe(audio_data, filename=audio_file.name)
             return Response({'status': 'success', 'data': {'text': text}})
-        except ValueError as e:
-            return Response(
-                {'status': 'error', 'message': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        except Exception as e:
+        except Exception:
+            # Audio input is already validated by TranscriptionSerializer above, so
+            # any failure here (missing API key, Whisper/provider error, etc.) is a
+            # server-side error -> 500. Keep the message generic to avoid leaking
+            # exception details; the full traceback is captured server-side.
             logger.exception('Transcription failed')
             return Response(
-                {'status': 'error', 'message': f'Transcription failed: {e}'},
+                {'status': 'error', 'message': 'Transcription failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -802,10 +801,13 @@ class ChatEndpointView(APIView):
                 {'status': 'error', 'message': exc.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception as exc:
+        except Exception:
             logger.exception('Chat pipeline failed')
             return Response(
-                {'status': 'error', 'message': str(exc)},
+                {
+                    'status': 'error',
+                    'message': 'An error occurred processing your request. Please try again.',
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
