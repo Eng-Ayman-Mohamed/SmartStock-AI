@@ -17,7 +17,6 @@ const ROLES: Role[] = ['viewer', 'manager', 'admin'];
 
 export default function InviteUserModal({ open, onClose }: InviteUserModalProps) {
   const createUser = useCreateUser();
-  const currentUserId = useAuthStore((s) => s.user?.id);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -66,11 +65,9 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
           reset();
           onClose();
         },
-        onError: () => {
+        onError: (err: unknown) => {
           setFormError('Could not create user. The email may already be in use.');
-          if (import.meta.env.DEV) {
-            console.debug('Failed to create user');
-          }
+          console.error('create user failed', err, 'currentUserId=', currentUserId);
         },
       },
     );

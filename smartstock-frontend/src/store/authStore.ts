@@ -58,15 +58,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           );
           set({ user: me });
         } catch {
-          // Log only in development; production errors go to Sentry
-          if (import.meta.env.DEV) {
-            console.debug('Bootstrap: /auth/me/ failed');
-          }
+          console.warn('Bootstrap: /auth/me/ failed');
           set({ user: null });
         }
       }
-    } catch (err) {
-      // Log only in development; production errors go to Sentry
+    } catch {
       if (import.meta.env.DEV) {
         console.debug('Bootstrap: refresh failed');
       }
