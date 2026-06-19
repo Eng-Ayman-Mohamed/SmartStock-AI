@@ -514,8 +514,9 @@ class InventoryRepositoryTests(TestCase):
         self.assertEqual(len(result), 1)
 
     def test_category_repository_crud(self):
-        from apps.inventory.repositories import CategoryRepository
         from django.core.exceptions import ObjectDoesNotExist
+
+        from apps.inventory.repositories import CategoryRepository
 
         repo = CategoryRepository()
         created = repo.create({'name': 'CRUD Category'})
