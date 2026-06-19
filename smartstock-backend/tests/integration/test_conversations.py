@@ -106,9 +106,7 @@ class ConversationViewSetTests(APITestCase):
     def test_rename_success(self):
         conv = ChatConversation.objects.create(user=self.user, title='Old')
         self._auth(self.user)
-        response = self.client.patch(
-            self._url(f'{conv.id}/'), {'title': 'Renamed'}, format='json'
-        )
+        response = self.client.patch(self._url(f'{conv.id}/'), {'title': 'Renamed'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         conv.refresh_from_db()
         self.assertEqual(conv.title, 'Renamed')
@@ -122,9 +120,7 @@ class ConversationViewSetTests(APITestCase):
     def test_rename_other_users_returns_404(self):
         conv = ChatConversation.objects.create(user=self.other, title='Theirs')
         self._auth(self.user)
-        response = self.client.patch(
-            self._url(f'{conv.id}/'), {'title': 'Mine now'}, format='json'
-        )
+        response = self.client.patch(self._url(f'{conv.id}/'), {'title': 'Mine now'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     # --- Destroy ---

@@ -57,17 +57,17 @@ class ConversationService:
         mode: str = 'auto',
         sources: list | None = None,
     ):
-        message = self._message_repo.create({
-            'conversation_id': conversation_id,
-            'role': role,
-            'content': content,
-            'engine': engine,
-            'mode': mode,
-            'sources': sources or [],
-        })
-        ChatConversation.objects.filter(pk=conversation_id).update(
-            updated_at=message.created_at
+        message = self._message_repo.create(
+            {
+                'conversation_id': conversation_id,
+                'role': role,
+                'content': content,
+                'engine': engine,
+                'mode': mode,
+                'sources': sources or [],
+            }
         )
+        ChatConversation.objects.filter(pk=conversation_id).update(updated_at=message.created_at)
         return message
 
     def auto_title(self, conversation_id: uuid.UUID, first_message: str):

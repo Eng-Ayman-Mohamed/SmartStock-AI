@@ -1430,7 +1430,11 @@ class NLQueryEndpointView(APIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
         except Exception as e:
-            msg = sanitize_llm_error(e) if is_llm_quota_error(e) else 'An unexpected error occurred while processing your request.'
+            msg = (
+                sanitize_llm_error(e)
+                if is_llm_quota_error(e)
+                else 'An unexpected error occurred while processing your request.'
+            )
             return Response(
                 {'status': 'error', 'message': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -1474,10 +1478,16 @@ class NLQueryEndpointView(APIView):
                 action_type = chain_dict.get('action')
                 filters = chain_dict.get('filters', {})
             except Exception as chain_err:
-                msg = sanitize_llm_error(chain_err) if is_llm_quota_error(chain_err) else f'LLM Chain failure: {chain_err}'
+                msg = (
+                    sanitize_llm_error(chain_err)
+                    if is_llm_quota_error(chain_err)
+                    else f'LLM Chain failure: {chain_err}'
+                )
                 return Response(
                     {'status': 'error', 'message': msg},
-                    status=status.HTTP_429_TOO_MANY_REQUESTS if is_llm_quota_error(chain_err) else status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                    if is_llm_quota_error(chain_err)
+                    else status.HTTP_400_BAD_REQUEST,
                 )
 
         # Step C: Dispatch to the correct service

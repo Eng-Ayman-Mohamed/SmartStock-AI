@@ -29,9 +29,7 @@ class ConversationRepository(BaseRepository):
 
     def get_with_messages(self, id: uuid.UUID, user):
         return (
-            ChatConversation.objects.filter(pk=id, user=user)
-            .prefetch_related('messages')
-            .first()
+            ChatConversation.objects.filter(pk=id, user=user).prefetch_related('messages').first()
         )
 
 
@@ -56,6 +54,7 @@ class ChatMessageRepository(BaseRepository):
 
     def get_history(self, conversation_id: uuid.UUID, limit: int = 20):
         return list(
-            ChatMessage.objects.filter(conversation_id=conversation_id)
-            .order_by('-created_at')[:limit]
+            ChatMessage.objects.filter(conversation_id=conversation_id).order_by('-created_at')[
+                :limit
+            ]
         )

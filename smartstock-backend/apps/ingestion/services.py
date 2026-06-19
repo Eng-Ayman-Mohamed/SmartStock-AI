@@ -459,7 +459,7 @@ class RAGQueryService:
 
         if history:
             history_text = '\n'.join(
-                f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+                f'{"User" if m["role"] == "user" else "Assistant"}: {m["content"]}'
                 for m in history[-10:]
             )
             messages.append(('user', f'Previous conversation:\n{history_text}'))

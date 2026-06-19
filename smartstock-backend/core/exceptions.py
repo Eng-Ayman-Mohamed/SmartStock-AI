@@ -24,6 +24,7 @@ class IllegalPOTransitionError(Exception):
 
 class LLMQuotaExhaustedError(Exception):
     """Raised when the LLM provider quota or rate limit is exceeded."""
+
     pass
 
 

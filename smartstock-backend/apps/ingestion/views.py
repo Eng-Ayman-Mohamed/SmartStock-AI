@@ -805,9 +805,7 @@ class ChatEndpointView(APIView):
         # --- Execute pipeline with timeout ---
         pipeline_start = time.time()
         executor = ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(
-            self._run_engine, engine, query, request.user, history
-        )
+        future = executor.submit(self._run_engine, engine, query, request.user, history)
         try:
             result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
             executor.shutdown(wait=False)
@@ -834,7 +832,11 @@ class ChatEndpointView(APIView):
         except Exception as exc:
             executor.shutdown(wait=False)
             logger.exception('Chat pipeline failed')
-            msg = sanitize_llm_error(exc) if is_llm_quota_error(exc) else 'An unexpected error occurred while processing your request.'
+            msg = (
+                sanitize_llm_error(exc)
+                if is_llm_quota_error(exc)
+                else 'An unexpected error occurred while processing your request.'
+            )
             return Response(
                 {'status': 'error', 'message': msg},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

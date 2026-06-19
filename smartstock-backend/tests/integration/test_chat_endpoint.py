@@ -43,7 +43,10 @@ class ChatEndpointTests(APITestCase):
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_viewer_can_chat(self, mock_run, mock_filter):
-        mock_run.return_value = {'answer': '42 units', 'action': {'type': 'get_inventory', 'filters': {}}}
+        mock_run.return_value = {
+            'answer': '42 units',
+            'action': {'type': 'get_inventory', 'filters': {}},
+        }
         self._auth(self.viewer)
         response = self.client.post(
             self._url(), {'query': 'how many Widget-001?', 'mode': 'nl_query'}, format='json'
@@ -71,7 +74,9 @@ class ChatEndpointTests(APITestCase):
 
     def test_invalid_mode_returns_422(self):
         self._auth(self.manager)
-        response = self.client.post(self._url(), {'query': 'hello', 'mode': 'invalid'}, format='json')
+        response = self.client.post(
+            self._url(), {'query': 'hello', 'mode': 'invalid'}, format='json'
+        )
         self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
     def test_invalid_conversation_id_returns_422(self):
@@ -99,6 +104,7 @@ class ChatEndpointTests(APITestCase):
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_auto_mode_classifies_intent(self, mock_run, mock_classify, mock_filter):
         from ai.llm.intent_classifier import ClassificationResult
+
         mock_classify.return_value = ClassificationResult(intent='nl_query', confidence=0.85)
         mock_run.return_value = {'answer': '5 items are low on stock'}
         self._auth(self.manager)
@@ -111,7 +117,10 @@ class ChatEndpointTests(APITestCase):
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_explicit_rag_mode(self, mock_run, mock_filter):
-        mock_run.return_value = {'answer': 'Policy says 30 days.', 'sources': [{'document': 'returns.pdf', 'page': 2}]}
+        mock_run.return_value = {
+            'answer': 'Policy says 30 days.',
+            'sources': [{'document': 'returns.pdf', 'page': 2}],
+        }
         self._auth(self.manager)
         response = self.client.post(
             self._url(), {'query': 'return policy?', 'mode': 'rag'}, format='json'
@@ -142,6 +151,7 @@ class ChatEndpointTests(APITestCase):
     @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
     def test_chat_with_nonexistent_conversation_returns_404(self, mock_filter):
         import uuid
+
         self._auth(self.manager)
         response = self.client.post(
             self._url(),

@@ -37,8 +37,8 @@ _PROVIDERS = {
         'embedding_model': None,  # Groq has no embedding API
         'embedding_dimensions': None,
         'whisper_model': 'whisper-large-v3',
-        'vision_model': None,  # Groq has no vision model
-        'supports_vision': False,
+        'vision_model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+        'supports_vision': True,
         'base_url': 'https://api.groq.com/openai/v1',
         'api_key_env': 'GROQ_API_KEY',
     },
