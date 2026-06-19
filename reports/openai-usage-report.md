@@ -417,3 +417,133 @@ Tested 2026-06-17 with `LLM_PROVIDER=gemini`, `LLM_WHISPER_PROVIDER=groq`:
 - Quota resets at midnight Pacific Time
 - To test immediately: create a key from a **different Google Cloud project** at https://aistudio.google.com/apikey
 - Invoice scan code path verified correct: `_extract_gemini()` → `google-genai` SDK → Gemini API (not OpenAI)
+
+---
+
+## 9. Chat History — 2026-06-18
+
+### 9a. Why Chat History
+
+The original chat was **stateless** — every message was independent. The AI had no memory of prior questions within a conversation. Users had to repeat context on follow-up queries (e.g. "How many of *those* do we need?" — the AI didn't know what "those" referred to).
+
+Chat history adds **multi-turn conversations** with persistent storage, so the AI remembers context within a session and users can revisit past conversations.
+
+### 9b. New App: `apps/ai/`
+
+A dedicated Django app for conversation management, following Clean Architecture (Views → Services → Repositories → DB).
+
+| File | Purpose |
+|---|---|
+| `apps/ai/__init__.py` | Python package marker |
+| `apps/ai/apps.py` | Django app config — registers `apps.ai` in `INSTALLED_APPS` |
+| `apps/ai/models.py` | `ChatConversation` + `ChatMessage` models |
+| `apps/ai/repositories.py` | `ConversationRepository` + `ChatMessageRepository` (extends `BaseRepository`) |
+| `apps/ai/services.py` | `ConversationService` — list, create, delete, rename, history, auto-title |
+| `apps/ai/serializers.py` | DRF serializers for API request/response |
+| `apps/ai/views.py` | `ConversationViewSet` — REST endpoints |
+| `apps/ai/urls.py` | Routes at `/api/ai/conversations/` |
+| `apps/ai/admin.py` | Admin panel with inline messages |
+| `apps/ai/migrations/0001_initial.py` | Creates `ai_chatconversation` + `ai_chatmessage` tables |
+
+### 9c. Database Schema
+
+**`ai_chatconversation`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `user_id` | FK → `authentication_customuser` | Conversation owner |
+| `title` | VARCHAR(200) | Auto-set from first message |
+| `created_at` | TIMESTAMP | Auto |
+| `updated_at` | TIMESTAMP | Auto — bumped on new message |
+
+**`ai_chatmessage`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `conversation_id` | FK → `ai_chatconversation` | Parent conversation |
+| `role` | VARCHAR(10) | `user` or `assistant` |
+| `content` | TEXT | Message text |
+| `engine` | VARCHAR(20) | `nl_query`, `rag`, or empty |
+| `mode` | VARCHAR(20) | `auto`, `nl_query`, or `rag` |
+| `sources` | JSONB | Citation list from RAG |
+| `created_at` | TIMESTAMP | Auto |
+
+### 9d. Files Modified
+
+| File | Change | Why |
+|---|---|---|
+| `config/settings/base.py` | Added `apps.ai.apps.AIConfig` to `INSTALLED_APPS` | Register the new app |
+| `config/urls.py` | Added `api/ai/conversations/` route | Wire up conversation endpoints |
+| `apps/ingestion/serializers.py` | Added optional `conversation_id` to `ChatSerializer` | Accept conversation ID from frontend |
+| `apps/ingestion/views.py` | `ChatEndpointView` loads history, passes to engine, saves messages, auto-titles | Core chat history logic |
+| `apps/ingestion/services.py` | `RAGQueryService.execute()` and `call_llm_with_usage()` accept `history` param | Inject conversation context into LLM prompt |
+| `.env.example` | Added comment that chat history needs no extra env vars | Documentation |
+
+### 9e. Frontend Changes
+
+| File | Change |
+|---|---|
+| `features/ai-assistant/types.ts` | Added `Conversation`, `ConversationDetail` interfaces; `ChatResponse` includes `conversation_id` |
+| `features/ai-assistant/api.ts` | Added `listConversations`, `createConversation`, `getConversation`, `deleteConversation`, `renameConversation` |
+| `features/ai-assistant/hooks/useChat.ts` | Accepts `conversationId`, sends it with requests, has `loadFromConversation` and `clearMessages` |
+| `features/ai-assistant/hooks/useConversations.ts` | **NEW** — manages conversation list, select/create/delete/rename |
+| `features/ai-assistant/components/ConversationSidebar.tsx` | **NEW** — sidebar UI with conversation list |
+| `features/ai-assistant/components/ChatPanel.tsx` | Integrated sidebar, auto-creates conversation on first message |
+
+### 9f. How History Is Injected Into the LLM
+
+Last 10 messages are included in the RAG prompt as prior context:
+
+```python
+# apps/ingestion/services.py — RAGQueryService.call_llm_with_usage()
+messages = [
+    ('system', RAG_SYSTEM_PROMPT),
+]
+
+if history:
+    history_text = '\n'.join(
+        f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+        for m in history[-10:]
+    )
+    messages.append(('user', f'Previous conversation:\n{history_text}'))
+
+messages.append(('user', '{query}'))
+```
+
+The NL Query engine (`chain.py`) does **not** use history — it's a stateless structured-query parser, not conversational.
+
+### 9g. API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/ai/conversations/` | GET | List user's conversations |
+| `/api/ai/conversations/` | POST | Create new conversation |
+| `/api/ai/conversations/{id}/` | GET | Get conversation with all messages |
+| `/api/ai/conversations/{id}/` | PATCH | Rename conversation |
+| `/api/ai/conversations/{id}/` | DELETE | Delete conversation + all messages |
+| `/api/ai/conversations/{id}/messages/` | GET | Get messages for a conversation |
+| `/api/ai/chat/` | POST | Send message (now accepts optional `conversation_id`) |
+
+### 9h. OpenAI Token Impact
+
+Chat history increases token usage per request:
+
+| Scenario | Tokens per request |
+|---|---|
+| No history (stateless) | ~500–1000 |
+| With 10 messages history | ~1500–3000 |
+
+The history is capped at **10 messages** to control costs. Older messages are still stored in the database but not injected into prompts.
+
+**Estimated cost increase**: ~2–3x per chat message when history is active. Mitigated by the history limit and the fact that most conversations are 5–15 messages deep.
+
+### 9i. User Walkthrough
+
+1. **First visit** — empty sidebar, empty chat area with suggestion buttons
+2. **User types a question** — new conversation auto-created, first message becomes the title
+3. **User asks a follow-up** — AI has context from previous messages, knows what "those" refers to
+4. **Sidebar** — click to switch conversations, rename on hover, delete on hover, toggle sidebar
+5. **New Chat** — starts fresh conversation with no history
+6. **Multi-turn** — last 10 messages injected into RAG prompt for context continuity

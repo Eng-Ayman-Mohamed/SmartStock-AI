@@ -434,19 +434,30 @@ class RAGQueryService:
             parts.append(f'[Source: {doc}, Page: {page}]\n{text}')
         return '\n\n---\n\n'.join(parts)
 
-    def call_llm(self, query: str, context: str) -> str:
-        answer, token_usage = self.call_llm_with_usage(query, context)
+    def call_llm(self, query: str, context: str, history: list | None = None) -> str:
+        answer, token_usage = self.call_llm_with_usage(query, context, history)
         self._last_token_usage = token_usage
         return answer
 
-    def call_llm_with_usage(self, query: str, context: str) -> tuple[str, dict]:
+    def call_llm_with_usage(
+        self, query: str, context: str, history: list | None = None
+    ) -> tuple[str, dict]:
         llm = self._get_llm()
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ('system', self.RAG_SYSTEM_PROMPT),
-                ('user', '{query}'),
-            ]
-        )
+
+        messages = [
+            ('system', self.RAG_SYSTEM_PROMPT),
+        ]
+
+        if history:
+            history_text = '\n'.join(
+                f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+                for m in history[-10:]
+            )
+            messages.append(('user', f'Previous conversation:\n{history_text}'))
+
+        messages.append(('user', '{query}'))
+
+        prompt = ChatPromptTemplate.from_messages(messages)
         chain = prompt | llm
         response, token_usage = invoke_with_langfuse(
             chain,
@@ -471,7 +482,7 @@ class RAGQueryService:
                 sources.append({'document': doc, 'page': page})
         return sources
 
-    def execute(self, query: str, user=None) -> dict:
+    def execute(self, query: str, user=None, history: list | None = None) -> dict:
         start = time.time()
 
         # Step 1: Hybrid search (includes embedding internally)
@@ -510,7 +521,7 @@ class RAGQueryService:
         # Step 5: Build context and call LLM
         context = self.build_context(top_chunks)
         self._last_token_usage = {}
-        llm_response = self.call_llm(query, context)
+        llm_response = self.call_llm(query, context, history)
         token_usage = self._last_token_usage
 
         # Step 6: Extract sources from chunks

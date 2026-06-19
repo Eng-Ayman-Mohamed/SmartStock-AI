@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { ChatMode, Message } from '../types';
+import type { ChatMode, ConversationDetail, Message } from '../types';
 import { sendChatMessage } from '../api';
 
 let nextId = 0;
@@ -7,11 +7,27 @@ function createId(): string {
   return `msg-${Date.now()}-${nextId++}`;
 }
 
-export default function useChat() {
+function mapConversationMessages(detail: ConversationDetail): Message[] {
+  return detail.messages.map((m) => ({
+    id: m.id,
+    role: m.role === 'assistant' ? 'ai' : m.role,
+    text: m.content,
+    mode: m.mode as ChatMode,
+    engine: m.engine as Message['engine'],
+    sources: m.sources,
+    timestamp: new Date(m.created_at).getTime(),
+  }));
+}
+
+export default function useChat(conversationId?: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<ChatMode>('auto');
+
+  const loadFromConversation = useCallback((detail: ConversationDetail) => {
+    setMessages(mapConversationMessages(detail));
+  }, []);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -31,7 +47,11 @@ export default function useChat() {
       setError(null);
 
       try {
-        const response = await sendChatMessage({ query: trimmed, mode });
+        const response = await sendChatMessage({
+          query: trimmed,
+          mode,
+          conversation_id: conversationId ?? undefined,
+        });
         const aiMessage: Message = {
           id: createId(),
           role: 'ai',
@@ -42,20 +62,39 @@ export default function useChat() {
         };
         setMessages((prev) => [...prev, aiMessage]);
       } catch (err) {
+        const raw = err instanceof Error ? err.message : 'An error occurred';
+        const isQuota = /quota|rate.?limit|429|too many requests/i.test(raw);
+        const userMessage = isQuota
+          ? 'AI service quota has been reached. Please try again shortly.'
+          : 'Sorry, something went wrong. Please try again.';
         const errorMessage: Message = {
           id: createId(),
           role: 'ai',
-          text: 'Sorry, something went wrong. Please try again.',
+          text: userMessage,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, errorMessage]);
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(userMessage);
       } finally {
         setIsLoading(false);
       }
     },
-    [mode, isLoading],
+    [mode, isLoading, conversationId],
   );
 
-  return { messages, sendMessage, isLoading, error, mode, setMode };
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setError(null);
+  }, []);
+
+  return {
+    messages,
+    sendMessage,
+    isLoading,
+    error,
+    mode,
+    setMode,
+    loadFromConversation,
+    clearMessages,
+  };
 }
