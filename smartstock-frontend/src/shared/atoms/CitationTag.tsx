@@ -50,7 +50,7 @@ export default function CitationTag({ sourceDocument, page, chunkText }: Citatio
         <div
           ref={tooltipRef}
           role="tooltip"
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 bg-ink text-white text-caption leading-relaxed rounded-lg shadow-elevated"
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 max-w-[calc(100vw-2rem)] p-3 bg-ink text-white text-caption leading-relaxed rounded-lg shadow-elevated"
         >
           {chunkText}
           <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-ink rotate-45 -mt-1" />

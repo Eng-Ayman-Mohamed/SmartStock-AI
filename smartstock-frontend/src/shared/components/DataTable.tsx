@@ -38,9 +38,9 @@ export default function DataTable<T>({ columns, data, keyExtractor, caption, emp
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse">
+        <table className="w-full table-auto border-collapse">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
             <tr className="bg-canvas-soft border-b border-hairline">

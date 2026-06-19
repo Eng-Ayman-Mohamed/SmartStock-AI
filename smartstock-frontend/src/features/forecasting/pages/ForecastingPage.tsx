@@ -45,7 +45,7 @@ export default function ForecastingPage() {
   return (
     <div className="flex flex-col xl:flex-row gap-6 animate-fadeIn">
       <div className="flex-1 min-w-0 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-page-heading text-ink">Demand Forecasting</h1>
             <p className="text-body text-ink-muted mt-1">Peek 30 days ahead — AI predicts what you'll need before you need it</p>

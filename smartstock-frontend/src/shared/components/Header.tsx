@@ -80,25 +80,25 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b border-hairline bg-canvas">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b border-hairline bg-canvas overflow-hidden">
+      <div className="flex items-center gap-2 min-w-0 shrink">
         <button
           onClick={toggleSidebar}
-          className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+          className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors shrink-0"
           aria-label="Toggle navigation"
         >
           <Menu className="w-4 h-4" />
         </button>
-        <nav aria-label="Breadcrumb">
+        <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex items-center gap-1.5 text-caption text-ink-muted">
-            <li>SmartStock AI</li>
-            <li aria-hidden="true" className="text-ink-faint">/</li>
-            <li className="text-ink font-medium" aria-current="page">{title}</li>
+            <li className="hidden sm:inline">SmartStock AI</li>
+            <li aria-hidden="true" className="text-ink-faint hidden sm:inline">/</li>
+            <li className="text-ink font-medium truncate" aria-current="page">{title}</li>
           </ol>
         </nav>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-1.5" title={healthLoading ? 'Checking...' : isAlive ? 'Server online' : 'Server offline'}>
           <span className={`w-2 h-2 rounded-full ${
             healthLoading ? 'bg-gray-300' : isAlive ? 'bg-green-500' : 'bg-red-500'
@@ -108,7 +108,7 @@ export default function Header() {
           </span>
         </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         <ThemeToggle />
         <button
           className="relative flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"

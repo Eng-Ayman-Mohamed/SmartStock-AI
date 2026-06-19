@@ -243,7 +243,7 @@ export function SuppliersPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-page-heading text-ink">Suppliers</h1>
         {isManagerOrAbove && (
           <Button variant="primary" size="md" onClick={openAddModal}>

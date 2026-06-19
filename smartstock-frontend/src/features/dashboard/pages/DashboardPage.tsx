@@ -113,7 +113,7 @@ function ForecastChart({ data: allSkus }: { data: ChartPoint[] | null }) {
           />
         </AreaChart>
       </ResponsiveContainer>
-      <div className="flex items-center gap-4 mt-2 text-caption text-ink-muted">
+      <div className="flex flex-wrap items-center gap-4 mt-2 text-caption text-ink-muted">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 bg-brand-600" /> Predicted demand
         </span>
@@ -204,7 +204,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-page-heading text-ink">Dashboard</h1>
           <p className="text-body text-ink-muted mt-1">

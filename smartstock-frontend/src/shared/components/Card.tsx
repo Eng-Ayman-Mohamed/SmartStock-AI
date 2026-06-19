@@ -21,7 +21,7 @@ export default function Card({ title, subtitle, action, children, className = ''
           {action && <div>{action}</div>}
         </div>
       )}
-      <div className={noPadding ? '' : 'p-6'}>
+      <div className={`${noPadding ? 'min-w-0' : 'p-6 min-w-0'}`}>
         {children}
       </div>
     </div>

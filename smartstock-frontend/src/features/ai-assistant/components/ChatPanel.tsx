@@ -39,7 +39,7 @@ export default function ChatPanel() {
   return (
     <div className="flex flex-col h-full">
       <div
-        className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+        className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4"
         role="log"
         aria-label="Chat messages"
         aria-live="polite"
@@ -53,7 +53,7 @@ export default function ChatPanel() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="px-6 py-3 border-t border-hairline">
+      <div className="px-4 sm:px-6 py-3 border-t border-hairline">
         <div className="mb-2">
           <ModeSelector active={mode} onChange={setMode} />
         </div>

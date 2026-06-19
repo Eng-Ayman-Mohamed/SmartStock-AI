@@ -41,8 +41,8 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
         </div>
       )}
 
-      <div className="flex items-start justify-between mb-4">
-        <div>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="min-w-0">
           <h3 className="text-card-title text-ink">{sku.product_name}</h3>
           <p className="text-mono text-ink-muted mt-0.5">SKU: {sku.sku_code}</p>
         </div>
@@ -137,7 +137,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
         </ResponsiveContainer>
       </div>
 
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-hairline">
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-hairline">
         <div className="flex items-center gap-1.5 text-caption text-ink-muted">
           <TrendingUp className="w-3.5 h-3.5" />
           Stock: <span className="tabular-nums">{sku.current_stock}</span>
