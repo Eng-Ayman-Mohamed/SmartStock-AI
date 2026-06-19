@@ -3,7 +3,6 @@ import { Loader2, X } from 'lucide-react';
 import { useCreateUser } from '../hooks/useUsers';
 import { ROLE_META } from './RoleBadge';
 import type { Role } from '../types';
-import { useAuthStore } from '../../../store/authStore';
 import PasswordField from '../../../shared/components/PasswordField';
 
 interface InviteUserModalProps {
@@ -65,9 +64,11 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
           reset();
           onClose();
         },
-        onError: (err: unknown) => {
+        onError: () => {
           setFormError('Could not create user. The email may already be in use.');
-          console.error('create user failed', err, 'currentUserId=', currentUserId);
+          if (import.meta.env.DEV) {
+            console.debug('Failed to create user');
+          }
         },
       },
     );
