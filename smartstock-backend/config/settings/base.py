@@ -25,6 +25,11 @@ if not SECRET_KEY:
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
+# Security: Determine if we're in a production environment
+# In production, only set to False if explicitly configured
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development').lower()
+IS_PRODUCTION = ENVIRONMENT == 'production'
+
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
@@ -243,8 +248,10 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
     'AUTH_COOKIE_HTTP_ONLY': True,
-    'AUTH_COOKIE_SECURE': not DEBUG,
-    'AUTH_COOKIE_SAMESITE': 'None' if not DEBUG else 'Lax',
+    # Secure: Always require HTTPS in production, allow HTTP only in development
+    'AUTH_COOKIE_SECURE': IS_PRODUCTION or not DEBUG,
+    # SameSite: Strict is default. Only use 'None' if explicitly required for cross-origin (requires Secure=True)
+    'AUTH_COOKIE_SAMESITE': 'Strict' if IS_PRODUCTION else 'Lax',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
 CORS_ALLOWED_ORIGINS = os.environ.get(
