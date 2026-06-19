@@ -510,7 +510,10 @@ class TranscribeView(APIView):
         except ValueError as e:
             logger.warning('Transcription validation error: %s', e)
             return Response(
-                {'status': 'error', 'message': 'Invalid audio file. Please try again with a supported format.'},
+                {
+                    'status': 'error',
+                    'message': 'Invalid audio file. Please try again with a supported format.',
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception:
@@ -806,7 +809,10 @@ class ChatEndpointView(APIView):
         except Exception:
             logger.exception('Chat pipeline failed')
             return Response(
-                {'status': 'error', 'message': 'An error occurred processing your request. Please try again.'},
+                {
+                    'status': 'error',
+                    'message': 'An error occurred processing your request. Please try again.',
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

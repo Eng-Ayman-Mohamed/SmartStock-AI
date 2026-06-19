@@ -123,6 +123,7 @@ class RegisterView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
         )
         from config.settings.base import IS_PRODUCTION
+
         response.set_cookie(
             key='refresh_token',
             value=str(refresh),
