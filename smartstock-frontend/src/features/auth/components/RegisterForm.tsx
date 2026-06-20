@@ -80,7 +80,7 @@ export default function RegisterForm() {
     if (!validate()) return;
 
     try {
-      await register({ name: name.trim(), email: email.trim(), password }, '/');
+      await register({ name: name.trim(), email: email.trim(), password }, '/dashboard');
     } catch (err) {
       const serverErrors = pickServerErrors(err);
       if (Object.keys(serverErrors).length > 0) {

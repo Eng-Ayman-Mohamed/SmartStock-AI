@@ -55,34 +55,36 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`flex items-center justify-center w-7 h-7 rounded-full shrink-0 ${
-          isUser ? 'bg-brand-600' : 'bg-purple-50 dark:bg-purple-900/30'
+          isUser
+            ? 'bg-brand-600'
+            : 'bg-purple-50 dark:bg-purple-900/30'
         }`}
       >
         {isUser ? (
-          <User className="w-4 h-4 text-white" />
+          <User className="w-3.5 h-3.5 text-white" />
         ) : (
-          <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          <Bot className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
         )}
       </div>
 
-      <div className={`max-w-[80%] ${isUser ? 'text-right' : ''}`}>
+      <div className={`max-w-[75%] min-w-0 ${isUser ? 'text-right' : ''}`}>
         <div
           className={`inline-block text-left ${
             isUser
-              ? 'bg-brand-600 text-white rounded-lg rounded-br-sm px-4 py-2.5'
-              : 'bg-canvas-soft text-ink rounded-lg rounded-bl-sm px-4 py-2.5'
+              ? 'bg-brand-600 text-white rounded-2xl rounded-br-md px-4 py-2.5'
+              : 'bg-canvas-soft text-ink rounded-2xl rounded-bl-md px-4 py-2.5 border border-hairline/50'
           }`}
         >
-          <p className="text-body leading-relaxed whitespace-pre-wrap">
+          <p className="text-body leading-relaxed whitespace-pre-wrap break-words">
             {isUser ? message.text : parseAnswerText(message.text, message.sources)}
           </p>
         </div>
 
         {!isUser && message.engine && (
-          <span className="inline-block mt-1 ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-canvas-soft text-ink-faint">
+          <span className="inline-block mt-1.5 ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-ink-faint">
             {engineLabels[message.engine] || message.engine}
           </span>
         )}

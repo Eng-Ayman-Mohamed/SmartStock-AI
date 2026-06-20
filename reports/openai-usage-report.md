@@ -417,3 +417,211 @@ Tested 2026-06-17 with `LLM_PROVIDER=gemini`, `LLM_WHISPER_PROVIDER=groq`:
 - Quota resets at midnight Pacific Time
 - To test immediately: create a key from a **different Google Cloud project** at https://aistudio.google.com/apikey
 - Invoice scan code path verified correct: `_extract_gemini()` → `google-genai` SDK → Gemini API (not OpenAI)
+
+---
+
+## 9. Chat History — 2026-06-18
+
+### 9a. Why Chat History
+
+The original chat was **stateless** — every message was independent. The AI had no memory of prior questions within a conversation. Users had to repeat context on follow-up queries (e.g. "How many of *those* do we need?" — the AI didn't know what "those" referred to).
+
+Chat history adds **multi-turn conversations** with persistent storage, so the AI remembers context within a session and users can revisit past conversations.
+
+### 9b. New App: `apps/ai/`
+
+A dedicated Django app for conversation management, following Clean Architecture (Views → Services → Repositories → DB).
+
+| File | Purpose |
+|---|---|
+| `apps/ai/__init__.py` | Python package marker |
+| `apps/ai/apps.py` | Django app config — registers `apps.ai` in `INSTALLED_APPS` |
+| `apps/ai/models.py` | `ChatConversation` + `ChatMessage` models |
+| `apps/ai/repositories.py` | `ConversationRepository` + `ChatMessageRepository` (extends `BaseRepository`) |
+| `apps/ai/services.py` | `ConversationService` — list, create, delete, rename, history, auto-title |
+| `apps/ai/serializers.py` | DRF serializers for API request/response |
+| `apps/ai/views.py` | `ConversationViewSet` — REST endpoints |
+| `apps/ai/urls.py` | Routes at `/api/ai/conversations/` |
+| `apps/ai/admin.py` | Admin panel with inline messages |
+| `apps/ai/migrations/0001_initial.py` | Creates `ai_chatconversation` + `ai_chatmessage` tables |
+
+### 9c. Database Schema
+
+**`ai_chatconversation`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `user_id` | FK → `authentication_customuser` | Conversation owner |
+| `title` | VARCHAR(200) | Auto-set from first message |
+| `created_at` | TIMESTAMP | Auto |
+| `updated_at` | TIMESTAMP | Auto — bumped on new message |
+
+**`ai_chatmessage`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `conversation_id` | FK → `ai_chatconversation` | Parent conversation |
+| `role` | VARCHAR(10) | `user` or `assistant` |
+| `content` | TEXT | Message text |
+| `engine` | VARCHAR(20) | `nl_query`, `rag`, or empty |
+| `mode` | VARCHAR(20) | `auto`, `nl_query`, or `rag` |
+| `sources` | JSONB | Citation list from RAG |
+| `created_at` | TIMESTAMP | Auto |
+
+### 9d. Files Modified
+
+| File | Change | Why |
+|---|---|---|
+| `config/settings/base.py` | Added `apps.ai.apps.AIConfig` to `INSTALLED_APPS` | Register the new app |
+| `config/urls.py` | Added `api/ai/conversations/` route | Wire up conversation endpoints |
+| `apps/ingestion/serializers.py` | Added optional `conversation_id` to `ChatSerializer` | Accept conversation ID from frontend |
+| `apps/ingestion/views.py` | `ChatEndpointView` loads history, passes to engine, saves messages, auto-titles | Core chat history logic |
+| `apps/ingestion/services.py` | `RAGQueryService.execute()` and `call_llm_with_usage()` accept `history` param | Inject conversation context into LLM prompt |
+| `.env.example` | Added comment that chat history needs no extra env vars | Documentation |
+
+### 9e. Frontend Changes
+
+| File | Change |
+|---|---|
+| `features/ai-assistant/types.ts` | Added `Conversation`, `ConversationDetail` interfaces; `ChatResponse` includes `conversation_id` |
+| `features/ai-assistant/api.ts` | Added `listConversations`, `createConversation`, `getConversation`, `deleteConversation`, `renameConversation` |
+| `features/ai-assistant/hooks/useChat.ts` | Accepts `conversationId`, sends it with requests, has `loadFromConversation` and `clearMessages` |
+| `features/ai-assistant/hooks/useConversations.ts` | **NEW** — manages conversation list, select/create/delete/rename |
+| `features/ai-assistant/components/ConversationSidebar.tsx` | **NEW** — sidebar UI with conversation list |
+| `features/ai-assistant/components/ChatPanel.tsx` | Integrated sidebar, auto-creates conversation on first message |
+
+### 9f. How History Is Injected Into the LLM
+
+Last 10 messages are included in the RAG prompt as prior context:
+
+```python
+# apps/ingestion/services.py — RAGQueryService.call_llm_with_usage()
+messages = [
+    ('system', RAG_SYSTEM_PROMPT),
+]
+
+if history:
+    history_text = '\n'.join(
+        f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+        for m in history[-10:]
+    )
+    messages.append(('user', f'Previous conversation:\n{history_text}'))
+
+messages.append(('user', '{query}'))
+```
+
+The NL Query engine (`chain.py`) does **not** use history — it's a stateless structured-query parser, not conversational.
+
+### 9g. API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/ai/conversations/` | GET | List user's conversations |
+| `/api/ai/conversations/` | POST | Create new conversation |
+| `/api/ai/conversations/{id}/` | GET | Get conversation with all messages |
+| `/api/ai/conversations/{id}/` | PATCH | Rename conversation |
+| `/api/ai/conversations/{id}/` | DELETE | Delete conversation + all messages |
+| `/api/ai/conversations/{id}/messages/` | GET | Get messages for a conversation |
+| `/api/ai/chat/` | POST | Send message (now accepts optional `conversation_id`) |
+
+### 9h. OpenAI Token Impact
+
+Chat history increases token usage per request:
+
+| Scenario | Tokens per request |
+|---|---|
+| No history (stateless) | ~500–1000 |
+| With 10 messages history | ~1500–3000 |
+
+The history is capped at **10 messages** to control costs. Older messages are still stored in the database but not injected into prompts.
+
+**Estimated cost increase**: ~2–3x per chat message when history is active. Mitigated by the history limit and the fact that most conversations are 5–15 messages deep.
+
+### 9i. User Walkthrough
+
+1. **First visit** — empty sidebar, empty chat area with suggestion buttons
+2. **User types a question** — new conversation auto-created, first message becomes the title
+3. **User asks a follow-up** — AI has context from previous messages, knows what "those" refers to
+4. **Sidebar** — click to switch conversations, rename on hover, delete on hover, toggle sidebar
+5. **New Chat** — starts fresh conversation with no history
+6. **Multi-turn** — last 10 messages injected into RAG prompt for context continuity
+
+---
+
+## 10. Groq Vision Enablement & Dotenv Fix — 2026-06-19
+
+### 10a. Problem: "Something went wrong" on every chat request
+
+On 2026-06-19, all AI chat endpoints returned `504 Gateway Timeout` / `"Sorry, something went wrong"`. No code changes had been made since the previous session.
+
+**Root cause:** Gemini free-tier API quota had been exhausted (`429 RESOURCE_EXHAUSTED`). The `langchain-google-genai` SDK performs 5 retries with exponential backoff (1.4s → 2.8s → 5.7s → 11.4s → 16.3s = ~37s total), causing the 15‑second CHAT_TIMEOUT to fire before a single request completes. Additionally, an OpenAI key was also at zero quota (`insufficient_quota`).
+
+**Secondary bug — ThreadPoolExecutor blocking:** The `with ThreadPoolExecutor() as executor:` context manager calls `executor.shutdown(wait=True)` on exit, blocking until every submitted future finishes. Because the hanging Gemini thread never completed, the executor blocked for 37+ seconds even though the main thread already timed out after 15 seconds. The timeout was effectively dead code.
+
+**Tertiary bug — dotenv override order:** The root monorepo `.env` at `/home/mawada/SmartStock-AI/.env` contained `DATABASE_URL=postgresql://postgres:postgres@localhost:5433/smartstock_ai` and a stale `LLM_PROVIDER=gemini`. Because `load_dotenv()` with default `override=False` does not replace already-set variables, whichever file was loaded *first* won. Docker Compose and Railway environments loaded the root `.env` first via Docker's `env_file` directive, silently overriding the backend's `.env` with wrong DB credentials and the wrong LLM provider.
+
+### 10b. Solution: Switch to Groq for everything
+
+All providers were evaluated on 2026-06-19:
+
+| Provider | Status | Problem |
+|---|---|---|
+| OpenAI | Exhausted | `insufficient_quota` on API key |
+| Gemini | Exhausted | `429 RESOURCE_EXHAUSTED` — both keys share same GCP project |
+| Groq | **Working** | Free tier active, no quota issues |
+
+Decision: switch `LLM_PROVIDER=groq` for all LLM features.
+
+### 10c. Groq Vision — Previously Unsupported, Now Working
+
+The earlier provider capability matrix (section 8g) listed Groq vision as **not supported**. On 2026-06-19, we discovered that **Groq now supports vision** via the `meta-llama/llama-4-scout-17b-16e-instruct` model, which accepts both text and image inputs through the OpenAI-compatible API.
+
+**Changes to `ai/llm/provider_config.py`:**
+
+| Setting | Before | After |
+|---|---|---|
+| Groq `vision_model` | (none — not set) | `meta-llama/llama-4-scout-17b-16e-instruct` |
+| Groq `supports_vision` | `False` | `True` |
+
+**Result:** `POST /api/ai/invoice-scan/` returns **200** with Groq vision (was 501 "No vision support"). Verified with a test image — correctly identified colours and extracted structured invoice data.
+
+**Updated Provider Capability Matrix:**
+
+| Feature | OpenAI | Groq | Gemini |
+|---|---|---|---|
+| Chat/LLM | `gpt-4o` | `llama-3.3-70b-versatile` | `gemini-2.0-flash` |
+| Intent Classification | `gpt-4o-mini` | `llama-3.1-8b-instant` | `gemini-2.0-flash` |
+| Embeddings | `text-embedding-3-small` | fallback → Gemini | `gemini-embedding-001` |
+| Whisper (STT) | `whisper-1` | `whisper-large-v3` | — |
+| Vision (invoice scan) | `gpt-4o` | `**llama-4-scout-17b-16e-instruct**`(NEW) | `gemini-2.0-flash` |
+| Reranking | — | — | — (Cohere) |
+
+### 10d. Files Modified
+
+| File | Change | Why |
+|---|---|---|
+| `ai/llm/provider_config.py:40-41` | Set Groq `vision_model` + `supports_vision=True` | Enable Groq vision for invoice scanning |
+| `apps/ingestion/views.py:807-841` | Replaced `with ThreadPoolExecutor` with explicit `executor.shutdown(wait=False)` | Prevent executor from blocking on hanging LLM threads — timeout now actually works |
+| `manage.py:9` | `load_dotenv(find_dotenv(), override=True)` | Backend `.env` wins over root monorepo `.env` |
+| `config/wsgi.py:5` | Same dotenv fix | Gunicorn loads backend `.env` correctly |
+| `smartstock-backend/.env` | `LLM_PROVIDER=groq`, `LLM_WHISPER_PROVIDER=groq` | Use Groq for everything |
+| `tests/unit/test_whisper.py` | Updated mocks from `openai.OpenAI` to `ai.llm.provider_config.get_whisper_client` | Tests were mocking the wrong targets after provider switch |
+| `tests/unit/ai/test_provider_config.py` | Updated Groq config assertion: `supports_vision=True`, added `vision_model` check | CI alignment |
+| `tests/unit/test_coverage_boost2.py` | **NEW** — 47 tests for metrics, repos, services, provider config | Coverage was 77.17% (below 80% threshold) |
+
+### 10e. Testing Results (Groq Provider — Full Coverage)
+
+Tested 2026-06-19 with `LLM_PROVIDER=groq`, `LLM_WHISPER_PROVIDER=groq`:
+
+| # | Endpoint | HTTP | Result |
+|---|---|---|---|
+| 1 | `POST /api/ai/chat/` | 200 | ✅ Groq answered inventory queries correctly |
+| 2 | `POST /api/ai/invoice-scan/` | 200 | ✅ **NEW** — Groq vision extracts fields via `llama-4-scout-17b-16e-instruct` |
+| 3 | `POST /api/ai/transcribe/` | 200 | ✅ Groq whisper-large-v3 transcribed audio |
+| 4 | `GET /api/health/` | 200 | ✅ Database + Redis connected |
+
+### 10f. CI Coverage
+
+Full test suite: **1395 passed**, 0 failed. Coverage: **84.88%** (above 80% threshold).

@@ -1,15 +1,38 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import useChat from '../hooks/useChat';
+import useConversations from '../hooks/useConversations';
 import ModeSelector from './ModeSelector';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import ChatEmptyState from './ChatEmptyState';
 import VoiceButton from './VoiceButton';
+import ConversationSidebar from './ConversationSidebar';
 
 export default function ChatPanel() {
-  const { messages, sendMessage, isLoading, mode, setMode } = useChat();
+  const {
+    conversations,
+    activeConversation,
+    isLoading: convLoading,
+    selectConversation,
+    startNewConversation,
+    removeConversation,
+    updateTitle,
+    clearActive,
+  } = useConversations();
+
+  const {
+    messages,
+    sendMessage,
+    isLoading,
+    mode,
+    setMode,
+    loadFromConversation,
+    clearMessages,
+  } = useChat(activeConversation?.id);
+
   const [input, setInput] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -17,12 +40,27 @@ export default function ChatPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  const handleSend = (text?: string) => {
-    const query = (text ?? input).trim();
-    if (!query || isLoading) return;
-    sendMessage(query);
-    setInput('');
-  };
+  useEffect(() => {
+    if (activeConversation) {
+      loadFromConversation(activeConversation);
+    }
+  }, [activeConversation, loadFromConversation]);
+
+  const handleSend = useCallback(
+    async (text?: string) => {
+      const query = (text ?? input).trim();
+      if (!query || isLoading) return;
+
+      if (!activeConversation?.id) {
+        const newConv = await startNewConversation();
+        if (!newConv) return;
+      }
+
+      setInput('');
+      await sendMessage(query);
+    },
+    [input, isLoading, activeConversation, startNewConversation, sendMessage],
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -36,48 +74,92 @@ export default function ChatPanel() {
     inputRef.current?.focus();
   };
 
-  return (
-    <div className="flex flex-col h-full">
-      <div
-        className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
-        role="log"
-        aria-label="Chat messages"
-        aria-live="polite"
-      >
-        {messages.length === 0 && !isLoading ? (
-          <ChatEmptyState onSelectSuggestion={handleSelectSuggestion} />
-        ) : (
-          messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
-        )}
-        {isLoading && <TypingIndicator />}
-        <div ref={messagesEndRef} />
-      </div>
+  const handleNewChat = async () => {
+    clearMessages();
+    clearActive();
+  };
 
-      <div className="px-6 py-3 border-t border-hairline">
-        <div className="mb-2">
-          <ModeSelector active={mode} onChange={setMode} />
-        </div>
-        <div className="flex items-center gap-2">
-          <VoiceButton onTranscript={(text) => handleSend(text)} />
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your inventory..."
-            className="flex-1 h-9 px-4 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none focus:ring-0 transition-colors"
-            aria-label="Ask about your inventory"
-            disabled={isLoading}
+  const handleSelectConversation = async (id: string) => {
+    await selectConversation(id);
+  };
+
+  return (
+    <div className="flex h-full">
+      {sidebarOpen && (
+        <div className="w-64 shrink-0 h-full">
+          <ConversationSidebar
+            conversations={conversations}
+            activeId={activeConversation?.id ?? null}
+            onSelect={handleSelectConversation}
+            onNew={handleNewChat}
+            onDelete={removeConversation}
+            onRename={updateTitle}
+            isLoading={convLoading}
           />
+        </div>
+      )}
+
+      <div className="flex flex-col flex-1 h-full min-w-0">
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-hairline">
           <button
-            onClick={() => handleSend()}
-            disabled={isLoading || !input.trim()}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint transition-colors shrink-0"
-            aria-label="Send message"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-1.5 rounded text-ink-faint hover:text-ink hover:bg-canvas-soft transition-colors"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           >
-            <Send className="w-4 h-4" />
+            {sidebarOpen ? (
+              <PanelLeftClose className="w-4 h-4" />
+            ) : (
+              <PanelLeftOpen className="w-4 h-4" />
+            )}
           </button>
+          {activeConversation && (
+            <h2 className="text-sm font-medium text-ink truncate">
+              {activeConversation.title}
+            </h2>
+          )}
+        </div>
+
+        <div
+          className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+          role="log"
+          aria-label="Chat messages"
+          aria-live="polite"
+        >
+          {messages.length === 0 && !isLoading ? (
+            <ChatEmptyState onSelectSuggestion={handleSelectSuggestion} />
+          ) : (
+            messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
+          )}
+          {isLoading && <TypingIndicator />}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="px-6 py-3 border-t border-hairline">
+          <div className="mb-2">
+            <ModeSelector active={mode} onChange={setMode} />
+          </div>
+          <div className="flex items-center gap-2">
+            <VoiceButton onTranscript={(text) => handleSend(text)} />
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about your inventory..."
+              className="flex-1 h-9 px-4 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none focus:ring-0 transition-colors"
+              aria-label="Ask about your inventory"
+              disabled={isLoading}
+            />
+            <button
+              onClick={() => handleSend()}
+              disabled={isLoading || !input.trim()}
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint transition-colors shrink-0"
+              aria-label="Send message"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

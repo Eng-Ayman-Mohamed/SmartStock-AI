@@ -25,6 +25,7 @@ from apps.audit.models import AuditLog
 from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
 from apps.forecasting.services import ForecastingService
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
+from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error, sanitize_llm_error
 
 from .filters import ProductFilter, SalesRecordFilter, SKUFilter, StockLevelFilter
 from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
@@ -1422,9 +1423,20 @@ class NLQueryEndpointView(APIView):
                 {'status': 'error', 'message': 'Gateway Timeout: AI pipeline took too long.'},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
-        except Exception as e:
+        except LLMQuotaExhaustedError as exc:
+            logger.warning('LLM quota exhausted: %s', exc)
             return Response(
-                {'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'status': 'error', 'message': sanitize_llm_error(exc)},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        except Exception as e:
+            msg = (
+                sanitize_llm_error(e)
+                if is_llm_quota_error(e)
+                else 'An unexpected error occurred while processing your request.'
+            )
+            return Response(
+                {'status': 'error', 'message': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     def _run_pipeline(self, query, user):
@@ -1466,9 +1478,16 @@ class NLQueryEndpointView(APIView):
                 action_type = chain_dict.get('action')
                 filters = chain_dict.get('filters', {})
             except Exception as chain_err:
+                msg = (
+                    sanitize_llm_error(chain_err)
+                    if is_llm_quota_error(chain_err)
+                    else f'LLM Chain failure: {chain_err}'
+                )
                 return Response(
-                    {'status': 'error', 'message': f'LLM Chain failure: {chain_err}'},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {'status': 'error', 'message': msg},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                    if is_llm_quota_error(chain_err)
+                    else status.HTTP_400_BAD_REQUEST,
                 )
 
         # Step C: Dispatch to the correct service

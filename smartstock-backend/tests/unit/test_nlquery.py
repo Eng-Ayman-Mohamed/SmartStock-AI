@@ -115,6 +115,12 @@ class TestNLQueryFilters:
         assert d['sort'] == 'quantity_on_hand'
         assert d['sort_order'] == 'desc'
 
+    def test_to_dict_with_offset(self):
+        c = Condition(field='sku_code', op='eq', value='ABC-001')
+        f = NLQueryFilters(conditions=[c], offset=5)
+        d = f.to_dict()
+        assert d['offset'] == 5
+
     def test_condition_to_dict(self):
         c = Condition(field='quantity_on_hand', op='lt', value=5)
         assert c.to_dict() == {'field': 'quantity_on_hand', 'op': 'lt', 'value': 5}
@@ -134,6 +140,9 @@ class TestNLQueryFilters:
 class TestNLQueryOutputParser:
     def setup_method(self):
         self.parser = NLQueryOutputParser()
+
+    def test_type_property(self):
+        assert self.parser._type == 'nl_query_output_parser'
 
     def test_parses_single_condition(self):
         raw = '{"action": "get_inventory", "filters": {"conditions": [{"field": "sku_code", "op": "eq", "value": "ABC-001"}]}}'

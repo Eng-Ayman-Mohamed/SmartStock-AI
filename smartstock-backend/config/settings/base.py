@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'apps.ingestion.apps.IngestionConfig',
     'apps.notifications',
     'apps.monitoring',
+    'apps.ai.apps.AIConfig',
 ]
 
 MIDDLEWARE = [
