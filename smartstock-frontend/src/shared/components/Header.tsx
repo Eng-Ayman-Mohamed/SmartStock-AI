@@ -80,25 +80,25 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b border-hairline bg-canvas">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b border-hairline bg-canvas overflow-hidden">
+      <div className="flex items-center gap-2 min-w-0 shrink">
         <button
           onClick={toggleSidebar}
-          className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+          className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors shrink-0"
           aria-label="Toggle navigation"
         >
           <Menu className="w-4 h-4" />
         </button>
-        <nav aria-label="Breadcrumb">
+        <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex items-center gap-1.5 text-caption text-ink-muted">
-            <li>SmartStock AI</li>
-            <li aria-hidden="true" className="text-ink-faint">/</li>
-            <li className="text-ink font-medium" aria-current="page">{title}</li>
+            <li className="hidden sm:inline">SmartStock AI</li>
+            <li aria-hidden="true" className="text-ink-faint hidden sm:inline">/</li>
+            <li className="text-ink font-medium truncate" aria-current="page">{title}</li>
           </ol>
         </nav>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-1.5" title={healthLoading ? 'Checking...' : isAlive ? 'Server online' : 'Server offline'}>
           <span className={`w-2 h-2 rounded-full ${
             healthLoading ? 'bg-gray-300' : isAlive ? 'bg-green-500' : 'bg-red-500'
@@ -108,76 +108,76 @@ export default function Header() {
           </span>
         </div>
 
-      <div className="flex items-center gap-3">
-        <ThemeToggle />
-        <button
-          className="relative flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
-          aria-label="Notifications"
-        >
-          <Bell className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          <ThemeToggle />
+          <button
+            className="relative flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+            aria-label="Notifications"
+          >
+            <Bell className="w-4 h-4" />
+          </button>
 
-        {user && (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-canvas-soft transition-colors"
-            >
-              <div
-                className={`w-7 h-7 rounded-full ${getAvatarColor(user.name)} flex items-center justify-center text-white text-[11px] font-medium`}
-                aria-hidden="true"
+          {user && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-canvas-soft transition-colors"
               >
-                {getInitials(user.name)}
-              </div>
-              <span className="hidden sm:inline text-caption font-medium text-ink-muted">{user.name}</span>
-              {user.role && <RoleBadge role={user.role} className="hidden sm:inline-flex" />}
-            </button>
-
-            {menuOpen && (
-              <>
                 <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setMenuOpen(false)}
+                  className={`w-7 h-7 rounded-full ${getAvatarColor(user.name)} flex items-center justify-center text-white text-[11px] font-medium`}
                   aria-hidden="true"
-                />
-                <div
-                  ref={menuRef}
-                  role="menu"
-                  className="absolute right-0 mt-1 w-48 rounded-lg border border-hairline bg-canvas shadow-soft z-50 py-1"
                 >
-                  <div className="px-3 py-2 border-b border-hairline">
-                    <p className="text-caption font-medium text-ink truncate">{user.name}</p>
-                    <p className="text-caption text-ink-muted truncate">{user.email}</p>
-                    {user.role && <RoleBadge role={user.role} className="mt-1" />}
-                  </div>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={onProfile}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-caption text-ink hover:bg-canvas-soft"
-                  >
-                    <UserIcon className="w-4 h-4" aria-hidden="true" />
-                    <span>Profile</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={onSignOut}
-                    disabled={isSubmitting}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-caption text-ink hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <LogOut className="w-4 h-4" aria-hidden="true" />
-                    <span>Sign out</span>
-                  </button>
+                  {getInitials(user.name)}
                 </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+                <span className="hidden sm:inline text-caption font-medium text-ink-muted">{user.name}</span>
+                {user.role && <RoleBadge role={user.role} className="hidden sm:inline-flex" />}
+              </button>
+
+              {menuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setMenuOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div
+                    ref={menuRef}
+                    role="menu"
+                    className="absolute right-0 mt-1 w-48 rounded-lg border border-hairline bg-canvas shadow-soft z-50 py-1"
+                  >
+                    <div className="px-3 py-2 border-b border-hairline">
+                      <p className="text-caption font-medium text-ink truncate">{user.name}</p>
+                      <p className="text-caption text-ink-muted truncate">{user.email}</p>
+                      {user.role && <RoleBadge role={user.role} className="mt-1" />}
+                    </div>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={onProfile}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-caption text-ink hover:bg-canvas-soft"
+                    >
+                      <UserIcon className="w-4 h-4" aria-hidden="true" />
+                      <span>Profile</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={onSignOut}
+                      disabled={isSubmitting}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-caption text-ink hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <LogOut className="w-4 h-4" aria-hidden="true" />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

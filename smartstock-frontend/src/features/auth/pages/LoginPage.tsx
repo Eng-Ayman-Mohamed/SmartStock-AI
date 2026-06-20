@@ -10,7 +10,7 @@ export default function LoginPage() {
             <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" />
             <span className="text-card-title font-semibold text-ink">SmartStock AI</span>
           </Link>
-          <h1 className="text-section-title font-semibold text-ink">Welcome back</h1>
+          <h1 className="text-section-heading font-semibold text-ink">Welcome back</h1>
           <p className="mt-1 text-body text-ink-muted">Sign in to your warehouse dashboard</p>
         </div>
 

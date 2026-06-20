@@ -13,7 +13,7 @@ interface ModeSelectorProps {
 
 export default function ModeSelector({ active, onChange }: ModeSelectorProps) {
   return (
-    <div className="flex items-center gap-1 px-1 py-1 bg-canvas-soft rounded-lg" role="radiogroup" aria-label="Chat mode">
+    <div className="flex flex-wrap items-center gap-1 px-1 py-1 bg-canvas-soft rounded-lg" role="radiogroup" aria-label="Chat mode">
       {modes.map((m) => (
         <button
           key={m.key}

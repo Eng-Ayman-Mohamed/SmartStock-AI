@@ -42,9 +42,9 @@ function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagina
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse">
+        <table className="w-full table-auto border-collapse">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
             <tr className="bg-canvas-soft border-b border-hairline">
@@ -125,34 +125,34 @@ function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagina
             </span>
             {pagination.itemLabel ? <> {pagination.itemLabel}</> : null}
           </p>
-          <div className="flex items-center gap-1" aria-label="Pagination">
+          <div className="flex items-center gap-1 overflow-x-auto" aria-label="Pagination">
             <Button
               variant="utility"
               size="sm"
-              className="h-11 w-11 px-0"
+              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
               onClick={() => pagination.onPageChange(1)}
               disabled={!pagination.hasPrev}
               aria-label="First page"
               title="First page"
             >
-              <ChevronsLeft className="h-5 w-5" />
+              <ChevronsLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Button
               variant="utility"
               size="sm"
-              className="h-11 w-11 px-0"
+              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
               onClick={() => pagination.onPageChange(Math.max(1, pagination.currentPage - 1))}
               disabled={!pagination.hasPrev}
               aria-label="Previous page"
               title="Previous page"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             {pagination.pages.map((pageNumber, index) =>
               pageNumber === -1 ? (
                 <span
                   key={`gap-${index}`}
-                  className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
+                  className="flex h-9 w-9 items-center justify-center text-caption text-ink-faint sm:h-11 sm:w-11"
                 >
                   ...
                 </span>
@@ -161,7 +161,7 @@ function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagina
                   key={pageNumber}
                   variant={pageNumber === pagination.currentPage ? 'primary' : 'utility'}
                   size="sm"
-                  className="h-11 w-11 px-0 tabular-nums"
+                  className="h-9 w-9 px-0 tabular-nums shrink-0 sm:h-11 sm:w-11"
                   onClick={() => pagination.onPageChange(pageNumber)}
                   aria-label={`Page ${pageNumber}`}
                   title={`Page ${pageNumber}`}
@@ -173,24 +173,24 @@ function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagina
             <Button
               variant="utility"
               size="sm"
-              className="h-11 w-11 px-0"
+              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
               onClick={() => pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
               disabled={!pagination.hasNext}
               aria-label="Next page"
               title="Next page"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Button
               variant="utility"
               size="sm"
-              className="h-11 w-11 px-0"
+              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
               onClick={() => pagination.onPageChange(pagination.totalPages)}
               disabled={!pagination.hasNext}
               aria-label="Last page"
               title="Last page"
             >
-              <ChevronsRight className="h-5 w-5" />
+              <ChevronsRight className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
         </div>
