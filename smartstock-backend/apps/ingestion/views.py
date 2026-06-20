@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -200,6 +201,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         file = serializer.validated_data['file']
         doc_type = serializer.validated_data['doc_type']
 
+        tmp_path = None
         try:
             upload_result = cloudinary.uploader.upload(
                 file,
@@ -217,20 +219,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 uploaded_by=request.user,
             )
 
+            file.seek(0)
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                 for chunk in file.chunks():
                     tmp.write(chunk)
                 tmp_path = tmp.name
 
-            try:
-                result = ingest_pdf(tmp_path, document_id=document.id)
-                document.total_chunks = result['chunks']
-                document.ingested_at = timezone.now()
-                document.save(update_fields=['total_chunks', 'ingested_at'])
-            finally:
-                import os
-
-                os.unlink(tmp_path)
+            result = ingest_pdf(tmp_path, document_id=document.id)
+            document.total_chunks = result['chunks']
+            document.ingested_at = timezone.now()
+            document.save(update_fields=['total_chunks', 'ingested_at'])
 
             out = DocumentSerializer(document, context={'request': request})
             return Response(out.data, status=status.HTTP_201_CREATED)
@@ -241,6 +239,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 {'detail': 'Upload or ingestion failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
