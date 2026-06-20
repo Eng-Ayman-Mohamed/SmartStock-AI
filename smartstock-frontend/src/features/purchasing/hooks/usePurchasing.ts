@@ -34,6 +34,17 @@ export function useRejectPO() {
   });
 }
 
+export function useCreatePO() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: purchasingApi.CreatePurchaseOrderPayload) =>
+      purchasingApi.createPurchaseOrder(payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: purchasingQueryKey });
+    },
+  });
+}
+
 export const poHistoryQueryKey = ['po-history'] as const;
 
 export function usePOHistory(page = 1, pageSize = 20) {

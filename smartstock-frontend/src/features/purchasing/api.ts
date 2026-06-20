@@ -1,6 +1,33 @@
 import api from '../../lib/axios';
 import type { Supplier, CreateSupplierPayload, UpdateSupplierPayload, PendingPO } from './types';
 
+export interface SKUOption {
+  id: number;
+  code: string;
+  product_name: string;
+}
+
+export async function listSKUOptions(searchQuery?: string): Promise<SKUOption[]> {
+  const params: Record<string, string | number | undefined> = {
+    search: searchQuery || undefined,
+  };
+  const { data } = await api.get<SKUOption[]>('/inventory/skus/', { params });
+  return data;
+}
+
+export interface SupplierOption {
+  id: number;
+  name: string;
+}
+
+export async function listSupplierOptions(searchQuery?: string): Promise<SupplierOption[]> {
+  const params: Record<string, string | number | undefined> = {
+    search: searchQuery || undefined,
+  };
+  const { data } = await api.get<SupplierOption[]>('/purchasing/suppliers/', { params });
+  return data;
+}
+
 export async function listSuppliers(
   searchQuery?: string,
   page: number = 1,
@@ -80,6 +107,22 @@ export async function approvePO(id: string): Promise<void> {
 export async function rejectPO(id: string): Promise<void> {
   const numericId = id.replace('PO-', '');
   await api.post(`/purchasing/orders/${numericId}/reject/`);
+}
+
+export interface CreatePurchaseOrderPayload {
+  sku: number;
+  supplier: number;
+  quantity: number;
+  total_cost: number;
+  notes?: string;
+  agent_reasoning?: string;
+}
+
+export async function createPurchaseOrder(
+  payload: CreatePurchaseOrderPayload,
+): Promise<PendingPO> {
+  const { data } = await api.post<PendingPO>('/purchasing/orders/', payload);
+  return data;
 }
 
 interface POHistoryRaw {
