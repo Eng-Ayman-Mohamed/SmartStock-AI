@@ -23,15 +23,18 @@ def _dense_search(query: str, query_embedding: list[float], top_k: int = 10) -> 
     """Cosine similarity search via pgvector."""
     sql = """
         SELECT
-            id,
-            chunk_text,
-            source_document,
-            page_number,
-            metadata,
-            1 - (embedding <=> %s::vector) AS vector_score
-        FROM ingestion_documentchunk
-        WHERE embedding IS NOT NULL
-        ORDER BY embedding <=> %s::vector
+            c.id,
+            c.chunk_text,
+            c.source_document,
+            c.page_number,
+            c.metadata,
+            1 - (c.embedding <=> %s::vector) AS vector_score
+        FROM ingestion_documentchunk c
+        LEFT JOIN ingestion_document d ON d.id = c.document_id
+        WHERE c.embedding IS NOT NULL
+          AND (d.is_active IS TRUE OR d.id IS NULL)
+          AND (c.metadata->>'deactivated' IS NULL OR c.metadata->>'deactivated' != 'true')
+        ORDER BY c.embedding <=> %s::vector
         LIMIT %s;
     """
     embedding_str = '[' + ','.join(str(v) for v in query_embedding) + ']'
@@ -61,14 +64,17 @@ def _sparse_search(query: str, top_k: int = 10) -> list[dict]:
     """PostgreSQL full-text search using tsvector/tsquery."""
     sql = """
         SELECT
-            id,
-            chunk_text,
-            source_document,
-            page_number,
-            metadata,
-            ts_rank("tsvector", plainto_tsquery('english', %s)) AS fts_score
-        FROM ingestion_documentchunk
-        WHERE "tsvector" @@ plainto_tsquery('english', %s)
+            c.id,
+            c.chunk_text,
+            c.source_document,
+            c.page_number,
+            c.metadata,
+            ts_rank(c."tsvector", plainto_tsquery('english', %s)) AS fts_score
+        FROM ingestion_documentchunk c
+        LEFT JOIN ingestion_document d ON d.id = c.document_id
+        WHERE c."tsvector" @@ plainto_tsquery('english', %s)
+          AND (d.is_active IS TRUE OR d.id IS NULL)
+          AND (c.metadata->>'deactivated' IS NULL OR c.metadata->>'deactivated' != 'true')
         ORDER BY fts_score DESC
         LIMIT %s;
     """
