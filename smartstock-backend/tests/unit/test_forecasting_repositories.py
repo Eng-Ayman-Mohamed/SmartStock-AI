@@ -255,6 +255,25 @@ class ForecastingRepositoryGetPrimarySkuForProductTest(ForecastingRepositoryTest
         self.assertEqual(result.id, other_sku.id)
 
 
+class ForecastingRepositoryGetBySkuCodeOrIdTest(ForecastingRepositoryTest):
+    def setUp(self):
+        super().setUp()
+        self._create_forecast(predicted_quantity=15.0)
+
+    def test_get_by_sku_code_or_id_with_numeric_string(self):
+        result = self.repo.get_by_sku_code_or_id(str(self.sku.id))
+        self.assertGreater(len(result), 0)
+        self.assertEqual(result[0].sku_id, self.sku.id)
+
+    def test_get_by_sku_code_or_id_with_sku_code(self):
+        result = self.repo.get_by_sku_code_or_id('FC-SKU-001')
+        self.assertGreater(len(result), 0)
+
+    def test_get_by_sku_code_or_id_no_match(self):
+        result = self.repo.get_by_sku_code_or_id('NONEXISTENT')
+        self.assertEqual(len(result), 0)
+
+
 class ForecastingRepositoryGetSkuByCodeTest(ForecastingRepositoryTest):
     def test_get_sku_by_code(self):
         result = self.repo.get_sku_by_code('FC-SKU-001')

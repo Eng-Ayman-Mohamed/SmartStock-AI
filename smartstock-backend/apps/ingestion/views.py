@@ -23,9 +23,11 @@ from rest_framework.views import APIView
 from ai.llm.chain import prompt_injection_filter
 from ai.observability.langfuse import get_langfuse_alert_thresholds, get_langfuse_client
 from ai.rag.ingestion import ingest_pdf
+from apps.ai.services import ConversationService
 from apps.audit.models import AuditLog
 from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
+from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error, sanitize_llm_error
 
 from .models import Document
 from .serializers import (
@@ -740,6 +742,7 @@ class ChatEndpointView(APIView):
 
         query = serializer.validated_data['query']
         mode = serializer.validated_data['mode']
+        conversation_id = serializer.validated_data.get('conversation_id')
 
         # --- Prompt injection check (Task A10) ---
         try:
@@ -767,6 +770,19 @@ class ChatEndpointView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # --- Load conversation history ---
+        conv_service = ConversationService()
+        history = []
+        if conversation_id:
+            try:
+                conversation = conv_service.get_conversation(conversation_id, request.user)
+                history = conv_service.get_history_for_llm(conversation_id)
+            except ValueError:
+                return Response(
+                    {'status': 'error', 'message': 'Conversation not found.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
         # --- Intent classification (only for auto mode) ---
         classifier_decision = None
         if mode == 'auto':
@@ -788,31 +804,65 @@ class ChatEndpointView(APIView):
 
         # --- Execute pipeline with timeout ---
         pipeline_start = time.time()
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(self._run_engine, engine, query, request.user, history)
         try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(self._run_engine, engine, query, request.user)
-                result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
+            result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
+            executor.shutdown(wait=False)
         except FuturesTimeout:
+            executor.shutdown(wait=False)
+            logger.warning('Chat pipeline timed out after %ds', self.CHAT_TIMEOUT_SECONDS)
             return Response(
                 {'status': 'error', 'message': 'Request timed out. Please try a simpler question.'},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except RAGServiceUnavailable as exc:
+            executor.shutdown(wait=False)
             return Response(
                 {'status': 'error', 'message': exc.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception:
-            logger.exception('Chat pipeline failed')
+        except LLMQuotaExhaustedError as exc:
+            executor.shutdown(wait=False)
+            logger.warning('LLM quota exhausted: %s', exc)
             return Response(
-                {
-                    'status': 'error',
-                    'message': 'An error occurred processing your request. Please try again.',
-                },
+                {'status': 'error', 'message': sanitize_llm_error(exc)},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        except Exception as exc:
+            executor.shutdown(wait=False)
+            logger.exception('Chat pipeline failed')
+            msg = (
+                sanitize_llm_error(exc)
+                if is_llm_quota_error(exc)
+                else 'An unexpected error occurred while processing your request.'
+            )
+            return Response(
+                {'status': 'error', 'message': msg},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         latency_ms = round((time.time() - pipeline_start) * 1000)
+
+        # --- Save to conversation ---
+        if conversation_id:
+            is_new = conversation.messages.count() == 0
+            conv_service.save_message(
+                conversation_id=conversation_id,
+                role='user',
+                content=query,
+                mode=mode,
+            )
+            conv_service.save_message(
+                conversation_id=conversation_id,
+                role='assistant',
+                content=result.get('answer', ''),
+                engine=engine,
+                sources=result.get('sources', []),
+                mode=mode,
+            )
+            if is_new:
+                conv_service.auto_title(conversation_id, query)
 
         # --- Build response ---
         response_data = {
@@ -824,6 +874,8 @@ class ChatEndpointView(APIView):
             response_data['action'] = result['action']
         if 'sources' in result:
             response_data['sources'] = result['sources']
+        if conversation_id:
+            response_data['conversation_id'] = str(conversation_id)
 
         # --- Tracing and audit ---
         self._trace_chat(
@@ -838,17 +890,17 @@ class ChatEndpointView(APIView):
 
         return Response({'status': 'success', 'data': response_data}, status=status.HTTP_200_OK)
 
-    def _run_engine(self, engine: str, query: str, user) -> dict:
+    def _run_engine(self, engine: str, query: str, user, history: list | None = None) -> dict:
         """Dispatch to the appropriate engine and return a normalized result dict."""
         if engine == 'rag':
-            return self._run_rag(query, user)
-        return self._run_nl_query(query, user)
+            return self._run_rag(query, user, history)
+        return self._run_nl_query(query, user, history)
 
-    def _run_rag(self, query: str, user) -> dict:
+    def _run_rag(self, query: str, user, history: list | None = None) -> dict:
         """Execute the RAG pipeline via RAGQueryService."""
         service = RAGQueryService()
         try:
-            result = service.execute(query, user=user)
+            result = service.execute(query, user=user, history=history)
         except ConnectionError as exc:
             if 'COHERE' in str(exc).upper():
                 raise RAGServiceUnavailable(
@@ -861,7 +913,7 @@ class ChatEndpointView(APIView):
             'sources': result['sources'],
         }
 
-    def _run_nl_query(self, query: str, user) -> dict:
+    def _run_nl_query(self, query: str, user, history: list | None = None) -> dict:
         """Execute the NL Query pipeline — mirrors NLQueryEndpointView._run_pipeline."""
         from ai.llm.chain import call_gpt4o_formatter, get_nl_chain
         from apps.inventory.views import (

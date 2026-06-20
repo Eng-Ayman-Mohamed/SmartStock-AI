@@ -84,12 +84,12 @@ class ChatSerializer(serializers.Serializer):
         default='auto',
         required=False,
     )
+    conversation_id = serializers.UUIDField(required=False, allow_null=True)
 
     def validate_query(self, value):
         cleaned = value.strip()
         if len(cleaned) < 1:
             raise serializers.ValidationError('Query must not be empty.')
-        return cleaned
         return cleaned
 
 
