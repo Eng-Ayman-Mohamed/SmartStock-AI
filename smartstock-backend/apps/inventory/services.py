@@ -148,7 +148,9 @@ class InventoryService:
         from django.db.models.functions import Coalesce
 
         total_available = Coalesce(
-            Sum(F('skus__stock_level__quantity_on_hand') - F('skus__stock_level__quantity_reserved')),
+            Sum(
+                F('skus__stock_level__quantity_on_hand') - F('skus__stock_level__quantity_reserved')
+            ),
             Value(0),
             output_field=IntegerField(),
         )
@@ -156,9 +158,7 @@ class InventoryService:
         if value == 'in_stock':
             return queryset.filter(_total_available__gte=F('reorder_point'))
         if value == 'low_stock':
-            return queryset.filter(
-                _total_available__lt=F('reorder_point'), _total_available__gt=0
-            )
+            return queryset.filter(_total_available__lt=F('reorder_point'), _total_available__gt=0)
         if value == 'out_of_stock':
             return queryset.filter(_total_available=0)
         return queryset
