@@ -21,7 +21,8 @@ class ProviderConfigGetProviderConfigTest(TestCase):
         with patch.object(provider_config, 'PROVIDER', 'groq'):
             config = provider_config.get_provider_config()
             self.assertEqual(config['chat_model'], 'llama-3.3-70b-versatile')
-            self.assertFalse(config['supports_vision'])
+            self.assertTrue(config['supports_vision'])
+            self.assertEqual(config['vision_model'], 'meta-llama/llama-4-scout-17b-16e-instruct')
             self.assertIsNone(config['embedding_model'])
 
     def test_returns_gemini_config(self):

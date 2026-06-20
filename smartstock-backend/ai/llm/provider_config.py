@@ -37,8 +37,8 @@ _PROVIDERS = {
         'embedding_model': None,  # Groq has no embedding API
         'embedding_dimensions': None,
         'whisper_model': 'whisper-large-v3',
-        'vision_model': None,  # Groq has no vision model
-        'supports_vision': False,
+        'vision_model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+        'supports_vision': True,
         'base_url': 'https://api.groq.com/openai/v1',
         'api_key_env': 'GROQ_API_KEY',
     },
@@ -79,10 +79,19 @@ def get_api_key_for_provider(provider_name: str) -> str:
 
 
 def get_chat_llm(temperature=0, model_override=None):
-    """Get a ChatOpenAI-compatible LLM instance for the active provider."""
+    """Get a chat LLM instance for the active provider."""
     config = get_provider_config()
     model = model_override or config['chat_model']
     api_key = get_api_key()
+
+    if PROVIDER == 'gemini':
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        return ChatGoogleGenerativeAI(
+            model=model,
+            temperature=temperature,
+            google_api_key=api_key,
+        )
 
     from langchain_openai import ChatOpenAI
 

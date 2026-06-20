@@ -10,7 +10,7 @@ import { getAvatarColor } from '../../shared/utils/avatar';
 import ThemeToggle from './ThemeToggle';
 
 const pageTitles: Record<string, string> = {
-  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
   '/inventory': 'Inventory',
   '/forecasting': 'Forecasting',
   '/purchasing': 'Purchasing',

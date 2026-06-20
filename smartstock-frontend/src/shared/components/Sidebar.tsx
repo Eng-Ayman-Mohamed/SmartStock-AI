@@ -18,7 +18,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
 
 const mainNavItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/inventory', icon: Package, label: 'Inventory' },
   { to: '/forecasting', icon: TrendingUp, label: 'Forecasting' },
   { to: '/purchasing', icon: ShoppingCart, label: 'Purchasing' },
@@ -110,7 +110,6 @@ export default function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/'}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 h-11 px-3 rounded-md text-body transition-colors duration-150 ${
@@ -151,7 +150,6 @@ export default function Sidebar() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === '/'}
                 className={({ isActive }) =>
                   `flex items-center h-11 rounded-md text-body transition-colors duration-150 group relative ${
                     sidebarCollapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'

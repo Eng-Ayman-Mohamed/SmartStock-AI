@@ -11,6 +11,7 @@ export interface ChatResponse {
   sources: Citation[];
   engine: 'nl_query' | 'rag' | 'auto';
   mode: ChatMode;
+  conversation_id?: string;
 }
 
 export interface Message {
@@ -21,4 +22,24 @@ export interface Message {
   engine?: ChatResponse['engine'];
   sources?: Citation[];
   timestamp: number;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+export interface ConversationDetail extends Conversation {
+  messages: Array<{
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    engine: string;
+    mode: string;
+    sources: Citation[];
+    created_at: string;
+  }>;
 }
