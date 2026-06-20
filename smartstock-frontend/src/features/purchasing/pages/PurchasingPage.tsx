@@ -11,9 +11,17 @@ import type {
   PaginationConfig,
 } from "../../../shared/components/DataTable";
 import POApprovalCard from "../components/POApprovalCard";
-import { usePendingPOs, usePOHistory } from "../hooks/usePurchasing";
+import CreatePurchaseOrderModal from "../components/CreatePurchaseOrderModal";
+import {
+  usePendingPOs,
+  usePOHistory,
+  useCreatePO,
+} from "../hooks/usePurchasing";
+import { listSKUOptions, listSupplierOptions } from "../api";
 import type { POHistoryItem } from "../api";
 import { usePagination } from "../../../shared/hooks/usePagination";
+import { useAuthStore } from "../../../store/authStore";
+import { useQuery } from "@tanstack/react-query";
 
 const PAGE_SIZE = 20;
 const EMPTY_ARRAY: [] = [];
@@ -81,6 +89,22 @@ const historyColumns: Column<POHistoryItem>[] = [
 export default function PurchasingPage() {
   const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
   const [poPage, setPoPage] = useState(1);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const user = useAuthStore((s) => s.user);
+  const canManage = user?.role === "manager" || user?.role === "admin";
+
+  const createPOMutation = useCreatePO();
+
+  const { data: skuOptions } = useQuery({
+    queryKey: ["sku-options"],
+    queryFn: () => listSKUOptions(),
+  });
+
+  const { data: supplierOptions } = useQuery({
+    queryKey: ["supplier-options"],
+    queryFn: () => listSupplierOptions(),
+  });
 
   const {
     data: pendingPOsData,
@@ -108,7 +132,10 @@ export default function PurchasingPage() {
   const poPagination = usePagination({
     total: poTotalCount,
     pageSize: PAGE_SIZE,
-    currentPage: Math.min(poPage, Math.max(1, Math.ceil(poTotalCount / PAGE_SIZE))),
+    currentPage: Math.min(
+      poPage,
+      Math.max(1, Math.ceil(poTotalCount / PAGE_SIZE)),
+    ),
   });
 
   const poPaginationConfig: PaginationConfig = {
@@ -133,7 +160,12 @@ export default function PurchasingPage() {
             Keep the shelves stocked — approve, edit, and track supplier orders
           </p>
         </div>
-        <Button variant="primary" size="md">
+        <Button
+          variant="primary"
+          size="md"
+          onClick={() => setIsCreateModalOpen(true)}
+          disabled={!canManage}
+        >
           <Plus className="w-4 h-4" /> New Order
         </Button>
       </div>
@@ -232,6 +264,21 @@ export default function PurchasingPage() {
           />
         )}
       </Card>
+
+      <CreatePurchaseOrderModal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={(data) => {
+          createPOMutation.mutate(data, {
+            onSuccess: () => {
+              setIsCreateModalOpen(false);
+            },
+          });
+        }}
+        isPending={createPOMutation.isPending}
+        skuOptions={skuOptions ?? []}
+        supplierOptions={supplierOptions ?? []}
+      />
     </div>
   );
 }

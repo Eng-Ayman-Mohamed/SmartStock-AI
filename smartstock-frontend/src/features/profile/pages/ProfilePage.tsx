@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 import Skeleton from '../../../shared/components/Skeleton';
 import RoleBadge from '../../users/components/RoleBadge';
 import { getAvatarColor } from '../../../shared/utils/avatar';
 import { useAuthStore } from '../../../store/authStore';
+import EditProfileModal from '../components/EditProfileModal';
 
 const sectionFields: Record<string, { label: string; value: string }[]> = {
   Notifications: [
@@ -18,6 +20,7 @@ const sectionFields: Record<string, { label: string; value: string }[]> = {
 };
 
 export default function ProfilePage() {
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
   const isBootstrapping = useAuthStore((s) => s.isBootstrapping);
 
@@ -38,7 +41,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="max-w-2xl space-y-6">
-        <Card title="Account" action={<Button variant="ghost" size="sm">Edit</Button>}>
+        <Card title="Account" action={<Button variant="ghost" size="sm" onClick={() => setEditModalOpen(true)}>Edit</Button>}>
           <div className="space-y-4">
             <div className="flex items-center gap-3 pb-4 border-b-[0.5px] border-hairline">
               <div
@@ -70,15 +73,7 @@ export default function ProfilePage() {
         </Card>
 
         {Object.entries(sectionFields).map(([title, fields]) => (
-          <Card
-            key={title}
-            title={title}
-            action={
-              <Button variant="ghost" size="sm">
-                Edit
-              </Button>
-            }
-          >
+          <Card key={title} title={title}>
             <div className="space-y-4">
               {fields.map((field) => (
                 <div key={field.label} className="flex items-center justify-between py-1">
@@ -90,6 +85,8 @@ export default function ProfilePage() {
           </Card>
         ))}
       </div>
+
+      <EditProfileModal open={editModalOpen} onClose={() => setEditModalOpen(false)} />
     </div>
   );
 }

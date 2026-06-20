@@ -51,10 +51,9 @@ class ForecastingService:
         end = start + page_size
         paginated_skus = all_skus[start:end]
 
-        # Alerts computed from paginated SKUs only (avoids O(n) scan of entire dataset)
         alerts = [
             sku
-            for sku in paginated_skus
+            for sku in all_skus
             if sku.get('stockout_risk')
             or sku.get('current_stock', 0) <= sku.get('reorder_point', 0)
         ]

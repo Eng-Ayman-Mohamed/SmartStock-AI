@@ -17,6 +17,7 @@ from .serializers import (
     CookieTokenRefreshSerializer,
     CustomTokenObtainPairSerializer,
     MeSerializer,
+    MeUpdateSerializer,
     RegisterSerializer,
     RoleUpdateSerializer,
     UserCreateSerializer,
@@ -263,6 +264,25 @@ class MeView(APIView):
     def get(self, request):
         serializer = MeSerializer(request.user)
         return Response(serializer.data)
+
+    @extend_schema(
+        request=MeUpdateSerializer,
+        responses={
+            200: MeSerializer,
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+        },
+        tags=['auth'],
+    )
+    def patch(self, request):
+        serializer = MeUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(MeSerializer(user).data)
 
 
 class UserListCreateView(generics.ListCreateAPIView):

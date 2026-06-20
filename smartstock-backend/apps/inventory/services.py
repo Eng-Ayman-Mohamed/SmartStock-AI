@@ -144,22 +144,23 @@ class InventoryService:
 
     @staticmethod
     def filter_by_stock_status(queryset, value):
-        from django.db.models import F, IntegerField
-        from django.db.models.expressions import ExpressionWrapper
+        from django.db.models import F, IntegerField, Sum, Value
+        from django.db.models.functions import Coalesce
 
-        available = ExpressionWrapper(
-            F('skus__stock_level__quantity_on_hand') - F('skus__stock_level__quantity_reserved'),
+        total_available = Coalesce(
+            Sum(
+                F('skus__stock_level__quantity_on_hand') - F('skus__stock_level__quantity_reserved')
+            ),
+            Value(0),
             output_field=IntegerField(),
         )
-        queryset = queryset.annotate(_available=available)
+        queryset = queryset.annotate(_total_available=total_available)
         if value == 'in_stock':
-            return queryset.filter(_available__gte=F('skus__stock_level__reorder_point'))
+            return queryset.filter(_total_available__gte=F('reorder_point'))
         if value == 'low_stock':
-            return queryset.filter(
-                _available__lt=F('skus__stock_level__reorder_point'), _available__gt=0
-            )
+            return queryset.filter(_total_available__lt=F('reorder_point'), _total_available__gt=0)
         if value == 'out_of_stock':
-            return queryset.filter(_available=0)
+            return queryset.filter(_total_available=0)
         return queryset
 
     def adjust_stock(self, stock_level_id: int, quantity_delta: int, user=None, reason: str = ''):

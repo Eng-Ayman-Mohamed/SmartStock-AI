@@ -15,8 +15,13 @@ export async function listUsers(
   if (isActive !== undefined) {
     params.is_active = isActive;
   }
-  const { data } = await api.get<PaginatedResponse<User>>('/auth/users/', { params });
-  return data;
+  const res = await api.get<User[]>('/auth/users/', { params });
+  return {
+    results: res.data,
+    count: res._meta?.total as number ?? 0,
+    next: null,
+    previous: null,
+  };
 }
 
 export async function createUser(payload: CreateUserPayload): Promise<User> {
