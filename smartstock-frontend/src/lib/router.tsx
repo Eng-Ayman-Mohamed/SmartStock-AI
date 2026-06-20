@@ -5,6 +5,7 @@ import Layout from '../shared/components/Layout';
 import ProtectedRoute from '../features/auth/components/ProtectedRoute';
 import RedirectIfAuthenticated from '../features/auth/components/RedirectIfAuthenticated';
 
+const LandingPage = lazy(() => import('../features/landing/pages/LandingPage'));
 const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
 const InventoryPage = lazy(() => import('../features/inventory/pages/InventoryPage'));
 const ForecastingPage = lazy(() => import('../features/forecasting/pages/ForecastingPage'));
@@ -25,6 +26,7 @@ const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 export const routes: RouteObject[] = [
+  { index: true, element: <SuspenseWrapper><LandingPage /></SuspenseWrapper> },
   {
     element: <RedirectIfAuthenticated />,
     children: [
@@ -39,7 +41,7 @@ export const routes: RouteObject[] = [
       {
         element: <Layout />,
         children: [
-          { index: true, element: <SuspenseWrapper><DashboardPage /></SuspenseWrapper> },
+          { path: 'dashboard', element: <SuspenseWrapper><DashboardPage /></SuspenseWrapper> },
           { path: 'profile', element: <SuspenseWrapper><ProfilePage /></SuspenseWrapper> },
           { path: 'inventory', element: <SuspenseWrapper><InventoryPage /></SuspenseWrapper> },
           { path: 'forecasting', element: <SuspenseWrapper><ForecastingPage /></SuspenseWrapper> },

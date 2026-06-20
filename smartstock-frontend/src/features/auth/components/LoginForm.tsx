@@ -42,8 +42,8 @@ export default function LoginForm() {
     if (!validate()) return;
 
     const state = (location.state as LocationState | null) ?? null;
-    const fromPath = state?.from?.pathname ?? '/';
-    const redirectTo = fromPath === '/login' || fromPath === '/register' ? '/' : fromPath;
+    const fromPath = state?.from?.pathname ?? '/dashboard';
+    const redirectTo = fromPath === '/login' || fromPath === '/register' ? '/dashboard' : fromPath;
     await login({ email: email.trim(), password }, redirectTo);
   }
 
