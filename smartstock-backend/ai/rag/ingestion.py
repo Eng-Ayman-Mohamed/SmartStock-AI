@@ -155,9 +155,7 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
     if actual_count == 0 and len(raw_chunks) > 0:
         raise RuntimeError(f'Ingestion completed but no chunks found in DB for {filename}')
 
-    logger.info(
-        'Ingested %s: %d pages, %d chunks created', filename, total_pages, len(created)
-    )
+    logger.info('Ingested %s: %d pages, %d chunks created', filename, total_pages, len(created))
 
     return {
         'filename': filename,
