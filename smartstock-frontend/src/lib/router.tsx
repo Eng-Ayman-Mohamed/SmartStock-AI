@@ -11,6 +11,7 @@ const InventoryPage = lazy(() => import('../features/inventory/pages/InventoryPa
 const ForecastingPage = lazy(() => import('../features/forecasting/pages/ForecastingPage'));
 const PurchasingPage = lazy(() => import('../features/purchasing/pages/PurchasingPage'));
 const AIAssistantPage = lazy(() => import('../features/ai-assistant/pages/AIAssistantPage'));
+const DocumentsPage = lazy(() => import('../features/documents/pages/DocumentsPage'));
 const InvoiceScanPage = lazy(() => import('../features/invoice-scan/pages/InvoiceScanPage'));
 const UsersSettingsPage = lazy(() => import('../features/users/pages/UsersSettingsPage'));
 const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage'));
@@ -47,6 +48,7 @@ export const routes: RouteObject[] = [
           { path: 'forecasting', element: <SuspenseWrapper><ForecastingPage /></SuspenseWrapper> },
           { path: 'purchasing', element: <SuspenseWrapper><PurchasingPage /></SuspenseWrapper> },
           { path: 'ai-assistant', element: <SuspenseWrapper><AIAssistantPage /></SuspenseWrapper> },
+          { path: 'documents', element: <SuspenseWrapper><DocumentsPage /></SuspenseWrapper> },
           { path: 'invoice-scan', element: <SuspenseWrapper><InvoiceScanPage /></SuspenseWrapper> },
           { path: 'suppliers', element: <SuspenseWrapper><SuppliersPage /></SuspenseWrapper> },
         ],
