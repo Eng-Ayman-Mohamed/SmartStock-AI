@@ -39,7 +39,7 @@ function BottomNavItem({ collapsed, onClick }: { collapsed: boolean; onClick?: (
       to={to}
       onClick={onClick}
       className={({ isActive }) =>
-        `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
+        `flex items-center h-11 rounded-md text-body transition-colors duration-150 group relative ${
           collapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
         } ${
           isActive
@@ -112,7 +112,7 @@ export default function Sidebar() {
               to={item.to}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 h-10 px-3 rounded-md text-body transition-colors duration-150 ${
+                `flex items-center gap-3 h-11 px-3 rounded-md text-body transition-colors duration-150 ${
                   isActive
                     ? 'bg-brand-50 text-brand-800 border-l-2 border-brand-600 dark:bg-brand-900/30 dark:text-brand-200 dark:border-brand-400'
                     : 'text-ink-secondary hover:bg-canvas-soft hover:text-ink'
@@ -151,7 +151,7 @@ export default function Sidebar() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center h-10 rounded-md text-body transition-colors duration-150 group relative ${
+                  `flex items-center h-11 rounded-md text-body transition-colors duration-150 group relative ${
                     sidebarCollapsed ? 'justify-center px-0 w-10 mx-auto' : 'gap-3 px-3'
                   } ${
                     isActive

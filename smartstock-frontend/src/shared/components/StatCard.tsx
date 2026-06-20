@@ -24,7 +24,7 @@ interface StatCardProps {
 
 export default function StatCard({ label, value, trend, icon: Icon, accent = 'none' }: StatCardProps) {
   return (
-    <div className={`bg-canvas rounded-lg border border-hairline p-6 h-24 min-w-[160px] flex flex-col justify-between ${accentBorders[accent]}`}>
+    <div className={`bg-canvas rounded-lg border border-hairline p-6 h-24 min-w-0 flex flex-col justify-between ${accentBorders[accent]}`}>
       <div className="flex items-center justify-between">
         <span className="text-caption font-medium text-ink-muted uppercase tracking-[0.05em]">{label}</span>
         {Icon && <Icon className="w-4 h-4 text-ink-faint" aria-hidden="true" />}

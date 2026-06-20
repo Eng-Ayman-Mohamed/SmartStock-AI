@@ -62,7 +62,7 @@ export default function AgentRunStatus() {
           <Skeleton lines={3} />
         </div>
       ) : error ? (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-body text-red-600">Failed to load agent runs.</p>
           <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600">Try again</button>
         </div>

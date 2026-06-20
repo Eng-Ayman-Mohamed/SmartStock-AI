@@ -124,7 +124,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
       ) : (
         <div className="px-6 pt-4 pb-2 space-y-3">
           {/* 2×2 grid */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-caption text-ink-muted">SKU</p>
               <p className="text-mono text-ink mt-0.5">{po.sku}</p>
@@ -207,7 +207,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             </div>
           )}
 
-          <div className={`flex items-center gap-3 px-6 pt-4 pb-6 ${!showRejectReason ? 'border-t border-hairline' : ''}`}>
+          <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 px-6 pt-4 pb-6 ${!showRejectReason ? 'border-t border-hairline' : ''}`}>
             <Button
               variant="ghost"
               size="md"

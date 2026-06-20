@@ -42,7 +42,7 @@ export default function UsersFilterBar({
         />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex items-center rounded-md border border-hairline bg-canvas p-0.5">
           {STATUSES.map((s) => {
             const isSelected = s.value === status;

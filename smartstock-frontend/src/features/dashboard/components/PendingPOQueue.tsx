@@ -23,7 +23,7 @@ function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
   return (
     <div className="flex items-start gap-3 p-3 rounded-md border border-hairline hover:bg-canvas-soft transition-colors">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-body font-medium text-ink truncate">{po.product_name}</span>
           <Badge>{po.status}</Badge>
         </div>
@@ -99,7 +99,7 @@ export default function PendingPOQueue() {
           <Skeleton lines={3} />
         </div>
       ) : error ? (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-body text-red-600">{error?.message ?? 'Failed to load purchase orders.'}</p>
           <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600">Try again</button>
         </div>

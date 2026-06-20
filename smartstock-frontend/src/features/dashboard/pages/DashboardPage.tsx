@@ -115,7 +115,7 @@ function ForecastChart({ data }: { data: ChartPoint[] | null }) {
           />
         </AreaChart>
       </ResponsiveContainer>
-      <div className="flex items-center gap-4 mt-2 text-caption text-ink-muted">
+      <div className="flex flex-wrap items-center gap-4 mt-2 text-caption text-ink-muted">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 bg-brand-600" /> Predicted demand
         </span>
@@ -206,7 +206,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-page-heading text-ink">Dashboard</h1>
           <p className="text-body text-ink-muted mt-1">
@@ -218,7 +218,7 @@ export default function DashboardPage() {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-ink-secondary bg-canvas border border-hairline rounded-lg hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-2 h-9 px-4 text-body font-medium text-ink-secondary bg-canvas border border-hairline rounded-full hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -229,7 +229,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <p className="text-body flex-1">Failed to load dashboard data.</p>
-          <button onClick={() => handleRefresh()} className="underline text-sm font-medium">Retry</button>
+          <button onClick={handleRefresh} className="text-caption font-medium text-red-700 dark:text-red-300 hover:underline">Retry</button>
         </div>
       )}
 
@@ -242,7 +242,7 @@ export default function DashboardPage() {
 
       <SupplierWarningBadge />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {skuLoading ? (
           <Skeleton className="h-24" />
         ) : (
