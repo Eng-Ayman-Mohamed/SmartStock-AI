@@ -19,6 +19,18 @@ export async function sendRAGQuery(query: string): Promise<{ answer: string; sou
   return data;
 }
 
+export interface NLQueryResponse {
+  answer: string;
+  action: { type: string; filters: Record<string, unknown> };
+  raw_data: Array<Record<string, unknown>>;
+}
+
+export async function sendNLQuery(query: string): Promise<NLQueryResponse> {
+  const { data } = await api.post('/ai/nlquery/', { query });
+  const unwrapped = data?.data ?? data;
+  return unwrapped;
+}
+
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   const formData = new FormData();
   formData.append('audio', audioBlob, 'recording.webm');
@@ -41,6 +53,12 @@ export async function createConversation(title?: string): Promise<ConversationDe
 export async function getConversation(id: string): Promise<ConversationDetail> {
   const { data } = await api.get(`/ai/conversations/${id}/`);
   return data?.data ?? data;
+}
+
+export async function getConversationMessages(id: string): Promise<ConversationDetail['messages']> {
+  const { data } = await api.get(`/ai/conversations/${id}/messages/`);
+  const unwrapped = data?.data ?? data;
+  return Array.isArray(unwrapped) ? unwrapped : [];
 }
 
 export async function deleteConversation(id: string): Promise<void> {

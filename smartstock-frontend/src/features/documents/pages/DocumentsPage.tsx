@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import {
+  Eye,
   FileText,
   Loader2,
+  Pencil,
   Plus,
   Trash2,
   Upload,
@@ -11,6 +13,8 @@ import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 import DataTable, { type Column } from '../../../shared/components/DataTable';
 import EmptyState from '../../../shared/components/EmptyState';
+import DocumentDetailModal from '../components/DocumentDetailModal';
+import DocumentEditModal from '../components/DocumentEditModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import { useDocuments, useDeleteDocument } from '../hooks/useDocuments';
 import type { Document } from '../types';
@@ -40,6 +44,8 @@ function formatDate(iso: string | null) {
 export default function DocumentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'admin';
   const { data: documents, isLoading, error } = useDocuments();
@@ -97,16 +103,34 @@ export default function DocumentsPage() {
             key: 'actions',
             label: '',
             align: 'right' as const,
-            width: '48px',
+            width: '96px',
             render: (row: Document) => (
-              <button
-                onClick={() => setDeleteId(row.id)}
-                className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/30"
-                aria-label={`Delete ${row.original_filename}`}
-                title="Delete document"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center justify-end gap-1">
+                <button
+                  onClick={() => setDetailId(row.id)}
+                  className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
+                  aria-label={`View ${row.original_filename}`}
+                  title="View details"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setEditId(row.id)}
+                  className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+                  aria-label={`Edit ${row.original_filename}`}
+                  title="Edit document"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setDeleteId(row.id)}
+                  className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/30"
+                  aria-label={`Delete ${row.original_filename}`}
+                  title="Delete document"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             ),
           },
         ]
@@ -156,6 +180,8 @@ export default function DocumentsPage() {
       </Card>
 
       <DocumentUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <DocumentDetailModal documentId={detailId} onClose={() => setDetailId(null)} />
+      <DocumentEditModal documentId={editId} onClose={() => setEditId(null)} />
 
       {deleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">

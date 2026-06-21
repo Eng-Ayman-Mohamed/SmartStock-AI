@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { ChatMode, ConversationDetail, Message } from '../types';
-import { sendChatMessage } from '../api';
+import { sendChatMessage, sendNLQuery } from '../api';
 
 let nextId = 0;
 function createId(): string {
@@ -47,17 +47,34 @@ export default function useChat(conversationId?: string | null) {
       setError(null);
 
       try {
-        const response = await sendChatMessage({
-          query: trimmed,
-          mode,
-          conversation_id: conversationId ?? undefined,
-        });
+        let aiText: string;
+        let engine: Message['engine'] = 'nl_query';
+        let sources: Message['sources'];
+
+        if (mode === 'nl_query' && !conversationId) {
+          const nlResult = await sendNLQuery(trimmed);
+          aiText = nlResult.answer;
+          if (nlResult.action) {
+            const actionInfo = `\n\n[Action: ${nlResult.action.type}]`;
+            aiText = aiText + actionInfo;
+          }
+        } else {
+          const response = await sendChatMessage({
+            query: trimmed,
+            mode,
+            conversation_id: conversationId ?? undefined,
+          });
+          aiText = response.answer;
+          engine = response.engine;
+          sources = response.sources;
+        }
+
         const aiMessage: Message = {
           id: createId(),
           role: 'ai',
-          text: response.answer,
-          engine: response.engine,
-          sources: response.sources,
+          text: aiText,
+          engine,
+          sources,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, aiMessage]);

@@ -16,7 +16,20 @@ export interface Document {
   updated_at: string;
 }
 
+export interface DocumentChunk {
+  id: number;
+  chunk_text: string;
+  source_document: string;
+  page_number: number | null;
+  metadata: Record<string, unknown>;
+  document: number | null;
+}
+
 export interface UploadDocumentPayload {
   file: File;
+  doc_type: DocType;
+}
+
+export interface UpdateDocumentPayload {
   doc_type: DocType;
 }

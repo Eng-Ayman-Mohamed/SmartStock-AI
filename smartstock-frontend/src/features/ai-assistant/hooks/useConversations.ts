@@ -4,6 +4,7 @@ import {
   listConversations,
   createConversation,
   getConversation,
+  getConversationMessages,
   deleteConversation,
   renameConversation,
 } from '../api';
@@ -43,6 +44,22 @@ export default function useConversations() {
       setError(err instanceof Error ? err.message : 'Failed to load conversation');
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const loadConversationMessages = useCallback(async (id: string) => {
+    try {
+      const messages = await getConversationMessages(id);
+      setActiveConversation((prev) => {
+        if (prev && prev.id === id) {
+          return { ...prev, messages };
+        }
+        return prev;
+      });
+      return messages;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load messages');
+      return [];
     }
   }, []);
 
@@ -96,6 +113,7 @@ export default function useConversations() {
     error,
     loadConversations,
     selectConversation,
+    loadConversationMessages,
     startNewConversation,
     removeConversation,
     updateTitle,
