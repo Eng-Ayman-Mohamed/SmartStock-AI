@@ -116,22 +116,3 @@ export async function renameConversation(id: string, title: string): Promise<Con
   return data?.data ?? data;
 }
 
-export interface StockSnapshot {
-  sku_code: string;
-  product_name: string;
-  quantity: number;
-  reorder_point: number;
-}
-
-export async function fetchStockSnapshot(): Promise<StockSnapshot[]> {
-  const { data } = await api.get<Record<string, unknown>[]>('/inventory/stock-levels/', {
-    params: { page_size: 5 },
-  });
-  const items = data ?? [];
-  return items.map((item) => ({
-    sku_code: item.sku_code as string,
-    product_name: item.product_name as string,
-    quantity: (item.quantity as number) ?? 0,
-    reorder_point: (item.reorder_point as number) ?? 0,
-  }));
-}

@@ -1146,6 +1146,7 @@ class ChatStreamView(APIView):
             history = conv_service.get_history_for_llm(conversation_id)
 
         user = request.user
+        shared = {}
 
         def event_stream():
             """Generator that yields SSE events."""
@@ -1157,9 +1158,9 @@ class ChatStreamView(APIView):
 
             try:
                 if engine == 'rag':
-                    yield from self._stream_rag(query, user, history)
+                    yield from self._stream_rag(query, user, history, shared)
                 else:
-                    yield from self._stream_nl_query(query, user)
+                    yield from self._stream_nl_query(query, user, shared)
             except Exception as exc:
                 logger.exception('Streaming chat failed')
                 error_msg = sanitize_llm_error(exc) if is_llm_quota_error(exc) else 'An unexpected error occurred.'

@@ -1330,7 +1330,7 @@ def _handle_get_supplier_info(filters: NLQueryFilters) -> list:
 def _handle_get_total_value(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
-    q = _build_q_from_filters(filters)
+    q = _build_q_from_filters(filters) & Q(is_active=True)
     result = Product.objects.filter(q).aggregate(
         total_value=Sum(
             F('skus__stock_level__quantity_on_hand') * F('unit_price'), output_field=DecimalField()
