@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Check, X, Eye } from 'lucide-react';
 import Card from '../../../shared/components/Card';
 import Badge from '../../../shared/components/Badge';
@@ -13,15 +14,19 @@ import type { Role } from '../../../store/authStore';
 
 const MANAGER_ROLES: Role[] = ['manager', 'admin'];
 
-function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
+function PendingPOItem({ po, onApprove, onReject, isMutating, canAct, onClick }: {
   po: PurchaseOrder;
   onApprove: () => void;
   onReject: () => void;
   isMutating: boolean;
   canAct: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-md border border-hairline hover:bg-canvas-soft transition-colors">
+    <div
+      onClick={onClick}
+      className="flex items-start gap-3 p-3 rounded-md border border-hairline hover:bg-canvas-soft transition-colors cursor-pointer"
+    >
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-body font-medium text-ink truncate">{po.product_name}</span>
@@ -41,7 +46,7 @@ function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
               variant="primary"
               size="sm"
               className="bg-green-600 hover:bg-green-800"
-              onClick={onApprove}
+              onClick={(e) => { e.stopPropagation(); onApprove(); }}
               disabled={isMutating}
             >
               <Check className="w-3.5 h-3.5" />
@@ -50,7 +55,7 @@ function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
               variant="ghost"
               size="sm"
               className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-              onClick={onReject}
+              onClick={(e) => { e.stopPropagation(); onReject(); }}
               disabled={isMutating}
             >
               <X className="w-3.5 h-3.5" />
@@ -68,6 +73,7 @@ function PendingPOItem({ po, onApprove, onReject, isMutating, canAct }: {
 }
 
 export default function PendingPOQueue() {
+  const navigate = useNavigate();
   const { data: pos, isLoading, error, refetch } = usePendingPOs();
   const user = useAuthStore((s) => s.user);
   const canAct = user ? MANAGER_ROLES.includes(user.role) : false;
@@ -119,6 +125,7 @@ export default function PendingPOQueue() {
               onReject={() => handleReject(po)}
               isMutating={approvePO.isPending || rejectPO.isPending}
               canAct={canAct}
+              onClick={() => navigate(`/purchasing?poId=${po.id}`)}
             />
           ))}
         </div>

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { ShoppingCart, Plus } from "lucide-react";
 import Card from "../../../shared/components/Card";
 import Button from "../../../shared/components/Button";
@@ -87,12 +88,28 @@ const historyColumns: Column<POHistoryItem>[] = [
 ];
 
 export default function PurchasingPage() {
-  const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const poIdFromUrl = searchParams.get("poId");
+
+  const [selectedPoId, setSelectedPoId] = useState<string | null>(
+    poIdFromUrl ? `PO-${poIdFromUrl}` : null
+  );
   const [poPage, setPoPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const approvalRef = useRef<HTMLDivElement>(null);
+  const hasScrolledFromNav = useRef(!!poIdFromUrl);
 
   const user = useAuthStore((s) => s.user);
   const canManage = user?.role === "manager" || user?.role === "admin";
+
+  // Clear poId query param from URL after consuming it
+  useEffect(() => {
+    if (poIdFromUrl) {
+      navigate("/purchasing", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const createPOMutation = useCreatePO();
 
@@ -127,6 +144,14 @@ export default function PurchasingPage() {
     }
     return pendingPOs[0] ?? null;
   }, [pendingPOs, selectedPoId]);
+
+  // Scroll to the approval card once when it appears after dashboard nav
+  useEffect(() => {
+    if (hasScrolledFromNav.current && selectedPO && approvalRef.current) {
+      approvalRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      hasScrolledFromNav.current = false;
+    }
+  });
 
   const poTotalCount = poHistoryData?.count ?? 0;
   const poPagination = usePagination({
@@ -233,11 +258,13 @@ export default function PurchasingPage() {
         </Card>
 
         {selectedPO && (
-          <POApprovalCard
-            key={selectedPO.id}
-            po={selectedPO}
-            readOnly={isPendingLoading}
-          />
+          <div ref={approvalRef}>
+            <POApprovalCard
+              key={selectedPO.id}
+              po={selectedPO}
+              readOnly={isPendingLoading}
+            />
+          </div>
         )}
       </div>
 
