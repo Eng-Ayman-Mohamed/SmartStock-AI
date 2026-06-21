@@ -1170,20 +1170,13 @@ def _parse_condition(condition) -> Q:
 
 
 def _build_q_from_filters(filters: NLQueryFilters) -> Q:
-    import operator
-    from functools import reduce
-
-    conjunction = getattr(filters, 'conjunction', 'and')
     conditions = getattr(filters, 'conditions', [])
     if not conditions:
         return Q()
-    q_parts = [_parse_condition(c) for c in conditions]
-    if conjunction == 'or':
-        return reduce(operator.or_, q_parts)
-    result = q_parts[0]
-    for part in q_parts[1:]:
-        result &= part
-    return result
+    q = _parse_condition(conditions[0])
+    for c in conditions[1:]:
+        q &= _parse_condition(c)
+    return q
 
 
 def conditions_to_q(conditions, model=Product):

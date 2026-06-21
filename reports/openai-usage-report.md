@@ -778,3 +778,39 @@ $ npm run lint
 | `ingestion/views.py:post()` | Added `except ValueError as exc:` handler before generic `Exception` — returns 400 for injection, 500 for other ValueErrors |
 
 **Test result:** 85/85 chat/ingestion tests passed, Ruff all checks passed.
+
+---
+
+## 14. Low-Severity Cleanup Fixes — 2026-06-21
+
+### 14a. Issue 9 — Dead code: `sendRAGQuery` removed
+
+**File:** `features/ai-assistant/api.ts:17-20`
+
+**Problem:** `sendRAGQuery()` was exported but never imported anywhere. The RAG path goes through `sendChatMessage()` with `mode: 'rag'`.
+
+**Fix:** Removed the function.
+
+### 14b. Issue 10 — `createId()` counter moved to hook-local ref
+
+**File:** `features/ai-assistant/hooks/useChat.ts`
+
+**Problem:** `createId()` used a module-level `nextId` variable. If two `useChat` instances existed, they'd share the counter, causing potential ID collisions.
+
+**Fix:** Moved the counter inside the hook as `idCounter = useRef(0)`. `createId()` is now defined inside the hook and captures the ref.
+
+### 14c. Issue 11 — `clearMessages()` now resets mode to `'auto'`
+
+**File:** `features/ai-assistant/hooks/useChat.ts`
+
+**Problem:** `clearMessages()` reset messages and error, but left the `mode` state at whatever value was previously selected. Starting a new chat could retain the old mode setting.
+
+**Fix:** Added `setMode('auto')` to the `clearMessages` callback.
+
+### 14d. Issue 12 — Removed dead `conjunction='or'` code in `_build_q_from_filters`
+
+**File:** `apps/inventory/views.py`
+
+**Problem:** `NLQueryFilters` has no `conjunction` attribute, so `getattr(filters, 'conjunction', 'and')` always returned `'and'`. The `if conjunction == 'or':` branch was dead code. The function also used an odd mix of `reduce(operator.or_, ...)` and manual `&=` for AND, but with only one path ever running.
+
+**Fix:** Simplified `_build_q_from_filters` to always use AND, removing the `import operator`, `reduce`, and the dead `or` branch. Same logic, less code.

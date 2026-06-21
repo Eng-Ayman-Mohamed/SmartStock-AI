@@ -479,6 +479,33 @@ class RAGQueryService:
             answer = "I'm sorry, I cannot provide that information."
         return answer, token_usage
 
+    def call_llm_stream(self, query: str, context: str, history: list | None = None):
+        """Streaming version of call_llm. Yields text chunks."""
+        llm = self._get_llm()
+
+        messages = [
+            ('system', self.RAG_SYSTEM_PROMPT),
+        ]
+
+        if history:
+            for m in history[-10:]:
+                role = m.get('role', 'user')
+                content = m.get('content', '')
+                if role in ('user', 'assistant'):
+                    messages.append((role, content))
+
+        messages.append(('user', '{query}'))
+
+        prompt = ChatPromptTemplate.from_messages(messages)
+        chain = prompt | llm | StrOutputParser()
+        try:
+            for chunk in chain.stream({'context': context, 'query': query}):
+                if chunk:
+                    yield chunk
+        except Exception as exc:
+            logger.warning('RAGQueryService call_llm_stream failed: %s', exc)
+            yield "I'm sorry, I cannot provide that information."
+
     def extract_sources(self, chunks: list[dict]) -> list[dict]:
         seen = set()
         sources = []
@@ -556,4 +583,49 @@ class RAGQueryService:
                 for c in top_chunks
             ],
             'token_usage': token_usage,
+        }
+
+    def execute_stream(self, query: str, user=None, history: list | None = None):
+        """Streaming version of execute. Yields {'type': 'metadata'|'token'|'done'|'error', ...}."""
+        start = time.time()
+
+        # Step 1: Hybrid search
+        search_results = self.hybrid_search(query, top_k=10)
+
+        # Step 2: Rerank to top 3 chunks
+        try:
+            top_chunks = self.rerank(query, search_results, top_n=3)
+        except ConnectionError:
+            logger.warning('Cohere unavailable — falling back to vector-score ranking')
+            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:3]
+
+        # Step 3: If no relevant chunks found
+        if not top_chunks or all(c.get('score', 0) < 0.3 for c in top_chunks):
+            yield {'type': 'done', 'sources': [], 'action': None}
+            return
+
+        # Step 4: Build context
+        context = self.build_context(top_chunks)
+        sources = self.extract_sources(top_chunks)
+
+        # Step 5: Stream LLM answer
+        full_answer = ''
+        for chunk in self.call_llm_stream(query, context, history):
+            full_answer += chunk
+            yield {'type': 'token', 'content': chunk}
+
+        # Step 6: Post-process citations
+        from ai.rag.citation import inject_citations
+
+        final_answer = inject_citations(full_answer, sources)
+        # Yield the corrected answer if citations changed the text
+        if final_answer != full_answer:
+            yield {'type': 'token', 'content': final_answer[len(full_answer):]}
+
+        latency_ms = round((time.time() - start) * 1000)
+        yield {
+            'type': 'done',
+            'sources': sources,
+            'action': None,
+            'latency_ms': latency_ms,
         }

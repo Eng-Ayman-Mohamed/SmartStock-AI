@@ -1,12 +1,14 @@
 import logging
 import os
 import tempfile
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 
 import cloudinary.uploader
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import (
     OpenApiExample,
@@ -674,7 +676,7 @@ class ChatEndpointView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'ai'
 
-    CHAT_TIMEOUT_SECONDS = 15
+    CHAT_TIMEOUT_SECONDS = 25
 
     @extend_schema(
         request=ChatSerializer,
@@ -771,19 +773,6 @@ class ChatEndpointView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # --- Load conversation history ---
-        conv_service = ConversationService()
-        history = []
-        if conversation_id:
-            try:
-                conversation = conv_service.get_conversation(conversation_id, request.user)
-                history = conv_service.get_history_for_llm(conversation_id)
-            except ValueError:
-                return Response(
-                    {'status': 'error', 'message': 'Conversation not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
         # --- Intent classification (only for auto mode) ---
         classifier_decision = None
         if mode == 'auto':
@@ -802,6 +791,27 @@ class ChatEndpointView(APIView):
                 engine = classification.intent
         else:
             engine = mode
+
+        # --- Load conversation history (only for RAG — NL query path ignores it) ---
+        conv_service = ConversationService()
+        history = []
+        if conversation_id and engine == 'rag':
+            try:
+                conversation = conv_service.get_conversation(conversation_id, request.user)
+                history = conv_service.get_history_for_llm(conversation_id)
+            except ValueError:
+                return Response(
+                    {'status': 'error', 'message': 'Conversation not found.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        elif conversation_id:
+            try:
+                conversation = conv_service.get_conversation(conversation_id, request.user)
+            except ValueError:
+                return Response(
+                    {'status': 'error', 'message': 'Conversation not found.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
         # --- Execute pipeline with timeout ---
         pipeline_start = time.time()
@@ -1010,14 +1020,17 @@ class ChatEndpointView(APIView):
             'latency_ms': latency_ms,
         }
 
-        try:
-            AuditLog.objects.create(
-                user=user,
-                event='AI_CHAT_QUERY',
-                data_snapshot=trace_data,
-            )
-        except Exception as exc:
-            logger.debug('Audit log failed: %s', exc)
+        def _write_audit():
+            try:
+                AuditLog.objects.create(
+                    user=user,
+                    event='AI_CHAT_QUERY',
+                    data_snapshot=trace_data,
+                )
+            except Exception as exc:
+                logger.debug('Audit log failed: %s', exc)
+
+        threading.Thread(target=_write_audit, daemon=True).start()
 
         try:
             lf = _get_langfuse()
@@ -1054,3 +1067,206 @@ class ChatEndpointView(APIView):
                 lf.flush()
         except Exception as lf_err:
             logger.debug('Langfuse trace skipped: %s', lf_err)
+
+
+# ---------------------------------------------------------------------------
+# Streaming Chat Endpoint  — POST /api/ai/chat/stream/
+# ---------------------------------------------------------------------------
+
+import json as _json
+
+
+class ChatStreamView(APIView):
+    """
+    POST /api/ai/chat/stream/
+    SSE streaming endpoint. Returns tokens as the LLM generates them.
+    """
+
+    permission_classes = [IsViewerOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
+
+    def post(self, request, *args, **kwargs):
+        serializer = ChatSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'status': 'error', 'errors': serializer.errors},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        query = serializer.validated_data['query']
+        mode = serializer.validated_data['mode']
+        conversation_id = serializer.validated_data.get('conversation_id')
+
+        # --- Prompt injection check ---
+        try:
+            is_safe, matched_pattern = prompt_injection_filter(query)
+        except Exception:
+            logger.exception('Prompt injection filter failed')
+            is_safe, matched_pattern = False, 'filter_error'
+
+        if not is_safe:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'InvalidQueryError',
+                    'message': 'Query contains disallowed content.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # --- Intent classification (only for auto mode) ---
+        engine = mode
+        if mode == 'auto':
+            from ai.llm.intent_classifier import classify_intent
+
+            classification = classify_intent(query)
+            if classification.confidence < 0.7:
+                engine = 'nl_query'
+            elif classification.intent == 'out_of_scope':
+                engine = 'nl_query'
+            else:
+                engine = classification.intent
+
+        # --- Load conversation ---
+        conv_service = ConversationService()
+        conversation = None
+        if conversation_id:
+            try:
+                conversation = conv_service.get_conversation(conversation_id, request.user)
+            except ValueError:
+                return Response(
+                    {'status': 'error', 'message': 'Conversation not found.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # --- History (only for RAG) ---
+        history = []
+        if conversation_id and engine == 'rag':
+            history = conv_service.get_history_for_llm(conversation_id)
+
+        user = request.user
+
+        def event_stream():
+            """Generator that yields SSE events."""
+            # Send metadata first
+            metadata = {'engine': engine, 'mode': mode}
+            if conversation_id:
+                metadata['conversation_id'] = str(conversation_id)
+            yield f'event: metadata\ndata: {_json.dumps(metadata)}\n\n'
+
+            try:
+                if engine == 'rag':
+                    yield from self._stream_rag(query, user, history)
+                else:
+                    yield from self._stream_nl_query(query, user)
+            except Exception as exc:
+                logger.exception('Streaming chat failed')
+                error_msg = sanitize_llm_error(exc) if is_llm_quota_error(exc) else 'An unexpected error occurred.'
+                yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
+                return
+
+            # Save to conversation after stream completes
+            if conversation_id:
+                full_answer = getattr(event_stream, '_full_answer', '')
+                try:
+                    is_new = conversation.messages.count() == 0
+                    conv_service.save_message(
+                        conversation_id=conversation_id,
+                        role='user',
+                        content=query,
+                        mode=mode,
+                    )
+                    conv_service.save_message(
+                        conversation_id=conversation_id,
+                        role='assistant',
+                        content=full_answer,
+                        engine=engine,
+                        mode=mode,
+                    )
+                    if is_new:
+                        conv_service.auto_title(conversation_id, query)
+                except Exception:
+                    logger.exception('Failed to save conversation')
+
+            yield 'event: done\ndata: {}\n\n'
+
+        response = StreamingHttpResponse(
+            event_stream(),
+            content_type='text/event-stream',
+        )
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
+
+    def _stream_rag(self, query, user, history):
+        """Stream RAG pipeline response."""
+        service = RAGQueryService()
+        full_answer = ''
+
+        for event in service.execute_stream(query, user=user, history=history):
+            if event['type'] == 'token':
+                full_answer += event['content']
+                yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+            elif event['type'] == 'done':
+                done_data = {'sources': event.get('sources', [])}
+                if event.get('action'):
+                    done_data['action'] = event['action']
+                yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+
+        event_stream._full_answer = full_answer
+
+    def _stream_nl_query(self, query, user):
+        """Stream NL Query pipeline response (streams only the formatter step)."""
+        from ai.llm.chain import call_gpt4o_formatter_stream, get_nl_chain
+        from apps.inventory.views import (
+            _handle_forecast_demand,
+            _handle_get_inventory,
+            _handle_get_low_stock,
+            _handle_get_sales_report,
+            _handle_get_supplier_info,
+            _handle_get_top_products,
+            _handle_get_total_value,
+        )
+
+        # Defense-in-depth: prompt injection check
+        is_safe, matched_pattern = prompt_injection_filter(query)
+        if not is_safe:
+            raise ValueError('PROMPT_INJECTION_DETECTED')
+
+        # Step B: NL chain (structured, not streamable)
+        chain_instance = get_nl_chain()
+        chain_result = chain_instance.run(query)
+        chain_dict = chain_result.to_dict()
+        action_type = chain_dict.get('action')
+        filters = chain_dict.get('filters', {})
+
+        # Step C: DB query
+        handler_map = {
+            'get_inventory': _handle_get_inventory,
+            'get_sales_report': _handle_get_sales_report,
+            'get_low_stock': _handle_get_low_stock,
+            'forecast_demand': _handle_forecast_demand,
+            'get_supplier_info': _handle_get_supplier_info,
+            'get_total_value': _handle_get_total_value,
+            'get_top_products': _handle_get_top_products,
+        }
+        handler = handler_map.get(action_type)
+        if not handler:
+            raise ValueError(f'Unknown action type: {action_type}')
+
+        from ai.llm.schemas import NLQueryFilters
+
+        nl_filters = NLQueryFilters(**filters) if isinstance(filters, dict) else filters
+        raw_data = handler(nl_filters)
+
+        # Step D: Stream formatter
+        full_answer = ''
+        for chunk in call_gpt4o_formatter_stream(original_query=query, raw_data=raw_data):
+            full_answer += chunk
+            yield f'event: token\ndata: {_json.dumps({"content": chunk})}\n\n'
+
+        done_data = {'action': {'type': action_type, 'filters': filters}}
+        yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+
+        event_stream._full_answer = full_answer
