@@ -38,20 +38,34 @@ def run_forecasting_agent(sku_ids: list[int] | None = None):
 @shared_task(rate_limit='10/m')
 def run_forecast_single_sku(sku_id: int):
     """Forecast a single SKU in parallel."""
+    from ai.agents.tracking import complete_agent_run, create_agent_run
+    from apps.audit.models import AgentRun
+
     from .services import ForecastingService
 
-    service = ForecastingService()
+    agent_run = create_agent_run('forecast_single_sku')
+    status = AgentRun.Status.COMPLETED
+    error = ''
+
     try:
-        result = service.run_forecast(sku_id=sku_id)
+        service = ForecastingService()
         try:
-            cache.delete_pattern('forecast_dashboard_*')
-            if result:
-                sku_code = result[0].get('sku')
-                if sku_code:
-                    cache.delete(f'forecast_sku_{sku_code}')
-        except Exception:
-            logger.warning('Failed to invalidate forecast cache', exc_info=True)
-        return {'sku_id': sku_id, 'status': 'success', 'result': result}
-    except Exception as e:
-        logger.exception('Forecast failed for SKU %s: %s', sku_id, e)
-        return {'sku_id': sku_id, 'status': 'failed', 'error': str(e)}
+            result = service.run_forecast(sku_id=sku_id)
+            try:
+                cache.delete_pattern('forecast_dashboard_*')
+                if result:
+                    sku_code = result[0].get('sku')
+                    if sku_code:
+                        cache.delete(f'forecast_sku_{sku_code}')
+            except Exception:
+                logger.warning('Failed to invalidate forecast cache', exc_info=True)
+        except Exception as e:
+            status = AgentRun.Status.FAILED
+            error = str(e)
+            raise
+        finally:
+            complete_agent_run(agent_run.id, status=status, error_message=error)
+    except Exception:
+        return {'sku_id': sku_id, 'status': 'failed', 'error': error}
+
+    return {'sku_id': sku_id, 'status': 'success', 'result': result}

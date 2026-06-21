@@ -4,7 +4,9 @@ import time
 from ai.agents.tools.confirmation_listener import ConfirmationListenerTool
 from ai.agents.tools.email_send import EmailSendTool
 from ai.agents.tools.po_draft import PODraftTool
+from ai.agents.tracking import complete_agent_run, create_agent_run
 from ai.observability.langfuse import trace_agent_run
+from apps.audit.models import AgentRun
 from apps.monitoring.tasks import record_agent_run_task
 from apps.purchasing.services import PurchasingService
 from apps.purchasing.workflow_models import PurchaseOrderWorkflow
@@ -60,28 +62,47 @@ class PurchasingAgent:
         Returns:
             dict with workflow result, status, and PO details.
         """
+        agent_run = create_agent_run('purchasing_agent')
         _started_at = time.time()
         trace_spans = []
+        status = AgentRun.Status.FAILED
+        error = ''
+
         try:
             result = self._execute_workflow(context, trace_spans)
+            status = (
+                AgentRun.Status.COMPLETED
+                if result.get('status') not in ('failed', 'rejected', 'timeout')
+                else AgentRun.Status.FAILED
+            )
+            error = result.get('error', '')
         except Exception as e:
             logger.exception('PurchasingAgent workflow failed')
+            error = str(e)
             result = {
                 'agent': 'purchasing_agent',
                 'status': 'failed',
-                'error': str(e),
+                'error': error,
             }
-        trace_agent_run('purchasing_agent', context, result, trace_spans)
-        _duration = round((time.time() - _started_at) * 1000)
-        _outcome = (
-            'failure' if result.get('status') in ('failed', 'rejected', 'timeout') else 'success'
-        )
-        record_agent_run_task.delay(
-            agent_name='purchasing_agent',
-            outcome=_outcome,
-            duration_ms=_duration,
-            error_message=result.get('error', ''),
-        )
+        finally:
+            complete_agent_run(
+                agent_run.id,
+                status=status,
+                error_message=error,
+            )
+            trace_agent_run('purchasing_agent', context, result, trace_spans)
+            _duration = round((time.time() - _started_at) * 1000)
+            _outcome = (
+                'failure'
+                if result.get('status') in ('failed', 'rejected', 'timeout')
+                else 'success'
+            )
+            record_agent_run_task.delay(
+                agent_name='purchasing_agent',
+                outcome=_outcome,
+                duration_ms=_duration,
+                error_message=result.get('error', ''),
+            )
         return result
 
     def _execute_workflow(self, context: dict, trace_spans: list) -> dict:

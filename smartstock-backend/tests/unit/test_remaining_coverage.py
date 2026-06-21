@@ -456,22 +456,32 @@ class BaseToolInvokeTests(unittest.TestCase):
 
 
 class ForecastingAgentTests(unittest.TestCase):
+    @patch('ai.agents.forecasting_agent.complete_agent_run')
+    @patch('ai.agents.forecasting_agent.create_agent_run')
     @patch('ai.agents.forecasting_agent.trace_agent_run')
     @patch('ai.agents.forecasting_agent.record_agent_run_task')
-    def test_run_completes_when_no_skus(self, mock_record, mock_trace):
+    def test_run_completes_when_no_skus(self, mock_record, mock_trace, mock_create, mock_complete):
+        mock_create.return_value = MagicMock(id=1)
         agent = ForecastingAgent()
         result = agent.run(context={'sku_ids': []})
         self.assertEqual(result['status'], 'completed')
         self.assertEqual(result['agent'], 'forecasting_agent')
         self.assertEqual(result['total_skus'], 0)
         mock_trace.assert_called_once()
+        mock_create.assert_called_once()
+        mock_complete.assert_called_once()
 
+    @patch('ai.agents.forecasting_agent.complete_agent_run')
+    @patch('ai.agents.forecasting_agent.create_agent_run')
     @patch('ai.agents.forecasting_agent.trace_agent_run')
     @patch('ai.agents.forecasting_agent.record_agent_run_task')
-    def test_run_with_context(self, mock_record, mock_trace):
+    def test_run_with_context(self, mock_record, mock_trace, mock_create, mock_complete):
+        mock_create.return_value = MagicMock(id=1)
         agent = ForecastingAgent()
         result = agent.run(context={'sku_ids': []})
         self.assertEqual(result['agent'], 'forecasting_agent')
+        mock_create.assert_called_once()
+        mock_complete.assert_called_once()
 
 
 # ===================================================================
