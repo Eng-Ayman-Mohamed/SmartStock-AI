@@ -168,8 +168,7 @@ class RAGServiceUnavailable(Exception):
 class DocumentViewSet(viewsets.ModelViewSet):
     """CRUD for RAG documents.
 
-    - Viewer+: list, retrieve
-    - Manager+: upload (create)
+    - Viewer+: list, retrieve, upload (create)
     - Admin: soft-delete
     """
 
@@ -181,18 +180,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
-            return [IsViewerOrAbove()]
-        if self.action == 'create':
+        if self.action in ('list', 'retrieve', 'create'):
             return [IsViewerOrAbove()]
         if self.action == 'destroy':
             return [IsAdminOnly()]
         return [IsViewerOrAbove()]
 
     def get_queryset(self):
-        if self.action == 'list':
-            return Document.objects.filter(is_active=True).order_by('-created_at')
-        return Document.objects.all()
+        return Document.objects.filter(is_active=True).order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         serializer = DocumentUploadSerializer(data=request.data)
