@@ -625,3 +625,45 @@ Tested 2026-06-19 with `LLM_PROVIDER=groq`, `LLM_WHISPER_PROVIDER=groq`:
 ### 10f. CI Coverage
 
 Full test suite: **1395 passed**, 0 failed. Coverage: **84.88%** (above 80% threshold).
+
+---
+
+## 11. Critical Bug Fixes — 2026-06-21
+
+### 11a. Bug 1 (CRITICAL) — Frontend: First message in new conversation permanently lost
+
+**File(s):** `features/ai-assistant/hooks/useChat.ts`, `features/ai-assistant/components/ChatPanel.tsx`
+
+**Problem:** When a user types their first message and no conversation exists yet, `ChatPanel.handleSend()` calls `startNewConversation()` which creates a new conversation asynchronously. However, `sendMessage(query)` on the next line still captured the **old** `conversationId` (`undefined`) from its closure — React hadn't re-rendered yet. The backend received `conversation_id: undefined`, processed the query, but never saved the message to the conversation.
+
+**Result:** The conversation appeared in the sidebar but was permanently empty (0 messages). Every user's first message in a new chat was silently discarded.
+
+**Fix (2 files):**
+
+| File | Change |
+|------|--------|
+| `hooks/useChat.ts:32-33` | `sendMessage` now accepts optional `conversationIdOverride` parameter; resolves `activeConvId = conversationIdOverride ?? conversationId` before sending |
+| `components/ChatPanel.tsx:54-59` | After `startNewConversation()` returns `newConv`, passes `newConv.id` to `sendMessage(query, newConv.id)` with early return |
+
+**Test result:** 568 tests passed, 0 TS errors.
+
+### 11b. Bug 2 (CRITICAL) — Backend: `_handle_get_low_stock` hardcoded threshold overrides LLM
+
+**File:** `apps/inventory/views.py:1260-1295`
+
+**Problem:** Three bugs in one function:
+
+1. **Dead code `/` LLM override** — `threshold = filters.get('threshold', 10) if hasattr(filters, 'get') else 10`. `NLQueryFilters` has no `.get()` method, so `hasattr` was always `False` and `threshold` was always `10`. If the LLM generated "show items with less than 5 units", the filter silently became `qty < 5 AND qty < 10` (coincidentally correct). But "show items below their reorder point" always returned items below 10, ignoring per-product reorder points.
+
+2. **Field alias incompatibility** — `_build_q_from_filters()` uses `FIELD_ALIASES` which maps `quantity_on_hand` → `skus__stock_level__quantity_on_hand`. This works on `Product.objects` but **breaks on `StockLevel.objects`** (no `skus` relation). Any LLM-generated condition with fields like `category`, `product_name`, or `sku_code` would crash with `FieldError`.
+
+3. **No default for empty conditions** — The pattern cache entry `('low stock', 'get_low_stock', {})` with no conditions would match all items (unbounded), which is a UX and cost risk.
+
+**Fix:** Rewrote `_handle_get_low_stock` to:
+
+- Manually map conditions to `StockLevel`-correct ORM paths (`sku__product__name__icontains`, `sku__product__category__name`, etc.)
+- Remove the hardcoded `threshold` / dead `.get()` code
+- Default to `quantity_on_hand < F('reorder_point')` when no quantity condition is present (semantically correct: "low" means below each product's own reorder point)
+- Cap at 100 results (matching other handlers' patterns)
+
+**Test result:** 187 inventory/low-stock tests passed, 0 new lint errors.

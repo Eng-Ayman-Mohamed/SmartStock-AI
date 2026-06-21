@@ -30,7 +30,7 @@ export default function useChat(conversationId?: string | null) {
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, conversationIdOverride?: string) => {
       const trimmed = text.trim();
       if (!trimmed || isLoading) return;
 
@@ -46,11 +46,13 @@ export default function useChat(conversationId?: string | null) {
       setIsLoading(true);
       setError(null);
 
+      const activeConvId = conversationIdOverride ?? conversationId;
+
       try {
         const response = await sendChatMessage({
           query: trimmed,
           mode,
-          conversation_id: conversationId ?? undefined,
+          conversation_id: activeConvId ?? undefined,
         });
         const aiMessage: Message = {
           id: createId(),
