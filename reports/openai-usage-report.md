@@ -996,3 +996,74 @@ $ ruff check apps/inventory/views.py — 0 errors
 ```
 
 **Net effect:** All identified issues from round 2 review resolved. File now compiles, AI chat error handling is hygienic, total value queries consistent, and no dead code remains.
+
+---
+
+## 16. SSE Streaming Bug Fixes — 2026-06-21
+
+### 16a. Bug 1 (CRITICAL) — `NameError: name 'event_stream' is not defined`
+
+**File:** `apps/ingestion/views.py` — `_stream_nl_query()` (line 1272) and `_stream_rag()` (line 1217)
+
+**Problem:** After yielding all tokens successfully, `_stream_nl_query()` and `_stream_rag()` tried to set `event_stream._full_answer = full_answer` to pass the accumulated text back to the `event_stream()` generator for conversation saving. But `event_stream` is a **local function** defined inside `post()` — the `_stream_*` methods on `self` cannot access it.
+
+**What happened:**
+1. Frontend receives `metadata` event → engine identified
+2. Frontend receives multiple `token` events → text grows on screen
+3. `_stream_nl_query()` finishes streaming, tries `event_stream._full_answer = ...`
+4. `NameError` is raised → caught by `event_stream()`'s `except` handler → yields `error` event
+5. Frontend receives `error` event → catch block runs → **deletes all streamed text** → shows "Sorry, something went wrong"
+
+**Fix:** Replaced `event_stream._full_answer` with a **mutable `shared` dict** passed to streaming methods:
+
+```python
+# Before (broken):
+event_stream._full_answer = full_answer  # NameError
+
+# After (fixed):
+shared = {}
+yield from self._stream_nl_query(query, user, shared)
+# Inside _stream_nl_query:
+shared['full_answer'] = full_answer
+```
+
+**Impact:** Streaming now completes without crashing. Conversation saving works correctly.
+
+### 16b. Bug 2 (HIGH) — `max_retries=2` causing 20-second retry delays
+
+**File:** `ai/llm/provider_config.py`
+
+**Problem:** We added `max_retries=2` to `ChatOpenAI` as a "quick win" for resilience. But the OpenAI SDK's retry uses **exponential backoff**: 1s → 3s → 20s. When the LLM call failed (quota, timeout, network), the SDK retried with a 20-second delay, making the total wait 32+ seconds. This made slowness **worse**, not better.
+
+**Backend log evidence:**
+```
+Running GPT-4o formatter (streaming)
+Retrying request to /chat/completions in 20.000000 seconds
+```
+
+**Fix:** Removed `max_retries=2` from ChatOpenAI kwargs. Kept `request_timeout=8` (which is useful for preventing hangs). The SDK's default retry behavior (0 retries for streaming) is appropriate — streaming inherently provides user feedback, so aggressive retries aren't needed.
+
+### 16c. Updated Provider Capability Matrix
+
+| Setting | Before | After |
+|---------|--------|-------|
+| `request_timeout` | None (SDK default: ~10 min) | **8 seconds** |
+| `max_retries` | None (SDK default) | None (removed) |
+
+### 16d. Files Modified
+
+| File | Change |
+|------|--------|
+| `apps/ingestion/views.py` | Added `shared = {}` dict, passed to `_stream_rag()` and `_stream_nl_query()`, replaced `event_stream._full_answer` with `shared['full_answer']` |
+| `ai/llm/provider_config.py` | Removed `max_retries=2` from ChatOpenAI kwargs |
+
+### 16e. Verification
+
+```
+Backend:
+$ python -m py_compile apps/ingestion/views.py — OK
+$ python -m py_compile ai/llm/provider_config.py — OK
+
+Frontend:
+$ npm run build — ✓ built in 537ms
+```

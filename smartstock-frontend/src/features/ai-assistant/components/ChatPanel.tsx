@@ -26,7 +26,7 @@ export default function ChatPanel() {
 
   useEffect(() => {
     if (convError) {
-      setVisibleError(convError);
+      setVisibleError(convError); // eslint-disable-line react-hooks/set-state-in-effect
       const timer = setTimeout(() => setVisibleError(null), 4000);
       return () => clearTimeout(timer);
     }

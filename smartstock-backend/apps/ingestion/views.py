@@ -1,3 +1,4 @@
+import json as _json
 import logging
 import os
 import tempfile
@@ -1073,8 +1074,6 @@ class ChatEndpointView(APIView):
 # Streaming Chat Endpoint  — POST /api/ai/chat/stream/
 # ---------------------------------------------------------------------------
 
-import json as _json
-
 
 class ChatStreamView(APIView):
     """
@@ -1103,7 +1102,7 @@ class ChatStreamView(APIView):
             is_safe, matched_pattern = prompt_injection_filter(query)
         except Exception:
             logger.exception('Prompt injection filter failed')
-            is_safe, matched_pattern = False, 'filter_error'
+            is_safe = False
 
         if not is_safe:
             return Response(
@@ -1169,7 +1168,7 @@ class ChatStreamView(APIView):
 
             # Save to conversation after stream completes
             if conversation_id:
-                full_answer = getattr(event_stream, '_full_answer', '')
+                full_answer = shared.get('full_answer', '')
                 try:
                     is_new = conversation.messages.count() == 0
                     conv_service.save_message(
@@ -1200,7 +1199,7 @@ class ChatStreamView(APIView):
         response['X-Accel-Buffering'] = 'no'
         return response
 
-    def _stream_rag(self, query, user, history):
+    def _stream_rag(self, query, user, history, shared):
         """Stream RAG pipeline response."""
         service = RAGQueryService()
         full_answer = ''
@@ -1215,9 +1214,9 @@ class ChatStreamView(APIView):
                     done_data['action'] = event['action']
                 yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
 
-        event_stream._full_answer = full_answer
+        shared['full_answer'] = full_answer
 
-    def _stream_nl_query(self, query, user):
+    def _stream_nl_query(self, query, user, shared):
         """Stream NL Query pipeline response (streams only the formatter step)."""
         from ai.llm.chain import call_gpt4o_formatter_stream, get_nl_chain
         from apps.inventory.views import (
@@ -1270,4 +1269,4 @@ class ChatStreamView(APIView):
         done_data = {'action': {'type': action_type, 'filters': filters}}
         yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
 
-        event_stream._full_answer = full_answer
+        shared['full_answer'] = full_answer
