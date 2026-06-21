@@ -73,13 +73,23 @@ class AgentRun(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'agent run'
         verbose_name_plural = 'agent runs'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at'], name='agentrun_status_created_idx'),
+            models.Index(fields=['agent_name', 'created_at'], name='agentrun_name_created_idx'),
+        ]
 
     def __str__(self):
         return f'{self.agent_name}: {self.status}'
+
+    @property
+    def duration_seconds(self):
+        if self.started_at and self.completed_at:
+            return round((self.completed_at - self.started_at).total_seconds(), 2)
+        return None

@@ -727,6 +727,13 @@ class Command(BaseCommand):
             default=True,
             help='Run validation queries after seeding (default: True).',
         )
+        parser.add_argument(
+            '--skip-agent-runs',
+            action='store_true',
+            default=False,
+            help='Skip seeding AgentRun records. '
+            'Production data comes from real agent executions.',
+        )
 
     def handle(self, *args, **options):
         settings_module = os.environ.get('DJANGO_SETTINGS_MODULE', '')
@@ -738,6 +745,7 @@ class Command(BaseCommand):
 
         scale = options['scale']
         truncate = options.get('truncate', True)
+        skip_agent_runs = options.get('skip_agent_runs', False)
 
         if scale < 1 or scale > 100:
             raise CommandError('Scale must be between 1 and 100')
@@ -805,8 +813,11 @@ class Command(BaseCommand):
             self.stdout.write('Seeding invoice scans...')
             seed_invoice_scans(scale, users)
 
-            self.stdout.write('Seeding agent runs...')
-            seed_agent_runs(scale)
+            if not skip_agent_runs:
+                self.stdout.write('Seeding agent runs...')
+                seed_agent_runs(scale)
+            else:
+                self.stdout.write('Skipping agent runs (use real agent executions for dashboard data).')
 
             self.stdout.write('Seeding audit logs...')
             seed_audit_logs(scale, users)

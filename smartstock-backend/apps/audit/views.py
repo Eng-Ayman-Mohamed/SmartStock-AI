@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
@@ -129,7 +132,6 @@ class AuditLogView(ListAPIView):
     ),
 )
 class AgentRunViewSet(viewsets.ModelViewSet):
-    queryset = AgentRun.objects.all()
     serializer_class = AgentRunSerializer
     permission_classes = [IsAuthenticated]
 
@@ -137,3 +139,20 @@ class AgentRunViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return [IsViewerOrAbove()]
         return [IsManagerOrAbove()]
+
+    def get_queryset(self):
+        qs = AgentRun.objects.all()
+        days = self.request.query_params.get('days')
+        if days:
+            try:
+                days = int(days)
+                if days < 1:
+                    days = 1
+                elif days > 365:
+                    days = 365
+            except (TypeError, ValueError):
+                days = 7
+        else:
+            days = 7
+        cutoff = timezone.now() - timedelta(days=days)
+        return qs.filter(created_at__gte=cutoff).select_related()
