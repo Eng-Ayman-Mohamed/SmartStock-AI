@@ -115,29 +115,47 @@ def get_chat_llm_mini(temperature=0):
 def get_embeddings():
     """Get an embeddings model instance for the active provider.
 
-    Falls back to Gemini if the active provider has no embedding API (e.g. Groq).
+    Falls back to Cohere if the active provider's embeddings fail (e.g. invalid key).
     """
     config = get_provider_config()
 
-    # If the active provider supports embeddings, use it
+    # If the active provider supports embeddings, try it
     if config['embedding_model']:
-        if PROVIDER == 'gemini':
-            from langchain_google_genai import GoogleGenerativeAIEmbeddings
+        try:
+            if PROVIDER == 'gemini':
+                from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-            return GoogleGenerativeAIEmbeddings(
+                return GoogleGenerativeAIEmbeddings(
+                    model=config['embedding_model'],
+                    google_api_key=get_api_key(),
+                )
+
+            from langchain_openai import OpenAIEmbeddings
+
+            embeddings = OpenAIEmbeddings(
                 model=config['embedding_model'],
-                google_api_key=get_api_key(),
+                api_key=get_api_key(),
+                **({'base_url': config['base_url']} if config['base_url'] else {}),
+            )
+            # Validate with a test call
+            embeddings.embed_query('test')
+            return embeddings
+        except Exception as e:
+            logger.warning(
+                'Embeddings failed for provider %s: %s — trying Cohere fallback',
+                PROVIDER,
+                e,
             )
 
-        from langchain_openai import OpenAIEmbeddings
+    # Fallback: use Cohere embeddings if COHERE_API_KEY is set
+    cohere_key = os.getenv('COHERE_API_KEY')
+    if cohere_key:
+        from langchain_cohere import CohereEmbeddings
 
-        return OpenAIEmbeddings(
-            model=config['embedding_model'],
-            api_key=get_api_key(),
-            **({'base_url': config['base_url']} if config['base_url'] else {}),
-        )
+        logger.info('Using Cohere embeddings as fallback')
+        return CohereEmbeddings(model='embed-english-v3.0', cohere_api_key=cohere_key)
 
-    # Fallback: use Gemini for embeddings if provider doesn't support them
+    # Fallback: use Gemini for embeddings if GOOGLE_API_KEY is set
     gemini_key = os.getenv('GOOGLE_API_KEY')
     if gemini_key:
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -149,8 +167,8 @@ def get_embeddings():
         )
 
     raise ImproperlyConfigured(
-        f'Provider {PROVIDER} has no embedding API and GOOGLE_API_KEY is not set. '
-        'Set GOOGLE_API_KEY or switch to OpenAI/Gemini for embeddings.'
+        f'Provider {PROVIDER} has no embedding API and no fallback key is set. '
+        'Set COHERE_API_KEY, GOOGLE_API_KEY, or fix the OpenAI key.'
     )
 
 

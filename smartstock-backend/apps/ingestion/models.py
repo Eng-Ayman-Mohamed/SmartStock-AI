@@ -1,3 +1,5 @@
+import os
+
 from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
@@ -41,7 +43,7 @@ class Document(models.Model):
 
 class DocumentChunk(models.Model):
     chunk_text = models.TextField()
-    embedding = VectorField(dimensions=1536, null=True, blank=True)
+    embedding = VectorField(dimensions=1024, null=True, blank=True)
     tsvector = SearchVectorField(null=True, blank=True)
     source_document = models.CharField(max_length=500)
     page_number = models.IntegerField(null=True, blank=True)
@@ -70,9 +72,12 @@ class DocumentChunk(models.Model):
 
     @classmethod
     def get_embedding_dimensions(cls):
-        from ai.llm.provider_config import get_provider_config
-
-        return get_provider_config()['embedding_dimensions'] or 1536
+        provider = os.getenv('LLM_PROVIDER', 'openai').lower()
+        provider_embeddings = {
+            'openai': 1536,
+            'gemini': 768,
+        }
+        return provider_embeddings.get(provider, 1024)
 
 
 class InvoiceScan(models.Model):
