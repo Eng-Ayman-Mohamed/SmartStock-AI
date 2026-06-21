@@ -1067,3 +1067,40 @@ $ python -m py_compile ai/llm/provider_config.py — OK
 Frontend:
 $ npm run build — ✓ built in 537ms
 ```
+
+---
+
+## 17. Chat Title Bug Fix — 2026-06-21
+
+### 17a. Bug — Chat title stays "New Conversation" after first message
+
+**File:** `smartstock-frontend/src/features/ai-assistant/components/ChatPanel.tsx`
+
+**Problem:** When a user starts a new chat and sends their first message:
+1. `handleSend` calls `startNewConversation()` → creates conversation with title "New Conversation"
+2. `sendMessage()` streams the response → backend sets title via `auto_title()` after stream completes
+3. Frontend never refreshes `activeConversation` → title stays "New Conversation"
+
+**What happened:** The sidebar and header showed "New Conversation" even after the backend had already set the title to the first 80 chars of the user's query.
+
+**Fix:** Added `await selectConversation(newConv.id)` after `sendMessage()` completes for new conversations. This refetches the conversation from the backend, picking up the updated title.
+
+```typescript
+// Before (broken):
+await sendMessage(query, newConv.id);
+return;
+
+// After (fixed):
+await sendMessage(query, newConv.id);
+await selectConversation(newConv.id);
+return;
+```
+
+**Impact:** Chat title now updates correctly after the first message. Sidebar and header show the auto-generated title.
+
+### 17b. Files Modified
+
+| File | Change |
+|------|--------|
+| `smartstock-frontend/src/features/ai-assistant/components/ChatPanel.tsx` | Added `selectConversation` to deps and call after `sendMessage` |
+
