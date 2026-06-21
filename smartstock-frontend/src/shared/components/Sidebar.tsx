@@ -6,6 +6,7 @@ import {
   TrendingUp,
   ShoppingCart,
   Bot,
+  FileText,
   Scan,
   Settings,
   User as UserIcon,
@@ -24,6 +25,7 @@ const mainNavItems = [
   { to: '/purchasing', icon: ShoppingCart, label: 'Purchasing' },
   { to: '/suppliers', icon: Users, label: 'Suppliers' },
   { to: '/ai-assistant', icon: Bot, label: 'AI Assistant', accent: true },
+  { to: '/documents', icon: FileText, label: 'Documents' },
   { to: '/invoice-scan', icon: Scan, label: 'Invoice Scan' },
 ];
 

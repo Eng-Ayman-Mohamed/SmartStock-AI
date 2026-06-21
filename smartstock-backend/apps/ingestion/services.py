@@ -299,8 +299,8 @@ class IngestionService:
         )
 
         if actual_doc_type == 'pdf':
+            tmp_path = None
             try:
-                import os
                 import tempfile
 
                 file.seek(0)
@@ -308,14 +308,14 @@ class IngestionService:
                     for chunk in file.chunks():
                         tmp.write(chunk)
                     tmp_path = tmp.name
-                try:
-                    result = ingest_pdf(tmp_path, document_id=document.id)
-                    document.total_chunks = result['chunks']
-                    document.save(update_fields=['total_chunks'])
-                finally:
-                    os.unlink(tmp_path)
+                result = ingest_pdf(tmp_path, document_id=document.id)
+                document.total_chunks = result['chunks']
+                document.save(update_fields=['total_chunks'])
             except Exception as e:
                 logger.exception('PDF ingestion failed for document %s: %s', document.id, e)
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
 
         return document
 
@@ -344,11 +344,11 @@ class RAGQueryService:
     Thin orchestrator for the RAG pipeline.
 
     Pipeline order:
-        1. Embed query (same model as ingestion)
-        2. Hybrid search (dense + FTS)
-        3. Cohere reranking → top 3 chunks
-        4. Inject chunks + metadata into LLM context
-        5. Call GPT-4o with RAG system prompt
+        1. Hybrid search (dense + FTS) with query embedding
+        2. Cohere reranking → top 3 chunks
+        3. Build context from top chunks
+        4. Call LLM with RAG system prompt
+        5. Post-process citations
         6. Return answer + sources
     """
 
@@ -458,11 +458,11 @@ class RAGQueryService:
         ]
 
         if history:
-            history_text = '\n'.join(
-                f'{"User" if m["role"] == "user" else "Assistant"}: {m["content"]}'
-                for m in history[-10:]
-            )
-            messages.append(('user', f'Previous conversation:\n{history_text}'))
+            for m in history[-10:]:
+                role = m.get('role', 'user')
+                content = m.get('content', '')
+                if role in ('user', 'assistant'):
+                    messages.append((role, content))
 
         messages.append(('user', '{query}'))
 
@@ -494,18 +494,17 @@ class RAGQueryService:
     def execute(self, query: str, user=None, history: list | None = None) -> dict:
         start = time.time()
 
-        # Step 1: Hybrid search (includes embedding internally)
+        # Step 1: Hybrid search (embeds query + dense + sparse search)
         search_results = self.hybrid_search(query, top_k=10)
 
-        # Step 3: Rerank
+        # Step 2: Rerank to top 3 chunks
         try:
             top_chunks = self.rerank(query, search_results, top_n=3)
         except ConnectionError:
-            # Cohere unavailable — fall back to vector-score ranking
             logger.warning('Cohere unavailable — falling back to vector-score ranking')
             top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:3]
 
-        # Step 4: If no relevant chunks found, return explicit no-answer
+        # Step 3: If no relevant chunks found, return explicit no-answer
         if not top_chunks or all(c.get('score', 0) < 0.3 for c in top_chunks):
             latency_ms = round((time.time() - start) * 1000)
             return {
@@ -527,14 +526,17 @@ class RAGQueryService:
                 'token_usage': {},
             }
 
-        # Step 5: Build context and call LLM
+        # Step 4: Build context and call LLM
         context = self.build_context(top_chunks)
         self._last_token_usage = {}
         llm_response = self.call_llm(query, context, history)
         token_usage = self._last_token_usage
 
-        # Step 6: Extract sources from chunks
+        # Step 5: Post-process citations
+        from ai.rag.citation import inject_citations
+
         sources = self.extract_sources(top_chunks)
+        llm_response = inject_citations(llm_response, sources)
 
         latency_ms = round((time.time() - start) * 1000)
         return {

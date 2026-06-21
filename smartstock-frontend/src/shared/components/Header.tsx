@@ -15,6 +15,7 @@ const pageTitles: Record<string, string> = {
   '/forecasting': 'Forecasting',
   '/purchasing': 'Purchasing',
   '/ai-assistant': 'AI Assistant',
+  '/documents': 'Documents',
   '/invoice-scan': 'Invoice Scan',
   '/settings': 'Team & permissions',
   '/profile': 'Profile',

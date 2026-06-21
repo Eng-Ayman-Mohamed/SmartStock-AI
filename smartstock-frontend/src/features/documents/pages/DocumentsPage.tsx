@@ -1,0 +1,192 @@
+import { useState } from 'react';
+import {
+  FileText,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { useAuthStore } from '../../../store/authStore';
+import Card from '../../../shared/components/Card';
+import Button from '../../../shared/components/Button';
+import DataTable, { type Column } from '../../../shared/components/DataTable';
+import EmptyState from '../../../shared/components/EmptyState';
+import DocumentUploadModal from '../components/DocumentUploadModal';
+import { useDocuments, useDeleteDocument } from '../hooks/useDocuments';
+import type { Document } from '../types';
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  policy: 'Policy',
+  contract: 'Contract',
+  procedure: 'Procedure',
+  specification: 'Specification',
+};
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatDate(iso: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export default function DocumentsPage() {
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === 'admin';
+  const { data: documents, isLoading, error } = useDocuments();
+  const deleteDoc = useDeleteDocument();
+
+  const columns: Column<Document>[] = [
+    {
+      key: 'original_filename',
+      label: 'Filename',
+      render: (row) => (
+        <div className="flex items-center gap-2 min-w-0">
+          <FileText className="w-4 h-4 shrink-0 text-brand-600" />
+          <span className="truncate font-medium text-ink">{row.original_filename}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'doc_type',
+      label: 'Type',
+      render: (row) => (
+        <span className="inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-eyebrow text-brand-700 dark:bg-brand-900/30 dark:text-brand-200">
+          {DOC_TYPE_LABELS[row.doc_type] || row.doc_type}
+        </span>
+      ),
+    },
+    {
+      key: 'file_size',
+      label: 'Size',
+      align: 'right',
+      render: (row) => <span className="tabular-nums text-ink-secondary">{formatBytes(row.file_size)}</span>,
+    },
+    {
+      key: 'total_chunks',
+      label: 'Chunks',
+      align: 'center',
+      render: (row) => (
+        <span className="tabular-nums text-ink-secondary">
+          {row.total_chunks > 0 ? row.total_chunks : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'uploaded_by_username',
+      label: 'Uploaded By',
+      render: (row) => <span className="text-ink-secondary">{row.uploaded_by_username || '—'}</span>,
+    },
+    {
+      key: 'ingested_at',
+      label: 'Ingested',
+      render: (row) => <span className="text-ink-secondary">{formatDate(row.ingested_at)}</span>,
+    },
+    ...(isAdmin
+      ? [
+          {
+            key: 'actions',
+            label: '',
+            align: 'right' as const,
+            width: '48px',
+            render: (row: Document) => (
+              <button
+                onClick={() => setDeleteId(row.id)}
+                className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/30"
+                aria-label={`Delete ${row.original_filename}`}
+                title="Delete document"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-page-heading text-ink">Documents</h1>
+          <p className="text-body text-ink-muted mt-1">
+            Manage PDF documents used by the AI assistant for RAG queries.
+          </p>
+        </div>
+        <Button variant="primary" size="md" onClick={() => setUploadOpen(true)}>
+          <Plus className="w-4 h-4" /> Upload Document
+        </Button>
+      </div>
+
+      <Card noPadding>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 text-brand-600 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="rounded-md border border-red-200 bg-red-50 mx-6 my-4 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+            Failed to load documents. Please try again.
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={documents ?? []}
+            keyExtractor={(row) => String(row.id)}
+            caption="RAG documents"
+            emptyState={
+              <EmptyState
+                icon={Upload}
+                heading="No documents yet"
+                body="Upload a PDF to get started. Documents are chunked, embedded, and made searchable for the AI assistant."
+                actionLabel="Upload Document"
+                onAction={() => setUploadOpen(true)}
+              />
+            }
+          />
+        )}
+      </Card>
+
+      <DocumentUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+
+      {deleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setDeleteId(null)} aria-hidden="true" />
+          <div className="relative z-10 w-full max-w-sm rounded-lg border border-hairline bg-canvas shadow-lg p-6 space-y-4">
+            <h3 className="text-card-title text-ink">Delete Document</h3>
+            <p className="text-body text-ink-muted">
+              This will remove the document from the list and deactivate its chunks. The AI assistant will no longer search this document.
+            </p>
+            <div className="flex gap-3 border-t border-hairline pt-4">
+              <Button variant="secondary" size="md" className="flex-1" onClick={() => setDeleteId(null)} disabled={deleteDoc.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                className="flex-1"
+                onClick={() => {
+                  if (deleteId !== null) {
+                    deleteDoc.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
+                  }
+                }}
+                disabled={deleteDoc.isPending}
+              >
+                {deleteDoc.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

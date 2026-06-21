@@ -68,6 +68,12 @@ class DocumentChunk(models.Model):
     def __str__(self):
         return f'{self.source_document} (page {self.page_number})'
 
+    @classmethod
+    def get_embedding_dimensions(cls):
+        from ai.llm.provider_config import get_provider_config
+
+        return get_provider_config()['embedding_dimensions'] or 1536
+
 
 class InvoiceScan(models.Model):
     class Status(models.TextChoices):
