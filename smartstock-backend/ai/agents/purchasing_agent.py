@@ -70,9 +70,11 @@ class PurchasingAgent:
 
         try:
             result = self._execute_workflow(context, trace_spans)
-            status = AgentRun.Status.COMPLETED if result.get('status') not in (
-                'failed', 'rejected', 'timeout'
-            ) else AgentRun.Status.FAILED
+            status = (
+                AgentRun.Status.COMPLETED
+                if result.get('status') not in ('failed', 'rejected', 'timeout')
+                else AgentRun.Status.FAILED
+            )
             error = result.get('error', '')
         except Exception as e:
             logger.exception('PurchasingAgent workflow failed')
@@ -91,7 +93,9 @@ class PurchasingAgent:
             trace_agent_run('purchasing_agent', context, result, trace_spans)
             _duration = round((time.time() - _started_at) * 1000)
             _outcome = (
-                'failure' if result.get('status') in ('failed', 'rejected', 'timeout') else 'success'
+                'failure'
+                if result.get('status') in ('failed', 'rejected', 'timeout')
+                else 'success'
             )
             record_agent_run_task.delay(
                 agent_name='purchasing_agent',

@@ -218,7 +218,9 @@ class TestForecastingAgent(unittest.TestCase):
     @patch('ai.agents.forecasting_agent.create_agent_run')
     @patch('ai.agents.forecasting_agent.trace_agent_run')
     @patch('ai.agents.forecasting_agent.record_agent_run_task')
-    def test_run_skips_when_todays_forecast_exists(self, mock_record, mock_trace, mock_create, mock_complete):
+    def test_run_skips_when_todays_forecast_exists(
+        self, mock_record, mock_trace, mock_create, mock_complete
+    ):
         mock_create.return_value = MagicMock(id=1)
         mock_repo = MagicMock()
         mock_sku = MagicMock()
@@ -241,7 +243,9 @@ class TestForecastingAgent(unittest.TestCase):
     @patch('ai.agents.forecasting_agent.trace_agent_run')
     @patch('ai.agents.forecasting_agent.get_langchain_callbacks')
     @patch('ai.agents.forecasting_agent.record_agent_run_task')
-    def test_run_fails_gracefully_on_agent_error(self, mock_record, mock_callbacks, mock_trace, mock_create, mock_complete):
+    def test_run_fails_gracefully_on_agent_error(
+        self, mock_record, mock_callbacks, mock_trace, mock_create, mock_complete
+    ):
         mock_create.return_value = MagicMock(id=1)
         mock_callbacks.return_value = []
         mock_repo = MagicMock()
@@ -268,7 +272,9 @@ class TestForecastingAgent(unittest.TestCase):
     @patch('ai.agents.forecasting_agent.trace_agent_run')
     @patch('ai.agents.forecasting_agent.get_langchain_callbacks')
     @patch('ai.agents.forecasting_agent.record_agent_run_task')
-    def test_run_with_single_sku(self, mock_record, mock_callbacks, mock_trace, mock_create, mock_complete):
+    def test_run_with_single_sku(
+        self, mock_record, mock_callbacks, mock_trace, mock_create, mock_complete
+    ):
         mock_create.return_value = MagicMock(id=1)
         mock_callbacks.return_value = []
         mock_repo = MagicMock()

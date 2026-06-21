@@ -731,8 +731,7 @@ class Command(BaseCommand):
             '--skip-agent-runs',
             action='store_true',
             default=False,
-            help='Skip seeding AgentRun records. '
-            'Production data comes from real agent executions.',
+            help='Skip seeding AgentRun records. Production data comes from real agent executions.',
         )
 
     def handle(self, *args, **options):
@@ -817,7 +816,9 @@ class Command(BaseCommand):
                 self.stdout.write('Seeding agent runs...')
                 seed_agent_runs(scale)
             else:
-                self.stdout.write('Skipping agent runs (use real agent executions for dashboard data).')
+                self.stdout.write(
+                    'Skipping agent runs (use real agent executions for dashboard data).'
+                )
 
             self.stdout.write('Seeding audit logs...')
             seed_audit_logs(scale, users)

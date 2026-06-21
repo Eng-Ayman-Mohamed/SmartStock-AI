@@ -4,27 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("audit", "0002_initial"),
+        ('audit', '0002_initial'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name="agentrun",
-            name="created_at",
+            model_name='agentrun',
+            name='created_at',
             field=models.DateTimeField(auto_now_add=True, db_index=True),
         ),
         migrations.AddIndex(
-            model_name="agentrun",
-            index=models.Index(
-                fields=["status", "created_at"], name="agentrun_status_created_idx"
-            ),
+            model_name='agentrun',
+            index=models.Index(fields=['status', 'created_at'], name='agentrun_status_created_idx'),
         ),
         migrations.AddIndex(
-            model_name="agentrun",
+            model_name='agentrun',
             index=models.Index(
-                fields=["agent_name", "created_at"], name="agentrun_name_created_idx"
+                fields=['agent_name', 'created_at'], name='agentrun_name_created_idx'
             ),
         ),
     ]

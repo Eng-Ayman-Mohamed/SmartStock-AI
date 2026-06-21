@@ -135,7 +135,7 @@ class ForecastingAgent:
             }
             if output['failed'] > 0:
                 status = AgentRun.Status.FAILED
-                error = f"{output['failed']} SKU(s) failed"
+                error = f'{output["failed"]} SKU(s) failed'
         finally:
             complete_agent_run(
                 agent_run.id,
@@ -144,7 +144,9 @@ class ForecastingAgent:
             )
             trace_agent_run('forecasting_agent', payload, output, trace_spans)
             _duration = round((time.time() - _started_at) * 1000)
-            _outcome = 'failure' if output.get('failed', 0) > 0 or output.get('error') else 'success'
+            _outcome = (
+                'failure' if output.get('failed', 0) > 0 or output.get('error') else 'success'
+            )
             record_agent_run_task.delay(
                 agent_name='forecasting_agent',
                 outcome=_outcome,
