@@ -53,6 +53,17 @@ _PROVIDERS = {
         'base_url': None,
         'api_key_env': 'GOOGLE_API_KEY',
     },
+    'xai': {
+        'chat_model': 'grok-2-1212',
+        'chat_model_mini': 'grok-2-1212',
+        'embedding_model': None,  # xAI has no embedding API
+        'embedding_dimensions': None,
+        'whisper_model': None,
+        'vision_model': 'grok-2-1212',
+        'supports_vision': True,
+        'base_url': 'https://api.x.ai/v1',
+        'api_key_env': 'XAI_API_KEY',
+    },
 }
 
 
