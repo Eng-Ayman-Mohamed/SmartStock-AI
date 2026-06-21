@@ -743,3 +743,38 @@ $ npm run lint
 | `features/ai-assistant/components/ChatPanel.tsx` | +15 (textarea, auto-resize, transcript populate) |
 | `features/ai-assistant/components/MessageBubble.tsx` | +2 (fadeIn class, removed engine labels) |
 | `features/ai-assistant/components/ChatEmptyState.tsx` | +8 (spacing, icon size, chip styling) |
+
+---
+
+## 13. High-Severity Bug Fixes — 2026-06-21
+
+### 13a. Bug 3 (HIGH) — Frontend: Conversation CRUD errors invisible to user
+
+**File:** `features/ai-assistant/components/ChatPanel.tsx`
+
+**Problem:** The `useConversations()` hook stores `error` state on every API failure (load, create, delete, rename), but `ChatPanel` never destructured it. When "New Chat" or "Delete" failed, the button silently did nothing. No toast, no alert, no visual feedback of any kind.
+
+**Fix:** Destructured `error` from `useConversations()` as `convError`. Added a local `visibleError` state + `useEffect` that auto-dismisses after 4 seconds. Renders a red banner below the header bar with the error text and a dismiss (X) button.
+
+| File | Change |
+|------|--------|
+| `ChatPanel.tsx:16` | Added `error: convError` to destructuring |
+| `ChatPanel.tsx:34-41` | Added `visibleError` state + auto-dismiss `useEffect` |
+| `ChatPanel.tsx:132-140` | Added red error banner with dismiss button in JSX |
+
+**Test result:** TypeScript 0 errors.
+
+### 13b. Bug 4 (HIGH) — Backend: `_run_nl_query` has no prompt injection filter
+
+**File:** `apps/ingestion/views.py`
+
+**Problem:** The `ChatEndpointView.post()` method checks for prompt injection at line 749 before calling the pipeline, but `_run_nl_query()` itself had zero defenses. If called from a different code path in the future, or if the caller check is ever refactored away, the endpoint would be fully exposed to injection attacks. Defense-in-depth violation.
+
+**Fix:** Added a prompt injection check at the start of `_run_nl_query()`. On detection, logs an `AuditLog` with `event='PROMPT_INJECTION_ATTEMPT'` and raises `ValueError('PROMPT_INJECTION_DETECTED')`. The `post()` method catches this specifically and returns `400 BAD_REQUEST` instead of falling through to the generic `500 INTERNAL_SERVER_ERROR` handler.
+
+| File | Change |
+|------|--------|
+| `ingestion/views.py:_run_nl_query` | Added `prompt_injection_filter(query)` check at method entry; raises `ValueError` with injection flag |
+| `ingestion/views.py:post()` | Added `except ValueError as exc:` handler before generic `Exception` — returns 400 for injection, 500 for other ValueErrors |
+
+**Test result:** 85/85 chat/ingestion tests passed, Ruff all checks passed.

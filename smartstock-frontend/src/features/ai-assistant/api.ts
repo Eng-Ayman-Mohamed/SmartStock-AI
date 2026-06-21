@@ -9,8 +9,8 @@ export interface ChatRequest {
   conversation_id?: string;
 }
 
-export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
-  const { data } = await api.post<ChatResponse>('/ai/chat/', request);
+export async function sendChatMessage(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
+  const { data } = await api.post<ChatResponse>('/ai/chat/', request, { signal });
   return data;
 }
 

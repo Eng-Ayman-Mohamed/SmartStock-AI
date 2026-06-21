@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { Send, PanelLeftOpen, PanelLeftClose, X, RefreshCw } from 'lucide-react';
 import useChat from '../hooks/useChat';
 import useConversations from '../hooks/useConversations';
 import ModeSelector from './ModeSelector';
@@ -14,6 +14,7 @@ export default function ChatPanel() {
     conversations,
     activeConversation,
     isLoading: convLoading,
+    error: convError,
     selectConversation,
     startNewConversation,
     removeConversation,
@@ -21,10 +22,22 @@ export default function ChatPanel() {
     clearActive,
   } = useConversations();
 
+  const [visibleError, setVisibleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (convError) {
+      setVisibleError(convError);
+      const timer = setTimeout(() => setVisibleError(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [convError]);
+
   const {
     messages,
     sendMessage,
+    retryLastMessage,
     isLoading,
+    error: chatError,
     mode,
     setMode,
     loadFromConversation,
@@ -129,6 +142,15 @@ export default function ChatPanel() {
           )}
         </div>
 
+        {visibleError && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-sm text-red-700">
+            <span className="flex-1">{visibleError}</span>
+            <button onClick={() => setVisibleError(null)} className="p-0.5 rounded hover:bg-red-100">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <div
           className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
           role="log"
@@ -141,6 +163,17 @@ export default function ChatPanel() {
             messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
           )}
           {isLoading && <TypingIndicator />}
+          {!isLoading && chatError && (
+            <div className="flex justify-center">
+              <button
+                onClick={retryLastMessage}
+                className="flex items-center gap-1.5 text-sm text-ink-muted hover:text-brand-600 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 

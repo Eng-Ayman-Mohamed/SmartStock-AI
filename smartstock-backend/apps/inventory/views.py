@@ -1,4 +1,5 @@
 import logging
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -65,12 +66,24 @@ _QUERY_PATTERN_CACHE: list[tuple[str, str, dict]] = [
 ]
 
 
+_NEGATION_WORDS = {'not', "don't", "dont", "without", "except", "excluding", "never", "no"}
+
+
 def _match_cached_query(query: str) -> tuple[str, dict] | None:
-    """Return (action, filters_dict) if the query matches a cached pattern, else None."""
+    """Return (action, filters_dict) if the query matches a cached pattern, else None.
+
+    Uses word-boundary matching to avoid false positives (e.g. "show products" won't match
+    "don't show products"). Also skips the cache if the query contains negation words within
+    a short distance of the matched pattern.
+    """
     lower_q = query.strip().lower()
     for pattern, cached_action, cached_filters in _QUERY_PATTERN_CACHE:
-        if pattern in lower_q:
-            return cached_action, cached_filters
+        if not re.search(r'\b' + re.escape(pattern) + r'\b', lower_q):
+            continue
+        words = set(lower_q.split())
+        if words & _NEGATION_WORDS:
+            continue
+        return cached_action, cached_filters
     return None
 
 
@@ -1629,7 +1642,9 @@ class NLQueryEndpointView(APIView):
         )
 
     def _handle_get_low_stock(self, filters):
-        return _handle_get_low_stock(filters)
+        return _handle_get_low_stock(
+            NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
+        )
 
     def _handle_forecast_demand(self, filters):
         return _handle_forecast_demand(filters)

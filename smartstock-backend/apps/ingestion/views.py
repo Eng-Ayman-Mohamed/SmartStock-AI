@@ -830,6 +830,20 @@ class ChatEndpointView(APIView):
                 {'status': 'error', 'message': sanitize_llm_error(exc)},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
+        except ValueError as exc:
+            executor.shutdown(wait=False)
+            msg = str(exc)
+            if msg == 'PROMPT_INJECTION_DETECTED':
+                logger.warning('Prompt injection blocked in NL query pipeline')
+                return Response(
+                    {'status': 'error', 'message': 'Query contains disallowed content.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            logger.exception('Chat pipeline error')
+            return Response(
+                {'status': 'error', 'message': 'An unexpected error occurred.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         except Exception as exc:
             executor.shutdown(wait=False)
             logger.exception('Chat pipeline failed')
@@ -916,6 +930,20 @@ class ChatEndpointView(APIView):
 
     def _run_nl_query(self, query: str, user, history: list | None = None) -> dict:
         """Execute the NL Query pipeline — mirrors NLQueryEndpointView._run_pipeline."""
+        # Defense-in-depth: prompt injection check (caller also checks in post())
+        is_safe, matched_pattern = prompt_injection_filter(query)
+        if not is_safe:
+            AuditLog.objects.create(
+                user=user,
+                event='PROMPT_INJECTION_ATTEMPT',
+                data_snapshot={
+                    'query': query[:200],
+                    'matched_pattern': matched_pattern,
+                    'endpoint': 'chat_nl_query',
+                },
+            )
+            raise ValueError('PROMPT_INJECTION_DETECTED')
+
         from ai.llm.chain import call_gpt4o_formatter, get_nl_chain
         from apps.inventory.views import (
             _handle_forecast_demand,
