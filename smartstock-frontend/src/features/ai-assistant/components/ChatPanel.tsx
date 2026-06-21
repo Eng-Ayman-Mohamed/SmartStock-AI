@@ -69,13 +69,14 @@ export default function ChatPanel() {
         if (!newConv) return;
         setInput('');
         await sendMessage(query, newConv.id);
+        await selectConversation(newConv.id);
         return;
       }
 
       setInput('');
       await sendMessage(query);
     },
-    [input, isLoading, activeConversation, startNewConversation, sendMessage],
+    [input, isLoading, activeConversation, startNewConversation, sendMessage, selectConversation],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
