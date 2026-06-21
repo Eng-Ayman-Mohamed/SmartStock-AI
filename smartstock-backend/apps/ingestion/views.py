@@ -1162,7 +1162,11 @@ class ChatStreamView(APIView):
                     yield from self._stream_nl_query(query, user, shared)
             except Exception as exc:
                 logger.exception('Streaming chat failed')
-                error_msg = sanitize_llm_error(exc) if is_llm_quota_error(exc) else 'An unexpected error occurred.'
+                error_msg = (
+                    sanitize_llm_error(exc)
+                    if is_llm_quota_error(exc)
+                    else 'An unexpected error occurred.'
+                )
                 yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
                 return
 

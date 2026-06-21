@@ -66,7 +66,7 @@ _QUERY_PATTERN_CACHE: list[tuple[str, str, dict]] = [
 ]
 
 
-_NEGATION_WORDS = {'not', "don't", "dont", "without", "except", "excluding", "never", "no"}
+_NEGATION_WORDS = {'not', "don't", 'dont', 'without', 'except', 'excluding', 'never', 'no'}
 
 
 def _match_cached_query(query: str) -> tuple[str, dict] | None:

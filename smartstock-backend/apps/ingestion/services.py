@@ -620,7 +620,7 @@ class RAGQueryService:
         final_answer = inject_citations(full_answer, sources)
         # Yield the corrected answer if citations changed the text
         if final_answer != full_answer:
-            yield {'type': 'token', 'content': final_answer[len(full_answer):]}
+            yield {'type': 'token', 'content': final_answer[len(full_answer) :]}
 
         latency_ms = round((time.time() - start) * 1000)
         yield {
