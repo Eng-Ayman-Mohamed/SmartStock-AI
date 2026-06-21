@@ -667,3 +667,79 @@ Full test suite: **1395 passed**, 0 failed. Coverage: **84.88%** (above 80% thre
 - Cap at 100 results (matching other handlers' patterns)
 
 **Test result:** 187 inventory/low-stock tests passed, 0 new lint errors.
+
+---
+
+## 12. Frontend AI Chat UI Improvements — 2026-06-21
+
+### 12a. Why These Changes
+
+The AI chat interface had three UX issues:
+1. **No voice feedback** — the voice recorder showed only a countdown timer, with no visual indication that audio was being captured
+2. **Voice auto-sent** — transcribed text was sent immediately with no chance to review or edit
+3. **Dated visual design** — single-line text input, no message animations, engine labels cluttering the UI
+
+### 12b. Voice Transcript Review
+
+**Files modified:**
+
+| File | Change |
+|------|--------|
+| `features/ai-assistant/hooks/useVoiceRecorder.ts` | Removed `onTranscript` callback pattern. Added `transcript` state + `clearTranscript()`. After transcription, text stored in state instead of auto-sending |
+| `features/ai-assistant/components/VoiceButton.tsx` | Accepts `onTranscript` prop. When hook finishes transcription, calls `onTranscript(transcript)` with the text |
+| `features/ai-assistant/components/ChatPanel.tsx` | Changed `onTranscript` handler to populate input box (`setInput(text)`) and focus the textarea instead of calling `handleSend(text)` |
+
+**User flow (before):** Record → Stop → Transcribe → Auto-send
+**User flow (after):** Record → Stop → Transcribe → Text appears in input → User reviews/edits → Press Send
+
+### 12c. Live Audio Bars Waveform
+
+**Files modified:**
+
+| File | Change |
+|------|--------|
+| `features/ai-assistant/hooks/useVoiceRecorder.ts` | Added `AudioContext` + `AnalyserNode` connected to mic stream. Runs `requestAnimationFrame` loop reading frequency data, computes average volume (0-1), exposes `audioLevel` state. Cleans up on stop/cancel |
+| `features/ai-assistant/components/VoiceButton.tsx` | Added `AudioBars` component — 5 vertical bars that scale with `audioLevel` using `transform: scaleY()`. Rendered next to the stop button during recording |
+
+**Technical details:**
+- Uses Web Audio API `AnalyserNode` with `fftSize: 256` (128 frequency bins)
+- Volume computed as average of all frequency bins, normalized to 0-1
+- Bars have staggered `offset` based on distance from center for a natural bounce effect
+- `requestAnimationFrame` loop ensures smooth 60fps animation
+- AudioContext properly closed on stop/cancel to prevent resource leaks
+
+### 12d. Visual Polish
+
+**Files modified:**
+
+| File | Change |
+|------|--------|
+| `features/ai-assistant/components/ChatPanel.tsx` | Replaced `<input type="text">` with auto-resizing `<textarea>`. Supports Shift+Enter for newlines. Auto-resizes up to 160px max height. Send button aligned with textarea bottom |
+| `features/ai-assistant/components/MessageBubble.tsx` | Added `animate-fadeIn` class to messages. Removed engine labels (`NL Query`/`RAG`/`Auto`) from AI message bubbles |
+| `features/ai-assistant/components/ChatEmptyState.tsx` | Larger bot icon (16→14), more vertical spacing, suggestion chips with rounded-xl and hover background effect |
+
+### 12e. OpenAI API Impact
+
+**Voice transcription:** No change to API usage. The `transcribeAudio()` call happens at the same point in the flow — only the post-transcription behavior changed (populate input vs auto-send).
+
+**Token usage:** No change. The same messages are sent to the LLM; the only difference is users can now edit transcribed text before sending, which may slightly reduce wasted tokens from mis-transcribed voice input.
+
+### 12f. Build & Lint Results
+
+```
+$ npm run build
+✓ built in 934ms — 0 errors, 0 TS errors
+
+$ npm run lint
+0 errors, 0 warnings
+```
+
+### 12g. Files Changed Summary
+
+| File | Lines changed |
+|------|--------------|
+| `features/ai-assistant/hooks/useVoiceRecorder.ts` | +45 (AudioContext, audioLevel, transcript state) |
+| `features/ai-assistant/components/VoiceButton.tsx` | +25 (AudioBars component, useEffect for transcript) |
+| `features/ai-assistant/components/ChatPanel.tsx` | +15 (textarea, auto-resize, transcript populate) |
+| `features/ai-assistant/components/MessageBubble.tsx` | +2 (fadeIn class, removed engine labels) |
+| `features/ai-assistant/components/ChatEmptyState.tsx` | +8 (spacing, icon size, chip styling) |
