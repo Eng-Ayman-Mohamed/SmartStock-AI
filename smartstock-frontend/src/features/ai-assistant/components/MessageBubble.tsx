@@ -48,6 +48,8 @@ interface MessageBubbleProps {
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
+  if (!isUser && !message.text) return null;
+
   return (
     <div className={`flex gap-2.5 animate-fadeIn ${isUser ? 'flex-row-reverse' : ''}`}>
       <div

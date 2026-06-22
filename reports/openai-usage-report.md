@@ -1152,3 +1152,123 @@ return;
 
 **Impact:** Backend now uses Groq (which has available quota). LLM calls have 20 seconds per request (up from 8s). Transient errors auto-retry up to 3 times. Suggestion button uses a simpler, more reliable query.
 
+---
+
+### 21. Fix: Chat Title Not Updating After First Message (2026-06-22)
+
+**Problem:** When a user sends only one question in a new chat, the chat title stays as "New Conversation" in the sidebar. The backend auto-titles correctly (truncates first message to 80 chars), but the sidebar never refreshes.
+
+**Root cause:** `loadConversations` was not destructured in `ChatPanel.tsx`, so the sidebar list was never refreshed after the backend auto-titled the conversation.
+
+**Fix:**
+
+| File | Change |
+|------|--------|
+| `smartstock-frontend/src/features/ai-assistant/components/ChatPanel.tsx` | Added `loadConversations` to destructuring from `useConversations()`. Added `await loadConversations()` after `selectConversation(newConv.id)` in `handleSend`. Added `loadConversations` to `useCallback` dependency array. |
+
+**Impact:** Sidebar now refreshes after the first message, showing the auto-generated title.
+
+---
+
+### 22. Fix: Duplicate Chat Bubbles During Loading (2026-06-22)
+
+**Problem:** When the AI is generating an answer, two chat boxes appear stacked on top of each other — an empty AI placeholder bubble and the `TypingIndicator`.
+
+**Root cause:** `sendMessage` in `useChat.ts` adds an empty AI placeholder (`text: ''`) to the `messages` array at the same time as the user message. Both `messages.map()` and `{isLoading && <TypingIndicator />}` render simultaneously, producing two AI-styled boxes.
+
+**Fix:**
+
+| File | Change |
+|------|--------|
+| `smartstock-frontend/src/features/ai-assistant/components/MessageBubble.tsx` (line 51) | Added `if (!isUser && !message.text) return null;` — hides empty AI placeholder bubbles. |
+
+**Impact:** During loading, only the `TypingIndicator` shows. Once the first token arrives, the AI bubble appears with content.
+
+---
+
+### 23. Fix: Long Queries Timing Out / Server Down (2026-06-22)
+
+**Problem:** Longer queries like "Show me supplier performance over month" cause the server to show retry or "sorry something went wrong" messages. The frontend 60s timeout kills the stream before the backend finishes multiple LLM calls.
+
+**Root cause:** Three issues:
+1. Frontend `AbortSignal.timeout(60000)` killed streams that took longer than 60s (3 sequential LLM calls can easily exceed this).
+2. Backend had no heartbeat to keep SSE connections alive during long LLM calls — proxies/browsers dropped idle connections.
+3. Backend LLM timeout (20s) was too tight for complex queries.
+
+**Fixes:**
+
+| File | Change |
+|------|--------|
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` (lines 98, 207) | Removed `AbortSignal.timeout(60000)` entirely — stream now uses only `controller.signal` (user can still cancel manually). |
+| `smartstock-backend/apps/ingestion/views.py` | Added SSE heartbeat comments (`: thinking...`, `: classifying query...`, `: generating response...`, `: searching documents...`) before each LLM call to keep connections alive. |
+| `smartstock-backend/ai/llm/provider_config.py` (line 113) | `request_timeout=20` → `request_timeout=30` per LLM request. |
+
+**Impact:** Long queries now take as long as they need without frontend timeout. Heartbeats prevent proxy/browser connection drops.
+
+---
+
+### 24. Fix: Groq Malformed Tool Calls Not Retried (2026-06-22)
+
+**Problem:** Groq's LLM sometimes generates malformed JSON in function calls (e.g., missing `"value":` key). This returns a 400 `tool_use_failed` error that was not in the transient retry list, so it failed immediately instead of retrying.
+
+**Fix:**
+
+| File | Change |
+|------|--------|
+| `smartstock-backend/ai/llm/chain.py` | Added `tool_use_failed`, `bad_request`, `invalid_request_error` to transient error detection in `NLQueryChain.run()`. |
+| `smartstock-backend/ai/llm/chain.py` | Added `_keyword_fallback()` function — when all 3 retries fail, uses simple keyword matching to determine the action (e.g., "low stock" → `get_low_stock`). |
+| `smartstock-backend/ai/llm/chain.py` | `NLQueryParseError` catch now calls `_keyword_fallback(query)` instead of always returning `get_inventory`. |
+| `smartstock-backend/ai/llm/chain.py` | Retry backoff increased from 1s/2s to 2s/4s. Added `RESOURCE_EXHAUSTED` to transient error detection. |
+
+**Keyword fallback priority:**
+1. `get_top_products` — "top", "best", "most sold", "highest"
+2. `get_low_stock` — "low stock", "reorder", "restock", "need restocking"
+3. `forecast_demand` — "forecast", "predict", "demand", "next 30"
+4. `get_supplier_info` — "supplier", "vendor"
+5. `get_total_value` — "total value", "inventory value", "worth"
+6. `get_sales_report` — "sales", "sold", "revenue"
+7. `get_inventory` — default fallback
+
+**Testing:** 10/10 queries classified correctly with Groq:
+- "Show me supplier performance this month" → `get_sales_report` ✓
+- "What products are low on stock?" → `get_low_stock` ✓
+- "What's my total inventory value?" → `get_total_value` ✓
+- "Show me the top 5 selling products" → `get_top_products` ✓
+- "Which items have stock below 10?" → `get_inventory` (with lt filter) ✓
+- "Give me the sales report for last month" → `get_sales_report` ✓
+- "What is the demand forecast for the next 30 days?" → `forecast_demand` ✓
+- "Show all Electronics products sorted by quantity" → `get_inventory` ✓
+- "Find products whose name contains chair" → `get_inventory` ✓
+- "Which Furniture items need restocking?" → `get_low_stock` ✓
+
+**Impact:** Groq's occasional malformed tool calls now retry instead of failing. When the LLM is completely unavailable (quota exhausted), the keyword fallback provides reasonable results.
+
+---
+
+### 25. Fix: Loading State Bug — Multiple Messages / Stale Closure (2026-06-22)
+
+**Problem:** Sending multiple messages rapidly causes the loading state to behave incorrectly. The loading spinner can get stuck, or multiple messages process simultaneously when they shouldn't.
+
+**Root cause:** Three issues:
+
+1. **Stale closure:** `sendMessage` used `isLoading` from its React state closure for the guard (`if (!trimmed || isLoading) return`). During rapid clicks, React hasn't re-rendered yet, so the old closure still has `isLoading=false` — the guard is bypassed.
+
+2. **Abort didn't clear loading:** When a message was aborted (by sending a new one), the `finally` block skipped `setIsLoading(false)` because `controller.signal.aborted` was true. But the new message had already called `setIsLoading(true)`, so loading stayed stuck until the new message completed.
+
+3. **Dependency array included `isLoading`:** `sendMessage` was recreated every time `isLoading` changed, causing unnecessary re-renders and potential stale references.
+
+**Fix:**
+
+| File | Change |
+|------|--------|
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` | Added `isLoadingRef` (`useRef(false)`) — ref updates immediately, no re-render needed. |
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` | Guard uses `isLoadingRef.current` instead of `isLoading` state — no stale closure. |
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` | `finally` block always calls `setIsLoading(false)` and `isLoadingRef.current = false` regardless of abort state. |
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` | `loadFromConversation` also resets `isLoadingRef` and `isLoading`. |
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` | Removed `isLoading` from `sendMessage` and `retryLastMessage` dependency arrays. |
+
+**Impact:** Loading state is now reliable. Rapid message sends are properly blocked. Aborted messages correctly clear the loading state. The send button and textarea are disabled during loading (already existed in `ChatPanel.tsx`).
+
+---
+
+
