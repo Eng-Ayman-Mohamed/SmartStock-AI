@@ -224,7 +224,10 @@ class NLQueryChain:
                 return self._parse_tool_call(response)
             except NLQueryParseError as exc:
                 logger.warning('NLQueryParseError for query %r: %s', query, exc)
-                return _keyword_fallback(query)
+                return NLQueryResult(
+                    action=NLQueryAction.GET_INVENTORY,
+                    filters=NLQueryFilters(),
+                )
             except Exception as exc:
                 is_transient = (
                     'timeout' in str(exc).lower()
