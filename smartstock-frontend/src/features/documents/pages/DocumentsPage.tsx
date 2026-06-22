@@ -100,7 +100,6 @@ export default function DocumentsPage() {
     {
       key: 'file_size',
       label: 'Size',
-      align: 'right',
       sortable: true,
       sortOrder: sortField === 'file_size' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="tabular-nums text-ink-secondary">{formatBytes(row.file_size)}</span>,
@@ -108,7 +107,6 @@ export default function DocumentsPage() {
     {
       key: 'total_chunks',
       label: 'Chunks',
-      align: 'center',
       sortable: true,
       sortOrder: sortField === 'total_chunks' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => (
@@ -131,45 +129,39 @@ export default function DocumentsPage() {
       sortOrder: sortField === 'ingested_at' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="text-ink-secondary">{formatDate(row.ingested_at)}</span>,
     },
-    ...(isAdmin
-      ? [
-          {
-            key: 'actions',
-            label: '',
-            align: 'right' as const,
-            width: '96px',
-            render: (row: Document) => (
-              <div className="flex items-center justify-end gap-1">
-                <button
-                  onClick={() => setDetailId(row.id)}
-                  className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
-                  aria-label={`View ${row.original_filename}`}
-                  title="View details"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setEditId(row.id)}
-                  className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
-                  aria-label={`Edit ${row.original_filename}`}
-                  title="Edit document"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setDeleteId(row.id)}
-                  className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/30"
-                  aria-label={`Delete ${row.original_filename}`}
-                  title="Delete document"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
   ];
+
+  function renderActions(row: Document) {
+    if (!isAdmin) return null;
+    return (
+      <div className="flex items-center justify-end gap-1">
+        <button
+          onClick={() => setDetailId(row.id)}
+          className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
+          aria-label={`View ${row.original_filename}`}
+          title="View details"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => setEditId(row.id)}
+          className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+          aria-label={`Edit ${row.original_filename}`}
+          title="Edit document"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => setDeleteId(row.id)}
+          className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/30"
+          aria-label={`Delete ${row.original_filename}`}
+          title="Delete document"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
 
   const maxPage = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const currentPage = Math.min(page, maxPage);
@@ -189,7 +181,7 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn flex-1 min-h-0 flex flex-col">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-page-heading text-ink">Documents</h1>
@@ -218,6 +210,8 @@ export default function DocumentsPage() {
             keyExtractor={(row) => String(row.id)}
             caption="RAG documents"
             onSort={handleSort}
+            actionsLabel={isAdmin ? 'Actions' : undefined}
+            renderActions={renderActions}
             pagination={documents.length > 0 ? paginationConfig : undefined}
             emptyState={
               <EmptyState

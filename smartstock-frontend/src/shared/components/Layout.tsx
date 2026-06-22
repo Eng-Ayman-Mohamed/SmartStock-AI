@@ -7,10 +7,10 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-canvas-soft">
       <Sidebar />
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto">
         <Header />
-        <div className="flex justify-center">
-          <main className="w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex justify-center flex-1 min-h-0">
+          <main className="w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8 flex-1 min-h-0 flex flex-col">
             <Outlet />
           </main>
         </div>

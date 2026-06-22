@@ -76,7 +76,6 @@ export default function PurchasingPage() {
       {
         key: "quantity",
         label: "Qty",
-        align: "right",
         width: "60px",
         sortable: true,
         sortOrder: sortField === "quantity" ? (sortOrder as "asc" | "desc") : undefined,
@@ -85,7 +84,6 @@ export default function PurchasingPage() {
       {
         key: "total",
         label: "Total",
-        align: "right",
         width: "100px",
         sortable: true,
         sortOrder: sortField === "total" ? (sortOrder as "asc" | "desc") : undefined,

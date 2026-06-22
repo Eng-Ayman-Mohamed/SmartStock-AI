@@ -172,6 +172,7 @@ export function SuppliersPage() {
     {
       key: 'name',
       label: 'Supplier Name',
+      width: '19%',
       sortable: true,
       sortOrder: sortField === 'name' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="truncate block font-medium text-ink">{r.name}</span>,
@@ -179,6 +180,7 @@ export function SuppliersPage() {
     {
       key: 'contact_email',
       label: 'Contact Email',
+      width: '19%',
       sortable: true,
       sortOrder: sortField === 'contact_email' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="truncate block text-ink-muted">{isViewer ? '—' : (r.contact_email || '—')}</span>,
@@ -186,17 +188,19 @@ export function SuppliersPage() {
     {
       key: 'contact_phone',
       label: 'Contact Phone',
-      render: (r) => <span className="text-ink-muted">{isViewer ? '—' : (r.contact_phone || '—')}</span>,
+      width: '10%',
+      render: (r) => <span className="truncate block text-ink-muted">{isViewer ? '—' : (r.contact_phone || '—')}</span>,
     },
     {
       key: 'address',
       label: 'Address',
+      width: '16%',
       render: (r) => <span className="truncate block text-ink-muted">{r.address || '—'}</span>,
     },
     {
       key: 'default_lead_time_days',
       label: 'Lead Time',
-      width: '120px',
+      width: '9%',
       sortable: true,
       sortOrder: sortField === 'default_lead_time_days' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="tabular-nums">{r.default_lead_time_days} days</span>,
@@ -204,59 +208,56 @@ export function SuppliersPage() {
     {
       key: 'is_active',
       label: 'Status',
-      width: '120px',
+      width: '9%',
       sortable: true,
       sortOrder: sortField === 'is_active' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <Badge variant={r.is_active ? 'Active' : 'Inactive'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>,
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      align: 'right',
-      width: '160px',
-      render: (r) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
-            onClick={() => navigate(`/inventory?supplierId=${r.id}`)}
-            aria-label="View products"
-            title="View products"
-          >
-            <ExternalLink className="w-5 h-5" />
-          </Button>
-          {isManagerOrAbove && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200 dark:hover:text-green-300 dark:hover:border-green-600"
-                onClick={() => openEditModal(r)}
-                aria-label="Edit supplier"
-                title="Edit supplier"
-              >
-                <Edit3 className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200 dark:hover:text-red-300 dark:hover:border-red-600"
-                onClick={() => handleDeleteClick(r)}
-                aria-label="Delete supplier"
-                title="Delete supplier"
-              >
-                <Trash2 className="w-5 h-5" />
-              </Button>
-            </>
-          )}
-        </div>
-      ),
-    },
   ];
 
+  function renderActions(r: Supplier) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
+          onClick={() => navigate(`/inventory?supplierId=${r.id}`)}
+          aria-label="View products"
+          title="View products"
+        >
+          <ExternalLink className="w-5 h-5" />
+        </Button>
+        {isManagerOrAbove && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200 dark:hover:text-green-300 dark:hover:border-green-600"
+              onClick={() => openEditModal(r)}
+              aria-label="Edit supplier"
+              title="Edit supplier"
+            >
+              <Edit3 className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200 dark:hover:text-red-300 dark:hover:border-red-600"
+              onClick={() => handleDeleteClick(r)}
+              aria-label="Delete supplier"
+              title="Delete supplier"
+            >
+              <Trash2 className="w-5 h-5" />
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn flex-1 min-h-0 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-page-heading text-ink">Suppliers</h1>
         {isManagerOrAbove && (
@@ -314,6 +315,8 @@ export function SuppliersPage() {
             caption="Suppliers list"
             pagination={suppliers.length > 0 ? paginationConfig : undefined}
             onSort={handleSort}
+            actionsLabel="Actions"
+            renderActions={renderActions}
           />
         )}
       </Card>
