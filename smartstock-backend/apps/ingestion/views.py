@@ -195,7 +195,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return [IsViewerOrAbove()]
 
     def get_queryset(self):
-        return Document.objects.filter(is_active=True).order_by('-created_at')
+        return Document.objects.filter(is_active=True).select_related('uploaded_by').order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         serializer = DocumentUploadSerializer(data=request.data)
