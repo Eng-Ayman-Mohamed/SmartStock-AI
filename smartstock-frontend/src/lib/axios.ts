@@ -76,7 +76,10 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
-    if (response.data && typeof response.data === 'object' && ('data' in response.data || response.data.status === 'error')) {
+    if (response.status === 204 || !response.data) {
+      return response;
+    }
+    if (typeof response.data === 'object' && ('data' in response.data || response.data.status === 'error')) {
       if (response.data.status === 'error') {
         return Promise.reject(
           new ApiResponseError(response.data, {
@@ -97,6 +100,10 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     if (!originalRequest) return Promise.reject(error);
+
+    if (error.response?.status === 204 || error.response?.status === 304) {
+      return error.response;
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry && !AUTH_EXEMPT_PATHS.some((p) => originalRequest.url?.includes(p))) {
       const currentToken = useAuthStore.getState().token;

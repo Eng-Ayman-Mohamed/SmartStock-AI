@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useToastStore } from '../../../store/toastStore';
 import * as documentsApi from '../api';
-import type { UpdateDocumentPayload, UploadDocumentPayload } from '../types';
+import type { Document, UpdateDocumentPayload, UploadDocumentPayload } from '../types';
 
 function errorMessage(err: unknown, fallback: string) {
   if (axios.isAxiosError(err)) {
@@ -58,7 +58,13 @@ export function useUpdateDocument() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: UpdateDocumentPayload }) =>
       documentsApi.updateDocument(id, payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      queryClient.setQueryData<Document[]>(['documents'], (old) => {
+        if (!old) return old;
+        return old.map((doc) =>
+          doc.id === variables.id ? { ...doc, ...variables.payload } : doc,
+        );
+      });
       void queryClient.invalidateQueries({ queryKey: ['documents'] });
       addToast('Document updated.', 'success');
     },
@@ -74,7 +80,11 @@ export function useDeleteDocument() {
 
   return useMutation({
     mutationFn: (id: number) => documentsApi.deleteDocument(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData<Document[]>(['documents'], (old) => {
+        if (!old) return old;
+        return old.filter((doc) => doc.id !== id);
+      });
       void queryClient.invalidateQueries({ queryKey: ['documents'] });
       addToast('Document deleted.', 'info');
     },
