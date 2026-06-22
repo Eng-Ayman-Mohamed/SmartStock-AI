@@ -1104,3 +1104,51 @@ return;
 |------|--------|
 | `smartstock-frontend/src/features/ai-assistant/components/ChatPanel.tsx` | Added `selectConversation` to deps and call after `sendMessage` |
 
+---
+
+### 18. Fix: Delete Chat Button Not Working (2026-06-22)
+
+**Problem:** Delete button required two separate clicks (selecting a red trash icon on hover) — fragile and easily broken by layout shifts.
+
+**Fix:** Replaced the two-click delete confirmation with `window.confirm()` dialog. Single click on trash icon triggers native browser confirmation, then calls `handleDelete`.
+
+### 19. Fix: Remove Edit/Rename Chat Button (2026-06-22)
+
+**Problem:** Rename chat feature removed per user request.
+
+**Files removed:**
+| File | What was removed |
+|------|------------------|
+| `ConversationSidebar.tsx` | Inline edit UI, `onRename` prop, `Pencil`/`Check`/`X` icons, `editingId`/`editValue`/`deletingId` state |
+| `ChatPanel.tsx` | `onRename` prop, `updateTitle` destructuring |
+| `useConversations.ts` | `updateTitle` function (was calling PATCH `/conversations/{id}/`) |
+| `api.ts` | `renameConversation` function (was calling PATCH `/conversations/{id}/`) |
+
+### 20. Fix: "Which items need reordering?" Always Failing (2026-06-22)
+
+**Root cause:** Three issues working together:
+
+1. **Wrong LLM provider (system env `LLM_PROVIDER=gemini`):** The system-level environment variable `LLM_PROVIDER=gemini` overrode the `.env` file's `LLM_PROVIDER=groq`. Gemini free tier quota was exhausted (`429 RESOURCE_EXHAUSTED`), causing ALL LLM calls to fail immediately.
+
+2. **Backend LLM request timeout too short (8s):** `provider_config.py` set `request_timeout=8` — only 8 seconds for the LLM to process 12 few-shot examples + tool_choice="required". This often timed out for slower providers.
+
+3. **Frontend timeout too short (25s):** The streaming AI pipeline calls LLM 3 times sequentially (intent classification → NL chain → formatter). The `AbortSignal.timeout(25000)` started ticking before the stream opened, so the total time for all 3 LLM calls often exceeded 25 seconds, triggering a retry loop.
+
+**Fixes:**
+
+| File | Change |
+|------|--------|
+| `~/.bashrc` | Added `export LLM_PROVIDER=groq` to fix system env (was `gemini`) |
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` (lines 98, 207) | `AbortSignal.timeout(25000)` → `AbortSignal.timeout(60000)` |
+| `smartstock-backend/ai/llm/provider_config.py` (line 113) | `request_timeout=8` → `request_timeout=20` |
+| `smartstock-backend/ai/llm/chain.py` | Added retry logic (3 attempts with 1s/2s backoff) for transient errors (timeouts, rate limits) in `NLQueryChain.run()` |
+| `smartstock-backend/ai/llm/few_shots.py` | Added few-shot example: `"Which items need reordering?"` → `get_low_stock` with empty filters |
+| `smartstock-frontend/src/features/ai-assistant/components/ChatEmptyState.tsx` | Replaced `"Which items need reordering?"` suggestion with `"What's my total inventory value?"` (simpler, more reliable) |
+
+**Testing:** NL chain tested with Groq provider — all three suggestion queries work correctly:
+- `"What products are low on stock?"` → `GET_LOW_STOCK` ✓
+- `"Show me supplier performance this month"` → `GET_SUPPLIER_INFO` ✓
+- `"What's my total inventory value?"` → `GET_TOTAL_VALUE` ✓
+
+**Impact:** Backend now uses Groq (which has available quota). LLM calls have 20 seconds per request (up from 8s). Transient errors auto-retry up to 3 times. Suggestion button uses a simpler, more reliable query.
+

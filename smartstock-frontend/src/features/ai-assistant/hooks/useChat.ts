@@ -95,7 +95,7 @@ export default function useChat(conversationId?: string | null) {
               mode,
               conversation_id: activeConvId ?? undefined,
             },
-            AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
+            AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]),
           );
 
           let fullText = '';
@@ -204,7 +204,7 @@ export default function useChat(conversationId?: string | null) {
           mode,
           conversation_id: conversationId ?? undefined,
         },
-        AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
+        AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]),
       );
 
       let fullText = '';

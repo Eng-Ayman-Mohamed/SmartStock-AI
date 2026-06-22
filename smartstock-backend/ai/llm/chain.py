@@ -3,6 +3,7 @@ import binascii
 import json
 import logging
 import re
+import time
 import unicodedata
 from typing import Optional
 from urllib.parse import unquote
@@ -181,21 +182,41 @@ class NLQueryChain:
         raise NLQueryParseError('No tool call or content in LLM response')
 
     def run(self, query: str) -> NLQueryResult:
-        try:
-            logger.info('Running NL query chain with tool_choice=required')
-            response = invoke_with_langfuse(
-                self._chain,
-                {
-                    'few_shot_query': _FEW_SHOT_PROMPT.format(query=query),
-                },
-            )
-            return self._parse_tool_call(response)
-        except NLQueryParseError as exc:
-            logger.warning('NLQueryParseError for query %r: %s', query, exc)
-            return NLQueryResult(
-                action=NLQueryAction.GET_INVENTORY,
-                filters=NLQueryFilters(),
-            )
+        last_exc = None
+        for attempt in range(3):
+            try:
+                logger.info('Running NL query chain with tool_choice=required (attempt %d/3)', attempt + 1)
+                response = invoke_with_langfuse(
+                    self._chain,
+                    {
+                        'few_shot_query': _FEW_SHOT_PROMPT.format(query=query),
+                    },
+                )
+                return self._parse_tool_call(response)
+            except NLQueryParseError as exc:
+                logger.warning('NLQueryParseError for query %r: %s', query, exc)
+                return NLQueryResult(
+                    action=NLQueryAction.GET_INVENTORY,
+                    filters=NLQueryFilters(),
+                )
+            except Exception as exc:
+                last_exc = exc
+                is_transient = (
+                    'timeout' in str(exc).lower()
+                    or 'timed out' in str(exc).lower()
+                    or 'rate' in str(exc).lower()
+                    or '429' in str(exc)
+                    or 'too many' in str(exc).lower()
+                )
+                if is_transient and attempt < 2:
+                    wait = 1 * (attempt + 1)
+                    logger.warning(
+                        'NL chain transient error on attempt %d: %s — retrying in %ds',
+                        attempt + 1, exc, wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                raise
 
 
 # -- Prompt-injection filter --------------------------------------------------
