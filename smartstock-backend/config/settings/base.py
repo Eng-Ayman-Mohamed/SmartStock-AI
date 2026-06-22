@@ -359,6 +359,14 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.monitoring.evaluation_tasks.run_daily_evaluation_task',
         'schedule': crontab(hour=3, minute=0),  # 03:00 UTC daily
     },
+    'cleanup-stale-agent-runs': {
+        'task': 'apps.monitoring.tasks.cleanup_stale_agent_runs',
+        'schedule': 300,  # every 5 minutes
+    },
+    'archive-old-agent-runs-daily': {
+        'task': 'apps.monitoring.tasks.archive_old_agent_runs',
+        'schedule': crontab(hour=4, minute=0),  # 04:00 UTC daily
+    },
 }
 
 ESCALATION_RECIPIENT_EMAILS = [

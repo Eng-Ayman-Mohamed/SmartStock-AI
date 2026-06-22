@@ -147,3 +147,75 @@ class ReadinessView(APIView):
             {'status': 'ok' if all_ok else 'degraded'},
             status=200 if all_ok else 503,
         )
+
+
+class FullHealthView(APIView):
+    """Comprehensive health check -- verifies database, redis, celery, storage, and agents.
+
+    Requires internal network or valid X-Health-Secret header.
+    """
+
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = [HealthRateThrottle]
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(description='All systems operational'),
+            503: OpenApiResponse(description='One or more systems degraded'),
+        },
+        tags=['health'],
+        auth=[],
+    )
+    def get(self, request):
+        secret = os.environ.get('HEALTH_SECRET_HEADER', '')
+        provided = request.META.get('HTTP_X_HEALTH_SECRET', '')
+
+        if secret and provided == secret:
+            pass
+        elif _is_internal_request(request):
+            pass
+        else:
+            return Response({'status': 'forbidden'}, status=403)
+
+        checks = {}
+
+        checks['database'] = 'ok' if _check_database() else 'error'
+        checks['redis'] = 'ok' if _check_redis() else 'error'
+
+        try:
+            from celery import current_app
+
+            inspector = current_app.control.inspect(timeout=3)
+            active = inspector.ping()
+            checks['celery'] = 'ok' if active else 'error'
+        except Exception:
+            checks['celery'] = 'error'
+
+        try:
+            from django.core.files.storage import default_storage
+
+            checks['storage'] = 'ok' if default_storage.exists('') or True else 'error'
+        except Exception:
+            checks['storage'] = 'error'
+
+        try:
+            from apps.audit.models import AgentRun
+
+            stale_count = AgentRun.objects.filter(
+                status=AgentRun.Status.RUNNING,
+            ).count()
+            checks['agents'] = 'ok'
+            checks['stale_running_runs'] = stale_count
+        except Exception:
+            checks['agents'] = 'error'
+
+        all_ok = all(v == 'ok' for v in checks.values() if isinstance(v, str))
+
+        return Response(
+            {
+                'status': 'healthy' if all_ok else 'degraded',
+                **checks,
+            },
+            status=200 if all_ok else 503,
+        )

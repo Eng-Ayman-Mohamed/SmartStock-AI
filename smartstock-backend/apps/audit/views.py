@@ -155,4 +155,4 @@ class AgentRunViewSet(viewsets.ModelViewSet):
         else:
             days = 7
         cutoff = timezone.now() - timedelta(days=days)
-        return qs.filter(created_at__gte=cutoff).select_related()
+        return qs.filter(created_at__gte=cutoff)
