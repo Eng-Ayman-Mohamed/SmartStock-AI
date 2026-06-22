@@ -540,3 +540,40 @@ def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
             logger.warning('GPT-4o formatter fallback blocked by response safety validator')
             return "I'm sorry, I cannot provide that information."
         return fallback
+
+
+def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
+    """
+    Streaming version of call_gpt4o_formatter.
+    Yields text chunks as the LLM generates them.
+    """
+    llm = get_llm()
+    system = (
+        "Given the raw database records provided, answer the user's question in plain, "
+        'natural language. Be concise, precise, and professional. '
+        'Address exactly what the user asked. Do not mention internal field names.'
+    )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ('system', system),
+            ('user', 'Original question: {query}\n\nDatabase records:\n{data}'),
+        ]
+    )
+    chain = prompt | llm | StrOutputParser()
+    try:
+        logger.info('Running GPT-4o formatter (streaming)')
+        for chunk in chain.stream(
+            {
+                'query': original_query,
+                'data': json.dumps(raw_data, default=str),
+            }
+        ):
+            if chunk:
+                yield chunk
+    except Exception as exc:
+        logger.warning('GPT-4o formatter stream failed: %s', exc)
+        fallback = f'Here is the requested information: {raw_data}'
+        if validate_response_safety(fallback):
+            yield fallback
+        else:
+            yield "I'm sorry, I cannot provide that information."
