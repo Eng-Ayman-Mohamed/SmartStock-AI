@@ -1204,7 +1204,7 @@ def _parse_condition(condition, field_aliases=None) -> Q:
     return Q(**{q_key: value})
 
 
-def _build_q_from_filters(filters: NLQueryFilters) -> Q:
+def _build_q_from_filters(filters: NLQueryFilters, field_aliases=None) -> Q:
     import operator
     from functools import reduce
 
@@ -1212,7 +1212,7 @@ def _build_q_from_filters(filters: NLQueryFilters) -> Q:
     conditions = getattr(filters, 'conditions', [])
     if not conditions:
         return Q()
-    q_parts = [_parse_condition(c) for c in conditions]
+    q_parts = [_parse_condition(c, field_aliases=field_aliases) for c in conditions]
     if conjunction == 'or':
         return reduce(operator.or_, q_parts)
     result = q_parts[0]
@@ -1308,9 +1308,34 @@ def _handle_get_sales_report(filters: NLQueryFilters) -> list:
 def _handle_get_low_stock(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
-    q = _build_q_from_filters(filters)
-    filters.get('threshold', 10) if hasattr(filters, 'get') else 10
-    (
+
+    q = Q()
+    for c in filters.conditions:
+        if c.field == 'quantity_on_hand':
+            if c.op == 'lt':
+                q &= Q(quantity_on_hand__lt=c.value)
+            elif c.op == 'lte':
+                q &= Q(quantity_on_hand__lte=c.value)
+            elif c.op == 'eq':
+                q &= Q(quantity_on_hand=c.value)
+            elif c.op == 'gt':
+                q &= Q(quantity_on_hand__gt=c.value)
+            elif c.op == 'gte':
+                q &= Q(quantity_on_hand__gte=c.value)
+        elif c.field == 'reorder_point':
+            q &= Q(**{f'reorder_point__{OP_MAP.get(c.op, "")}': c.value})
+        elif c.field == 'product_name':
+            q &= Q(sku__product__name__icontains=c.value)
+        elif c.field == 'sku_code':
+            q &= Q(sku__code=c.value)
+        elif c.field == 'category':
+            q &= Q(sku__product__category__name=c.value)
+
+    has_quantity_condition = any(c.field == 'quantity_on_hand' for c in filters.conditions)
+    if not has_quantity_condition:
+        q &= Q(quantity_on_hand__lt=F('reorder_point'))
+
+    return list(
         StockLevel.objects.select_related('sku__product')
         .filter(q)
         .values('sku__code', 'sku__product__name', 'quantity_on_hand', 'reorder_point')[:100]
