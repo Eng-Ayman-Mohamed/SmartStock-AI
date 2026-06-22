@@ -30,9 +30,10 @@ import AdjustStockModal from "../components/AdjustStockModal";
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
 
-function statusFor(quantity: number, reorderPoint: number): Status {
-  if (quantity <= 0) return "Out of Stock";
-  if (quantity < reorderPoint) return "Low Stock";
+function statusFor(quantity: number, reorderPoint: number, reserved: number = 0): Status {
+  const available = quantity - reserved;
+  if (available <= 0) return "Out of Stock";
+  if (available < reorderPoint) return "Low Stock";
   return "In Stock";
 }
 
@@ -179,7 +180,7 @@ export default function InventoryPage() {
       return skus.map((sku) => {
         const quantity = sku.quantity_on_hand ?? 0;
         const reorderPoint = sku.stock_reorder_point ?? product.reorder_point;
-        const status = statusFor(quantity, reorderPoint);
+        const status = statusFor(quantity, reorderPoint, sku.quantity_reserved ?? 0);
         return {
           product,
           sku,

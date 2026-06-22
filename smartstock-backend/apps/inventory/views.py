@@ -1134,8 +1134,43 @@ FIELD_ALIASES = {
     'limit': None,  # handled separately, not a Q field
 }
 
+# Per-model field aliases — used when querying different root models
+STOCKLEVEL_FIELD_ALIASES = {
+    'product_name': 'sku__product__name',
+    'sku_code': 'sku__code',
+    'category': 'sku__product__category__name',
+    'supplier_name': None,
+    'contact_email': None,
+    'quantity_on_hand': 'quantity_on_hand',
+    'quantity_available': None,
+    'reorder_point': 'reorder_point',
+    'date_from': None,
+    'date_to': None,
+    'quantity_sold': None,
+    'is_active': 'sku__product__is_active',
+    'limit': None,
+}
 
-def _parse_condition(condition) -> Q:
+SALESRECORD_FIELD_ALIASES = {
+    'product_name': 'sku__product__name',
+    'sku_code': 'sku__code',
+    'category': 'sku__product__category__name',
+    'supplier_name': None,
+    'contact_email': None,
+    'quantity_on_hand': None,
+    'quantity_available': None,
+    'reorder_point': None,
+    'date_from': 'date',
+    'date_to': 'date',
+    'quantity_sold': 'quantity_sold',
+    'is_active': None,
+    'limit': None,
+}
+
+
+def _parse_condition(condition, field_aliases=None) -> Q:
+    if field_aliases is None:
+        field_aliases = FIELD_ALIASES
     if hasattr(condition, 'field'):
         field = condition.field
         operator = condition.op
@@ -1144,7 +1179,7 @@ def _parse_condition(condition) -> Q:
         field = condition.get('field')
         operator = condition.get('op', 'eq')
         value = condition.get('value')
-    alias = FIELD_ALIASES.get(field, field)
+    alias = field_aliases.get(field, field)
     lookup = OP_MAP.get(operator, '')
     q_key = f'{alias}{lookup}'
     if operator == 'neq':
@@ -1156,7 +1191,9 @@ def _parse_condition(condition) -> Q:
     return Q(**{q_key: value})
 
 
-def _build_q_from_filters(filters: NLQueryFilters) -> Q:
+def _build_q_from_filters(filters: NLQueryFilters, field_aliases=None) -> Q:
+    if field_aliases is None:
+        field_aliases = FIELD_ALIASES
     import operator
     from functools import reduce
 
@@ -1164,7 +1201,7 @@ def _build_q_from_filters(filters: NLQueryFilters) -> Q:
     conditions = getattr(filters, 'conditions', [])
     if not conditions:
         return Q()
-    q_parts = [_parse_condition(c) for c in conditions]
+    q_parts = [_parse_condition(c, field_aliases=field_aliases) for c in conditions]
     if conjunction == 'or':
         return reduce(operator.or_, q_parts)
     result = q_parts[0]
@@ -1239,7 +1276,7 @@ def _handle_get_inventory(filters: NLQueryFilters) -> list:
 def _handle_get_sales_report(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
-    q = _build_q_from_filters(filters)
+    q = _build_q_from_filters(filters, field_aliases=SALESRECORD_FIELD_ALIASES)
     rows = (
         SalesRecord.objects.filter(q)
         .select_related('sku__product')
@@ -1260,7 +1297,7 @@ def _handle_get_sales_report(filters: NLQueryFilters) -> list:
 def _handle_get_low_stock(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
-    q = _build_q_from_filters(filters)
+    q = _build_q_from_filters(filters, field_aliases=STOCKLEVEL_FIELD_ALIASES)
     threshold = filters.get('threshold', 10) if hasattr(filters, 'get') else 10
     items = (
         StockLevel.objects.select_related('sku__product')
