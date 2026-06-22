@@ -5,9 +5,11 @@ Token usage recording uses F() expressions for atomic DB updates.
 """
 
 import logging
+from datetime import timedelta
 
 from celery import shared_task
 from django.db.models import F, Sum
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -102,3 +104,51 @@ def record_agent_run_task(
             self.retry(exc=exc)
         except self.MaxRetriesExceededError:
             logger.error('record_agent_run_task exceeded max retries')
+
+
+STALE_RUN_TIMEOUT_MINUTES = 60
+AGENT_RUN_RETENTION_DAYS = 90
+
+
+@shared_task
+def cleanup_stale_agent_runs():
+    """Mark AgentRun records stuck in 'running' as failed.
+
+    Any run with status=running and started_at older than
+    STALE_RUN_TIMEOUT_MINUTES is considered stale (worker crashed
+    or process was killed). Runs are never left permanently 'running'.
+    """
+    from apps.audit.models import AgentRun
+
+    cutoff = timezone.now() - timedelta(minutes=STALE_RUN_TIMEOUT_MINUTES)
+    stale = AgentRun.objects.filter(
+        status=AgentRun.Status.RUNNING,
+        started_at__lt=cutoff,
+    )
+    count = stale.count()
+    if count > 0:
+        stale.update(
+            status=AgentRun.Status.FAILED,
+            completed_at=timezone.now(),
+            error_message='Worker timeout — no completion recorded',
+        )
+        logger.warning('Marked %d stale AgentRun records as failed', count)
+    return {'stale_marked_failed': count}
+
+
+@shared_task
+def archive_old_agent_runs():
+    """Delete AgentRun records older than AGENT_RUN_RETENTION_DAYS.
+
+    Called daily via Celery beat. Keeps the table lean and prevents
+    unbounded growth while retaining 90 days of dashboard history.
+    """
+    from apps.audit.models import AgentRun
+
+    cutoff = timezone.now() - timedelta(days=AGENT_RUN_RETENTION_DAYS)
+    deleted, _ = AgentRun.objects.filter(created_at__lt=cutoff).delete()
+    if deleted > 0:
+        logger.info(
+            'Archived %d AgentRun records older than %d days', deleted, AGENT_RUN_RETENTION_DAYS
+        )
+    return {'deleted': deleted, 'cutoff_days': AGENT_RUN_RETENTION_DAYS}

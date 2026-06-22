@@ -23,6 +23,8 @@ import ReorderAlertList from '../components/ReorderAlertList';
 import AgentRunStatus from '../components/AgentRunStatus';
 import PendingPOQueue from '../components/PendingPOQueue';
 import SupplierWarningBadge from '../components/SupplierWarningBadge';
+import MonitoringBanners from '../components/MonitoringBanners';
+import SystemHealth from '../components/SystemHealth';
 
 interface ChartPoint {
   date: string;
@@ -32,7 +34,7 @@ interface ChartPoint {
   lower: number;
 }
 
-function ForecastChart({ data }: { data: ChartPoint[] | null }) {
+function ForecastChart({ data, reorderPoint }: { data: ChartPoint[] | null; reorderPoint?: number | null }) {
   if (!data || data.length === 0) {
     return <div className="h-[clamp(200px,32vh,400px)] flex items-center justify-center text-body text-ink-muted">No forecast data available</div>;
   }
@@ -101,18 +103,20 @@ function ForecastChart({ data }: { data: ChartPoint[] | null }) {
             dot={false}
             connectNulls={false}
           />
-          <ReferenceLine
-            y={150}
-            stroke="var(--color-orange-600)"
-            strokeWidth={1.5}
-            strokeDasharray="6 4"
-            label={{
-              value: 'Reorder point',
-              position: 'insideTopRight',
-              fontSize: 11,
-              fill: 'var(--color-orange-600)',
-            }}
-          />
+          {reorderPoint != null && reorderPoint > 0 && (
+            <ReferenceLine
+              y={reorderPoint}
+              stroke="var(--color-orange-600)"
+              strokeWidth={1.5}
+              strokeDasharray="6 4"
+              label={{
+                value: `Reorder (${reorderPoint})`,
+                position: 'insideTopRight',
+                fontSize: 11,
+                fill: 'var(--color-orange-600)',
+              }}
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
       <div className="flex flex-wrap items-center gap-4 mt-2 text-caption text-ink-muted">
@@ -161,6 +165,8 @@ export default function DashboardPage() {
       qc.invalidateQueries({ queryKey: ['forecast-dashboard'] }),
       qc.invalidateQueries({ queryKey: ['overdue-suppliers'] }),
       qc.invalidateQueries({ queryKey: ['sku-count'] }),
+      qc.invalidateQueries({ queryKey: ['monitoring-banners'] }),
+      qc.invalidateQueries({ queryKey: ['health-full'] }),
     ]);
     setIsRefreshing(false);
   }, [qc, isRefreshing]);
@@ -177,6 +183,13 @@ export default function DashboardPage() {
     if (scores.length === 0) return null;
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     return { value: `${avg.toFixed(1)}%` };
+  }, [forecastData]);
+
+  const avgReorderPoint = useMemo(() => {
+    if (!forecastData?.skus?.length) return null;
+    const points = forecastData.skus.map((s) => s.reorder_point).filter((p) => p > 0);
+    if (points.length === 0) return null;
+    return Math.round(points.reduce((a, b) => a + b, 0) / points.length);
   }, [forecastData]);
 
   const chartData = useMemo(() => {
@@ -242,6 +255,11 @@ export default function DashboardPage() {
 
       <SupplierWarningBadge />
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <MonitoringBanners />
+        <SystemHealth />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {skuLoading ? (
           <Skeleton className="h-24" />
@@ -267,13 +285,13 @@ export default function DashboardPage() {
         {forecastLoading ? (
           <Skeleton className="h-24" />
         ) : (
-          <StatCard label="Forecast Accuracy" value={forecastAccuracy?.value ?? '—'} accent="purple" icon={TrendingUp} />
+          <StatCard label="Forecast Accuracy" value={forecastAccuracy?.value ?? 'N/A'} accent="purple" icon={TrendingUp} />
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <Card title="30-Day Demand Forecast">
-          <ForecastChart data={chartData} />
+          <ForecastChart data={chartData} reorderPoint={avgReorderPoint} />
         </Card>
 
         <ReorderAlertList onRefresh={handleRefresh} isRefreshing={isRefreshing} />

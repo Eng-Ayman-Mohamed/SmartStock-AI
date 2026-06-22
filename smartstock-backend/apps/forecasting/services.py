@@ -115,7 +115,28 @@ class ForecastingService:
                     stockout_risk = False
 
                 mape = row.mape
-                confidence = max(0, 100 - round(mape * 10)) if mape else None
+                # Prefer MAPE from Prophet rows over fallback rows
+                if mape is None and forecasts_by_sku.get(sku_id):
+                    for f in forecasts_by_sku[sku_id]:
+                        if f.mape is not None:
+                            mape = f.mape
+                            break
+                # Normalize MAPE: Prophet returns raw ratio (0.0-1.0), seed data returns percentage (2-25).
+                # If MAPE > 1, it's already a percentage; if <= 1, multiply by 100.
+                if mape is not None:
+                    mape_pct = mape * 100 if mape <= 1.0 else mape
+                    confidence = max(0, min(100, round(100 - mape_pct)))
+                else:
+                    confidence = None
+
+                supplier_name = '—'
+                lead_time_days = 7
+                if stock:
+                    supplier = stock.sku.product.supplier
+                    if supplier:
+                        supplier_name = supplier.name
+                        lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
+
                 skus_map[sku_id] = {
                     'id': row.sku.code,
                     'sku_code': row.sku.code,
@@ -123,8 +144,8 @@ class ForecastingService:
                     'reorder_point': stock.reorder_point if stock else 0,
                     'current_stock': stock.quantity_on_hand if stock else 0,
                     'stockout_risk': stockout_risk,
-                    'supplier': '—',
-                    'lead_time_days': 0,
+                    'supplier': supplier_name,
+                    'lead_time_days': lead_time_days,
                     'mae': row.mae,
                     'mape': mape,
                     'model_version': row.model_version,
