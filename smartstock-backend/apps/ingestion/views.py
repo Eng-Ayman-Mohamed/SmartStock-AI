@@ -181,7 +181,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     queryset = Document.objects.filter(is_active=True).order_by('-created_at')
     search_fields = ['original_filename', 'doc_type']
-    ordering_fields = ['created_at', 'doc_type', 'original_filename']
+    ordering_fields = [
+        'created_at', 'doc_type', 'original_filename',
+        'file_size', 'total_chunks', 'uploaded_by__username', 'ingested_at',
+    ]
     ordering = ['-created_at']
 
     def get_permissions(self):

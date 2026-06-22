@@ -3,6 +3,11 @@ import type { Document, DocumentChunk, UpdateDocumentPayload, UploadDocumentPayl
 
 type ApiEnvelope<T> = { status?: string; data?: T; message?: string; errors?: unknown };
 
+export interface PaginatedDocuments {
+  results: Document[];
+  count: number;
+}
+
 function unwrap<T>(payload: T | ApiEnvelope<T>): T {
   if (payload && typeof payload === 'object' && 'data' in payload) {
     return (payload as ApiEnvelope<T>).data as T;
@@ -10,9 +15,23 @@ function unwrap<T>(payload: T | ApiEnvelope<T>): T {
   return payload as T;
 }
 
-export async function listDocuments(): Promise<Document[]> {
-  const { data } = await api.get<ApiEnvelope<Document[]> | Document[]>('/ai/documents/');
-  return unwrap(data);
+export async function listDocuments(
+  page: number = 1,
+  pageSize: number = 20,
+  ordering?: string,
+): Promise<PaginatedDocuments> {
+  const params: Record<string, string | number | undefined> = {
+    page,
+    page_size: pageSize,
+    ordering: ordering || undefined,
+  };
+  const { data } = await api.get('/ai/documents/', { params });
+  const envelope = data as ApiEnvelope<Document[]> & { meta?: { total?: number } };
+  const results = unwrap<Document[]>(envelope);
+  return {
+    results: Array.isArray(results) ? results : [],
+    count: envelope?.meta?.total ?? (Array.isArray(results) ? results.length : 0),
+  };
 }
 
 export async function getDocument(id: number): Promise<Document> {

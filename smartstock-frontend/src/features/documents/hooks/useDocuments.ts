@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useToastStore } from '../../../store/toastStore';
 import * as documentsApi from '../api';
-import type { Document, UpdateDocumentPayload, UploadDocumentPayload } from '../types';
+import type { UpdateDocumentPayload, UploadDocumentPayload } from '../types';
 
 function errorMessage(err: unknown, fallback: string) {
   if (axios.isAxiosError(err)) {
@@ -12,10 +12,30 @@ function errorMessage(err: unknown, fallback: string) {
   return fallback;
 }
 
-export function useDocuments() {
+const orderingMap: Record<string, string> = {
+  original_filename: 'original_filename',
+  doc_type: 'doc_type',
+  file_size: 'file_size',
+  total_chunks: 'total_chunks',
+  ingested_at: 'ingested_at',
+  uploaded_by_username: 'uploaded_by__username',
+  created_at: 'created_at',
+};
+
+export function useDocuments(
+  page: number = 1,
+  pageSize: number = 20,
+  sortField?: string,
+  sortOrder?: string,
+) {
+  const ordering = sortField
+    ? sortOrder === 'desc'
+      ? `-${orderingMap[sortField] ?? sortField}`
+      : (orderingMap[sortField] ?? sortField)
+    : '';
   return useQuery({
-    queryKey: ['documents'],
-    queryFn: documentsApi.listDocuments,
+    queryKey: ['documents', page, pageSize, sortField, sortOrder],
+    queryFn: () => documentsApi.listDocuments(page, pageSize, ordering || undefined),
   });
 }
 
@@ -58,13 +78,7 @@ export function useUpdateDocument() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: UpdateDocumentPayload }) =>
       documentsApi.updateDocument(id, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.setQueryData<Document[]>(['documents'], (old) => {
-        if (!old) return old;
-        return old.map((doc) =>
-          doc.id === variables.id ? { ...doc, ...variables.payload } : doc,
-        );
-      });
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['documents'] });
       addToast('Document updated.', 'success');
     },
@@ -80,11 +94,7 @@ export function useDeleteDocument() {
 
   return useMutation({
     mutationFn: (id: number) => documentsApi.deleteDocument(id),
-    onSuccess: (_data, id) => {
-      queryClient.setQueryData<Document[]>(['documents'], (old) => {
-        if (!old) return old;
-        return old.filter((doc) => doc.id !== id);
-      });
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['documents'] });
       addToast('Document deleted.', 'info');
     },

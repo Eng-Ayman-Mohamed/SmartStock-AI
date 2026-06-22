@@ -9,15 +9,18 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
+import { usePagination } from '../../../shared/hooks/usePagination';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
-import DataTable, { type Column } from '../../../shared/components/DataTable';
+import DataTable, { type Column, type PaginationConfig } from '../../../shared/components/DataTable';
 import EmptyState from '../../../shared/components/EmptyState';
 import DocumentDetailModal from '../components/DocumentDetailModal';
 import DocumentEditModal from '../components/DocumentEditModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import { useDocuments, useDeleteDocument } from '../hooks/useDocuments';
 import type { Document } from '../types';
+
+const PAGE_SIZE = 20;
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   policy: 'Policy',
@@ -46,15 +49,36 @@ export default function DocumentsPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'admin' || user?.role === 'manager';
-  const { data: documents, isLoading, error } = useDocuments();
+
+  function handleSort(key: string) {
+    if (sortField === key && sortOrder === 'asc') {
+      setSortOrder('desc');
+    } else if (sortField === key && sortOrder === 'desc') {
+      setSortField('');
+      setSortOrder('');
+    } else {
+      setSortField(key);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  }
+
+  const { data, isLoading, error } = useDocuments(page, PAGE_SIZE, sortField || undefined, sortOrder || undefined);
+  const documents = data?.results ?? [];
+  const totalCount = data?.count ?? 0;
   const deleteDoc = useDeleteDocument();
 
   const columns: Column<Document>[] = [
     {
       key: 'original_filename',
       label: 'Filename',
+      sortable: true,
+      sortOrder: sortField === 'original_filename' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => (
         <div className="flex items-center gap-2 min-w-0">
           <FileText className="w-4 h-4 shrink-0 text-brand-600" />
@@ -65,6 +89,8 @@ export default function DocumentsPage() {
     {
       key: 'doc_type',
       label: 'Type',
+      sortable: true,
+      sortOrder: sortField === 'doc_type' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => (
         <span className="inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-eyebrow text-brand-700 dark:bg-brand-900/30 dark:text-brand-200">
           {DOC_TYPE_LABELS[row.doc_type] || row.doc_type}
@@ -75,12 +101,16 @@ export default function DocumentsPage() {
       key: 'file_size',
       label: 'Size',
       align: 'right',
+      sortable: true,
+      sortOrder: sortField === 'file_size' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="tabular-nums text-ink-secondary">{formatBytes(row.file_size)}</span>,
     },
     {
       key: 'total_chunks',
       label: 'Chunks',
       align: 'center',
+      sortable: true,
+      sortOrder: sortField === 'total_chunks' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => (
         <span className="tabular-nums text-ink-secondary">
           {row.total_chunks > 0 ? row.total_chunks : '—'}
@@ -90,11 +120,15 @@ export default function DocumentsPage() {
     {
       key: 'uploaded_by_username',
       label: 'Uploaded By',
+      sortable: true,
+      sortOrder: sortField === 'uploaded_by_username' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="text-ink-secondary">{row.uploaded_by_username || '—'}</span>,
     },
     {
       key: 'ingested_at',
       label: 'Ingested',
+      sortable: true,
+      sortOrder: sortField === 'ingested_at' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="text-ink-secondary">{formatDate(row.ingested_at)}</span>,
     },
     ...(isAdmin
@@ -137,6 +171,23 @@ export default function DocumentsPage() {
       : []),
   ];
 
+  const maxPage = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(page, maxPage);
+  const pagination = usePagination({ total: totalCount, pageSize: PAGE_SIZE, currentPage });
+
+  const paginationConfig: PaginationConfig = {
+    currentPage,
+    totalPages: pagination.totalPages,
+    total: totalCount,
+    startItem: pagination.startItem,
+    endItem: pagination.endItem,
+    hasPrev: pagination.hasPrev,
+    hasNext: pagination.hasNext,
+    pages: pagination.pages,
+    onPageChange: (p) => setPage(p),
+    itemLabel: 'documents',
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -163,9 +214,11 @@ export default function DocumentsPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={documents ?? []}
+            data={documents}
             keyExtractor={(row) => String(row.id)}
             caption="RAG documents"
+            onSort={handleSort}
+            pagination={documents.length > 0 ? paginationConfig : undefined}
             emptyState={
               <EmptyState
                 icon={Upload}
