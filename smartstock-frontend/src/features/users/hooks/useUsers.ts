@@ -6,7 +6,7 @@ import type { CreateUserPayload, UpdateUserRolePayload } from '../types';
 export const usersQueryKey = ['users'] as const;
 
 const orderingMap: Record<string, string> = {
-  name: 'username',
+  name: 'first_name',
   role: 'role',
   status: 'is_active',
   joined: 'date_joined',
