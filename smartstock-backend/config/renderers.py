@@ -12,7 +12,8 @@ class ResponseEnvelopeRenderer(JSONRenderer):
         status_code = response.status_code if response else 200
 
         if status_code in (204, 304):
-            return None
+            response.content_type = None
+            return b''
 
         if status_code >= 400:
             return super().render(data, accepted_media_type, renderer_context)
