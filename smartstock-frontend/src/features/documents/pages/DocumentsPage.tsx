@@ -47,7 +47,7 @@ export default function DocumentsPage() {
   const [detailId, setDetailId] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
   const { data: documents, isLoading, error } = useDocuments();
   const deleteDoc = useDeleteDocument();
 
