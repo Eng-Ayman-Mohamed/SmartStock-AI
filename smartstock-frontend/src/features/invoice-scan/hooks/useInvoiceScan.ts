@@ -31,7 +31,12 @@ export function useInvoiceScan() {
 
   const confirm = useMutation({
     mutationFn: (payload: ConfirmInvoicePayload) => invoiceScanApi.confirmInvoiceScan(payload),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      const processed = result.inventory_result?.lines_processed;
+      if (typeof processed === 'number') {
+        addToast(`Invoice confirmed. ${processed} line item(s) added to inventory.`, 'success');
+        return;
+      }
       addToast('Invoice confirmed and inventory updated.', 'success');
     },
     onError: (err) => {

@@ -39,6 +39,21 @@ INVOICE_REQUIRED_FIELDS = [
     'supplier_name',
 ]
 
+# Required fields for the structured (multi-line) invoice path.
+INVOICE_HEADER_REQUIRED = ['supplier_name']
+LINE_ITEM_REQUIRED = ['item_name', 'sku_code', 'quantity']
+
+# Header fields stored alongside the legacy mirror fields in extracted_data.
+INVOICE_HEADER_FIELDS = [
+    'supplier_name',
+    'invoice_number',
+    'invoice_date',
+    'due_date',
+    'invoice_total',
+    'tax_amount',
+    'currency',
+]
+
 
 class InvoiceExtractionMalformed(Exception):
     pass
@@ -132,6 +147,10 @@ class InvoiceScanService:
         if scan.status == 'rejected':
             raise ValidationError('Rejected invoice scans cannot be confirmed.')
 
+        line_items = confirmed_data.get('line_items')
+        if isinstance(line_items, list) and line_items:
+            return self._confirm_multi_line(scan, user, confirmed_data, line_items)
+
         missing = [field for field in INVOICE_REQUIRED_FIELDS if not confirmed_data.get(field)]
         if missing:
             raise ValidationError(f'Missing confirmed invoice fields: {", ".join(missing)}')
@@ -165,6 +184,44 @@ class InvoiceScanService:
         payload['inventory_result'] = inventory_result
         return payload
 
+    def _confirm_multi_line(self, scan, user, confirmed_data: dict, line_items: list) -> dict:
+        for field in INVOICE_HEADER_REQUIRED:
+            if not confirmed_data.get(field):
+                raise ValidationError(f'Missing confirmed invoice fields: {field}')
+
+        valid_lines = []
+        for index, line in enumerate(line_items, start=1):
+            if not isinstance(line, dict):
+                raise ValidationError(f'Line item {index} is invalid.')
+            missing = [field for field in LINE_ITEM_REQUIRED if not line.get(field)]
+            if missing:
+                raise ValidationError(f'Line item {index} is missing: {", ".join(missing)}')
+            valid_lines.append(line)
+
+        inventory_result = self.inventory_service.apply_confirmed_invoice_lines(
+            confirmed_data, valid_lines, user=user
+        )
+        final_data = dict(confirmed_data)
+        final_data['inventory_result'] = inventory_result
+        original_data = scan.extracted_data
+        scan = self.repo.mark_confirmed(scan.id, final_data)
+
+        self.audit_logger(
+            AuditEvent.INVOICE_CONFIRMED,
+            user,
+            entity_type='InvoiceScan',
+            entity_id=scan.id,
+            data={
+                'original': original_data,
+                'confirmed': confirmed_data,
+                'line_count': len(valid_lines),
+                'inventory_result': inventory_result,
+            },
+        )
+        payload = self._scan_payload(scan)
+        payload['inventory_result'] = inventory_result
+        return payload
+
     def reject_scan(self, scan_id: int, user) -> dict:
         scan = self.repo.get_by_id(scan_id)
         self._validate_scan_owner(scan, user)
@@ -185,22 +242,42 @@ class InvoiceScanService:
         return f'data:{content_type};base64,{encoded}'
 
     def _normalize_extraction(self, extracted: dict) -> tuple[dict, dict]:
-        data = {}
-        confidence = {}
-        confidence_blob = (
-            extracted.get('confidence') if isinstance(extracted.get('confidence'), dict) else {}
-        )
-        fields_blob = (
-            extracted.get('fields') if isinstance(extracted.get('fields'), dict) else extracted
-        )
-        for field in INVOICE_REQUIRED_FIELDS:
-            raw_value = fields_blob.get(field)
-            raw_confidence = confidence_blob.get(field)
-            if isinstance(raw_value, dict):
-                raw_confidence = raw_value.get('confidence', raw_confidence)
-                raw_value = raw_value.get('value')
-            data[field] = raw_value
-            confidence[field] = self._normalize_confidence(raw_confidence)
+        from ai.llm.invoice_schema import InvoiceExtraction
+
+        extraction = InvoiceExtraction.from_vision_json(extracted)
+        header = extraction.header.model_dump()
+        line_items = [item.model_dump() for item in extraction.line_items]
+        raw_confidence = extraction.confidence or {}
+
+        first = line_items[0] if line_items else {}
+        data = {
+            # Invoice-level header fields.
+            'supplier_name': header.get('supplier_name'),
+            'invoice_number': header.get('invoice_number'),
+            'invoice_date': header.get('invoice_date'),
+            'due_date': header.get('due_date'),
+            'invoice_total': header.get('invoice_total'),
+            'tax_amount': header.get('tax_amount'),
+            'currency': header.get('currency'),
+            # Structured line items.
+            'line_items': line_items,
+            # Legacy mirror fields (keep missing-field detection + confirm path stable).
+            'product_name': first.get('item_name'),
+            'sku_code': first.get('sku_code'),
+            'quantity_received': first.get('quantity'),
+            'unit_price': first.get('unit_price'),
+        }
+
+        confidence_keys = INVOICE_HEADER_FIELDS + [
+            'product_name',
+            'sku_code',
+            'quantity_received',
+            'unit_price',
+            'line_items',
+        ]
+        confidence = {
+            key: self._normalize_confidence(raw_confidence.get(key)) for key in confidence_keys
+        }
         return data, confidence
 
     def _normalize_confidence(self, value) -> float:

@@ -143,11 +143,28 @@ class InvoiceScanUploadSerializer(serializers.Serializer):
         return file
 
 
+class InvoiceLineItemSerializer(serializers.Serializer):
+    item_name = serializers.CharField()
+    sku_code = serializers.CharField()
+    quantity = serializers.FloatField(min_value=1)
+    unit_price = serializers.FloatField(required=False, allow_null=True)
+    total_price = serializers.FloatField(required=False, allow_null=True)
+
+
 class InvoiceScanConfirmSerializer(serializers.Serializer):
     scan_id = serializers.IntegerField()
     confirmed_data = serializers.DictField()
 
     def validate_confirmed_data(self, value):
+        line_items = value.get('line_items')
+        if isinstance(line_items, list) and line_items:
+            if not value.get('supplier_name'):
+                raise serializers.ValidationError('Missing required fields: supplier_name')
+            line_serializer = InvoiceLineItemSerializer(data=line_items, many=True)
+            line_serializer.is_valid(raise_exception=True)
+            return value
+
+        # Legacy single-line payload (backward compatibility).
         missing = [field for field in INVOICE_REQUIRED_FIELDS if not value.get(field)]
         if missing:
             raise serializers.ValidationError(f'Missing required fields: {", ".join(missing)}')

@@ -3,6 +3,7 @@ import re
 
 
 class VisionExtractor:
+    # Legacy flat field list, kept for backward compatibility (still imported elsewhere).
     REQUIRED_FIELDS = [
         'product_name',
         'sku_code',
@@ -10,6 +11,37 @@ class VisionExtractor:
         'unit_price',
         'supplier_name',
     ]
+
+    # Structured schema requested from the vision model: invoice header + line items.
+    INVOICE_SCHEMA = {
+        'header': {
+            'supplier_name': {'value': 'string', 'confidence': 'number 0.0-1.0'},
+            'invoice_number': {'value': 'string or null', 'confidence': 'number 0.0-1.0'},
+            'invoice_date': {'value': 'YYYY-MM-DD or null', 'confidence': 'number 0.0-1.0'},
+            'due_date': {'value': 'YYYY-MM-DD or null', 'confidence': 'number 0.0-1.0'},
+            'invoice_total': {'value': 'number or null', 'confidence': 'number 0.0-1.0'},
+            'tax_amount': {'value': 'number or null', 'confidence': 'number 0.0-1.0'},
+            'currency': {'value': 'string or null', 'confidence': 'number 0.0-1.0'},
+        },
+        'line_items': [
+            {
+                'item_name': 'string',
+                'sku_code': 'string or null',
+                'quantity': 'number',
+                'unit_price': 'number',
+                'total_price': 'number or null',
+            }
+        ],
+    }
+
+    SYSTEM_PROMPT = (
+        'You extract structured data from a supplier invoice for a warehouse inventory system. '
+        'Return STRICT JSON only, no markdown. The top-level object must have exactly two keys: '
+        '"header" (an object) and "line_items" (an array with one object per product row). '
+        'Use null for any field that is not present. Write dates as ISO YYYY-MM-DD. '
+        'Write all numbers as plain numbers without currency symbols or thousands separators. '
+        'Use this schema: '
+    )
 
     def __init__(self, client=None, model: str = None, timeout: int = 15):
         from ai.llm.provider_config import PROVIDER, get_provider_config
@@ -51,17 +83,11 @@ class VisionExtractor:
         mime_type = header.split(':')[1].split(';')[0]
         image_bytes = base64.b64decode(b64data)
 
-        schema = {
-            field: {'value': 'string or number', 'confidence': 'number from 0.0 to 1.0'}
-            for field in self.REQUIRED_FIELDS
-        }
-
         response = client.models.generate_content(
             model=self.model,
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                'Extract supplier invoice data as strict JSON only. '
-                'Do not include markdown. Use this schema: ' + json.dumps(schema),
+                self.SYSTEM_PROMPT + json.dumps(self.INVOICE_SCHEMA),
             ],
         )
         content = response.text or ''
@@ -72,25 +98,21 @@ class VisionExtractor:
         from ai.llm.provider_config import get_vision_client
 
         client = self.client or get_vision_client()
-        schema = {
-            field: {'value': 'string or number', 'confidence': 'number from 0.0 to 1.0'}
-            for field in self.REQUIRED_FIELDS
-        }
         response = client.chat.completions.create(
             model=self.model,
             temperature=0,
             messages=[
                 {
                     'role': 'system',
-                    'content': (
-                        'Extract supplier invoice data as strict JSON only. '
-                        'Do not include markdown. Use this schema: ' + json.dumps(schema)
-                    ),
+                    'content': self.SYSTEM_PROMPT + json.dumps(self.INVOICE_SCHEMA),
                 },
                 {
                     'role': 'user',
                     'content': [
-                        {'type': 'text', 'text': 'Extract invoice fields and confidence scores.'},
+                        {
+                            'type': 'text',
+                            'text': 'Extract the invoice header fields and every line-item row.',
+                        },
                         {'type': 'image_url', 'image_url': {'url': file_data_url}},
                     ],
                 },

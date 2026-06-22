@@ -90,6 +90,7 @@ class FakeExtractor:
 class FakeInventoryService:
     def __init__(self):
         self.calls = []
+        self.line_calls = []
 
     def apply_confirmed_invoice(self, confirmed_data, user=None):
         self.calls.append((confirmed_data, user))
@@ -100,6 +101,19 @@ class FakeInventoryService:
             'quantity_added': int(confirmed_data['quantity_received']),
             'quantity_on_hand': int(confirmed_data['quantity_received']),
         }
+
+    def apply_confirmed_invoice_lines(self, header, line_items, user=None):
+        self.line_calls.append((header, line_items, user))
+        lines = [
+            {
+                'item_name': line.get('item_name'),
+                'sku_code': line.get('sku_code'),
+                'quantity_added': int(line['quantity']),
+                'quantity_on_hand': int(line['quantity']),
+            }
+            for line in line_items
+        ]
+        return {'lines': lines, 'lines_processed': len(lines), 'lines_failed': []}
 
 
 def user(user_id):
@@ -497,3 +511,172 @@ def complete_extraction_payload():
         'unit_price': '21.25',
         'supplier_name': 'TechSupply',
     }
+
+
+# --- Structured (header + line items) extraction ---
+
+
+def test_scan_invoice_extracts_header_and_line_items():
+    repo = FakeInvoiceRepo()
+    response = {
+        'header': {
+            'supplier_name': {'value': 'Acme', 'confidence': 0.9},
+            'invoice_number': 'INV-9',
+        },
+        'line_items': [
+            {
+                'item_name': 'Mouse',
+                'sku_code': 'WM-1',
+                'quantity': 12,
+                'unit_price': 21.25,
+                'total_price': 255,
+            },
+            {
+                'item_name': 'Keyboard',
+                'sku_code': 'KB-1',
+                'quantity': 3,
+                'unit_price': 40,
+                'total_price': 120,
+            },
+        ],
+    }
+    service = InvoiceScanService(
+        repo=repo,
+        extractor=FakeExtractor(response=response),
+        audit_logger=lambda *args, **kwargs: None,
+    )
+
+    result = service.scan_invoice(FakeFile(), user(1))
+    data = result['extracted_data']
+
+    assert result['status'] == 'extracted'
+    assert data['supplier_name'] == 'Acme'
+    assert data['invoice_number'] == 'INV-9'
+    assert len(data['line_items']) == 2
+    assert data['line_items'][0]['item_name'] == 'Mouse'
+    # Legacy mirror fields are derived from the first line for back-compat.
+    assert data['product_name'] == 'Mouse'
+    assert data['sku_code'] == 'WM-1'
+    assert data['quantity_received'] == 12
+
+
+def _extracted_scan(uploaded_by_id=1):
+    return SimpleNamespace(
+        id=1,
+        uploaded_by_id=uploaded_by_id,
+        is_confirmed=False,
+        status='extracted',
+        extracted_data={'supplier_name': 'Acme', 'line_items': []},
+        confidence={},
+        missing_fields=[],
+        failure_reason='',
+        confirmed_data={},
+    )
+
+
+def test_confirm_scan_applies_multiple_line_items():
+    audits = []
+    owner = user(1)
+    inventory = FakeInventoryService()
+    service = InvoiceScanService(
+        repo=FakeInvoiceRepo(scan=_extracted_scan()),
+        inventory_service=inventory,
+        audit_logger=lambda *args, **kwargs: audits.append((args, kwargs)),
+    )
+    confirmed = {
+        'supplier_name': 'Acme',
+        'invoice_number': 'INV-9',
+        'line_items': [
+            {'item_name': 'Mouse', 'sku_code': 'WM-1', 'quantity': 12, 'unit_price': 21.25},
+            {'item_name': 'Keyboard', 'sku_code': 'KB-1', 'quantity': 3, 'unit_price': 40},
+        ],
+    }
+
+    result = service.confirm_scan(1, owner, confirmed)
+
+    assert result['status'] == 'confirmed'
+    assert result['inventory_result']['lines_processed'] == 2
+    assert inventory.line_calls[0][1] == confirmed['line_items']
+    assert audits[0][0][0] == AuditEvent.INVOICE_CONFIRMED
+
+
+def test_confirm_scan_multi_line_requires_supplier():
+    owner = user(1)
+    service = InvoiceScanService(
+        repo=FakeInvoiceRepo(scan=_extracted_scan()),
+        inventory_service=FakeInventoryService(),
+        audit_logger=lambda *args, **kwargs: None,
+    )
+    confirmed = {
+        'supplier_name': '',
+        'line_items': [{'item_name': 'Mouse', 'sku_code': 'WM-1', 'quantity': 12}],
+    }
+
+    with pytest.raises(ValidationError) as exc:
+        service.confirm_scan(1, owner, confirmed)
+
+    assert 'supplier_name' in str(exc.value)
+
+
+def test_confirm_scan_multi_line_requires_line_fields():
+    owner = user(1)
+    service = InvoiceScanService(
+        repo=FakeInvoiceRepo(scan=_extracted_scan()),
+        inventory_service=FakeInventoryService(),
+        audit_logger=lambda *args, **kwargs: None,
+    )
+    confirmed = {
+        'supplier_name': 'Acme',
+        'line_items': [{'item_name': 'Mouse'}],
+    }
+
+    with pytest.raises(ValidationError) as exc:
+        service.confirm_scan(1, owner, confirmed)
+
+    assert 'sku_code' in str(exc.value) or 'quantity' in str(exc.value)
+
+
+@pytest.mark.django_db
+def test_apply_confirmed_invoice_lines_processes_multiple(monkeypatch):
+    service = inventory_service(
+        FakeProductRepo(),
+        FakeStockRepo(),
+        FakeSkuRepo(),
+        FakeSupplierRepo(),
+        monkeypatch,
+    )
+
+    result = service.apply_confirmed_invoice_lines(
+        {'supplier_name': ''},
+        [
+            {'item_name': 'Mouse', 'sku_code': 'WM-1', 'quantity': 5, 'unit_price': '10'},
+            {'item_name': 'Keyboard', 'sku_code': 'KB-1', 'quantity': 2, 'unit_price': '20'},
+        ],
+    )
+
+    assert result['lines_processed'] == 2
+    assert result['lines_failed'] == []
+    assert result['lines'][0]['item_name'] == 'Mouse'
+
+
+@pytest.mark.django_db
+def test_apply_confirmed_invoice_lines_collects_failed_lines(monkeypatch):
+    service = inventory_service(
+        FakeProductRepo(),
+        FakeStockRepo(),
+        FakeSkuRepo(),
+        FakeSupplierRepo(),
+        monkeypatch,
+    )
+
+    result = service.apply_confirmed_invoice_lines(
+        {'supplier_name': ''},
+        [
+            {'item_name': 'Mouse', 'sku_code': 'WM-1', 'quantity': 5, 'unit_price': '10'},
+            {'item_name': 'Bad', 'sku_code': 'BAD-1', 'quantity': 0, 'unit_price': '10'},
+        ],
+    )
+
+    assert result['lines_processed'] == 1
+    assert len(result['lines_failed']) == 1
+    assert result['lines_failed'][0]['sku_code'] == 'BAD-1'

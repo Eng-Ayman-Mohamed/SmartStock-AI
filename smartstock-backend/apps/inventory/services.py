@@ -223,6 +223,48 @@ class InventoryService:
             'quantity_on_hand': stock.quantity_on_hand,
         }
 
+    @transaction.atomic
+    def apply_confirmed_invoice_lines(self, header: dict, line_items: list, user=None) -> dict:
+        """Apply every line item of a confirmed invoice, sharing one supplier header.
+
+        Each line is delegated to the existing single-line ``apply_confirmed_invoice`` so
+        behaviour stays identical. A line that fails validation is collected into
+        ``lines_failed`` rather than aborting the whole batch; if every line fails the
+        transaction is rolled back by re-raising.
+        """
+        supplier_name = str(header.get('supplier_name') or '').strip()
+        lines = []
+        lines_failed = []
+
+        for line in line_items:
+            single = {
+                'product_name': line.get('item_name'),
+                'sku_code': line.get('sku_code'),
+                'quantity_received': line.get('quantity'),
+                'unit_price': line.get('unit_price'),
+                'supplier_name': supplier_name,
+            }
+            try:
+                result = self.apply_confirmed_invoice(single, user=user)
+            except ValidationError as exc:
+                lines_failed.append(
+                    {'sku_code': line.get('sku_code'), 'error': '; '.join(exc.messages)}
+                )
+                continue
+            result['item_name'] = line.get('item_name')
+            result['sku_code'] = line.get('sku_code')
+            lines.append(result)
+
+        if not lines and lines_failed:
+            details = '; '.join(f'{item["sku_code"]}: {item["error"]}' for item in lines_failed)
+            raise ValidationError(f'No invoice line items could be applied. {details}')
+
+        return {
+            'lines': lines,
+            'lines_processed': len(lines),
+            'lines_failed': lines_failed,
+        }
+
     def get_all_categories(self):
         return self.cat_repo.get_all()
 
