@@ -133,7 +133,14 @@ class SupplierViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     search_fields = ['name', 'contact_email', 'contact_phone']
     filterset_class = SupplierFilter
-    ordering_fields = ['name', 'created_at', 'is_active', 'contact_email', 'contact_phone', 'default_lead_time_days']
+    ordering_fields = [
+        'name',
+        'created_at',
+        'is_active',
+        'contact_email',
+        'contact_phone',
+        'default_lead_time_days',
+    ]
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):

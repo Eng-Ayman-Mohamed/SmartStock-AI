@@ -231,9 +231,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 .get_all_queryset(include_inactive=is_admin)
                 .annotate(
                     sku_code=Min('skus__code'),
-                    quantity_on_hand=Coalesce(
-                        Sum('skus__stock_level__quantity_on_hand'), Value(0)
-                    ),
+                    quantity_on_hand=Coalesce(Sum('skus__stock_level__quantity_on_hand'), Value(0)),
                     quantity_reserved=Coalesce(
                         Sum('skus__stock_level__quantity_reserved'), Value(0)
                     ),
