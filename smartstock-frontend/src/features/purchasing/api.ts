@@ -32,11 +32,13 @@ export async function listSuppliers(
   searchQuery?: string,
   page: number = 1,
   pageSize: number = 20,
+  ordering?: string,
 ): Promise<PaginatedResponse<Supplier>> {
   const params: Record<string, string | number | undefined> = {
     page,
     page_size: pageSize,
     search: searchQuery || undefined,
+    ordering: ordering || undefined,
   };
   const res = await api.get<Supplier[]>('/purchasing/suppliers/', { params });
   return {
@@ -157,10 +159,17 @@ function formatTotal(cost: string): string {
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export async function listPOHistory(page = 1, pageSize = 20): Promise<PaginatedResponse<POHistoryItem>> {
-  const res = await api.get<POHistoryRaw[]>('/purchasing/orders/', {
-    params: { page, page_size: pageSize },
-  });
+export async function listPOHistory(
+  page = 1,
+  pageSize = 20,
+  ordering?: string,
+): Promise<PaginatedResponse<POHistoryItem>> {
+  const params: Record<string, string | number | undefined> = {
+    page,
+    page_size: pageSize,
+    ordering: ordering || undefined,
+  };
+  const res = await api.get<POHistoryRaw[]>('/purchasing/orders/', { params });
   return {
     results: (res.data ?? [])
       .filter((item) => item.status !== 'pending_approval' && item.status !== 'draft')

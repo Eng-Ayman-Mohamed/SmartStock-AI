@@ -28,8 +28,23 @@ export function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
 
-  const { data, isLoading, error: queryError, refetch } = useSuppliers(debouncedSearch || undefined, page, PAGE_SIZE);
+  function handleSort(key: string) {
+    if (sortField === key && sortOrder === 'asc') {
+      setSortOrder('desc');
+    } else if (sortField === key && sortOrder === 'desc') {
+      setSortField('');
+      setSortOrder('');
+    } else {
+      setSortField(key);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  }
+
+  const { data, isLoading, error: queryError, refetch } = useSuppliers(debouncedSearch || undefined, page, PAGE_SIZE, sortField || undefined, sortOrder || undefined);
   const suppliers = data?.results ?? [];
   const totalCount = data?.count ?? 0;
   const maxPage = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -157,11 +172,15 @@ export function SuppliersPage() {
     {
       key: 'name',
       label: 'Supplier Name',
+      sortable: true,
+      sortOrder: sortField === 'name' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="truncate block font-medium text-ink">{r.name}</span>,
     },
     {
       key: 'contact_email',
       label: 'Contact Email',
+      sortable: true,
+      sortOrder: sortField === 'contact_email' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="truncate block text-ink-muted">{isViewer ? '—' : (r.contact_email || '—')}</span>,
     },
     {
@@ -178,12 +197,16 @@ export function SuppliersPage() {
       key: 'default_lead_time_days',
       label: 'Lead Time',
       width: '120px',
+      sortable: true,
+      sortOrder: sortField === 'default_lead_time_days' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="tabular-nums">{r.default_lead_time_days} days</span>,
     },
     {
       key: 'is_active',
       label: 'Status',
       width: '120px',
+      sortable: true,
+      sortOrder: sortField === 'is_active' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <Badge variant={r.is_active ? 'Active' : 'Inactive'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>,
     },
     {
@@ -290,6 +313,7 @@ export function SuppliersPage() {
             keyExtractor={(r) => String(r.id)}
             caption="Suppliers list"
             pagination={suppliers.length > 0 ? paginationConfig : undefined}
+            onSort={handleSort}
           />
         )}
       </Card>
