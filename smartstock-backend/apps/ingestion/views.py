@@ -30,7 +30,7 @@ from ai.observability.langfuse import get_langfuse_alert_thresholds, get_langfus
 from ai.rag.ingestion import ingest_pdf
 from apps.ai.services import ConversationService
 from apps.audit.models import AuditLog
-from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsViewerOrAbove
+from apps.authentication.permissions import IsManagerOrAbove, IsViewerOrAbove
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error, sanitize_llm_error
 
@@ -188,7 +188,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve', 'create'):
             return [IsViewerOrAbove()]
         if self.action == 'destroy':
-            return [IsAdminOnly()]
+            return [IsManagerOrAbove()]
         return [IsViewerOrAbove()]
 
     def get_queryset(self):
