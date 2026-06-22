@@ -47,11 +47,32 @@ export function useCreatePO() {
 
 export const poHistoryQueryKey = ['po-history'] as const;
 
-export function usePOHistory(page = 1, pageSize = 20) {
+const poHistoryOrderingMap: Record<string, string> = {
+  id: 'id',
+  product_name: 'sku__product__name',
+  supplier: 'supplier__name',
+  quantity: 'quantity',
+  total: 'total_cost',
+  status: 'status',
+  created_at: 'created_at',
+  approved_by: 'approved_by__username',
+};
+
+export function usePOHistory(
+  page = 1,
+  pageSize = 20,
+  sortField?: string,
+  sortOrder?: string,
+) {
   const token = useAuthStore((s) => s.token);
+  const ordering = sortField
+    ? sortOrder === 'desc'
+      ? `-${poHistoryOrderingMap[sortField] ?? sortField}`
+      : (poHistoryOrderingMap[sortField] ?? sortField)
+    : '';
   return useQuery({
-    queryKey: [...poHistoryQueryKey, page, pageSize],
-    queryFn: () => purchasingApi.listPOHistory(page, pageSize),
+    queryKey: [...poHistoryQueryKey, page, pageSize, sortField, sortOrder],
+    queryFn: () => purchasingApi.listPOHistory(page, pageSize, ordering),
     enabled: !!token,
     retry: false,
   });

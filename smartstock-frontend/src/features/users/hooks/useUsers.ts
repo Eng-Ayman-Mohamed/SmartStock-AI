@@ -5,16 +5,30 @@ import type { CreateUserPayload, UpdateUserRolePayload } from '../types';
 
 export const usersQueryKey = ['users'] as const;
 
+const orderingMap: Record<string, string> = {
+  name: 'first_name',
+  role: 'role',
+  status: 'is_active',
+  joined: 'date_joined',
+};
+
 export function useUsers(
   searchQuery?: string,
   page: number = 1,
   pageSize: number = 20,
   isActive?: boolean,
+  sortField?: string,
+  sortOrder?: string,
 ) {
   const token = useAuthStore((s) => s.token);
+  const ordering = sortField
+    ? sortOrder === 'desc'
+      ? `-${orderingMap[sortField] ?? sortField}`
+      : (orderingMap[sortField] ?? sortField)
+    : '';
   return useQuery({
-    queryKey: [...usersQueryKey, page, pageSize, searchQuery, isActive],
-    queryFn: () => usersApi.listUsers(page, pageSize, searchQuery ?? '', isActive),
+    queryKey: [...usersQueryKey, page, pageSize, searchQuery, isActive, sortField, sortOrder],
+    queryFn: () => usersApi.listUsers(page, pageSize, searchQuery ?? '', isActive, ordering),
     enabled: !!token,
     retry: false,
   });

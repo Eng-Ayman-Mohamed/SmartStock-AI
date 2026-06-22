@@ -5,7 +5,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 from django.core.cache import cache
-from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Min, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiResponse,
@@ -205,7 +206,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     filterset_class = ProductFilter
     search_fields = ['name', 'category__name', 'supplier__name', 'skus__code']
-    ordering_fields = ['name', 'category', 'created_at']
+    ordering_fields = [
+        'name',
+        'category__name',
+        'supplier__name',
+        'sku_reorder_point',
+        'created_at',
+        'sku_code',
+        'quantity_on_hand',
+        'quantity_reserved',
+    ]
     ordering = ['-created_at']
 
     def get_queryset(self):
@@ -216,8 +226,19 @@ class ProductViewSet(viewsets.ModelViewSet):
                 self.request.query_params.get('include_inactive', '').lower() == 'true'
             )
             is_admin = include_inactive and self.request.user.role == 'admin'
-            self._cached_queryset = InventoryRepository().get_all_queryset(
-                include_inactive=is_admin
+            self._cached_queryset = (
+                InventoryRepository()
+                .get_all_queryset(include_inactive=is_admin)
+                .annotate(
+                    sku_code=Min('skus__code'),
+                    quantity_on_hand=Coalesce(Sum('skus__stock_level__quantity_on_hand'), Value(0)),
+                    quantity_reserved=Coalesce(
+                        Sum('skus__stock_level__quantity_reserved'), Value(0)
+                    ),
+                    sku_reorder_point=Coalesce(
+                        Min('skus__stock_level__reorder_point'), F('reorder_point')
+                    ),
+                )
             )
         return self._cached_queryset
 

@@ -26,70 +26,104 @@ import { useQuery } from "@tanstack/react-query";
 const PAGE_SIZE = 20;
 const EMPTY_ARRAY: [] = [];
 
-const historyColumns: Column<POHistoryItem>[] = [
-  {
-    key: "id",
-    label: "PO #",
-    width: "100px",
-    render: (r) => <span className="text-mono text-ink-muted">{r.id}</span>,
-  },
-  {
-    key: "product_name",
-    label: "Product",
-    render: (r) => <span className="truncate block">{r.product_name}</span>,
-  },
-  {
-    key: "supplier",
-    label: "Supplier",
-    width: "150px",
-    render: (r) => (
-      <span className="truncate block text-ink-muted">{r.supplier}</span>
-    ),
-  },
-  {
-    key: "quantity",
-    label: "Qty",
-    align: "right",
-    width: "60px",
-    render: (r) => <span className="tabular-nums">{r.quantity}</span>,
-  },
-  {
-    key: "total",
-    label: "Total",
-    align: "right",
-    width: "100px",
-    render: (r) => <span className="tabular-nums">{r.total}</span>,
-  },
-  {
-    key: "status",
-    label: "Status",
-    width: "120px",
-    render: (r) => <Badge>{r.status}</Badge>,
-  },
-  {
-    key: "created_at",
-    label: "Created",
-    width: "110px",
-    render: (r) => (
-      <span className="text-caption text-ink-muted tabular-nums">
-        {r.created_at}
-      </span>
-    ),
-  },
-  {
-    key: "approved_by",
-    label: "Approved By",
-    width: "120px",
-    render: (r) => (
-      <span className="text-caption text-ink-muted">{r.approved_by}</span>
-    ),
-  },
-];
-
 export default function PurchasingPage() {
   const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
   const [poPage, setPoPage] = useState(1);
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  function handleSort(key: string) {
+    if (sortField === key && sortOrder === "asc") {
+      setSortOrder("desc");
+    } else if (sortField === key && sortOrder === "desc") {
+      setSortField("");
+      setSortOrder("");
+    } else {
+      setSortField(key);
+      setSortOrder("asc");
+    }
+    setPoPage(1);
+  }
+
+  const historyColumns = useMemo<Column<POHistoryItem>[]>(
+    () => [
+      {
+        key: "id",
+        label: "PO #",
+        width: "100px",
+        sortable: true,
+        sortOrder: sortField === "id" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => <span className="text-mono text-ink-muted">{r.id}</span>,
+      },
+      {
+        key: "product_name",
+        label: "Product",
+        sortable: true,
+        sortOrder: sortField === "product_name" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => <span className="truncate block">{r.product_name}</span>,
+      },
+      {
+        key: "supplier",
+        label: "Supplier",
+        width: "150px",
+        sortable: true,
+        sortOrder: sortField === "supplier" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => (
+          <span className="truncate block text-ink-muted">{r.supplier}</span>
+        ),
+      },
+      {
+        key: "quantity",
+        label: "Qty",
+        align: "right",
+        width: "60px",
+        sortable: true,
+        sortOrder: sortField === "quantity" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => <span className="tabular-nums">{r.quantity}</span>,
+      },
+      {
+        key: "total",
+        label: "Total",
+        align: "right",
+        width: "100px",
+        sortable: true,
+        sortOrder: sortField === "total" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => <span className="tabular-nums">{r.total}</span>,
+      },
+      {
+        key: "status",
+        label: "Status",
+        width: "120px",
+        sortable: true,
+        sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => <Badge>{r.status}</Badge>,
+      },
+      {
+        key: "created_at",
+        label: "Created",
+        width: "110px",
+        sortable: true,
+        sortOrder: sortField === "created_at" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => (
+          <span className="text-caption text-ink-muted tabular-nums">
+            {r.created_at}
+          </span>
+        ),
+      },
+      {
+        key: "approved_by",
+        label: "Approved By",
+        width: "120px",
+        sortable: true,
+        sortOrder: sortField === "approved_by" ? (sortOrder as "asc" | "desc") : undefined,
+        render: (r) => (
+          <span className="text-caption text-ink-muted">{r.approved_by}</span>
+        ),
+      },
+    ],
+    [sortField, sortOrder],
+  );
 
   const user = useAuthStore((s) => s.user);
   const canManage = user?.role === "manager" || user?.role === "admin";
@@ -115,7 +149,7 @@ export default function PurchasingPage() {
     data: poHistoryData,
     isLoading: isHistoryLoading,
     isError: isHistoryError,
-  } = usePOHistory(poPage, PAGE_SIZE);
+  } = usePOHistory(poPage, PAGE_SIZE, sortField, sortOrder);
   const pendingPOs = pendingPOsData?.results ?? EMPTY_ARRAY;
   const poHistory = poHistoryData?.results ?? EMPTY_ARRAY;
 
@@ -261,6 +295,7 @@ export default function PurchasingPage() {
             keyExtractor={(r) => r.id}
             caption="Purchase order history"
             pagination={poPaginationConfig}
+            onSort={handleSort}
           />
         )}
       </Card>

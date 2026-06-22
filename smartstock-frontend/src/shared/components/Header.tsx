@@ -81,7 +81,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b border-hairline bg-canvas overflow-hidden">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b border-hairline bg-canvas">
       <div className="flex items-center gap-2 min-w-0 shrink">
         <button
           onClick={toggleSidebar}

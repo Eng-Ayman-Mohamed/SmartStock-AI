@@ -56,6 +56,17 @@ const statusParamByLabel: Record<string, string> = {
   "Out of Stock": "out_of_stock",
 };
 
+const orderingMap: Record<string, string> = {
+  sku: 'sku_code',
+  product: 'name',
+  category: 'category__name',
+  qty: 'quantity_on_hand',
+  reserved: 'quantity_reserved',
+  reorder: 'sku_reorder_point',
+  supplier: 'supplier__name',
+  status: 'quantity_on_hand',
+};
+
 function unwrap<T>(payload: T | { data: T } | { results: T }): T {
   if (payload && typeof payload === "object") {
     if ("data" in payload) return payload.data;
@@ -79,7 +90,9 @@ export function useInventory(params: {
   categoryFilter?: string;
 }) {
   const ordering = params.sortField
-    ? params.sortOrder === "desc" ? `-${params.sortField}` : params.sortField
+    ? params.sortOrder === "desc"
+      ? `-${orderingMap[params.sortField] ?? params.sortField}`
+      : (orderingMap[params.sortField] ?? params.sortField)
     : "";
   const orderingParam = ordering ? { ordering } : {};
 

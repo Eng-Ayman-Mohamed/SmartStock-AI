@@ -133,7 +133,14 @@ class SupplierViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     search_fields = ['name', 'contact_email', 'contact_phone']
     filterset_class = SupplierFilter
-    ordering_fields = ['name', 'created_at', 'is_active']
+    ordering_fields = [
+        'name',
+        'created_at',
+        'is_active',
+        'contact_email',
+        'contact_phone',
+        'default_lead_time_days',
+    ]
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
@@ -246,6 +253,17 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     serializer_class = PurchaseOrderSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ['status']
+    ordering_fields = [
+        'id',
+        'sku__product__name',
+        'supplier__name',
+        'quantity',
+        'total_cost',
+        'status',
+        'created_at',
+        'approved_by__username',
+    ]
+    ordering = ['-created_at']
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):

@@ -30,9 +30,9 @@ import AdjustStockModal from "../components/AdjustStockModal";
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
 
-function statusFor(quantity: number, reorderPoint: number): Status {
-  if (quantity <= 0) return "Out of Stock";
-  if (quantity < reorderPoint) return "Low Stock";
+function statusFor(available: number, reorderPoint: number): Status {
+  if (available <= 0) return "Out of Stock";
+  if (available < reorderPoint) return "Low Stock";
   return "In Stock";
 }
 
@@ -177,14 +177,17 @@ export default function InventoryPage() {
         ? product.skus
         : [{ id: 0, code: "No SKU", stock_level_id: null }];
       return skus.map((sku) => {
-        const quantity = sku.quantity_on_hand ?? 0;
+        const quantityOnHand = sku.quantity_on_hand ?? 0;
+        const quantityReserved = sku.quantity_reserved ?? 0;
+        const quantityAvailable = quantityOnHand - quantityReserved;
         const reorderPoint = sku.stock_reorder_point ?? product.reorder_point;
-        const status = statusFor(quantity, reorderPoint);
+        const status = statusFor(quantityAvailable, reorderPoint);
         return {
           product,
           sku,
-          quantity,
-          quantity_reserved: sku.quantity_reserved ?? 0,
+          quantity: quantityOnHand,
+          quantity_reserved: quantityReserved,
+          quantityAvailable,
           reorderPoint,
           status,
           stockId: sku.stock_level_id ?? 0,
@@ -246,14 +249,14 @@ export default function InventoryPage() {
           <div className="w-16 h-2 rounded-full bg-hairline overflow-hidden shrink-0">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                r.quantity <= 0
+                r.quantityAvailable <= 0
                   ? "bg-red-500 animate-pulse"
-                  : r.quantity < r.reorderPoint
+                  : r.quantityAvailable < r.reorderPoint
                     ? "bg-amber-500"
                     : "bg-green-500"
               }`}
               style={{
-                width: `${Math.min(100, (r.quantity / Math.max(r.reorderPoint, 1)) * 100)}%`,
+                width: `${Math.min(100, (r.quantityAvailable / Math.max(r.reorderPoint, 1)) * 100)}%`,
               }}
             />
           </div>

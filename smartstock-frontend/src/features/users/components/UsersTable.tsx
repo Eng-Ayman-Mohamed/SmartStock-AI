@@ -14,6 +14,9 @@ interface UsersTableProps {
   users: User[];
   emptyState?: React.ReactNode;
   pagination?: PaginationConfig;
+  sortField?: string;
+  sortOrder?: string;
+  onSort?: (key: string) => void;
 }
 
 function getInitials(name: string): string {
@@ -34,7 +37,7 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export default function UsersTable({ users, emptyState, pagination }: UsersTableProps) {
+export default function UsersTable({ users, emptyState, pagination, sortField, sortOrder, onSort }: UsersTableProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const updateRole = useUpdateUserRole();
   const deactivate = useDeactivateUser();
@@ -46,6 +49,8 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         key: 'name',
         label: 'User',
         width: '32%',
+        sortable: true,
+        sortOrder: sortField === 'name' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) => (
           <div className="flex items-center gap-3 min-w-0">
             <div
@@ -70,6 +75,8 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         key: 'role',
         label: 'Role',
         width: '20%',
+        sortable: true,
+        sortOrder: sortField === 'role' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) => (
           <div className="flex items-center gap-2">
             <RoleBadge role={u.role} />
@@ -96,6 +103,8 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         key: 'status',
         label: 'Status',
         width: '14%',
+        sortable: true,
+        sortOrder: sortField === 'status' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) =>
           u.is_active ? (
             <span className="inline-flex items-center gap-1.5 text-caption font-medium text-green-700 dark:text-green-400">
@@ -113,6 +122,8 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         key: 'joined',
         label: 'Joined',
         width: '18%',
+        sortable: true,
+        sortOrder: sortField === 'joined' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) => (
           <span className="text-caption text-ink-muted">{formatDate(u.date_joined)}</span>
         ),
@@ -144,7 +155,7 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         },
       },
     ],
-    [currentUserId, updateRole, deactivate, addToast],
+    [currentUserId, updateRole, deactivate, addToast, sortField, sortOrder],
   );
 
   if (users.length === 0 && emptyState) {
@@ -159,6 +170,7 @@ export default function UsersTable({ users, emptyState, pagination }: UsersTable
         keyExtractor={(u) => String(u.id)}
         caption="Team members"
         pagination={pagination}
+        onSort={onSort}
       />
     </Card>
   );

@@ -26,15 +26,32 @@ export default function UsersSettingsPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
 
   const debouncedSearch = useDebounce(query, 300);
   const isActive = statusToIsActive(status);
+
+  function handleSort(key: string) {
+    if (sortField === key && sortOrder === 'asc') {
+      setSortOrder('desc');
+    } else if (sortField === key && sortOrder === 'desc') {
+      setSortField('');
+      setSortOrder('');
+    } else {
+      setSortField(key);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  }
 
   const { data, isLoading, isError, error, refetch } = useUsers(
     debouncedSearch || undefined,
     page,
     PAGE_SIZE,
     isActive,
+    sortField || undefined,
+    sortOrder || undefined,
   );
 
   const users = data?.results ?? [];
@@ -113,6 +130,9 @@ export default function UsersSettingsPage() {
           />
           <UsersTable
             users={users}
+            sortField={sortField || undefined}
+            sortOrder={sortOrder || undefined}
+            onSort={handleSort}
             emptyState={
               totalCount > 0 ? (
                 <EmptyState
