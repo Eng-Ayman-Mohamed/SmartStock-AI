@@ -101,6 +101,10 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     if (!originalRequest) return Promise.reject(error);
 
+    if (error.response?.status === 204 || error.response?.status === 304) {
+      return error.response;
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry && !AUTH_EXEMPT_PATHS.some((p) => originalRequest.url?.includes(p))) {
       const currentToken = useAuthStore.getState().token;
 
