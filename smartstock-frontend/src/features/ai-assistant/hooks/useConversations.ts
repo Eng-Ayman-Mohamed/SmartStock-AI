@@ -18,6 +18,7 @@ export default function useConversations() {
 
   const loadConversations = useCallback(async () => {
     try {
+      setError(null);
       setIsLoading(true);
       const data = await listConversations();
       setConversations(data);
@@ -37,6 +38,7 @@ export default function useConversations() {
 
   const selectConversation = useCallback(async (id: string) => {
     try {
+      setError(null);
       setIsLoading(true);
       const data = await getConversation(id);
       setActiveConversation(data);
@@ -65,6 +67,7 @@ export default function useConversations() {
 
   const startNewConversation = useCallback(async (title?: string) => {
     try {
+      setError(null);
       setIsLoading(true);
       const data = await createConversation(title);
       setActiveConversation(data);
@@ -80,6 +83,7 @@ export default function useConversations() {
 
   const removeConversation = useCallback(async (id: string) => {
     try {
+      setError(null);
       await deleteConversation(id);
       if (activeConversation?.id === id) {
         setActiveConversation(null);
@@ -92,6 +96,7 @@ export default function useConversations() {
 
   const updateTitle = useCallback(async (id: string, title: string) => {
     try {
+      setError(null);
       await renameConversation(id, title);
       await loadConversations();
       if (activeConversation?.id === id) {

@@ -1,4 +1,5 @@
 import logging
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -65,12 +66,24 @@ _QUERY_PATTERN_CACHE: list[tuple[str, str, dict]] = [
 ]
 
 
+_NEGATION_WORDS = {'not', "don't", 'dont', 'without', 'except', 'excluding', 'never', 'no'}
+
+
 def _match_cached_query(query: str) -> tuple[str, dict] | None:
-    """Return (action, filters_dict) if the query matches a cached pattern, else None."""
+    """Return (action, filters_dict) if the query matches a cached pattern, else None.
+
+    Uses word-boundary matching to avoid false positives (e.g. "show products" won't match
+    "don't show products"). Also skips the cache if the query contains negation words within
+    a short distance of the matched pattern.
+    """
     lower_q = query.strip().lower()
     for pattern, cached_action, cached_filters in _QUERY_PATTERN_CACHE:
-        if pattern in lower_q:
-            return cached_action, cached_filters
+        if not re.search(r'\b' + re.escape(pattern) + r'\b', lower_q):
+            continue
+        words = set(lower_q.split())
+        if words & _NEGATION_WORDS:
+            continue
+        return cached_action, cached_filters
     return None
 
 
@@ -1157,20 +1170,13 @@ def _parse_condition(condition) -> Q:
 
 
 def _build_q_from_filters(filters: NLQueryFilters) -> Q:
-    import operator
-    from functools import reduce
-
-    conjunction = getattr(filters, 'conjunction', 'and')
     conditions = getattr(filters, 'conditions', [])
     if not conditions:
         return Q()
-    q_parts = [_parse_condition(c) for c in conditions]
-    if conjunction == 'or':
-        return reduce(operator.or_, q_parts)
-    result = q_parts[0]
-    for part in q_parts[1:]:
-        result &= part
-    return result
+    q = _parse_condition(conditions[0])
+    for c in conditions[1:]:
+        q &= _parse_condition(c)
+    return q
 
 
 def conditions_to_q(conditions, model=Product):
@@ -1260,14 +1266,39 @@ def _handle_get_sales_report(filters: NLQueryFilters) -> list:
 def _handle_get_low_stock(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
-    q = _build_q_from_filters(filters)
-    threshold = filters.get('threshold', 10) if hasattr(filters, 'get') else 10
-    items = (
+
+    q = Q()
+    for c in filters.conditions:
+        if c.field == 'quantity_on_hand':
+            if c.op == 'lt':
+                q &= Q(quantity_on_hand__lt=c.value)
+            elif c.op == 'lte':
+                q &= Q(quantity_on_hand__lte=c.value)
+            elif c.op == 'eq':
+                q &= Q(quantity_on_hand=c.value)
+            elif c.op == 'gt':
+                q &= Q(quantity_on_hand__gt=c.value)
+            elif c.op == 'gte':
+                q &= Q(quantity_on_hand__gte=c.value)
+        elif c.field == 'reorder_point':
+            q &= Q(**{f'reorder_point__{OP_MAP.get(c.op, "")}': c.value})
+        elif c.field == 'product_name':
+            q &= Q(sku__product__name__icontains=c.value)
+        elif c.field == 'sku_code':
+            q &= Q(sku__code=c.value)
+        elif c.field == 'category':
+            q &= Q(sku__product__category__name=c.value)
+
+    # Default: items below their per-product reorder point
+    has_quantity_condition = any(c.field == 'quantity_on_hand' for c in filters.conditions)
+    if not has_quantity_condition:
+        q &= Q(quantity_on_hand__lt=F('reorder_point'))
+
+    return list(
         StockLevel.objects.select_related('sku__product')
-        .filter(q, quantity_on_hand__lt=threshold)
-        .values('sku__code', 'sku__product__name', 'quantity_on_hand', 'reorder_point')
+        .filter(q)
+        .values('sku__code', 'sku__product__name', 'quantity_on_hand', 'reorder_point')[:100]
     )
-    return list(items)
 
 
 def _handle_forecast_demand(filters: NLQueryFilters) -> list:
@@ -1299,7 +1330,7 @@ def _handle_get_supplier_info(filters: NLQueryFilters) -> list:
 def _handle_get_total_value(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
-    q = _build_q_from_filters(filters)
+    q = _build_q_from_filters(filters) & Q(is_active=True)
     result = Product.objects.filter(q).aggregate(
         total_value=Sum(
             F('skus__stock_level__quantity_on_hand') * F('unit_price'), output_field=DecimalField()
@@ -1604,7 +1635,9 @@ class NLQueryEndpointView(APIView):
         )
 
     def _handle_get_low_stock(self, filters):
-        return _handle_get_low_stock(filters)
+        return _handle_get_low_stock(
+            NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
+        )
 
     def _handle_forecast_demand(self, filters):
         return _handle_forecast_demand(filters)
