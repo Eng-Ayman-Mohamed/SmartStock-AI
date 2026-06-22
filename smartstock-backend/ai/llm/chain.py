@@ -184,7 +184,9 @@ class NLQueryChain:
     def run(self, query: str) -> NLQueryResult:
         for attempt in range(3):
             try:
-                logger.info('Running NL query chain with tool_choice=required (attempt %d/3)', attempt + 1)
+                logger.info(
+                    'Running NL query chain with tool_choice=required (attempt %d/3)', attempt + 1
+                )
                 response = invoke_with_langfuse(
                     self._chain,
                     {
@@ -210,7 +212,9 @@ class NLQueryChain:
                     wait = 1 * (attempt + 1)
                     logger.warning(
                         'NL chain transient error on attempt %d: %s — retrying in %ds',
-                        attempt + 1, exc, wait,
+                        attempt + 1,
+                        exc,
+                        wait,
                     )
                     time.sleep(wait)
                     continue
