@@ -182,7 +182,6 @@ class NLQueryChain:
         raise NLQueryParseError('No tool call or content in LLM response')
 
     def run(self, query: str) -> NLQueryResult:
-        last_exc = None
         for attempt in range(3):
             try:
                 logger.info('Running NL query chain with tool_choice=required (attempt %d/3)', attempt + 1)
@@ -200,7 +199,6 @@ class NLQueryChain:
                     filters=NLQueryFilters(),
                 )
             except Exception as exc:
-                last_exc = exc
                 is_transient = (
                     'timeout' in str(exc).lower()
                     or 'timed out' in str(exc).lower()
