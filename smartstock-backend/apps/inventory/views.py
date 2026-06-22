@@ -1667,12 +1667,12 @@ class NLQueryEndpointView(APIView):
 
     def _handle_get_inventory(self, filters):
         return _handle_get_inventory(
-            NLQueryFilters(**filters) if isinstance(filters, dict) else filters
+            NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
         )
 
     def _handle_get_sales_report(self, filters):
         return _handle_get_sales_report(
-            NLQueryFilters(**filters) if isinstance(filters, dict) else filters
+            NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
         )
 
     def _handle_get_low_stock(self, filters):
@@ -1685,7 +1685,7 @@ class NLQueryEndpointView(APIView):
 
     def _handle_get_supplier_info(self, filters):
         return _handle_get_supplier_info(
-            NLQueryFilters(**filters) if isinstance(filters, dict) else filters
+            NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
         )
 
     def _handle_get_total_value(self, filters):

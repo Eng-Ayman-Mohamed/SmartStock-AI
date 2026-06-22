@@ -1010,7 +1010,7 @@ class ChatEndpointView(APIView):
         try:
             from ai.llm.schemas import NLQueryFilters
 
-            nl_filters = NLQueryFilters(**filters) if isinstance(filters, dict) else filters
+            nl_filters = NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
             raw_data = handler(nl_filters)
         except Exception as exc:
             raise ValueError(f'Database execution error: {exc}')
@@ -1278,7 +1278,7 @@ class ChatStreamView(APIView):
 
         from ai.llm.schemas import NLQueryFilters
 
-        nl_filters = NLQueryFilters(**filters) if isinstance(filters, dict) else filters
+        nl_filters = NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
         raw_data = handler(nl_filters)
 
         # Step D: Stream formatter
