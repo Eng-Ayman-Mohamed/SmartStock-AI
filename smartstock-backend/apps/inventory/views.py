@@ -1309,8 +1309,8 @@ def _handle_get_low_stock(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
     q = _build_q_from_filters(filters)
-    threshold = filters.get('threshold', 10) if hasattr(filters, 'get') else 10
-    items = (
+    filters.get('threshold', 10) if hasattr(filters, 'get') else 10
+    (
         StockLevel.objects.select_related('sku__product')
         .filter(q)
         .values('sku__code', 'sku__product__name', 'quantity_on_hand', 'reorder_point')[:100]
