@@ -33,6 +33,7 @@ drf-spectacular>=0.27,<1.0
 openapi-spec-validator>=0.7,<1.0
 
 cohere>=5.0,<6.0
+langchain-cohere>=0.6,<1.0
 langfuse>=2.0,<3.0
 prometheus-client>=0.20,<0.22
 ruff>=0.4.0

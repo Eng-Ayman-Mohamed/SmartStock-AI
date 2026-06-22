@@ -25,9 +25,16 @@ export default function RoleSelect({
 }: RoleSelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     if (!open) return;
+    const btn = buttonRef.current;
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      setCoords({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
     function onDocClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -42,6 +49,7 @@ export default function RoleSelect({
   return (
     <div className="relative inline-block" ref={containerRef}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => !disabled && setOpen((o) => !o)}
         disabled={disabled}
@@ -59,7 +67,8 @@ export default function RoleSelect({
       {open && (
         <ul
           role="listbox"
-          className="absolute right-0 z-20 mt-1 w-44 max-w-[calc(100vw-2rem)] rounded-md border border-hairline bg-canvas shadow-lg py-1"
+          className="fixed z-50 w-44 rounded-md border border-hairline bg-canvas shadow-lg py-1"
+          style={{ top: coords.top, right: coords.right }}
         >
           {ROLES.map((role) => {
             const isSelected = role === value;
