@@ -206,6 +206,14 @@ class InvoiceScanService:
         original_data = scan.extracted_data
         scan = self.repo.mark_confirmed(scan.id, final_data)
 
+        changed_fields = {
+            field: {
+                'original': original_data.get(field),
+                'confirmed': confirmed_data.get(field),
+            }
+            for field in INVOICE_HEADER_FIELDS
+            if original_data.get(field) != confirmed_data.get(field)
+        }
         self.audit_logger(
             AuditEvent.INVOICE_CONFIRMED,
             user,
@@ -214,6 +222,7 @@ class InvoiceScanService:
             data={
                 'original': original_data,
                 'confirmed': confirmed_data,
+                'changed_fields': changed_fields,
                 'line_count': len(valid_lines),
                 'inventory_result': inventory_result,
             },

@@ -636,6 +636,24 @@ def test_confirm_scan_multi_line_requires_line_fields():
     assert 'sku_code' in str(exc.value) or 'quantity' in str(exc.value)
 
 
+def test_confirm_scan_multi_line_rejects_non_dict_line_items():
+    owner = user(1)
+    service = InvoiceScanService(
+        repo=FakeInvoiceRepo(scan=_extracted_scan()),
+        inventory_service=FakeInventoryService(),
+        audit_logger=lambda *args, **kwargs: None,
+    )
+    confirmed = {
+        'supplier_name': 'Acme',
+        'line_items': [{'item_name': 'Mouse', 'sku_code': 'WM-1', 'quantity': 12}, 'invalid'],
+    }
+
+    with pytest.raises(ValidationError) as exc:
+        service.confirm_scan(1, owner, confirmed)
+
+    assert 'Line item 2' in str(exc.value)
+
+
 @pytest.mark.django_db
 def test_apply_confirmed_invoice_lines_processes_multiple(monkeypatch):
     service = inventory_service(

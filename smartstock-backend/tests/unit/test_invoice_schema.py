@@ -105,3 +105,13 @@ def test_coerces_currency_and_thousands_separators():
     extraction = InvoiceExtraction.from_vision_json(raw)
 
     assert extraction.header.invoice_total == 2000.75
+
+
+def test_parses_header_only_when_no_line_items_key():
+    raw = {'header': {'supplier_name': 'Acme', 'invoice_number': 'INV-7'}}
+
+    extraction = InvoiceExtraction.from_vision_json(raw)
+
+    assert extraction.header.supplier_name == 'Acme'
+    assert extraction.header.invoice_number == 'INV-7'
+    assert extraction.line_items == []
