@@ -42,7 +42,7 @@ export async function updateDocument(id: number, payload: UpdateDocumentPayload)
 }
 
 export async function deleteDocument(id: number): Promise<void> {
-  await api.delete(`/ai/documents/${id}/`);
+  await api.delete(`/ai/documents/${id}/`, { responseType: 'text' });
 }
 
 export async function getDocumentChunks(documentId: number): Promise<DocumentChunk[]> {

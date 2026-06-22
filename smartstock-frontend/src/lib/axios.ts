@@ -76,7 +76,10 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
-    if (response.data && typeof response.data === 'object' && ('data' in response.data || response.data.status === 'error')) {
+    if (response.status === 204 || !response.data) {
+      return response;
+    }
+    if (typeof response.data === 'object' && ('data' in response.data || response.data.status === 'error')) {
       if (response.data.status === 'error') {
         return Promise.reject(
           new ApiResponseError(response.data, {

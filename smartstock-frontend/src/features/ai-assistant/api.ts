@@ -126,7 +126,7 @@ export async function getConversationMessages(id: string): Promise<ConversationD
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  await api.delete(`/ai/conversations/${id}/`);
+  await api.delete(`/ai/conversations/${id}/`, { responseType: 'text' });
 }
 
 export async function renameConversation(id: string, title: string): Promise<ConversationDetail> {

@@ -58,7 +58,7 @@ export async function updateSupplier(id: number, payload: UpdateSupplierPayload)
 }
 
 export async function deleteSupplier(id: number): Promise<void> {
-  await api.delete(`/purchasing/suppliers/${id}/`);
+  await api.delete(`/purchasing/suppliers/${id}/`, { responseType: 'text' });
 }
 
 interface RawPO {
