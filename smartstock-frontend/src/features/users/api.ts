@@ -6,11 +6,13 @@ export async function listUsers(
   pageSize: number = 20,
   search: string = '',
   isActive?: boolean,
+  ordering?: string,
 ): Promise<PaginatedResponse<User>> {
   const params: Record<string, string | number | boolean | undefined> = {
     page,
     page_size: pageSize,
     search: search || undefined,
+    ordering: ordering || undefined,
   };
   if (isActive !== undefined) {
     params.is_active = isActive;

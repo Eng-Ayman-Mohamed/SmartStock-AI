@@ -293,7 +293,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     )
     permission_classes = (IsAdminOnly,)
     search_fields = ['email', 'username', 'first_name', 'last_name']
-    ordering_fields = ['date_joined', 'email', 'username', 'is_active']
+    ordering_fields = ['date_joined', 'email', 'username', 'is_active', 'role']
     filterset_fields = ['is_active', 'role']
 
     def get_serializer_class(self):
