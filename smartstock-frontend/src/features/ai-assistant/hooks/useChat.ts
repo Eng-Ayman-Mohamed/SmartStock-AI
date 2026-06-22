@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMode, ConversationDetail, Message } from '../types';
-import { sendChatMessageStream } from '../api';
+import { sendChatMessageStream, sendNLQuery } from '../api';
 
 function mapConversationMessages(detail: ConversationDetail): Message[] {
   return detail.messages.map((m) => ({
@@ -72,44 +72,61 @@ export default function useChat(conversationId?: string | null) {
       const activeConvId = conversationIdOverride ?? conversationId;
 
       try {
-        const stream = sendChatMessageStream(
-          {
-            query: trimmed,
-            mode,
-            conversation_id: activeConvId ?? undefined,
-          },
-          AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
-        );
-
-        let fullText = '';
-        let engine: Message['engine'] = undefined;
-        let sources: Message['sources'] = undefined;
-
-        for await (const event of stream) {
-          if (controller.signal.aborted) return;
-
-          if (event.type === 'metadata') {
-            engine = event.engine as Message['engine'];
-          } else if (event.type === 'token' && event.content) {
-            fullText += event.content;
-            const textCopy = fullText;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === aiMessageId ? { ...m, text: textCopy } : m)),
-            );
-          } else if (event.type === 'done') {
-            sources = event.sources;
-          } else if (event.type === 'error') {
-            throw new Error(event.message || 'Stream error');
+        if (mode === 'nl_query' && !conversationId) {
+          const nlResult = await sendNLQuery(trimmed);
+          let aiText = nlResult.answer;
+          if (nlResult.action) {
+            const actionInfo = `\n\n[Action: ${nlResult.action.type}]`;
+            aiText = aiText + actionInfo;
           }
-        }
 
-        // Finalize message with sources and engine
-        const finalText = fullText || 'No response received.';
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === aiMessageId ? { ...m, text: finalText, engine, sources } : m,
-          ),
-        );
+          const nlAiMessage: Message = {
+            id: createId(),
+            role: 'ai',
+            text: aiText,
+            engine: 'nl_query',
+            timestamp: Date.now(),
+          };
+          setMessages((prev) => [...prev, nlAiMessage]);
+        } else {
+          const stream = sendChatMessageStream(
+            {
+              query: trimmed,
+              mode,
+              conversation_id: activeConvId ?? undefined,
+            },
+            AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
+          );
+
+          let fullText = '';
+          let engine: Message['engine'] = undefined;
+          let sources: Message['sources'] = undefined;
+
+          for await (const event of stream) {
+            if (controller.signal.aborted) return;
+
+            if (event.type === 'metadata') {
+              engine = event.engine as Message['engine'];
+            } else if (event.type === 'token' && event.content) {
+              fullText += event.content;
+              const textCopy = fullText;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === aiMessageId ? { ...m, text: textCopy } : m)),
+              );
+            } else if (event.type === 'done') {
+              sources = event.sources;
+            } else if (event.type === 'error') {
+              throw new Error(event.message || 'Stream error');
+            }
+          }
+
+          const finalText = fullText || 'No response received.';
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMessageId ? { ...m, text: finalText, engine, sources } : m,
+            ),
+          );
+        }
       } catch (err) {
         if (controller.signal.aborted) return;
 

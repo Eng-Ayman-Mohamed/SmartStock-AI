@@ -18,13 +18,6 @@ CHUNK_OVERLAP = 50
 MAX_RETRIES = 3
 
 
-def _get_embedding_config():
-    from ai.llm.provider_config import get_provider_config
-
-    config = get_provider_config()
-    return config['embedding_model'], config['embedding_dimensions']
-
-
 def extract_text_from_pdf(file_path: str) -> list[dict]:
     reader = pypdf.PdfReader(file_path)
     pages = []

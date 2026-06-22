@@ -19,6 +19,7 @@ from drf_spectacular.utils import (
     inline_serializer,
 )
 from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -33,9 +34,10 @@ from apps.authentication.permissions import IsAdminOnly, IsManagerOrAbove, IsVie
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error, sanitize_llm_error
 
-from .models import Document
+from .models import Document, DocumentChunk
 from .serializers import (
     ChatSerializer,
+    DocumentChunkSerializer,
     DocumentSerializer,
     DocumentUploadSerializer,
     InvoiceScanConfirmSerializer,
@@ -171,8 +173,7 @@ class RAGServiceUnavailable(Exception):
 class DocumentViewSet(viewsets.ModelViewSet):
     """CRUD for RAG documents.
 
-    - Viewer+: list, retrieve
-    - Manager+: upload (create)
+    - Viewer+: list, retrieve, upload (create)
     - Admin: soft-delete
     """
 
@@ -184,18 +185,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
-            return [IsViewerOrAbove()]
-        if self.action == 'create':
+        if self.action in ('list', 'retrieve', 'create'):
             return [IsViewerOrAbove()]
         if self.action == 'destroy':
             return [IsAdminOnly()]
         return [IsViewerOrAbove()]
 
     def get_queryset(self):
-        if self.action == 'list':
-            return Document.objects.filter(is_active=True).order_by('-created_at')
-        return Document.objects.all()
+        return Document.objects.filter(is_active=True).order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         serializer = DocumentUploadSerializer(data=request.data)
@@ -251,6 +248,26 @@ class DocumentViewSet(viewsets.ModelViewSet):
         instance.is_active = False
         instance.save(update_fields=['is_active'])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        responses={
+            200: DocumentChunkSerializer(many=True),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Document not found'
+            ),
+        },
+        tags=['ai'],
+    )
+    @action(detail=True, methods=['get'])
+    def chunks(self, request, pk=None):
+        document = self.get_object()
+        chunks = DocumentChunk.objects.filter(document=document).order_by('id')
+        serializer = DocumentChunkSerializer(chunks, many=True)
+        return Response(serializer.data)
 
 
 # ---------------------------------------------------------------------------
