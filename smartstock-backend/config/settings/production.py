@@ -2,15 +2,15 @@ import os  # noqa: F811
 
 from .base import *  # noqa: F403
 
-DEBUG = False
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'false').lower() in ('true', '1', 'yes')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
 if not ALLOWED_HOSTS:
@@ -29,16 +29,17 @@ else:
         o.strip() for o in os.environ['CORS_ALLOWED_ORIGINS'].split(',') if o.strip()
     ]
 
-_cors_insecure = [
-    o for o in CORS_ALLOWED_ORIGINS if 'localhost' in o or '127.0.0.1' in o or o == '*'
-]
-if _cors_insecure:
-    import logging as _logging
+if not DEBUG:
+    _cors_insecure = [
+        o for o in CORS_ALLOWED_ORIGINS if 'localhost' in o or '127.0.0.1' in o or o == '*'
+    ]
+    if _cors_insecure:
+        import logging as _logging
 
-    _logging.getLogger('config.settings.production').warning(
-        'Removing insecure CORS origins from production: %s', _cors_insecure
-    )
-    CORS_ALLOWED_ORIGINS = [o for o in CORS_ALLOWED_ORIGINS if o not in _cors_insecure]
+        _logging.getLogger('config.settings.production').warning(
+            'Removing insecure CORS origins from production: %s', _cors_insecure
+        )
+        CORS_ALLOWED_ORIGINS = [o for o in CORS_ALLOWED_ORIGINS if o not in _cors_insecure]
 
 CORS_ALLOW_CREDENTIALS = True
 

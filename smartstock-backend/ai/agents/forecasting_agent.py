@@ -76,66 +76,74 @@ class ForecastingAgent:
         status = AgentRun.Status.COMPLETED
         error = ''
 
+        output = {
+            'agent': 'forecasting_agent',
+            'status': 'completed',
+            'total_skus': 0,
+            'processed': 0,
+            'skipped': 0,
+            'failed': 0,
+            'results': [],
+        }
+
         try:
             sku_ids = self._extract_sku_ids(payload)
         except Exception as exc:
             logger.exception('ForecastingAgent.run failed extracting SKU IDs')
-            output = {
-                'agent': 'forecasting_agent',
-                'status': 'completed',
-                'total_skus': 0,
-                'processed': 0,
-                'skipped': 0,
-                'failed': 0,
-                'results': [],
-                'error': str(exc),
-            }
+            output['status'] = 'failed'
+            output['error'] = str(exc)
             error = str(exc)
             status = AgentRun.Status.FAILED
         else:
-            sku_map = {s.id: s.code for s in self.repo.get_skus_by_ids(sku_ids)}
+            try:
+                sku_map = {s.id: s.code for s in self.repo.get_skus_by_ids(sku_ids)}
 
-            for sku_id in sku_ids:
-                sku_code = sku_map.get(sku_id, '')
-                try:
-                    if self.repo.has_todays_forecast(sku_id):
-                        logger.info(
-                            'Skipping SKU %s (ID %d) — forecast exists for today', sku_code, sku_id
-                        )
+                for sku_id in sku_ids:
+                    sku_code = sku_map.get(sku_id, '')
+                    try:
+                        if self.repo.has_todays_forecast(sku_id):
+                            logger.info(
+                                'Skipping SKU %s (ID %d) — forecast exists for today',
+                                sku_code,
+                                sku_id,
+                            )
+                            results.append(
+                                {
+                                    'sku_id': sku_id,
+                                    'sku_code': sku_code,
+                                    'status': 'skipped',
+                                    'reason': 'todays_forecast_exists',
+                                }
+                            )
+                            continue
+                        result = self._forecast_for_sku(sku_id, sku_code, trace_spans)
+                        results.append(result)
+                    except Exception as exc:
+                        logger.exception('Forecasting agent failed for SKU ID %d: %s', sku_id, exc)
                         results.append(
                             {
                                 'sku_id': sku_id,
                                 'sku_code': sku_code,
-                                'status': 'skipped',
-                                'reason': 'todays_forecast_exists',
+                                'status': 'failed',
+                                'error': str(exc),
                             }
                         )
-                        continue
-                    result = self._forecast_for_sku(sku_id, sku_code, trace_spans)
-                    results.append(result)
-                except Exception as exc:
-                    logger.exception('Forecasting agent failed for SKU ID %d: %s', sku_id, exc)
-                    results.append(
-                        {
-                            'sku_id': sku_id,
-                            'sku_code': sku_code,
-                            'status': 'failed',
-                            'error': str(exc),
-                        }
-                    )
 
-            output = {
-                'agent': 'forecasting_agent',
-                'status': 'completed',
-                'total_skus': len(sku_ids),
-                'processed': sum(1 for r in results if r.get('status') == 'success'),
-                'skipped': sum(1 for r in results if r.get('status') == 'skipped'),
-                'failed': sum(1 for r in results if r.get('status') == 'failed'),
-                'results': results,
-            }
-            if output['failed'] > 0:
+                output['status'] = 'completed'
+                output['total_skus'] = len(sku_ids)
+                output['processed'] = sum(1 for r in results if r.get('status') == 'success')
+                output['skipped'] = sum(1 for r in results if r.get('status') == 'skipped')
+                output['failed'] = sum(1 for r in results if r.get('status') == 'failed')
+                output['results'] = results
+                if output['failed'] > 0:
+                    status = AgentRun.Status.FAILED
+                    error = f'{output["failed"]} SKU(s) failed'
+            except Exception as exc:
+                logger.exception('ForecastingAgent.run failed processing SKUs')
+                output['status'] = 'failed'
+                output['error'] = str(exc)
+                error = str(exc)
                 status = AgentRun.Status.FAILED
-                error = f'{output["failed"]} SKU(s) failed'
         finally:
             complete_agent_run(
                 agent_run.id,
