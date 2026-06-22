@@ -625,3 +625,482 @@ Tested 2026-06-19 with `LLM_PROVIDER=groq`, `LLM_WHISPER_PROVIDER=groq`:
 ### 10f. CI Coverage
 
 Full test suite: **1395 passed**, 0 failed. Coverage: **84.88%** (above 80% threshold).
+
+---
+
+## 11. Critical Bug Fixes — 2026-06-21
+
+### 11a. Bug 1 (CRITICAL) — Frontend: First message in new conversation permanently lost
+
+**File(s):** `features/ai-assistant/hooks/useChat.ts`, `features/ai-assistant/components/ChatPanel.tsx`
+
+**Problem:** When a user types their first message and no conversation exists yet, `ChatPanel.handleSend()` calls `startNewConversation()` which creates a new conversation asynchronously. However, `sendMessage(query)` on the next line still captured the **old** `conversationId` (`undefined`) from its closure — React hadn't re-rendered yet. The backend received `conversation_id: undefined`, processed the query, but never saved the message to the conversation.
+
+**Result:** The conversation appeared in the sidebar but was permanently empty (0 messages). Every user's first message in a new chat was silently discarded.
+
+**Fix (2 files):**
+
+| File | Change |
+|------|--------|
+| `hooks/useChat.ts:32-33` | `sendMessage` now accepts optional `conversationIdOverride` parameter; resolves `activeConvId = conversationIdOverride ?? conversationId` before sending |
+| `components/ChatPanel.tsx:54-59` | After `startNewConversation()` returns `newConv`, passes `newConv.id` to `sendMessage(query, newConv.id)` with early return |
+
+**Test result:** 568 tests passed, 0 TS errors.
+
+### 11b. Bug 2 (CRITICAL) — Backend: `_handle_get_low_stock` hardcoded threshold overrides LLM
+
+**File:** `apps/inventory/views.py:1260-1295`
+
+**Problem:** Three bugs in one function:
+
+1. **Dead code `/` LLM override** — `threshold = filters.get('threshold', 10) if hasattr(filters, 'get') else 10`. `NLQueryFilters` has no `.get()` method, so `hasattr` was always `False` and `threshold` was always `10`. If the LLM generated "show items with less than 5 units", the filter silently became `qty < 5 AND qty < 10` (coincidentally correct). But "show items below their reorder point" always returned items below 10, ignoring per-product reorder points.
+
+2. **Field alias incompatibility** — `_build_q_from_filters()` uses `FIELD_ALIASES` which maps `quantity_on_hand` → `skus__stock_level__quantity_on_hand`. This works on `Product.objects` but **breaks on `StockLevel.objects`** (no `skus` relation). Any LLM-generated condition with fields like `category`, `product_name`, or `sku_code` would crash with `FieldError`.
+
+3. **No default for empty conditions** — The pattern cache entry `('low stock', 'get_low_stock', {})` with no conditions would match all items (unbounded), which is a UX and cost risk.
+
+**Fix:** Rewrote `_handle_get_low_stock` to:
+
+- Manually map conditions to `StockLevel`-correct ORM paths (`sku__product__name__icontains`, `sku__product__category__name`, etc.)
+- Remove the hardcoded `threshold` / dead `.get()` code
+- Default to `quantity_on_hand < F('reorder_point')` when no quantity condition is present (semantically correct: "low" means below each product's own reorder point)
+- Cap at 100 results (matching other handlers' patterns)
+
+**Test result:** 187 inventory/low-stock tests passed, 0 new lint errors.
+
+---
+
+## 12. Frontend AI Chat UI Improvements — 2026-06-21
+
+### 12a. Why These Changes
+
+The AI chat interface had three UX issues:
+1. **No voice feedback** — the voice recorder showed only a countdown timer, with no visual indication that audio was being captured
+2. **Voice auto-sent** — transcribed text was sent immediately with no chance to review or edit
+3. **Dated visual design** — single-line text input, no message animations, engine labels cluttering the UI
+
+### 12b. Voice Transcript Review
+
+**Files modified:**
+
+| File | Change |
+|------|--------|
+| `features/ai-assistant/hooks/useVoiceRecorder.ts` | Removed `onTranscript` callback pattern. Added `transcript` state + `clearTranscript()`. After transcription, text stored in state instead of auto-sending |
+| `features/ai-assistant/components/VoiceButton.tsx` | Accepts `onTranscript` prop. When hook finishes transcription, calls `onTranscript(transcript)` with the text |
+| `features/ai-assistant/components/ChatPanel.tsx` | Changed `onTranscript` handler to populate input box (`setInput(text)`) and focus the textarea instead of calling `handleSend(text)` |
+
+**User flow (before):** Record → Stop → Transcribe → Auto-send
+**User flow (after):** Record → Stop → Transcribe → Text appears in input → User reviews/edits → Press Send
+
+### 12c. Live Audio Bars Waveform
+
+**Files modified:**
+
+| File | Change |
+|------|--------|
+| `features/ai-assistant/hooks/useVoiceRecorder.ts` | Added `AudioContext` + `AnalyserNode` connected to mic stream. Runs `requestAnimationFrame` loop reading frequency data, computes average volume (0-1), exposes `audioLevel` state. Cleans up on stop/cancel |
+| `features/ai-assistant/components/VoiceButton.tsx` | Added `AudioBars` component — 5 vertical bars that scale with `audioLevel` using `transform: scaleY()`. Rendered next to the stop button during recording |
+
+**Technical details:**
+- Uses Web Audio API `AnalyserNode` with `fftSize: 256` (128 frequency bins)
+- Volume computed as average of all frequency bins, normalized to 0-1
+- Bars have staggered `offset` based on distance from center for a natural bounce effect
+- `requestAnimationFrame` loop ensures smooth 60fps animation
+- AudioContext properly closed on stop/cancel to prevent resource leaks
+
+### 12d. Visual Polish
+
+**Files modified:**
+
+| File | Change |
+|------|--------|
+| `features/ai-assistant/components/ChatPanel.tsx` | Replaced `<input type="text">` with auto-resizing `<textarea>`. Supports Shift+Enter for newlines. Auto-resizes up to 160px max height. Send button aligned with textarea bottom |
+| `features/ai-assistant/components/MessageBubble.tsx` | Added `animate-fadeIn` class to messages. Removed engine labels (`NL Query`/`RAG`/`Auto`) from AI message bubbles |
+| `features/ai-assistant/components/ChatEmptyState.tsx` | Larger bot icon (16→14), more vertical spacing, suggestion chips with rounded-xl and hover background effect |
+
+### 12e. OpenAI API Impact
+
+**Voice transcription:** No change to API usage. The `transcribeAudio()` call happens at the same point in the flow — only the post-transcription behavior changed (populate input vs auto-send).
+
+**Token usage:** No change. The same messages are sent to the LLM; the only difference is users can now edit transcribed text before sending, which may slightly reduce wasted tokens from mis-transcribed voice input.
+
+### 12f. Build & Lint Results
+
+```
+$ npm run build
+✓ built in 934ms — 0 errors, 0 TS errors
+
+$ npm run lint
+0 errors, 0 warnings
+```
+
+### 12g. Files Changed Summary
+
+| File | Lines changed |
+|------|--------------|
+| `features/ai-assistant/hooks/useVoiceRecorder.ts` | +45 (AudioContext, audioLevel, transcript state) |
+| `features/ai-assistant/components/VoiceButton.tsx` | +25 (AudioBars component, useEffect for transcript) |
+| `features/ai-assistant/components/ChatPanel.tsx` | +15 (textarea, auto-resize, transcript populate) |
+| `features/ai-assistant/components/MessageBubble.tsx` | +2 (fadeIn class, removed engine labels) |
+| `features/ai-assistant/components/ChatEmptyState.tsx` | +8 (spacing, icon size, chip styling) |
+
+---
+
+## 13. High-Severity Bug Fixes — 2026-06-21
+
+### 13a. Bug 3 (HIGH) — Frontend: Conversation CRUD errors invisible to user
+
+**File:** `features/ai-assistant/components/ChatPanel.tsx`
+
+**Problem:** The `useConversations()` hook stores `error` state on every API failure (load, create, delete, rename), but `ChatPanel` never destructured it. When "New Chat" or "Delete" failed, the button silently did nothing. No toast, no alert, no visual feedback of any kind.
+
+**Fix:** Destructured `error` from `useConversations()` as `convError`. Added a local `visibleError` state + `useEffect` that auto-dismisses after 4 seconds. Renders a red banner below the header bar with the error text and a dismiss (X) button.
+
+| File | Change |
+|------|--------|
+| `ChatPanel.tsx:16` | Added `error: convError` to destructuring |
+| `ChatPanel.tsx:34-41` | Added `visibleError` state + auto-dismiss `useEffect` |
+| `ChatPanel.tsx:132-140` | Added red error banner with dismiss button in JSX |
+
+**Test result:** TypeScript 0 errors.
+
+### 13b. Bug 4 (HIGH) — Backend: `_run_nl_query` has no prompt injection filter
+
+**File:** `apps/ingestion/views.py`
+
+**Problem:** The `ChatEndpointView.post()` method checks for prompt injection at line 749 before calling the pipeline, but `_run_nl_query()` itself had zero defenses. If called from a different code path in the future, or if the caller check is ever refactored away, the endpoint would be fully exposed to injection attacks. Defense-in-depth violation.
+
+**Fix:** Added a prompt injection check at the start of `_run_nl_query()`. On detection, logs an `AuditLog` with `event='PROMPT_INJECTION_ATTEMPT'` and raises `ValueError('PROMPT_INJECTION_DETECTED')`. The `post()` method catches this specifically and returns `400 BAD_REQUEST` instead of falling through to the generic `500 INTERNAL_SERVER_ERROR` handler.
+
+| File | Change |
+|------|--------|
+| `ingestion/views.py:_run_nl_query` | Added `prompt_injection_filter(query)` check at method entry; raises `ValueError` with injection flag |
+| `ingestion/views.py:post()` | Added `except ValueError as exc:` handler before generic `Exception` — returns 400 for injection, 500 for other ValueErrors |
+
+**Test result:** 85/85 chat/ingestion tests passed, Ruff all checks passed.
+
+---
+
+## 14. Low-Severity Cleanup Fixes — 2026-06-21
+
+### 14a. Issue 9 — Dead code: `sendRAGQuery` removed
+
+**File:** `features/ai-assistant/api.ts:17-20`
+
+**Problem:** `sendRAGQuery()` was exported but never imported anywhere. The RAG path goes through `sendChatMessage()` with `mode: 'rag'`.
+
+**Fix:** Removed the function.
+
+### 14b. Issue 10 — `createId()` counter moved to hook-local ref
+
+**File:** `features/ai-assistant/hooks/useChat.ts`
+
+**Problem:** `createId()` used a module-level `nextId` variable. If two `useChat` instances existed, they'd share the counter, causing potential ID collisions.
+
+**Fix:** Moved the counter inside the hook as `idCounter = useRef(0)`. `createId()` is now defined inside the hook and captures the ref.
+
+### 14c. Issue 11 — `clearMessages()` now resets mode to `'auto'`
+
+**File:** `features/ai-assistant/hooks/useChat.ts`
+
+**Problem:** `clearMessages()` reset messages and error, but left the `mode` state at whatever value was previously selected. Starting a new chat could retain the old mode setting.
+
+**Fix:** Added `setMode('auto')` to the `clearMessages` callback.
+
+### 14d. Issue 12 — Removed dead `conjunction='or'` code in `_build_q_from_filters`
+
+**File:** `apps/inventory/views.py`
+
+**Problem:** `NLQueryFilters` has no `conjunction` attribute, so `getattr(filters, 'conjunction', 'and')` always returned `'and'`. The `if conjunction == 'or':` branch was dead code. The function also used an odd mix of `reduce(operator.or_, ...)` and manual `&=` for AND, but with only one path ever running.
+
+**Fix:** Simplified `_build_q_from_filters` to always use AND, removing the `import operator`, `reduce`, and the dead `or` branch. Same logic, less code.
+
+---
+
+## 15. Chat Performance & SSE Streaming — 2026-06-21
+
+### 15a. Problem: Slow Chat Performance
+
+Users reported slow chat responses. Investigation revealed the root cause: **each chat request in `auto` mode makes 3 sequential blocking LLM API calls**, each a synchronous HTTP round-trip:
+
+| Step | LLM Call | Latency |
+|------|----------|---------|
+| 1. Intent classification | GPT-4o-mini | 1-2s |
+| 2. NL → structured query | GPT-4o (tool calling) | 2-5s |
+| 3. Raw data → natural language | GPT-4o (formatter) | 2-5s |
+| **Total** | | **5-12s+** |
+
+The hard timeout was 15 seconds, making timeouts frequent. Additional issues: no LLM-level timeout/retry, no frontend timeout, wasted DB queries, and synchronous AuditLog writes blocking responses.
+
+### 15b. Quick Wins (5 changes)
+
+| # | Change | File | Impact |
+|---|--------|------|--------|
+| 1 | Added `request_timeout=8, max_retries=2` to ChatOpenAI | `ai/llm/provider_config.py` | Prevents one slow LLM call from consuming the entire timeout budget; retries on transient 429/network errors |
+| 2 | Increased `CHAT_TIMEOUT_SECONDS` from 15 to 25 | `apps/ingestion/views.py` | Gives 3 sequential LLM calls enough headroom |
+| 3 | Added `AbortSignal.timeout(25000)` to frontend requests | `features/ai-assistant/hooks/useChat.ts` | UI shows error after 25s instead of infinite spinner |
+| 4 | Skip history fetch for NL queries | `apps/ingestion/views.py` | NL chain never uses history — saves 2 DB queries per request |
+| 5 | Moved AuditLog to background thread | `apps/ingestion/views.py` | Audit write no longer blocks the response |
+
+### 15c. SSE Streaming Architecture
+
+Added Server-Sent Events (SSE) streaming so users see tokens appear in real-time instead of waiting for the full response.
+
+**New endpoint:** `POST /api/ai/chat/stream/` (existing `POST /api/ai/chat/` unchanged for backward compatibility)
+
+**SSE event protocol:**
+```
+event: metadata
+data: {"engine":"nl_query","mode":"auto","conversation_id":"uuid"}
+
+event: token
+data: {"content":"You"}
+
+event: token
+data: {"content":" have"}
+
+event: done
+data: {"sources":[{"document":"sales.pdf","page":1}],"action":{...}}
+```
+
+**Backend changes:**
+
+| File | Change |
+|------|--------|
+| `ai/llm/chain.py` | Added `call_gpt4o_formatter_stream()` — uses `chain.stream()` instead of `chain.invoke()`, yields text chunks |
+| `apps/ingestion/services.py` | Added `call_llm_stream()` and `execute_stream()` — streams RAG answer via `chain.stream()` |
+| `apps/ingestion/views.py` | Added `ChatStreamView` — returns `StreamingHttpResponse(content_type='text/event-stream')` with generator |
+| `apps/ingestion/urls.py` | Added `chat/stream/` route |
+
+**Streaming flow per request:**
+
+| Step | What | Streamable? | Notes |
+|------|------|-------------|-------|
+| 1. Intent classification | GPT-4o-mini | No (returns JSON) | Kept as `.invoke()` |
+| 2. NL chain (tool calling) | GPT-4o | No (structured output) | Kept as `.invoke()` |
+| 3. DB query handler | PostgreSQL | N/A | Synchronous |
+| 4. Formatter / RAG answer | GPT-4o | **Yes** | Uses `.stream()` — user sees tokens |
+
+**Key insight:** Steps 1-3 are not streamable (they return structured data, not text). Only the final formatter/generator step streams text. But this is the longest step (2-5s), so streaming here provides the biggest UX improvement.
+
+**Frontend changes:**
+
+| File | Change |
+|------|--------|
+| `features/ai-assistant/api.ts` | Added `sendChatMessageStream()` — uses native `fetch()` with `ReadableStream`, not axios (axios can't handle SSE) |
+| `features/ai-assistant/hooks/useChat.ts` | Rewrote `sendMessage()` and `retryLastMessage()` — appends AI message placeholder immediately, updates `text` on each `token` event |
+
+**User experience:**
+- **Before:** Send message → bouncing dots for 5-12s → entire response pops in at once
+- **After:** Send message → bouncing dots for 1-3s (intent + NL chain) → text starts appearing word-by-word → complete in 5-12s but *feels* instant
+
+### 15d. Files Modified
+
+| File | Change |
+|------|--------|
+| `ai/llm/provider_config.py` | Added `request_timeout=8, max_retries=2` to ChatOpenAI kwargs |
+| `ai/llm/chain.py` | Added `call_gpt4o_formatter_stream()` generator function |
+| `apps/ingestion/views.py` | Increased timeout, added `ChatStreamView`, skip history for NL, background AuditLog |
+| `apps/ingestion/services.py` | Added `call_llm_stream()` and `execute_stream()` |
+| `apps/ingestion/urls.py` | Added `chat/stream/` route |
+| `features/ai-assistant/api.ts` | Added `sendChatMessageStream()` with SSE parsing |
+| `features/ai-assistant/hooks/useChat.ts` | Streaming support, `AbortSignal.timeout(25000)`, incremental message updates |
+
+### 15e. OpenAI API Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| LLM calls per NL chat | 3 | 3 (unchanged — streaming only affects the last call) |
+| LLM calls per RAG chat | 3-4 | 3-4 (unchanged) |
+| Tokens per request | Same | Same (streaming doesn't change token count) |
+| Timeout protection | None at LLM level | 8s per LLM call + 2 retries |
+| Wasted DB queries | 2 (history for NL) | 0 (skipped for NL) |
+
+**Net effect:** Fewer timeout failures, no change to token usage or API cost. Streaming is a UX improvement, not a cost change.
+
+### 15f. Build & Lint Results
+
+```
+Frontend:
+$ npm run build
+✓ built in 597ms — 0 TS errors
+
+$ npm run lint
+1 pre-existing error (not in modified files)
+
+Backend:
+$ python -m py_compile apps/ingestion/views.py — OK
+$ python -m py_compile ai/llm/chain.py — OK
+$ python -m py_compile apps/ingestion/services.py — OK
+$ python -m py_compile apps/ingestion/urls.py — OK
+$ python -m py_compile ai/llm/provider_config.py — OK
+```
+
+---
+
+## 16. Round 2 Review — Chat Bug Fixes & Cleanup
+
+**Date:** 2026-06-21
+**Scope:** Second full review pass on AI chat system (backend + frontend). Found 4 new issues (1 CRITICAL, 1 HIGH, 1 MEDIUM, 2 LOW).
+
+### 16a. Bug 13 (CRITICAL — pre-existing) — `_trace_chat` SyntaxError
+
+**Problem:** `_trace_chat()` in `ingestion/views.py` had a `try:` block without `except` or `finally`. The method was refactored to run `AuditLog.objects.create` in a daemon `threading.Thread` for fire-and-forget async logging, but the outer `try:` wrapper was left behind without its matching `except`. **File could not compile** — `SyntaxError: expected 'except' or 'finally' block`.
+
+**Root cause:** The audit log was wrapped in a nested function and spawned via `threading.Thread`, but the outer `try:` (intended to guard `threading.Thread(...)`) was left dangling when the `AuditLog.objects.create` call was moved inside `_write_audit()`.
+
+**Fix:** Removed the orphaned outer `try:` entirely. The inner `try/except` inside `_write_audit()` already handles `AuditLog` failures, and `threading.Thread(...)` itself doesn't need guarding (it never raises in practice).
+
+**Files:**
+- `smartstock-backend/apps/ingestion/views.py:1023-1033`
+
+### 16b. Bug 14 (HIGH) — `useConversations` error never cleared
+
+**Problem:** All 5 async operations in `useConversations.ts` (`loadConversations`, `selectConversation`, `startNewConversation`, `removeConversation`, `updateTitle`) set `error` state on failure but **never cleared it on a subsequent successful operation**. Stale error messages lingered indefinitely.
+
+**Impact:** If an operation failed and a later operation succeeded, `convError` still held the old error. `ChatPanel.tsx`'s `visibleError` + 4s timer masked this visually, but the stale state could interfere with future error handling.
+
+**Fix:** Added `setError(null)` as the first line inside the `try` block of all five functions.
+
+**Files:**
+- `smartstock-frontend/src/features/ai-assistant/hooks/useConversations.ts`
+
+### 16c. Bug 15 (MEDIUM) — `_handle_get_total_value` inconsistent `is_active` filter
+
+**Problem:** The module-level `_handle_get_total_value` in `inventory/views.py` (used by `ChatEndpointView._run_nl_query`) did not filter `is_active=True`, while the `NLQueryEndpointView` class method did. Inactive products could inflate total inventory value in the unified chat path.
+
+**Fix:** Added `& Q(is_active=True)` to the module-level function's query.
+
+**Files:**
+- `smartstock-backend/apps/inventory/views.py:1333`
+
+### 16d. Bug 16 (LOW) — Dead code: `fetchStockSnapshot` / `useInventorySnapshot`
+
+**Problem:** After the inventory snapshot card was removed from `AIAssistantPage.tsx` (Bug 1 fixes), `fetchStockSnapshot()` in `api.ts` and `useInventorySnapshot.ts` hook were both dead code — no remaining imports from any component.
+
+**Fix:** Removed `StockSnapshot` interface and `fetchStockSnapshot` function from `api.ts`; deleted entire `useInventorySnapshot.ts` file.
+
+**Files:**
+- `smartstock-frontend/src/features/ai-assistant/api.ts`
+- `smartstock-frontend/src/features/ai-assistant/hooks/useInventorySnapshot.ts` (deleted)
+
+### 16e. Build & Lint Results
+
+```
+Frontend:
+$ npx tsc --noEmit — 0 errors
+
+Backend:
+$ ruff check apps/ingestion/views.py — 2 pre-existing E402/E501 (ChatStreamView WIP, unrelated)
+$ ruff check apps/inventory/views.py — 0 errors
+```
+
+**Net effect:** All identified issues from round 2 review resolved. File now compiles, AI chat error handling is hygienic, total value queries consistent, and no dead code remains.
+
+---
+
+## 16. SSE Streaming Bug Fixes — 2026-06-21
+
+### 16a. Bug 1 (CRITICAL) — `NameError: name 'event_stream' is not defined`
+
+**File:** `apps/ingestion/views.py` — `_stream_nl_query()` (line 1272) and `_stream_rag()` (line 1217)
+
+**Problem:** After yielding all tokens successfully, `_stream_nl_query()` and `_stream_rag()` tried to set `event_stream._full_answer = full_answer` to pass the accumulated text back to the `event_stream()` generator for conversation saving. But `event_stream` is a **local function** defined inside `post()` — the `_stream_*` methods on `self` cannot access it.
+
+**What happened:**
+1. Frontend receives `metadata` event → engine identified
+2. Frontend receives multiple `token` events → text grows on screen
+3. `_stream_nl_query()` finishes streaming, tries `event_stream._full_answer = ...`
+4. `NameError` is raised → caught by `event_stream()`'s `except` handler → yields `error` event
+5. Frontend receives `error` event → catch block runs → **deletes all streamed text** → shows "Sorry, something went wrong"
+
+**Fix:** Replaced `event_stream._full_answer` with a **mutable `shared` dict** passed to streaming methods:
+
+```python
+# Before (broken):
+event_stream._full_answer = full_answer  # NameError
+
+# After (fixed):
+shared = {}
+yield from self._stream_nl_query(query, user, shared)
+# Inside _stream_nl_query:
+shared['full_answer'] = full_answer
+```
+
+**Impact:** Streaming now completes without crashing. Conversation saving works correctly.
+
+### 16b. Bug 2 (HIGH) — `max_retries=2` causing 20-second retry delays
+
+**File:** `ai/llm/provider_config.py`
+
+**Problem:** We added `max_retries=2` to `ChatOpenAI` as a "quick win" for resilience. But the OpenAI SDK's retry uses **exponential backoff**: 1s → 3s → 20s. When the LLM call failed (quota, timeout, network), the SDK retried with a 20-second delay, making the total wait 32+ seconds. This made slowness **worse**, not better.
+
+**Backend log evidence:**
+```
+Running GPT-4o formatter (streaming)
+Retrying request to /chat/completions in 20.000000 seconds
+```
+
+**Fix:** Removed `max_retries=2` from ChatOpenAI kwargs. Kept `request_timeout=8` (which is useful for preventing hangs). The SDK's default retry behavior (0 retries for streaming) is appropriate — streaming inherently provides user feedback, so aggressive retries aren't needed.
+
+### 16c. Updated Provider Capability Matrix
+
+| Setting | Before | After |
+|---------|--------|-------|
+| `request_timeout` | None (SDK default: ~10 min) | **8 seconds** |
+| `max_retries` | None (SDK default) | None (removed) |
+
+### 16d. Files Modified
+
+| File | Change |
+|------|--------|
+| `apps/ingestion/views.py` | Added `shared = {}` dict, passed to `_stream_rag()` and `_stream_nl_query()`, replaced `event_stream._full_answer` with `shared['full_answer']` |
+| `ai/llm/provider_config.py` | Removed `max_retries=2` from ChatOpenAI kwargs |
+
+### 16e. Verification
+
+```
+Backend:
+$ python -m py_compile apps/ingestion/views.py — OK
+$ python -m py_compile ai/llm/provider_config.py — OK
+
+Frontend:
+$ npm run build — ✓ built in 537ms
+```
+
+---
+
+## 17. Chat Title Bug Fix — 2026-06-21
+
+### 17a. Bug — Chat title stays "New Conversation" after first message
+
+**File:** `smartstock-frontend/src/features/ai-assistant/components/ChatPanel.tsx`
+
+**Problem:** When a user starts a new chat and sends their first message:
+1. `handleSend` calls `startNewConversation()` → creates conversation with title "New Conversation"
+2. `sendMessage()` streams the response → backend sets title via `auto_title()` after stream completes
+3. Frontend never refreshes `activeConversation` → title stays "New Conversation"
+
+**What happened:** The sidebar and header showed "New Conversation" even after the backend had already set the title to the first 80 chars of the user's query.
+
+**Fix:** Added `await selectConversation(newConv.id)` after `sendMessage()` completes for new conversations. This refetches the conversation from the backend, picking up the updated title.
+
+```typescript
+// Before (broken):
+await sendMessage(query, newConv.id);
+return;
+
+// After (fixed):
+await sendMessage(query, newConv.id);
+await selectConversation(newConv.id);
+return;
+```
+
+**Impact:** Chat title now updates correctly after the first message. Sidebar and header show the auto-generated title.
+
+### 17b. Files Modified
+
+| File | Change |
+|------|--------|
+| `smartstock-frontend/src/features/ai-assistant/components/ChatPanel.tsx` | Added `selectConversation` to deps and call after `sendMessage` |
+

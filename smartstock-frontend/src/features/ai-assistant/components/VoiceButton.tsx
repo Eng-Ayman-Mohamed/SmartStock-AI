@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 
@@ -5,9 +6,35 @@ interface VoiceButtonProps {
   onTranscript: (text: string) => void;
 }
 
+function AudioBars({ level }: { level: number }) {
+  const bars = [0, 1, 2, 3, 4];
+  return (
+    <div className="flex items-center gap-[3px] h-5" aria-hidden="true">
+      {bars.map((i) => {
+        const offset = Math.abs(i - 2) * 0.15;
+        const height = Math.max(0.15, Math.min(1, level * 1.8 + offset));
+        return (
+          <div
+            key={i}
+            className="w-[3px] rounded-full bg-white transition-transform duration-75"
+            style={{ height: '100%', transform: `scaleY(${height})` }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
-  const { state, error, elapsed, maxDuration, startRecording, stopRecording, isSupported } =
-    useVoiceRecorder(onTranscript);
+  const { state, error, elapsed, maxDuration, transcript, clearTranscript, audioLevel, startRecording, stopRecording, isSupported } =
+    useVoiceRecorder();
+
+  useEffect(() => {
+    if (transcript) {
+      onTranscript(transcript);
+      clearTranscript();
+    }
+  }, [transcript, onTranscript, clearTranscript]);
 
   if (!isSupported) {
     return (
@@ -33,6 +60,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
         <span className="text-caption text-red-600 tabular-nums font-medium" aria-live="polite">
           {remaining}s
         </span>
+        <AudioBars level={audioLevel} />
         <button
           onClick={stopRecording}
           className="flex items-center justify-center w-9 h-9 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shrink-0 animate-pulse"

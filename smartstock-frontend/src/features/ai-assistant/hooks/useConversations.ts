@@ -4,6 +4,7 @@ import {
   listConversations,
   createConversation,
   getConversation,
+  getConversationMessages,
   deleteConversation,
   renameConversation,
 } from '../api';
@@ -17,6 +18,7 @@ export default function useConversations() {
 
   const loadConversations = useCallback(async () => {
     try {
+      setError(null);
       setIsLoading(true);
       const data = await listConversations();
       setConversations(data);
@@ -36,6 +38,7 @@ export default function useConversations() {
 
   const selectConversation = useCallback(async (id: string) => {
     try {
+      setError(null);
       setIsLoading(true);
       const data = await getConversation(id);
       setActiveConversation(data);
@@ -46,8 +49,25 @@ export default function useConversations() {
     }
   }, []);
 
+  const loadConversationMessages = useCallback(async (id: string) => {
+    try {
+      const messages = await getConversationMessages(id);
+      setActiveConversation((prev) => {
+        if (prev && prev.id === id) {
+          return { ...prev, messages };
+        }
+        return prev;
+      });
+      return messages;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load messages');
+      return [];
+    }
+  }, []);
+
   const startNewConversation = useCallback(async (title?: string) => {
     try {
+      setError(null);
       setIsLoading(true);
       const data = await createConversation(title);
       setActiveConversation(data);
@@ -63,6 +83,7 @@ export default function useConversations() {
 
   const removeConversation = useCallback(async (id: string) => {
     try {
+      setError(null);
       await deleteConversation(id);
       if (activeConversation?.id === id) {
         setActiveConversation(null);
@@ -75,6 +96,7 @@ export default function useConversations() {
 
   const updateTitle = useCallback(async (id: string, title: string) => {
     try {
+      setError(null);
       await renameConversation(id, title);
       await loadConversations();
       if (activeConversation?.id === id) {
@@ -96,6 +118,7 @@ export default function useConversations() {
     error,
     loadConversations,
     selectConversation,
+    loadConversationMessages,
     startNewConversation,
     removeConversation,
     updateTitle,

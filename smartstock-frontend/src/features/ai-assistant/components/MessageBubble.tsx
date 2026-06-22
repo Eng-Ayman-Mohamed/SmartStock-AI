@@ -3,12 +3,6 @@ import { Bot, User } from 'lucide-react';
 import type { Message } from '../types';
 import CitationTag from '../../../shared/atoms/CitationTag';
 
-const engineLabels: Record<string, string> = {
-  nl_query: 'NL Query',
-  rag: 'RAG',
-  auto: 'Auto',
-};
-
 function parseAnswerText(text: string, sources: Message['sources']) {
   if (!sources || sources.length === 0) return text;
 
@@ -55,7 +49,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
-    <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`flex gap-2.5 animate-fadeIn ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`flex items-center justify-center w-7 h-7 rounded-full shrink-0 ${
           isUser
@@ -82,12 +76,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             {isUser ? message.text : parseAnswerText(message.text, message.sources)}
           </p>
         </div>
-
-        {!isUser && message.engine && (
-          <span className="inline-block mt-1.5 ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-ink-faint">
-            {engineLabels[message.engine] || message.engine}
-          </span>
-        )}
       </div>
     </div>
   );
