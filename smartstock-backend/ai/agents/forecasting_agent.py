@@ -8,10 +8,12 @@ from langchain_core.tools import StructuredTool
 from ai.agents.tools.forecast_db_read import ForecastDBReadTool
 from ai.agents.tools.forecast_db_write import ForecastDBWriteTool
 from ai.agents.tools.prophet_run import ProphetRunTool
+from ai.agents.tracking import complete_agent_run, create_agent_run
 from ai.observability.langfuse import (
     get_langchain_callbacks,
     trace_agent_run,
 )
+from apps.audit.models import AgentRun
 from apps.forecasting.repositories import ForecastingRepository
 from apps.monitoring.tasks import record_agent_run_task
 
@@ -67,9 +69,12 @@ class ForecastingAgent:
 
     def run(self, context: dict | None = None) -> dict:
         payload = context or {}
+        agent_run = create_agent_run('forecasting_agent')
         _started_at = time.time()
         trace_spans = []
         results = []
+        status = AgentRun.Status.COMPLETED
+        error = ''
 
         try:
             sku_ids = self._extract_sku_ids(payload)
@@ -85,65 +90,69 @@ class ForecastingAgent:
                 'results': [],
                 'error': str(exc),
             }
-            trace_agent_run('forecasting_agent', payload, output, trace_spans)
-            _duration = round((time.time() - _started_at) * 1000)
-            record_agent_run_task.delay(
-                agent_name='forecasting_agent',
-                outcome='failure',
-                duration_ms=_duration,
-                error_message=str(exc),
-            )
-            return output
+            error = str(exc)
+            status = AgentRun.Status.FAILED
+        else:
+            sku_map = {s.id: s.code for s in self.repo.get_skus_by_ids(sku_ids)}
 
-        sku_map = {s.id: s.code for s in self.repo.get_skus_by_ids(sku_ids)}
-
-        for sku_id in sku_ids:
-            sku_code = sku_map.get(sku_id, '')
-            try:
-                if self.repo.has_todays_forecast(sku_id):
-                    logger.info(
-                        'Skipping SKU %s (ID %d) — forecast exists for today', sku_code, sku_id
-                    )
+            for sku_id in sku_ids:
+                sku_code = sku_map.get(sku_id, '')
+                try:
+                    if self.repo.has_todays_forecast(sku_id):
+                        logger.info(
+                            'Skipping SKU %s (ID %d) — forecast exists for today', sku_code, sku_id
+                        )
+                        results.append(
+                            {
+                                'sku_id': sku_id,
+                                'sku_code': sku_code,
+                                'status': 'skipped',
+                                'reason': 'todays_forecast_exists',
+                            }
+                        )
+                        continue
+                    result = self._forecast_for_sku(sku_id, sku_code, trace_spans)
+                    results.append(result)
+                except Exception as exc:
+                    logger.exception('Forecasting agent failed for SKU ID %d: %s', sku_id, exc)
                     results.append(
                         {
                             'sku_id': sku_id,
                             'sku_code': sku_code,
-                            'status': 'skipped',
-                            'reason': 'todays_forecast_exists',
+                            'status': 'failed',
+                            'error': str(exc),
                         }
                     )
-                    continue
-                result = self._forecast_for_sku(sku_id, sku_code, trace_spans)
-                results.append(result)
-            except Exception as exc:
-                logger.exception('Forecasting agent failed for SKU ID %d: %s', sku_id, exc)
-                results.append(
-                    {
-                        'sku_id': sku_id,
-                        'sku_code': sku_code,
-                        'status': 'failed',
-                        'error': str(exc),
-                    }
-                )
 
-        output = {
-            'agent': 'forecasting_agent',
-            'status': 'completed',
-            'total_skus': len(sku_ids),
-            'processed': sum(1 for r in results if r.get('status') == 'success'),
-            'skipped': sum(1 for r in results if r.get('status') == 'skipped'),
-            'failed': sum(1 for r in results if r.get('status') == 'failed'),
-            'results': results,
-        }
-        trace_agent_run('forecasting_agent', payload, output, trace_spans)
-        _duration = round((time.time() - _started_at) * 1000)
-        _outcome = 'failure' if output['failed'] > 0 or 'error' in output else 'success'
-        record_agent_run_task.delay(
-            agent_name='forecasting_agent',
-            outcome=_outcome,
-            duration_ms=_duration,
-            error_message=output.get('error', ''),
-        )
+            output = {
+                'agent': 'forecasting_agent',
+                'status': 'completed',
+                'total_skus': len(sku_ids),
+                'processed': sum(1 for r in results if r.get('status') == 'success'),
+                'skipped': sum(1 for r in results if r.get('status') == 'skipped'),
+                'failed': sum(1 for r in results if r.get('status') == 'failed'),
+                'results': results,
+            }
+            if output['failed'] > 0:
+                status = AgentRun.Status.FAILED
+                error = f'{output["failed"]} SKU(s) failed'
+        finally:
+            complete_agent_run(
+                agent_run.id,
+                status=status,
+                error_message=error,
+            )
+            trace_agent_run('forecasting_agent', payload, output, trace_spans)
+            _duration = round((time.time() - _started_at) * 1000)
+            _outcome = (
+                'failure' if output.get('failed', 0) > 0 or output.get('error') else 'success'
+            )
+            record_agent_run_task.delay(
+                agent_name='forecasting_agent',
+                outcome=_outcome,
+                duration_ms=_duration,
+                error_message=output.get('error', ''),
+            )
         return output
 
     def _forecast_for_sku(self, sku_id: int, sku_code: str, trace_spans: list) -> dict:

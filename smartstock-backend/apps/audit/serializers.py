@@ -10,6 +10,8 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 
 class AgentRunSerializer(serializers.ModelSerializer):
+    duration_seconds = serializers.FloatField(read_only=True, default=None)
+
     class Meta:
         model = AgentRun
         fields = '__all__'
