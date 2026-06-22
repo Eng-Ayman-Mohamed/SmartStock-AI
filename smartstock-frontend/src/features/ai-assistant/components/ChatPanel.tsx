@@ -18,7 +18,6 @@ export default function ChatPanel() {
     selectConversation,
     startNewConversation,
     removeConversation,
-    updateTitle,
     clearActive,
   } = useConversations();
 
@@ -117,7 +116,6 @@ export default function ChatPanel() {
             onSelect={handleSelectConversation}
             onNew={handleNewChat}
             onDelete={removeConversation}
-            onRename={updateTitle}
             isLoading={convLoading}
           />
         </div>

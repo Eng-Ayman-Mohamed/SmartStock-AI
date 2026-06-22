@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { MessageSquarePlus, Trash2, Pencil, Check, X, MessageCircle } from 'lucide-react';
+import { useMemo } from 'react';
+import { MessageSquarePlus, Trash2, MessageCircle } from 'lucide-react';
 import type { Conversation } from '../types';
 
 interface ConversationSidebarProps {
@@ -8,7 +8,6 @@ interface ConversationSidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
-  onRename: (id: string, title: string) => void;
   isLoading: boolean;
 }
 
@@ -66,37 +65,13 @@ export default function ConversationSidebar({
   onSelect,
   onNew,
   onDelete,
-  onRename,
   isLoading,
 }: ConversationSidebarProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
   const grouped = useMemo(() => groupConversations(conversations), [conversations]);
 
-  const handleStartRename = (conv: Conversation) => {
-    setEditingId(conv.id);
-    setEditValue(conv.title);
-  };
-
-  const handleConfirmRename = () => {
-    if (editingId && editValue.trim()) {
-      onRename(editingId, editValue.trim());
-    }
-    setEditingId(null);
-  };
-
-  const handleCancelRename = () => {
-    setEditingId(null);
-  };
-
   const handleDelete = (id: string) => {
-    if (deletingId === id) {
+    if (window.confirm('Delete this conversation?')) {
       onDelete(id);
-      setDeletingId(null);
-    } else {
-      setDeletingId(id);
     }
   };
 
@@ -147,41 +122,6 @@ export default function ConversationSidebar({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    {editingId === conv.id ? (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleConfirmRename();
-                            if (e.key === 'Escape') handleCancelRename();
-                          }}
-                          className="flex-1 px-2 py-0.5 text-sm rounded border border-brand-600 bg-canvas text-ink focus:outline-none focus:ring-1 focus:ring-brand-600"
-                          autoFocus
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleConfirmRename();
-                          }}
-                          className="p-0.5 text-green-600 hover:text-green-800 rounded hover:bg-green-50 dark:hover:bg-green-900/20"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCancelRename();
-                          }}
-                          className="p-0.5 text-ink-faint hover:text-ink rounded hover:bg-canvas-soft"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
                         <p
                           className={`text-sm truncate leading-snug ${
                             activeId === conv.id ? 'text-ink font-medium' : 'text-ink'
@@ -195,38 +135,20 @@ export default function ConversationSidebar({
                             <> · {conv.message_count} msg{conv.message_count !== 1 ? 's' : ''}</>
                           )}
                         </p>
-                      </>
-                    )}
                   </div>
 
-                  {editingId !== conv.id && (
-                    <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStartRename(conv);
-                        }}
-                        className="p-1 rounded text-ink-faint hover:text-ink hover:bg-canvas-soft transition-colors"
-                        title="Rename"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                  <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(conv.id);
                         }}
-                        className={`p-1 rounded transition-colors ${
-                          deletingId === conv.id
-                            ? 'text-white bg-red-600 hover:bg-red-700'
-                            : 'text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-                        }`}
-                        title={deletingId === conv.id ? 'Click again to confirm' : 'Delete'}
+                        className="p-1 rounded text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  )}
                 </div>
               ))}
             </div>
