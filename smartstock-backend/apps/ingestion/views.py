@@ -853,9 +853,7 @@ class ChatEndpointView(APIView):
 
         # --- Save to conversation ---
         if conversation_id:
-            ChatPipeline.save_messages(
-                conversation_id, query, result, engine, mode, conversation
-            )
+            ChatPipeline.save_messages(conversation_id, query, result, engine, mode, conversation)
 
         # --- Build response ---
         response_data = {
@@ -1155,9 +1153,12 @@ class ChatStreamView(APIView):
                 # Always save assistant response if we have one
                 if conversation_id and shared.get('full_answer'):
                     try:
-                        is_new = conv_svc.get_conversation(conversation_id, user).messages.filter(
-                            role='assistant'
-                        ).count() == 0
+                        is_new = (
+                            conv_svc.get_conversation(conversation_id, user)
+                            .messages.filter(role='assistant')
+                            .count()
+                            == 0
+                        )
                         conv_svc.save_message(
                             conversation_id=conversation_id,
                             role='assistant',

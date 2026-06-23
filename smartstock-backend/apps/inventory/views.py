@@ -1358,7 +1358,9 @@ def _handle_get_supplier_info(filters: NLQueryFilters) -> list:
         orm_field = SUPPLIER_FIELD_MAP.get(field, field)
         suffix = OP_MAP.get(op, '')
         q &= Q(**{f'{orm_field}{suffix}': value})
-    suppliers = Supplier.objects.filter(q).values('id', 'name', 'contact_email', 'contact_phone', 'address')
+    suppliers = Supplier.objects.filter(q).values(
+        'id', 'name', 'contact_email', 'contact_phone', 'address'
+    )
     return list(suppliers)
 
 

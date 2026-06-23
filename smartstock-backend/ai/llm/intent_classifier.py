@@ -49,12 +49,26 @@ class ClassificationResult:
 
 _KEYWORD_MAP = {
     'rag': [
-        'policy', 'procedure', 'manual', 'document', 'guideline',
-        'how to', 'rules', 'return policy',
+        'policy',
+        'procedure',
+        'manual',
+        'document',
+        'guideline',
+        'how to',
+        'rules',
+        'return policy',
     ],
     'nl_query': [
-        'stock', 'inventory', 'product', 'supplier', 'sales', 'forecast',
-        'reorder', 'low stock', 'how many', 'total value',
+        'stock',
+        'inventory',
+        'product',
+        'supplier',
+        'sales',
+        'forecast',
+        'reorder',
+        'low stock',
+        'how many',
+        'total value',
     ],
 }
 

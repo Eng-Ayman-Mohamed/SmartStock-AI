@@ -76,10 +76,14 @@ class ChatPipeline:
             try:
                 conversation = conv_service.get_conversation(conversation_id, user)
             except ValueError:
-                return None, [], {
-                    'status': 'error',
-                    'message': 'Conversation not found.',
-                }
+                return (
+                    None,
+                    [],
+                    {
+                        'status': 'error',
+                        'message': 'Conversation not found.',
+                    },
+                )
             if engine == 'rag':
                 history = conv_service.get_history_for_llm(conversation_id)
 

@@ -28,8 +28,10 @@ class ConversationRepository(BaseRepository):
         ChatConversation.objects.filter(pk=id).delete()
 
     def list_for_user(self, user):
-        return ChatConversation.objects.filter(user=user).order_by('-updated_at').annotate(
-            _msg_count=Count('messages')
+        return (
+            ChatConversation.objects.filter(user=user)
+            .order_by('-updated_at')
+            .annotate(_msg_count=Count('messages'))
         )
 
     def get_with_messages(self, id: uuid.UUID, user):

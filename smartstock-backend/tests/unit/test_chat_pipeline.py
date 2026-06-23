@@ -42,9 +42,7 @@ class TestChatPipelineConversation(TestCase):
     @patch('apps.ingestion.chat_pipeline.ConversationService')
     def test_invalid_conversation_returns_error(self, MockService):
         MockService.return_value.get_conversation.side_effect = ValueError
-        conv, history, error = ChatPipeline.load_conversation(
-            uuid.uuid4(), MagicMock(), 'rag'
-        )
+        conv, history, error = ChatPipeline.load_conversation(uuid.uuid4(), MagicMock(), 'rag')
         self.assertIsNotNone(error)
         self.assertIn('not found', error['message'])
 
@@ -59,9 +57,7 @@ class TestChatPipelineSaveMessages(TestCase):
         conv_id = uuid.uuid4()
         result = {'answer': 'Hello!', 'sources': ['doc1']}
 
-        ChatPipeline.save_messages(
-            conv_id, 'Hi', result, 'rag', 'auto', conversation
-        )
+        ChatPipeline.save_messages(conv_id, 'Hi', result, 'rag', 'auto', conversation)
 
         self.assertEqual(mock_service.save_message.call_count, 2)
         calls = mock_service.save_message.call_args_list
@@ -81,9 +77,7 @@ class TestChatPipelineSaveMessages(TestCase):
         conversation.messages.exists.return_value = False
         conv_id = uuid.uuid4()
 
-        ChatPipeline.save_messages(
-            conv_id, 'First question', {}, 'rag', 'auto', conversation
-        )
+        ChatPipeline.save_messages(conv_id, 'First question', {}, 'rag', 'auto', conversation)
 
         mock_service.auto_title.assert_called_once_with(conv_id, 'First question')
 
@@ -95,8 +89,6 @@ class TestChatPipelineSaveMessages(TestCase):
         conversation.messages.exists.return_value = True
         conv_id = uuid.uuid4()
 
-        ChatPipeline.save_messages(
-            conv_id, 'Follow-up', {}, 'rag', 'auto', conversation
-        )
+        ChatPipeline.save_messages(conv_id, 'Follow-up', {}, 'rag', 'auto', conversation)
 
         mock_service.auto_title.assert_not_called()

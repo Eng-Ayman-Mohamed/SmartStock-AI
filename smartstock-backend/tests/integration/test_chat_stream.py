@@ -16,9 +16,7 @@ class ChatStreamRaceConditionTest(TestCase):
             email='test@test.com', username='test@test.com', password='testpass123', role='viewer'
         )
         self.client.force_authenticate(user=self.user)
-        self.conversation = ChatConversation.objects.create(
-            user=self.user, title='Test Conv'
-        )
+        self.conversation = ChatConversation.objects.create(user=self.user, title='Test Conv')
 
     @patch('apps.ingestion.views.ChatStreamView._stream_rag')
     @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
