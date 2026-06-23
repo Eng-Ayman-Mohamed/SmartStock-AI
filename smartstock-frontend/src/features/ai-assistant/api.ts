@@ -58,11 +58,25 @@ export async function* sendChatMessageStream(
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  const TOKEN_TIMEOUT_MS = 20000;
 
-    buffer += decoder.decode(value, { stream: true });
+  while (true) {
+    const readPromise = reader.read();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Stream timeout')), TOKEN_TIMEOUT_MS),
+    );
+
+    let result: { done: boolean; value?: Uint8Array };
+    try {
+      result = await Promise.race([readPromise, timeoutPromise]);
+    } catch {
+      yield { type: 'error', message: 'Stream timed out waiting for response.' };
+      break;
+    }
+
+    if (result.done) break;
+
+    buffer += decoder.decode(result.value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
 

@@ -1088,6 +1088,17 @@ class ChatStreamView(APIView):
         def event_stream():
             """Generator that yields SSE events."""
             conv_svc = ConversationService()
+            heartbeat_interval = 15  # seconds
+            last_heartbeat = time.time()
+
+            def _check_heartbeat():
+                """Yield a keepalive comment if enough time has passed."""
+                nonlocal last_heartbeat
+                now = time.time()
+                if now - last_heartbeat >= heartbeat_interval:
+                    last_heartbeat = now
+                    return ': keepalive\n\n'
+                return None
 
             # Save user message BEFORE streaming (optimistic save)
             if conversation_id:
@@ -1119,10 +1130,16 @@ class ChatStreamView(APIView):
                             if event.get('action'):
                                 done_data['action'] = event['action']
                             yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+                        hb = _check_heartbeat()
+                        if hb:
+                            yield hb
                 else:
                     for event in self._stream_nl_query(query, user, shared):
                         full_answer += event['content']
                         yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                        hb = _check_heartbeat()
+                        if hb:
+                            yield hb
                     done_data = {'action': shared.get('action')}
                     yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
 

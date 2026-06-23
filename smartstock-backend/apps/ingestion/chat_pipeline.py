@@ -41,15 +41,19 @@ class ChatPipeline:
             }
 
         if mode == 'auto':
-            from ai.llm.intent_classifier import classify_intent
+            from ai.llm.intent_classifier import classify_intent, classify_intent_fast
 
-            classification = classify_intent(query)
-            if classification.confidence < 0.7:
-                engine = 'nl_query'
-            elif classification.intent == 'out_of_scope':
-                engine = 'nl_query'
+            fast_result = classify_intent_fast(query)
+            if fast_result:
+                engine = fast_result.intent
             else:
-                engine = classification.intent
+                classification = classify_intent(query)
+                if classification.confidence < 0.7:
+                    engine = 'nl_query'
+                elif classification.intent == 'out_of_scope':
+                    engine = 'nl_query'
+                else:
+                    engine = classification.intent
         else:
             engine = mode
 

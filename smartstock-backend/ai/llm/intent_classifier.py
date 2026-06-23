@@ -47,6 +47,27 @@ class ClassificationResult:
     confidence: float
 
 
+_KEYWORD_MAP = {
+    'rag': [
+        'policy', 'procedure', 'manual', 'document', 'guideline',
+        'how to', 'rules', 'return policy',
+    ],
+    'nl_query': [
+        'stock', 'inventory', 'product', 'supplier', 'sales', 'forecast',
+        'reorder', 'low stock', 'how many', 'total value',
+    ],
+}
+
+
+def classify_intent_fast(query: str) -> ClassificationResult | None:
+    """Fast keyword-based pre-classification. Returns None if uncertain."""
+    lower = query.lower()
+    for intent, keywords in _KEYWORD_MAP.items():
+        if any(kw in lower for kw in keywords):
+            return ClassificationResult(intent=intent, confidence=0.85)
+    return None
+
+
 def classify_intent(query: str) -> ClassificationResult:
     """
     Classify a user query into nl_query, rag, or out_of_scope using GPT-4o-mini.
