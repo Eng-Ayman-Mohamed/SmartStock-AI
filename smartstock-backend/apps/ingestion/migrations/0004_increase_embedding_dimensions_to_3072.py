@@ -1,4 +1,3 @@
-import django.contrib.postgres.indexes
 import pgvector.django.vector
 from django.db import migrations
 

@@ -5,9 +5,9 @@ class Command(BaseCommand):
     help = 'Check for overdue suppliers and create notification records'
 
     def handle(self, *args, **options):
-        from apps.purchasing.services import PurchasingService
-        from apps.notifications.service import NotificationService
         from apps.notifications.models import Notification
+        from apps.notifications.service import NotificationService
+        from apps.purchasing.services import PurchasingService
 
         overdue = PurchasingService().get_overdue_suppliers()
         self.stdout.write(f'Found {len(overdue)} overdue suppliers')

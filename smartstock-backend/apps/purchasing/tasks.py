@@ -37,9 +37,9 @@ def run_purchasing_workflow_with_approval(context: dict, auto_approve: bool = Fa
 @shared_task
 def check_overdue_suppliers():
     """Check for suppliers with overdue POs and create notification records."""
-    from apps.purchasing.services import PurchasingService
-    from apps.notifications.service import NotificationService
     from apps.notifications.models import Notification
+    from apps.notifications.service import NotificationService
+    from apps.purchasing.services import PurchasingService
 
     overdue = PurchasingService().get_overdue_suppliers()
 
