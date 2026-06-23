@@ -19,6 +19,7 @@ class ConversationRepository(BaseRepository):
         return ChatConversation.objects.create(**data)
 
     def update(self, id: uuid.UUID, data: dict):
+        """Update and return the refreshed object. Caller needs the updated instance."""
         ChatConversation.objects.filter(pk=id).update(**data)
         return self.get_by_id(id)
 
