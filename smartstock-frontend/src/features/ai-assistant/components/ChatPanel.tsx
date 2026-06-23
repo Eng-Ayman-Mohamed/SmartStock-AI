@@ -19,6 +19,7 @@ export default function ChatPanel() {
     startNewConversation,
     removeConversation,
     clearActive,
+    loadConversations,
   } = useConversations();
 
   const [visibleError, setVisibleError] = useState<string | null>(null);
@@ -80,8 +81,9 @@ export default function ChatPanel() {
 
       setInput('');
       await sendMessage(query);
+      loadConversations();
     },
-    [input, isLoading, activeConversation, startNewConversation, sendMessage],
+    [input, isLoading, activeConversation, startNewConversation, sendMessage, loadConversations],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
