@@ -3,78 +3,19 @@ networks:
     driver: bridge
 
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: smartstock_db
-    environment:
-      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in .env}
-      POSTGRES_USER: ${DB_USER:?Set DB_USER in .env}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
-    ports:
-      - "127.0.0.1:5433:5432"  # Security: Bind to localhost only. Remove in production unless needed for migrations.
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-    networks:
-      smartstock_net:
-        aliases:
-          - db
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-smartstock} -d ${DB_NAME:-smartstock}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: smartstock_redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env} --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redisdata:/data
-    networks:
-      smartstock_net:
-        aliases:
-          - cache
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   backend:
     build:
       context: ./smartstock-backend
       dockerfile: Dockerfile
     container_name: smartstock_backend
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     env_file:
-      - .env
+      - smartstock-backend/.env
     environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      DB_HOST: db
-      DB_PORT: "5432"
-      REDIS_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.production
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       COHERE_API_KEY: ${COHERE_API_KEY:-}
     ports:
       - "8000:8000"
-    volumes:
-      - ./smartstock-backend:/app
     deploy:
       resources:
         limits:
@@ -98,20 +39,9 @@ services:
       dockerfile: Dockerfile
     container_name: smartstock_celery
     command: celery -A config worker --loglevel=info
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     env_file:
-      - .env
+      - smartstock-backend/.env
     environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      DB_HOST: db
-      DB_PORT: "5432"
-      REDIS_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.production
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping --timeout 5 || exit 1"]
@@ -119,8 +49,6 @@ services:
       timeout: 10s
       start_period: 40s
       retries: 3
-    volumes:
-      - ./smartstock-backend:/app
     networks:
       - smartstock_net
 
@@ -130,20 +58,9 @@ services:
       dockerfile: Dockerfile
     container_name: smartstock_celery_beat
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     env_file:
-      - .env
+      - smartstock-backend/.env
     environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      DB_HOST: db
-      DB_PORT: "5432"
-      REDIS_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@cache:6379/0
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@cache:6379/1
       DJANGO_SETTINGS_MODULE: config.settings.production
     healthcheck:
       test: ["CMD-SHELL", "test -f /proc/1/status"]
@@ -151,8 +68,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    volumes:
-      - ./smartstock-backend:/app
     networks:
       - smartstock_net
 
@@ -160,25 +75,21 @@ services:
     build:
       context: ./smartstock-frontend
       dockerfile: Dockerfile
+      target: build
     container_name: smartstock_frontend
+    command: npm run dev -- --host 0.0.0.0
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "3000:80"
+      - "5173:5173"
+    volumes:
+      - ./smartstock-frontend:/app
+      - /app/node_modules
     environment:
-      VITE_API_URL: /api
-      VITE_AUTH_BYPASS: "false"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
+      VITE_API_URL: http://localhost:8000/api
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5173/"]
       interval: 30s
       timeout: 5s
       start_period: 10s
@@ -229,15 +140,15 @@ services:
   grafana:
     image: grafana/grafana:11.1.0
     container_name: smartstock_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: password
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD:?Set GF_ADMIN_PASSWORD in .env}
-      GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
       - "127.0.0.1:3001:3000"  # Security: Bind to localhost. Admin password required. Use reverse proxy for production access.
     networks:
@@ -252,7 +163,5 @@ services:
       retries: 5
 
 volumes:
-  pgdata:
-  redisdata:
   prometheus_data:
   grafana_data:
