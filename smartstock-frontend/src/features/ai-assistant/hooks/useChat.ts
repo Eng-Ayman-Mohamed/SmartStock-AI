@@ -22,6 +22,7 @@ export default function useChat(conversationId?: string | null) {
   const abortRef = useRef<AbortController | null>(null);
   const lastFailedText = useRef<string | null>(null);
   const idCounter = useRef(0);
+  const isLoadingRef = useRef(false);
 
   function createId(): string {
     return `msg-${Date.now()}-${idCounter.current++}`;
@@ -36,12 +37,14 @@ export default function useChat(conversationId?: string | null) {
     abortRef.current?.abort();
     abortRef.current = null;
     lastFailedText.current = null;
+    isLoadingRef.current = false;
+    setIsLoading(false);
   }, []);
 
   const sendMessage = useCallback(
     async (text: string, conversationIdOverride?: string) => {
       const trimmed = text.trim();
-      if (!trimmed || isLoading) return;
+      if (!trimmed || isLoadingRef.current) return;
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -65,6 +68,7 @@ export default function useChat(conversationId?: string | null) {
       };
 
       setMessages((prev) => [...prev, userMessage, aiMessage]);
+      isLoadingRef.current = true;
       setIsLoading(true);
       setError(null);
       lastFailedText.current = null;
@@ -95,7 +99,7 @@ export default function useChat(conversationId?: string | null) {
               mode,
               conversation_id: activeConvId ?? undefined,
             },
-            AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
+            controller.signal,
           );
 
           let fullText = '';
@@ -154,20 +158,19 @@ export default function useChat(conversationId?: string | null) {
         setError(userMessage);
         lastFailedText.current = trimmed;
       } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
+        isLoadingRef.current = false;
+        setIsLoading(false);
         if (abortRef.current === controller) {
           abortRef.current = null;
         }
       }
     },
-    [mode, isLoading, conversationId],
+    [mode, conversationId],
   );
 
   const retryLastMessage = useCallback(async () => {
     const failedText = lastFailedText.current;
-    if (!failedText || isLoading) return;
+    if (!failedText || isLoadingRef.current) return;
 
     setMessages((prev) => prev.slice(0, -1));
     lastFailedText.current = null;
@@ -194,6 +197,7 @@ export default function useChat(conversationId?: string | null) {
     };
 
     setMessages((prev) => [...prev, userMessage, aiMessage]);
+    isLoadingRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -204,7 +208,7 @@ export default function useChat(conversationId?: string | null) {
           mode,
           conversation_id: conversationId ?? undefined,
         },
-        AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
+        controller.signal,
       );
 
       let fullText = '';
@@ -261,14 +265,13 @@ export default function useChat(conversationId?: string | null) {
       setError(msg);
       lastFailedText.current = failedText;
     } finally {
-      if (!controller.signal.aborted) {
-        setIsLoading(false);
-      }
+      isLoadingRef.current = false;
+      setIsLoading(false);
       if (abortRef.current === controller) {
         abortRef.current = null;
       }
     }
-  }, [mode, isLoading, conversationId]);
+  }, [mode, conversationId]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);

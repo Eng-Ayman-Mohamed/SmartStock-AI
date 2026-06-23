@@ -110,7 +110,7 @@ def get_chat_llm(temperature=0, model_override=None):
         'model': model,
         'temperature': temperature,
         'api_key': api_key,
-        'request_timeout': 8,
+        'request_timeout': 30,
     }
     if config['base_url']:
         kwargs['base_url'] = config['base_url']

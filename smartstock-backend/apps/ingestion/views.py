@@ -1185,6 +1185,8 @@ class ChatStreamView(APIView):
             yield f'event: metadata\ndata: {_json.dumps(metadata)}\n\n'
 
             try:
+                # Heartbeat before streaming to keep connection alive
+                yield ': thinking\n\n'
                 if engine == 'rag':
                     yield from self._stream_rag(query, user, history, shared)
                 else:
@@ -1237,6 +1239,7 @@ class ChatStreamView(APIView):
         service = RAGQueryService()
         full_answer = ''
 
+        yield ': searching documents...\n\n'
         for event in service.execute_stream(query, user=user, history=history):
             if event['type'] == 'token':
                 full_answer += event['content']
@@ -1268,6 +1271,7 @@ class ChatStreamView(APIView):
             raise ValueError('PROMPT_INJECTION_DETECTED')
 
         # Step B: NL chain (structured, not streamable)
+        yield ': classifying query...\n\n'
         chain_instance = get_nl_chain()
         chain_result = chain_instance.run(query)
         chain_dict = chain_result.to_dict()
@@ -1294,6 +1298,7 @@ class ChatStreamView(APIView):
         raw_data = handler(nl_filters)
 
         # Step D: Stream formatter
+        yield ': generating response...\n\n'
         full_answer = ''
         for chunk in call_gpt4o_formatter_stream(original_query=query, raw_data=raw_data):
             full_answer += chunk
