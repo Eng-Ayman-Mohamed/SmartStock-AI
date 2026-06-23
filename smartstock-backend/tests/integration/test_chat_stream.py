@@ -1,11 +1,11 @@
 # smartstock-backend/tests/integration/test_chat_stream.py
-import uuid
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from apps.authentication.models import CustomUser
 from apps.ai.models import ChatConversation, ChatMessage
+from apps.authentication.models import CustomUser
 
 
 @override_settings(LANGUAGE_CODE='en-us')

@@ -1,8 +1,9 @@
 # smartstock-backend/apps/ingestion/chat_pipeline.py
 import logging
 import uuid
-from apps.audit.models import AuditLog
+
 from apps.ai.services import ConversationService
+from apps.audit.models import AuditLog
 
 logger = logging.getLogger(__name__)
 

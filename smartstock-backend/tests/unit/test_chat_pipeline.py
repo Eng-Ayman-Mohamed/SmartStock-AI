@@ -1,7 +1,9 @@
 # smartstock-backend/tests/unit/test_chat_pipeline.py
 import uuid
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from django.test import TestCase
+
 from apps.ingestion.chat_pipeline import ChatPipeline
 
 

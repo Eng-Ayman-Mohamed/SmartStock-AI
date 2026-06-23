@@ -1,7 +1,8 @@
 import uuid
 
-from core.base_repository import BaseRepository
 from django.db.models import Count
+
+from core.base_repository import BaseRepository
 
 from .models import ChatConversation, ChatMessage
 
