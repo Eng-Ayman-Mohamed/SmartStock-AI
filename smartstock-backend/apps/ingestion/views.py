@@ -28,8 +28,9 @@ from rest_framework.views import APIView
 from ai.llm.chain import prompt_injection_filter
 from ai.observability.langfuse import get_langfuse_alert_thresholds, get_langfuse_client
 from ai.rag.ingestion import ingest_pdf
-from apps.ai.services import ConversationService
 from apps.audit.models import AuditLog
+
+from .chat_pipeline import ChatPipeline
 from apps.authentication.permissions import IsManagerOrAbove, IsViewerOrAbove
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error, sanitize_llm_error
@@ -777,71 +778,25 @@ class ChatEndpointView(APIView):
         mode = serializer.validated_data['mode']
         conversation_id = serializer.validated_data.get('conversation_id')
 
-        # --- Prompt injection check (Task A10) ---
-        try:
-            is_safe, matched_pattern = prompt_injection_filter(query)
-        except Exception:
-            logger.exception('Prompt injection filter failed')
-            is_safe, matched_pattern = False, 'filter_error'
+        # --- Validate and classify via shared pipeline ---
+        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        if error_response:
+            return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
-        if not is_safe:
-            AuditLog.objects.create(
-                user=request.user,
-                event='PROMPT_INJECTION_ATTEMPT',
-                data_snapshot={
-                    'query': query[:200],
-                    'matched_pattern': matched_pattern,
-                    'endpoint': 'chat',
-                },
-            )
-            return Response(
-                {
-                    'status': 'error',
-                    'error': 'InvalidQueryError',
-                    'message': 'Query contains disallowed content.',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # --- Intent classification (only for auto mode) ---
+        # classifier_decision is not exposed by ChatPipeline; trace will log it as None
         classifier_decision = None
-        if mode == 'auto':
-            from ai.llm.intent_classifier import classify_intent
 
-            classification = classify_intent(query)
-            classifier_decision = classification.intent
-
-            # If confidence is below 0.7, default to nl_query (safer for operational queries)
-            if classification.confidence < 0.7:
-                engine = 'nl_query'
-            elif classification.intent == 'out_of_scope':
-                # For out_of_scope with high confidence, still try nl_query as fallback
-                engine = 'nl_query'
-            else:
-                engine = classification.intent
-        else:
-            engine = mode
-
-        # --- Load conversation history (only for RAG — NL query path ignores it) ---
-        conv_service = ConversationService()
-        history = []
-        if conversation_id and engine == 'rag':
-            try:
-                conversation = conv_service.get_conversation(conversation_id, request.user)
-                history = conv_service.get_history_for_llm(conversation_id)
-            except ValueError:
-                return Response(
-                    {'status': 'error', 'message': 'Conversation not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-        elif conversation_id:
-            try:
-                conversation = conv_service.get_conversation(conversation_id, request.user)
-            except ValueError:
-                return Response(
-                    {'status': 'error', 'message': 'Conversation not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+        # --- Load conversation history ---
+        conversation, history, error_response = ChatPipeline.load_conversation(
+            conversation_id, request.user, engine
+        )
+        if error_response:
+            status_code = (
+                status.HTTP_404_NOT_FOUND
+                if 'not found' in error_response.get('message', '')
+                else status.HTTP_400_BAD_REQUEST
+            )
+            return Response(error_response, status=status_code)
 
         # --- Execute pipeline with timeout ---
         pipeline_start = time.time()
@@ -901,23 +856,9 @@ class ChatEndpointView(APIView):
 
         # --- Save to conversation ---
         if conversation_id:
-            is_new = conversation.messages.count() == 0
-            conv_service.save_message(
-                conversation_id=conversation_id,
-                role='user',
-                content=query,
-                mode=mode,
+            ChatPipeline.save_messages(
+                conversation_id, query, result, engine, mode, conversation
             )
-            conv_service.save_message(
-                conversation_id=conversation_id,
-                role='assistant',
-                content=result.get('answer', ''),
-                engine=engine,
-                sources=result.get('sources', []),
-                mode=mode,
-            )
-            if is_new:
-                conv_service.auto_title(conversation_id, query)
 
         # --- Build response ---
         response_data = {
@@ -1126,52 +1067,22 @@ class ChatStreamView(APIView):
         mode = serializer.validated_data['mode']
         conversation_id = serializer.validated_data.get('conversation_id')
 
-        # --- Prompt injection check ---
-        try:
-            is_safe, matched_pattern = prompt_injection_filter(query)
-        except Exception:
-            logger.exception('Prompt injection filter failed')
-            is_safe = False
+        # --- Validate and classify via shared pipeline ---
+        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        if error_response:
+            return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
-        if not is_safe:
-            return Response(
-                {
-                    'status': 'error',
-                    'error': 'InvalidQueryError',
-                    'message': 'Query contains disallowed content.',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+        # --- Load conversation history ---
+        conversation, history, error_response = ChatPipeline.load_conversation(
+            conversation_id, request.user, engine
+        )
+        if error_response:
+            status_code = (
+                status.HTTP_404_NOT_FOUND
+                if 'not found' in error_response.get('message', '')
+                else status.HTTP_400_BAD_REQUEST
             )
-
-        # --- Intent classification (only for auto mode) ---
-        engine = mode
-        if mode == 'auto':
-            from ai.llm.intent_classifier import classify_intent
-
-            classification = classify_intent(query)
-            if classification.confidence < 0.7:
-                engine = 'nl_query'
-            elif classification.intent == 'out_of_scope':
-                engine = 'nl_query'
-            else:
-                engine = classification.intent
-
-        # --- Load conversation ---
-        conv_service = ConversationService()
-        conversation = None
-        if conversation_id:
-            try:
-                conversation = conv_service.get_conversation(conversation_id, request.user)
-            except ValueError:
-                return Response(
-                    {'status': 'error', 'message': 'Conversation not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-        # --- History (only for RAG) ---
-        history = []
-        if conversation_id and engine == 'rag':
-            history = conv_service.get_history_for_llm(conversation_id)
+            return Response(error_response, status=status_code)
 
         user = request.user
         shared = {}
@@ -1205,22 +1116,14 @@ class ChatStreamView(APIView):
             if conversation_id:
                 full_answer = shared.get('full_answer', '')
                 try:
-                    is_new = conversation.messages.count() == 0
-                    conv_service.save_message(
-                        conversation_id=conversation_id,
-                        role='user',
-                        content=query,
-                        mode=mode,
+                    ChatPipeline.save_messages(
+                        conversation_id,
+                        query,
+                        {'answer': full_answer},
+                        engine,
+                        mode,
+                        conversation,
                     )
-                    conv_service.save_message(
-                        conversation_id=conversation_id,
-                        role='assistant',
-                        content=full_answer,
-                        engine=engine,
-                        mode=mode,
-                    )
-                    if is_new:
-                        conv_service.auto_title(conversation_id, query)
                 except Exception:
                     logger.exception('Failed to save conversation')
 

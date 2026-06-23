@@ -35,12 +35,12 @@ class ChatEndpointTests(APITestCase):
 
     # --- Auth & RBAC ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
     def test_unauthenticated_returns_401(self, mock_filter):
         response = self.client.post(self._url(), {'query': 'test'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_viewer_can_chat(self, mock_run, mock_filter):
         mock_run.return_value = {
@@ -88,7 +88,7 @@ class ChatEndpointTests(APITestCase):
 
     # --- Prompt injection ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(False, 'ignore all rules'))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(False, 'ignore all rules'))
     def test_injection_returns_400(self, mock_filter):
         self._auth(self.manager)
         response = self.client.post(
@@ -99,7 +99,7 @@ class ChatEndpointTests(APITestCase):
 
     # --- Auto mode with intent classification ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
     @patch('ai.llm.intent_classifier.classify_intent')
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_auto_mode_classifies_intent(self, mock_run, mock_classify, mock_filter):
@@ -114,7 +114,7 @@ class ChatEndpointTests(APITestCase):
 
     # --- Explicit rag mode ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_explicit_rag_mode(self, mock_run, mock_filter):
         mock_run.return_value = {
@@ -131,7 +131,7 @@ class ChatEndpointTests(APITestCase):
 
     # --- Conversation support ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_chat_with_conversation_id(self, mock_run, mock_filter):
         from apps.ai.models import ChatConversation
@@ -148,7 +148,7 @@ class ChatEndpointTests(APITestCase):
         self.assertEqual(response.data['data']['conversation_id'], str(conv.id))
         self.assertEqual(conv.messages.count(), 2)
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
     def test_chat_with_nonexistent_conversation_returns_404(self, mock_filter):
         import uuid
 
@@ -162,7 +162,7 @@ class ChatEndpointTests(APITestCase):
 
     # --- Timeout ---
 
-    @patch('apps.ingestion.views.prompt_injection_filter', return_value=(True, None))
+    @patch('ai.llm.chain.prompt_injection_filter', return_value=(True, None))
     @patch('apps.ingestion.views.ChatEndpointView._run_engine')
     def test_timeout_returns_504(self, mock_run, mock_filter):
         from concurrent.futures import TimeoutError as FuturesTimeout
