@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     @staticmethod
-    def create(type, severity, title, message="", metadata=None):
+    def create(type, severity, title, message='', metadata=None):
         notification = Notification.objects.create(
             type=type,
             severity=severity,
@@ -82,10 +82,10 @@ def create_escalation_notification(
 
     NotificationService.create(
         type=Notification.Type.ESCALATION,
-        severity="critical",
-        title=f"PO Escalation: {reason}",
+        severity='critical',
+        title=f'PO Escalation: {reason}',
         message=message,
-        metadata={"po_id": po.id, "reason": reason, "channel": channel},
+        metadata={'po_id': po.id, 'reason': reason, 'channel': channel},
     )
 
     logger.info(

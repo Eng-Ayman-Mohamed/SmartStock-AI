@@ -22,7 +22,6 @@ import { useForecastDashboard } from '../../forecasting/hooks/useForecastDashboa
 import ReorderAlertList from '../components/ReorderAlertList';
 import AgentRunStatus from '../components/AgentRunStatus';
 import PendingPOQueue from '../components/PendingPOQueue';
-import SupplierWarningBadge from '../components/SupplierWarningBadge';
 import SystemHealth from '../components/SystemHealth';
 
 interface ChartPoint {
@@ -250,8 +249,6 @@ export default function DashboardPage() {
           <p className="text-body">Agent pipeline may not be running.</p>
         </div>
       )}
-
-      <SupplierWarningBadge />
 
       <SystemHealth />
 

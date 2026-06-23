@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('notifications', '0002_escalationnotification_updated_at'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -16,9 +15,36 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Notification',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('type', models.CharField(choices=[('monitoring', 'Monitoring Alert'), ('escalation', 'Escalation Notification'), ('forecast', 'Forecast Alert'), ('reorder', 'Reorder Alert')], max_length=20)),
-                ('severity', models.CharField(choices=[('info', 'Info'), ('warning', 'Warning'), ('critical', 'Critical')], default='info', max_length=20)),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
+                (
+                    'type',
+                    models.CharField(
+                        choices=[
+                            ('monitoring', 'Monitoring Alert'),
+                            ('escalation', 'Escalation Notification'),
+                            ('forecast', 'Forecast Alert'),
+                            ('reorder', 'Reorder Alert'),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    'severity',
+                    models.CharField(
+                        choices=[
+                            ('info', 'Info'),
+                            ('warning', 'Warning'),
+                            ('critical', 'Critical'),
+                        ],
+                        default='info',
+                        max_length=20,
+                    ),
+                ),
                 ('title', models.CharField(max_length=200)),
                 ('message', models.TextField(blank=True)),
                 ('metadata', models.JSONField(blank=True, default=dict)),
@@ -29,18 +55,41 @@ class Migration(migrations.Migration):
                 'verbose_name': 'notification',
                 'verbose_name_plural': 'notifications',
                 'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['type', 'severity', 'created_at'], name='idx_notif_type_sev')],
+                'indexes': [
+                    models.Index(
+                        fields=['type', 'severity', 'created_at'], name='idx_notif_type_sev'
+                    )
+                ],
             },
         ),
         migrations.CreateModel(
             name='UserNotification',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('is_read', models.BooleanField(default=False)),
                 ('read_at', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('notification', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_notifications', to='notifications.notification')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_notifications', to=settings.AUTH_USER_MODEL)),
+                (
+                    'notification',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='user_notifications',
+                        to='notifications.notification',
+                    ),
+                ),
+                (
+                    'user',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='user_notifications',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'user notification',
@@ -51,6 +100,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='usernotification',
-            constraint=models.UniqueConstraint(fields=('user', 'notification'), name='uniq_user_notification'),
+            constraint=models.UniqueConstraint(
+                fields=('user', 'notification'), name='uniq_user_notification'
+            ),
         ),
     ]

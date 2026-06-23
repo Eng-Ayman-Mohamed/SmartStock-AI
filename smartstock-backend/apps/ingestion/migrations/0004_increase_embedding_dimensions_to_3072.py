@@ -13,21 +13,17 @@ def clear_chunks(apps, schema_editor):
 
 def drop_hnsw_index(apps, schema_editor):
     """Drop any HNSW index on the embedding column (max 2000 dims)."""
-    schema_editor.execute(
-        "DROP INDEX IF EXISTS ingestion_documentchunk_embedding_hnsw_idx"
-    )
+    schema_editor.execute('DROP INDEX IF EXISTS ingestion_documentchunk_embedding_hnsw_idx')
     # Also try common naming patterns
-    schema_editor.execute(
-        "DROP INDEX IF EXISTS documentchunk_embedding_idx"
-    )
+    schema_editor.execute('DROP INDEX IF EXISTS documentchunk_embedding_idx')
 
 
 def recreate_hnsw_index(apps, schema_editor):
     """Recreate HNSW index for 768-dimension embeddings."""
     schema_editor.execute(
-        "CREATE INDEX IF NOT EXISTS ingestion_documentchunk_embedding_hnsw_idx "
-        "ON ingestion_documentchunk USING hnsw (embedding vector_cosine_ops) "
-        "WITH (m = 16, ef_construction = 64)"
+        'CREATE INDEX IF NOT EXISTS ingestion_documentchunk_embedding_hnsw_idx '
+        'ON ingestion_documentchunk USING hnsw (embedding vector_cosine_ops) '
+        'WITH (m = 16, ef_construction = 64)'
     )
 
 

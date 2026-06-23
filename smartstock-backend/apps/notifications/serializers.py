@@ -8,13 +8,20 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = [
-            "id", "type", "severity", "title", "message",
-            "metadata", "is_read", "created_at", "updated_at",
+            'id',
+            'type',
+            'severity',
+            'title',
+            'message',
+            'metadata',
+            'is_read',
+            'created_at',
+            'updated_at',
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_is_read(self, obj):
-        request = self.context.get("request")
+        request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
         user_notification = obj.user_notifications.filter(user=request.user).first()
@@ -26,10 +33,10 @@ class NotificationListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Notification
-        fields = ["id", "type", "severity", "title", "created_at", "is_read"]
+        fields = ['id', 'type', 'severity', 'title', 'created_at', 'is_read']
 
     def get_is_read(self, obj):
-        request = self.context.get("request")
+        request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
         user_notification = obj.user_notifications.filter(user=request.user).first()

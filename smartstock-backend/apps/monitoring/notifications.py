@@ -67,7 +67,7 @@ def send_dashboard_notification(alert_event) -> bool:
             severity=alert_event.rule.severity,
             title=alert_event.rule.name,
             message=alert_event.message,
-            metadata={"alert_event_id": alert_event.id, "rule_name": alert_event.rule.name},
+            metadata={'alert_event_id': alert_event.id, 'rule_name': alert_event.rule.name},
         )
         return True
     except Exception as exc:

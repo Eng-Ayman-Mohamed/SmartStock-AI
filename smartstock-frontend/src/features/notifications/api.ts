@@ -8,8 +8,15 @@ import type {
 export async function getNotifications(
   params?: NotificationListParams,
 ): Promise<PaginatedResponse<Notification>> {
-  const res = await api.get<PaginatedResponse<Notification>>('/notifications/', { params });
-  return res.data;
+  const res = await api.get('/notifications/', { params });
+  // ResponseEnvelopeRenderer unwraps paginated responses:
+  // res.data = results array, res._meta = {total, page, per_page, next, previous}
+  return {
+    results: Array.isArray(res.data) ? res.data : (res.data?.results ?? []),
+    count: (res._meta?.total as number) ?? 0,
+    next: (res._meta?.next as string) ?? null,
+    previous: (res._meta?.previous as string) ?? null,
+  };
 }
 
 export async function getUnreadCount(): Promise<UnreadCountResponse> {

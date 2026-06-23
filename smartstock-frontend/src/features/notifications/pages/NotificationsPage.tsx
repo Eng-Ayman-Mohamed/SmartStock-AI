@@ -22,8 +22,8 @@ export default function NotificationsPage() {
   const totalPages = Math.ceil(totalCount / 20);
 
   return (
-    <div className="space-y-6 animate-fadeIn flex-1 min-h-0 flex flex-col">
-      <div className="flex items-center justify-between">
+    <div className="animate-fadeIn flex flex-col flex-1 min-h-0">
+      <div className="flex items-center justify-between shrink-0">
         <h1 className="text-page-heading text-ink">Notifications</h1>
         {notifications.length > 0 && (
           <Button
@@ -36,47 +36,48 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <aside className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0 mt-4">
+        <aside className="lg:col-span-1 shrink-0 overflow-y-auto">
           <NotificationFilters filters={filters} onChange={(f) => { setFilters(f); setPage(1); }} />
         </aside>
 
-        <main className="lg:col-span-3">
-          {isLoading ? (
-            <div className="text-center py-8 text-body text-ink-muted">Loading...</div>
-          ) : notifications.length === 0 ? (
-            <NotificationEmpty />
-          ) : (
-            <>
+        <main className="lg:col-span-3 flex flex-col min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {isLoading ? (
+              <div className="text-center py-8 text-body text-ink-muted">Loading...</div>
+            ) : notifications.length === 0 ? (
+              <NotificationEmpty />
+            ) : (
               <div className="bg-canvas rounded-xl border border-hairline divide-y divide-hairline">
                 {notifications.map((n) => (
                   <NotificationItem key={n.id} notification={n} onClose={() => {}} />
                 ))}
               </div>
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-4 mt-6">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-caption text-ink-muted">
-                    Page {page} of {totalPages}
-                  </span>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
-            </>
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 py-4 shrink-0 border-t border-hairline mt-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-caption text-ink-muted">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
           )}
         </main>
       </div>

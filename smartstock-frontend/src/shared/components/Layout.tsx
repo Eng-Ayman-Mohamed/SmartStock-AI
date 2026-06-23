@@ -5,7 +5,7 @@ import ToastContainer from './Toast';
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen bg-canvas-soft">
+    <div className="flex h-screen bg-canvas-soft">
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto">
         <Header />
