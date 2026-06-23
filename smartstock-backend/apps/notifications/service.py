@@ -1,14 +1,34 @@
 import logging
 from typing import TYPE_CHECKING
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 if TYPE_CHECKING:
     from apps.purchasing.models import PurchaseOrder
 
-from .models import EscalationNotification
+from .models import EscalationNotification, Notification, UserNotification
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
+
+
+class NotificationService:
+    @staticmethod
+    def create(type, severity, title, message="", metadata=None):
+        notification = Notification.objects.create(
+            type=type,
+            severity=severity,
+            title=title,
+            message=message,
+            metadata=metadata or {},
+        )
+        users = User.objects.filter(is_active=True)
+        UserNotification.objects.bulk_create(
+            [UserNotification(user=user, notification=notification) for user in users]
+        )
+        return notification
 
 
 def get_escalation_recipients() -> list[str]:
