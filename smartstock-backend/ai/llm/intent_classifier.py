@@ -30,7 +30,7 @@ CLASSIFIER_SYSTEM_PROMPT = (
     'manuals, or requires searching uploaded files.\n'
     '- "out_of_scope": The query is unrelated to inventory, warehouse operations, '
     'or the business domain.\n\n'
-    'Respond with ONLY a JSON object: {"intent": "<category>", "confidence": <0.0-1.0>}'
+    'Respond with ONLY a JSON object: {{"intent": "<category>", "confidence": <0.0-1.0>}}'
 )
 
 _classifier_prompt = ChatPromptTemplate.from_messages(
@@ -45,6 +45,41 @@ _classifier_prompt = ChatPromptTemplate.from_messages(
 class ClassificationResult:
     intent: str
     confidence: float
+
+
+_KEYWORD_MAP = {
+    'rag': [
+        'policy',
+        'procedure',
+        'manual',
+        'document',
+        'guideline',
+        'how to',
+        'rules',
+        'return policy',
+    ],
+    'nl_query': [
+        'stock',
+        'inventory',
+        'product',
+        'supplier',
+        'sales',
+        'forecast',
+        'reorder',
+        'low stock',
+        'how many',
+        'total value',
+    ],
+}
+
+
+def classify_intent_fast(query: str) -> ClassificationResult | None:
+    """Fast keyword-based pre-classification. Returns None if uncertain."""
+    lower = query.lower()
+    for intent, keywords in _KEYWORD_MAP.items():
+        if any(kw in lower for kw in keywords):
+            return ClassificationResult(intent=intent, confidence=0.85)
+    return None
 
 
 def classify_intent(query: str) -> ClassificationResult:

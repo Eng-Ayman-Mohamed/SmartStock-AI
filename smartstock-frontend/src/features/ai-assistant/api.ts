@@ -1,4 +1,5 @@
 import api from '../../lib/axios';
+import { getApiBaseUrl } from '../../lib/config';
 import { useAuthStore } from '../../store/authStore';
 import type { ChatResponse, Conversation, ConversationDetail } from './types';
 
@@ -30,13 +31,7 @@ export async function* sendChatMessageStream(
   request: ChatRequest,
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
-  const envCfg = (window as unknown as Record<string, unknown>)['__ENV__'] as Record<string, string> | undefined;
-  const baseUrl =
-    envCfg?.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    envCfg?.VITE_API_URL ||
-    import.meta.env.VITE_API_URL ||
-    '/api';
+  const baseUrl = getApiBaseUrl();
 
   const token = useAuthStore.getState().token;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -58,11 +53,25 @@ export async function* sendChatMessageStream(
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  const TOKEN_TIMEOUT_MS = 20000;
 
-    buffer += decoder.decode(value, { stream: true });
+  while (true) {
+    const readPromise = reader.read();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Stream timeout')), TOKEN_TIMEOUT_MS),
+    );
+
+    let result: { done: boolean; value?: Uint8Array };
+    try {
+      result = await Promise.race([readPromise, timeoutPromise]);
+    } catch {
+      yield { type: 'error', message: 'Stream timed out waiting for response.' };
+      break;
+    }
+
+    if (result.done) break;
+
+    buffer += decoder.decode(result.value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
 
@@ -122,7 +131,9 @@ export async function getConversation(id: string): Promise<ConversationDetail> {
 export async function getConversationMessages(id: string): Promise<ConversationDetail['messages']> {
   const { data } = await api.get(`/ai/conversations/${id}/messages/`);
   const unwrapped = data?.data ?? data;
-  return Array.isArray(unwrapped) ? unwrapped : [];
+  // Handle paginated response from PageNumberPagination
+  const items = unwrapped?.results ?? unwrapped;
+  return Array.isArray(items) ? items : [];
 }
 
 export async function deleteConversation(id: string): Promise<void> {

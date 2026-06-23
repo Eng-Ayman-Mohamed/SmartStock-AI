@@ -14,6 +14,54 @@ function mapConversationMessages(detail: ConversationDetail): Message[] {
   }));
 }
 
+/**
+ * Shared streaming helper consumed by sendMessage and retryLastMessage.
+ * Processes an SSE stream, updates the AI message token-by-token,
+ * and finalises with engine metadata + sources.
+ */
+async function executeStreamQuery(
+  text: string,
+  convId: string | undefined,
+  chatMode: ChatMode,
+  controller: AbortController,
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
+  aiMessageId: string,
+): Promise<void> {
+  const stream = sendChatMessageStream(
+    { query: text, mode: chatMode, conversation_id: convId },
+    AbortSignal.any([controller.signal, AbortSignal.timeout(25000)]),
+  );
+
+  let fullText = '';
+  let engine: Message['engine'] = undefined;
+  let sources: Message['sources'] = undefined;
+
+  for await (const event of stream) {
+    if (controller.signal.aborted) return;
+
+    if (event.type === 'metadata') {
+      engine = event.engine as Message['engine'];
+    } else if (event.type === 'token' && event.content) {
+      fullText += event.content;
+      const textCopy = fullText;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === aiMessageId ? { ...m, text: textCopy } : m)),
+      );
+    } else if (event.type === 'done') {
+      sources = event.sources;
+    } else if (event.type === 'error') {
+      throw new Error(event.message || 'Stream error');
+    }
+  }
+
+  const finalText = fullText || 'No response received.';
+  setMessages((prev) =>
+    prev.map((m) =>
+      m.id === aiMessageId ? { ...m, text: finalText, engine, sources } : m,
+    ),
+  );
+}
+
 export default function useChat(conversationId?: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +71,7 @@ export default function useChat(conversationId?: string | null) {
   const lastFailedText = useRef<string | null>(null);
   const idCounter = useRef(0);
   const isLoadingRef = useRef(false);
+  const sendingRef = useRef(false);
 
   function createId(): string {
     return `msg-${Date.now()}-${idCounter.current++}`;
@@ -44,7 +93,8 @@ export default function useChat(conversationId?: string | null) {
   const sendMessage = useCallback(
     async (text: string, conversationIdOverride?: string) => {
       const trimmed = text.trim();
-      if (!trimmed || isLoadingRef.current) return;
+      if (!trimmed || isLoading || sendingRef.current) return;
+      sendingRef.current = true;
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -93,42 +143,13 @@ export default function useChat(conversationId?: string | null) {
           };
           setMessages((prev) => [...prev, nlAiMessage]);
         } else {
-          const stream = sendChatMessageStream(
-            {
-              query: trimmed,
-              mode,
-              conversation_id: activeConvId ?? undefined,
-            },
-            controller.signal,
-          );
-
-          let fullText = '';
-          let engine: Message['engine'] = undefined;
-          let sources: Message['sources'] = undefined;
-
-          for await (const event of stream) {
-            if (controller.signal.aborted) return;
-
-            if (event.type === 'metadata') {
-              engine = event.engine as Message['engine'];
-            } else if (event.type === 'token' && event.content) {
-              fullText += event.content;
-              const textCopy = fullText;
-              setMessages((prev) =>
-                prev.map((m) => (m.id === aiMessageId ? { ...m, text: textCopy } : m)),
-              );
-            } else if (event.type === 'done') {
-              sources = event.sources;
-            } else if (event.type === 'error') {
-              throw new Error(event.message || 'Stream error');
-            }
-          }
-
-          const finalText = fullText || 'No response received.';
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === aiMessageId ? { ...m, text: finalText, engine, sources } : m,
-            ),
+          await executeStreamQuery(
+            trimmed,
+            activeConvId ?? undefined,
+            mode,
+            controller,
+            setMessages,
+            aiMessageId,
           );
         }
       } catch (err) {
@@ -158,6 +179,7 @@ export default function useChat(conversationId?: string | null) {
         setError(userMessage);
         lastFailedText.current = trimmed;
       } finally {
+        sendingRef.current = false;
         isLoadingRef.current = false;
         setIsLoading(false);
         if (abortRef.current === controller) {
@@ -165,7 +187,7 @@ export default function useChat(conversationId?: string | null) {
         }
       }
     },
-    [mode, conversationId],
+    [mode, isLoading, conversationId],
   );
 
   const retryLastMessage = useCallback(async () => {
@@ -202,42 +224,13 @@ export default function useChat(conversationId?: string | null) {
     setError(null);
 
     try {
-      const stream = sendChatMessageStream(
-        {
-          query: failedText,
-          mode,
-          conversation_id: conversationId ?? undefined,
-        },
-        controller.signal,
-      );
-
-      let fullText = '';
-      let engine: Message['engine'] = undefined;
-      let sources: Message['sources'] = undefined;
-
-      for await (const event of stream) {
-        if (controller.signal.aborted) return;
-
-        if (event.type === 'metadata') {
-          engine = event.engine as Message['engine'];
-        } else if (event.type === 'token' && event.content) {
-          fullText += event.content;
-          const textCopy = fullText;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === aiMessageId ? { ...m, text: textCopy } : m)),
-          );
-        } else if (event.type === 'done') {
-          sources = event.sources;
-        } else if (event.type === 'error') {
-          throw new Error(event.message || 'Stream error');
-        }
-      }
-
-      const finalText = fullText || 'No response received.';
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === aiMessageId ? { ...m, text: finalText, engine, sources } : m,
-        ),
+      await executeStreamQuery(
+        failedText,
+        conversationId ?? undefined,
+        mode,
+        controller,
+        setMessages,
+        aiMessageId,
       );
     } catch (err) {
       if (controller.signal.aborted) return;

@@ -1340,11 +1340,27 @@ def _handle_forecast_demand(filters: NLQueryFilters) -> list:
     return result if result else []
 
 
+SUPPLIER_FIELD_MAP = {
+    'supplier_name': 'name',
+    'contact_email': 'contact_email',
+    'is_active': 'is_active',
+}
+
+
 def _handle_get_supplier_info(filters: NLQueryFilters) -> list:
     if isinstance(filters, dict):
         filters = NLQueryFilters.from_dict(filters)
-    q = _build_q_from_filters(filters)
-    suppliers = Supplier.objects.filter(q).values('id', 'name', 'contact_email', 'phone', 'address')
+    q = Q()
+    for c in filters.conditions:
+        field = getattr(c, 'field', c.get('field') if isinstance(c, dict) else None)
+        op = getattr(c, 'op', c.get('op', 'eq') if isinstance(c, dict) else 'eq')
+        value = getattr(c, 'value', c.get('value') if isinstance(c, dict) else None)
+        orm_field = SUPPLIER_FIELD_MAP.get(field, field)
+        suffix = OP_MAP.get(op, '')
+        q &= Q(**{f'{orm_field}{suffix}': value})
+    suppliers = Supplier.objects.filter(q).values(
+        'id', 'name', 'contact_email', 'contact_phone', 'address'
+    )
     return list(suppliers)
 
 

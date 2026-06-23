@@ -13,6 +13,9 @@ class ChatConversation(models.Model):
     )
     title = models.CharField(max_length=200, default='New Conversation')
     created_at = models.DateTimeField(auto_now_add=True)
+    # NOTE: updated_at uses auto_now=True. To update via QuerySet.update(),
+    # the current pattern (QuerySet.update()) works because it bypasses save().
+    # If switching to obj.save(), auto_now will override any explicit value.
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

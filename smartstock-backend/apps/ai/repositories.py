@@ -1,5 +1,7 @@
 import uuid
 
+from django.db.models import Count
+
 from core.base_repository import BaseRepository
 
 from .models import ChatConversation, ChatMessage
@@ -18,6 +20,7 @@ class ConversationRepository(BaseRepository):
         return ChatConversation.objects.create(**data)
 
     def update(self, id: uuid.UUID, data: dict):
+        """Update and return the refreshed object. Caller needs the updated instance."""
         ChatConversation.objects.filter(pk=id).update(**data)
         return self.get_by_id(id)
 
@@ -25,7 +28,11 @@ class ConversationRepository(BaseRepository):
         ChatConversation.objects.filter(pk=id).delete()
 
     def list_for_user(self, user):
-        return ChatConversation.objects.filter(user=user).order_by('-updated_at')
+        return (
+            ChatConversation.objects.filter(user=user)
+            .order_by('-updated_at')
+            .annotate(_msg_count=Count('messages'))
+        )
 
     def get_with_messages(self, id: uuid.UUID, user):
         return (

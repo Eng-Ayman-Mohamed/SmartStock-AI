@@ -1,21 +1,24 @@
+// smartstock-frontend/src/features/ai-assistant/components/MessageBubble.tsx
+import { memo, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { Bot, User } from 'lucide-react';
 import type { Message } from '../types';
 import CitationTag from '../../../shared/atoms/CitationTag';
 
+const CITATION_PATTERN = /\[Source:\s*([^,]+),\s*Page:\s*(\d+)\]/g;
+
 function parseAnswerText(text: string, sources: Message['sources']) {
   if (!sources || sources.length === 0) return text;
 
   const parts: (string | ReactNode)[] = [];
-  const remaining = text;
 
-  const pattern = /\[Source:\s*([^,]+),\s*Page:\s*(\d+)\]/g;
+  CITATION_PATTERN.lastIndex = 0;
   let match;
   let lastIndex = 0;
 
-  while ((match = pattern.exec(remaining)) !== null) {
+  while ((match = CITATION_PATTERN.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(remaining.slice(lastIndex, match.index));
+      parts.push(text.slice(lastIndex, match.index));
     }
 
     const doc = match[1].trim();
@@ -34,8 +37,8 @@ function parseAnswerText(text: string, sources: Message['sources']) {
     lastIndex = match.index + match[0].length;
   }
 
-  if (lastIndex < remaining.length) {
-    parts.push(remaining.slice(lastIndex));
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
   }
 
   return parts.length > 0 ? parts : text;
@@ -45,9 +48,15 @@ interface MessageBubbleProps {
   message: Message;
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+const MessageBubble = memo(function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
+  const content = useMemo(
+    () => (isUser ? message.text : parseAnswerText(message.text, message.sources)),
+    [isUser, message.text, message.sources],
+  );
+
+  // Prevent flash of empty bubble during streaming placeholder
   if (!isUser && !message.text) return null;
 
   return (
@@ -75,10 +84,12 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           }`}
         >
           <p className="text-body leading-relaxed whitespace-pre-wrap break-words">
-            {isUser ? message.text : parseAnswerText(message.text, message.sources)}
+            {content}
           </p>
         </div>
       </div>
     </div>
   );
-}
+});
+
+export default MessageBubble;

@@ -2,7 +2,6 @@ import json as _json
 import logging
 import os
 import tempfile
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
@@ -34,6 +33,7 @@ from apps.authentication.permissions import IsManagerOrAbove, IsViewerOrAbove
 from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error, sanitize_llm_error
 
+from .chat_pipeline import ChatPipeline
 from .models import Document, DocumentChunk
 from .serializers import (
     ChatSerializer,
@@ -54,6 +54,10 @@ from .services import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Shared executors — bounded to prevent thread accumulation
+_chat_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix='chat')
+_audit_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='audit')
 
 
 class RAGServiceUnavailable(Exception):
@@ -777,101 +781,50 @@ class ChatEndpointView(APIView):
         mode = serializer.validated_data['mode']
         conversation_id = serializer.validated_data.get('conversation_id')
 
-        # --- Prompt injection check (Task A10) ---
-        try:
-            is_safe, matched_pattern = prompt_injection_filter(query)
-        except Exception:
-            logger.exception('Prompt injection filter failed')
-            is_safe, matched_pattern = False, 'filter_error'
+        # --- Validate and classify via shared pipeline ---
+        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        if error_response:
+            return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
-        if not is_safe:
-            AuditLog.objects.create(
-                user=request.user,
-                event='PROMPT_INJECTION_ATTEMPT',
-                data_snapshot={
-                    'query': query[:200],
-                    'matched_pattern': matched_pattern,
-                    'endpoint': 'chat',
-                },
-            )
-            return Response(
-                {
-                    'status': 'error',
-                    'error': 'InvalidQueryError',
-                    'message': 'Query contains disallowed content.',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # --- Intent classification (only for auto mode) ---
+        # classifier_decision is not exposed by ChatPipeline; trace will log it as None
         classifier_decision = None
-        if mode == 'auto':
-            from ai.llm.intent_classifier import classify_intent
 
-            classification = classify_intent(query)
-            classifier_decision = classification.intent
-
-            # If confidence is below 0.7, default to nl_query (safer for operational queries)
-            if classification.confidence < 0.7:
-                engine = 'nl_query'
-            elif classification.intent == 'out_of_scope':
-                # For out_of_scope with high confidence, still try nl_query as fallback
-                engine = 'nl_query'
-            else:
-                engine = classification.intent
-        else:
-            engine = mode
-
-        # --- Load conversation history (only for RAG — NL query path ignores it) ---
-        conv_service = ConversationService()
-        history = []
-        if conversation_id and engine == 'rag':
-            try:
-                conversation = conv_service.get_conversation(conversation_id, request.user)
-                history = conv_service.get_history_for_llm(conversation_id)
-            except ValueError:
-                return Response(
-                    {'status': 'error', 'message': 'Conversation not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-        elif conversation_id:
-            try:
-                conversation = conv_service.get_conversation(conversation_id, request.user)
-            except ValueError:
-                return Response(
-                    {'status': 'error', 'message': 'Conversation not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+        # --- Load conversation history ---
+        conversation, history, error_response = ChatPipeline.load_conversation(
+            conversation_id, request.user, engine
+        )
+        if error_response:
+            status_code = (
+                status.HTTP_404_NOT_FOUND
+                if 'not found' in error_response.get('message', '')
+                else status.HTTP_400_BAD_REQUEST
+            )
+            return Response(error_response, status=status_code)
 
         # --- Execute pipeline with timeout ---
         pipeline_start = time.time()
-        executor = ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(self._run_engine, engine, query, request.user, history)
+        future = _chat_executor.submit(self._run_engine, engine, query, request.user, history)
         try:
             result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
-            executor.shutdown(wait=False)
         except FuturesTimeout:
-            executor.shutdown(wait=False)
+            future.cancel()
             logger.warning('Chat pipeline timed out after %ds', self.CHAT_TIMEOUT_SECONDS)
             return Response(
                 {'status': 'error', 'message': 'Request timed out. Please try a simpler question.'},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except RAGServiceUnavailable as exc:
-            executor.shutdown(wait=False)
             return Response(
                 {'status': 'error', 'message': exc.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except LLMQuotaExhaustedError as exc:
-            executor.shutdown(wait=False)
             logger.warning('LLM quota exhausted: %s', exc)
             return Response(
                 {'status': 'error', 'message': sanitize_llm_error(exc)},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
         except ValueError as exc:
-            executor.shutdown(wait=False)
             msg = str(exc)
             if msg == 'PROMPT_INJECTION_DETECTED':
                 logger.warning('Prompt injection blocked in NL query pipeline')
@@ -885,7 +838,6 @@ class ChatEndpointView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         except Exception as exc:
-            executor.shutdown(wait=False)
             logger.exception('Chat pipeline failed')
             msg = (
                 sanitize_llm_error(exc)
@@ -901,23 +853,7 @@ class ChatEndpointView(APIView):
 
         # --- Save to conversation ---
         if conversation_id:
-            is_new = conversation.messages.count() == 0
-            conv_service.save_message(
-                conversation_id=conversation_id,
-                role='user',
-                content=query,
-                mode=mode,
-            )
-            conv_service.save_message(
-                conversation_id=conversation_id,
-                role='assistant',
-                content=result.get('answer', ''),
-                engine=engine,
-                sources=result.get('sources', []),
-                mode=mode,
-            )
-            if is_new:
-                conv_service.auto_title(conversation_id, query)
+            ChatPipeline.save_messages(conversation_id, query, result, engine, mode, conversation)
 
         # --- Build response ---
         response_data = {
@@ -1049,18 +985,7 @@ class ChatEndpointView(APIView):
             'answer_length': len(result.get('answer', '')),
             'latency_ms': latency_ms,
         }
-
-        def _write_audit():
-            try:
-                AuditLog.objects.create(
-                    user=user,
-                    event='AI_CHAT_QUERY',
-                    data_snapshot=trace_data,
-                )
-            except Exception as exc:
-                logger.debug('Audit log failed: %s', exc)
-
-        threading.Thread(target=_write_audit, daemon=True).start()
+        _audit_executor.submit(self._write_audit, user, trace_data)
 
         try:
             lf = _get_langfuse()
@@ -1098,6 +1023,17 @@ class ChatEndpointView(APIView):
         except Exception as lf_err:
             logger.debug('Langfuse trace skipped: %s', lf_err)
 
+    @staticmethod
+    def _write_audit(user, trace_data):
+        try:
+            AuditLog.objects.create(
+                user=user,
+                event='AI_CHAT_QUERY',
+                data_snapshot=trace_data,
+            )
+        except Exception as exc:
+            logger.debug('Audit log failed: %s', exc)
+
 
 # ---------------------------------------------------------------------------
 # Streaming Chat Endpoint  — POST /api/ai/chat/stream/
@@ -1126,71 +1062,85 @@ class ChatStreamView(APIView):
         mode = serializer.validated_data['mode']
         conversation_id = serializer.validated_data.get('conversation_id')
 
-        # --- Prompt injection check ---
-        try:
-            is_safe, matched_pattern = prompt_injection_filter(query)
-        except Exception:
-            logger.exception('Prompt injection filter failed')
-            is_safe = False
+        # --- Validate and classify via shared pipeline ---
+        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        if error_response:
+            return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
-        if not is_safe:
-            return Response(
-                {
-                    'status': 'error',
-                    'error': 'InvalidQueryError',
-                    'message': 'Query contains disallowed content.',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+        # --- Load conversation history ---
+        conversation, history, error_response = ChatPipeline.load_conversation(
+            conversation_id, request.user, engine
+        )
+        if error_response:
+            status_code = (
+                status.HTTP_404_NOT_FOUND
+                if 'not found' in error_response.get('message', '')
+                else status.HTTP_400_BAD_REQUEST
             )
-
-        # --- Intent classification (only for auto mode) ---
-        engine = mode
-        if mode == 'auto':
-            from ai.llm.intent_classifier import classify_intent
-
-            classification = classify_intent(query)
-            if classification.confidence < 0.7:
-                engine = 'nl_query'
-            elif classification.intent == 'out_of_scope':
-                engine = 'nl_query'
-            else:
-                engine = classification.intent
-
-        # --- Load conversation ---
-        conv_service = ConversationService()
-        conversation = None
-        if conversation_id:
-            try:
-                conversation = conv_service.get_conversation(conversation_id, request.user)
-            except ValueError:
-                return Response(
-                    {'status': 'error', 'message': 'Conversation not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-        # --- History (only for RAG) ---
-        history = []
-        if conversation_id and engine == 'rag':
-            history = conv_service.get_history_for_llm(conversation_id)
+            return Response(error_response, status=status_code)
 
         user = request.user
         shared = {}
 
         def event_stream():
             """Generator that yields SSE events."""
+            conv_svc = ConversationService()
+            heartbeat_interval = 15  # seconds
+            last_heartbeat = time.time()
+
+            def _check_heartbeat():
+                """Yield a keepalive comment if enough time has passed."""
+                nonlocal last_heartbeat
+                now = time.time()
+                if now - last_heartbeat >= heartbeat_interval:
+                    last_heartbeat = now
+                    return ': keepalive\n\n'
+                return None
+
+            # Save user message BEFORE streaming (optimistic save)
+            if conversation_id:
+                try:
+                    conv_svc.save_message(
+                        conversation_id=conversation_id,
+                        role='user',
+                        content=query,
+                        mode=mode,
+                    )
+                except Exception:
+                    logger.exception('Failed to save user message')
+
             # Send metadata first
             metadata = {'engine': engine, 'mode': mode}
             if conversation_id:
                 metadata['conversation_id'] = str(conversation_id)
             yield f'event: metadata\ndata: {_json.dumps(metadata)}\n\n'
 
+            full_answer = ''
             try:
-                # Heartbeat before streaming to keep connection alive
-                yield ': thinking\n\n'
                 if engine == 'rag':
-                    yield from self._stream_rag(query, user, history, shared)
+                    for event in self._stream_rag(query, user, history, shared):
+                        if event['type'] == 'token':
+                            full_answer += event['content']
+                            yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                        elif event['type'] == 'done':
+                            done_data = {'sources': event.get('sources', [])}
+                            if event.get('action'):
+                                done_data['action'] = event['action']
+                            yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+                        hb = _check_heartbeat()
+                        if hb:
+                            yield hb
                 else:
-                    yield from self._stream_nl_query(query, user, shared)
+                    for event in self._stream_nl_query(query, user, shared):
+                        full_answer += event['content']
+                        yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                        hb = _check_heartbeat()
+                        if hb:
+                            yield hb
+                    done_data = {'action': shared.get('action')}
+                    yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+
+                shared['full_answer'] = full_answer
             except Exception as exc:
                 logger.exception('Streaming chat failed')
                 error_msg = (
@@ -1199,32 +1149,27 @@ class ChatStreamView(APIView):
                     else 'An unexpected error occurred.'
                 )
                 yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
-                return
-
-            # Save to conversation after stream completes
-            if conversation_id:
-                full_answer = shared.get('full_answer', '')
-                try:
-                    is_new = conversation.messages.count() == 0
-                    conv_service.save_message(
-                        conversation_id=conversation_id,
-                        role='user',
-                        content=query,
-                        mode=mode,
-                    )
-                    conv_service.save_message(
-                        conversation_id=conversation_id,
-                        role='assistant',
-                        content=full_answer,
-                        engine=engine,
-                        mode=mode,
-                    )
-                    if is_new:
-                        conv_service.auto_title(conversation_id, query)
-                except Exception:
-                    logger.exception('Failed to save conversation')
-
-            yield 'event: done\ndata: {}\n\n'
+            finally:
+                # Always save assistant response if we have one
+                if conversation_id and shared.get('full_answer'):
+                    try:
+                        is_new = (
+                            conv_svc.get_conversation(conversation_id, user)
+                            .messages.filter(role='assistant')
+                            .count()
+                            == 0
+                        )
+                        conv_svc.save_message(
+                            conversation_id=conversation_id,
+                            role='assistant',
+                            content=shared['full_answer'],
+                            engine=engine,
+                            mode=mode,
+                        )
+                        if is_new:
+                            conv_svc.auto_title(conversation_id, query)
+                    except Exception:
+                        logger.exception('Failed to save assistant message')
 
         response = StreamingHttpResponse(
             event_stream(),
@@ -1235,25 +1180,24 @@ class ChatStreamView(APIView):
         return response
 
     def _stream_rag(self, query, user, history, shared):
-        """Stream RAG pipeline response."""
+        """Stream RAG pipeline response as event dictionaries."""
         service = RAGQueryService()
         full_answer = ''
 
-        yield ': searching documents...\n\n'
         for event in service.execute_stream(query, user=user, history=history):
             if event['type'] == 'token':
                 full_answer += event['content']
-                yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                yield {'type': 'token', 'content': event['content']}
             elif event['type'] == 'done':
                 done_data = {'sources': event.get('sources', [])}
                 if event.get('action'):
                     done_data['action'] = event['action']
-                yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+                yield {'type': 'done', **done_data}
 
         shared['full_answer'] = full_answer
 
     def _stream_nl_query(self, query, user, shared):
-        """Stream NL Query pipeline response (streams only the formatter step)."""
+        """Stream NL Query pipeline response as event dictionaries."""
         from ai.llm.chain import call_gpt4o_formatter_stream, get_nl_chain
         from apps.inventory.views import (
             _handle_forecast_demand,
@@ -1271,7 +1215,6 @@ class ChatStreamView(APIView):
             raise ValueError('PROMPT_INJECTION_DETECTED')
 
         # Step B: NL chain (structured, not streamable)
-        yield ': classifying query...\n\n'
         chain_instance = get_nl_chain()
         chain_result = chain_instance.run(query)
         chain_dict = chain_result.to_dict()
@@ -1298,13 +1241,10 @@ class ChatStreamView(APIView):
         raw_data = handler(nl_filters)
 
         # Step D: Stream formatter
-        yield ': generating response...\n\n'
         full_answer = ''
         for chunk in call_gpt4o_formatter_stream(original_query=query, raw_data=raw_data):
             full_answer += chunk
-            yield f'event: token\ndata: {_json.dumps({"content": chunk})}\n\n'
+            yield {'type': 'token', 'content': chunk}
 
-        done_data = {'action': {'type': action_type, 'filters': filters}}
-        yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
-
+        shared['action'] = {'type': action_type, 'filters': filters}
         shared['full_answer'] = full_answer

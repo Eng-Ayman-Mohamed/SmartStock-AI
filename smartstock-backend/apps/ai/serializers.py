@@ -19,7 +19,7 @@ class ChatConversationListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_message_count(self, obj):
-        return obj.messages.count()
+        return getattr(obj, '_msg_count', obj.messages.count())
 
 
 class ChatConversationDetailSerializer(serializers.ModelSerializer):

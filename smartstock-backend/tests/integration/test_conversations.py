@@ -147,7 +147,8 @@ class ConversationViewSetTests(APITestCase):
         self._auth(self.user)
         response = self.client.get(self._url(f'{conv.id}/messages/'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['data']), 2)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
 
     def test_messages_other_users_returns_404(self):
         conv = ChatConversation.objects.create(user=self.other, title='Private')
