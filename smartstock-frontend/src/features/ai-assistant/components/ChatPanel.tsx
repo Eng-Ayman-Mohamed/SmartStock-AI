@@ -19,7 +19,6 @@ export default function ChatPanel() {
     startNewConversation,
     removeConversation,
     clearActive,
-    loadConversations,
   } = useConversations();
 
   const [visibleError, setVisibleError] = useState<string | null>(null);
@@ -48,9 +47,16 @@ export default function ChatPanel() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRafRef = useRef<number>(0);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+    return () => {
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    };
   }, [messages, isLoading]);
 
   useEffect(() => {
@@ -68,16 +74,14 @@ export default function ChatPanel() {
         const newConv = await startNewConversation();
         if (!newConv) return;
         setInput('');
-        await sendMessage(query, newConv.id);
-        await selectConversation(newConv.id);
-        await loadConversations();
+        sendMessage(query, newConv.id);
         return;
       }
 
       setInput('');
       await sendMessage(query);
     },
-    [input, isLoading, activeConversation, startNewConversation, sendMessage, selectConversation, loadConversations],
+    [input, isLoading, activeConversation, startNewConversation, sendMessage],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
