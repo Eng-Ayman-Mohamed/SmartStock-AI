@@ -2,7 +2,6 @@ import json as _json
 import logging
 import os
 import tempfile
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
@@ -55,6 +54,10 @@ from .services import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Shared executors — bounded to prevent thread accumulation
+_chat_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix='chat')
+_audit_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='audit')
 
 
 class RAGServiceUnavailable(Exception):
@@ -800,33 +803,28 @@ class ChatEndpointView(APIView):
 
         # --- Execute pipeline with timeout ---
         pipeline_start = time.time()
-        executor = ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(self._run_engine, engine, query, request.user, history)
+        future = _chat_executor.submit(self._run_engine, engine, query, request.user, history)
         try:
             result = future.result(timeout=self.CHAT_TIMEOUT_SECONDS)
-            executor.shutdown(wait=False)
         except FuturesTimeout:
-            executor.shutdown(wait=False)
+            future.cancel()
             logger.warning('Chat pipeline timed out after %ds', self.CHAT_TIMEOUT_SECONDS)
             return Response(
                 {'status': 'error', 'message': 'Request timed out. Please try a simpler question.'},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except RAGServiceUnavailable as exc:
-            executor.shutdown(wait=False)
             return Response(
                 {'status': 'error', 'message': exc.message},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except LLMQuotaExhaustedError as exc:
-            executor.shutdown(wait=False)
             logger.warning('LLM quota exhausted: %s', exc)
             return Response(
                 {'status': 'error', 'message': sanitize_llm_error(exc)},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
         except ValueError as exc:
-            executor.shutdown(wait=False)
             msg = str(exc)
             if msg == 'PROMPT_INJECTION_DETECTED':
                 logger.warning('Prompt injection blocked in NL query pipeline')
@@ -840,7 +838,6 @@ class ChatEndpointView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         except Exception as exc:
-            executor.shutdown(wait=False)
             logger.exception('Chat pipeline failed')
             msg = (
                 sanitize_llm_error(exc)
@@ -990,18 +987,7 @@ class ChatEndpointView(APIView):
             'answer_length': len(result.get('answer', '')),
             'latency_ms': latency_ms,
         }
-
-        def _write_audit():
-            try:
-                AuditLog.objects.create(
-                    user=user,
-                    event='AI_CHAT_QUERY',
-                    data_snapshot=trace_data,
-                )
-            except Exception as exc:
-                logger.debug('Audit log failed: %s', exc)
-
-        threading.Thread(target=_write_audit, daemon=True).start()
+        _audit_executor.submit(self._write_audit, user, trace_data)
 
         try:
             lf = _get_langfuse()
@@ -1038,6 +1024,17 @@ class ChatEndpointView(APIView):
                 lf.flush()
         except Exception as lf_err:
             logger.debug('Langfuse trace skipped: %s', lf_err)
+
+    @staticmethod
+    def _write_audit(user, trace_data):
+        try:
+            AuditLog.objects.create(
+                user=user,
+                event='AI_CHAT_QUERY',
+                data_snapshot=trace_data,
+            )
+        except Exception as exc:
+            logger.debug('Audit log failed: %s', exc)
 
 
 # ---------------------------------------------------------------------------
