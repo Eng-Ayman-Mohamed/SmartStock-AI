@@ -205,6 +205,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'ai', 'description': 'AI-powered NL queries and document ingestion'},
         {'name': 'health', 'description': 'Service health and readiness probes'},
         {'name': 'audit', 'description': 'Audit logs and activity tracking'},
+        {'name': 'notifications', 'description': 'Notification center endpoints'},
     ],
 }
 
