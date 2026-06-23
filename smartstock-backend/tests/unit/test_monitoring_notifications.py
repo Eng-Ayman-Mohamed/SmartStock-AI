@@ -76,12 +76,14 @@ class SendDashboardNotificationTest(TestCase):
         event.message = 'Alert message'
         return event
 
+    @patch('apps.monitoring.notifications.NotificationService')
     @patch('apps.monitoring.models.DashboardBanner.objects')
-    def test_create_banner_success(self, mock_banner_mgr):
+    def test_create_banner_success(self, mock_banner_mgr, mock_notification_svc):
         event = self._make_alert_event()
         result = send_dashboard_notification(event)
         self.assertTrue(result)
         mock_banner_mgr.create.assert_called_once()
+        mock_notification_svc.create.assert_called_once()
 
     @patch(
         'apps.monitoring.models.DashboardBanner.objects.create',
