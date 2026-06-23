@@ -1,19 +1,10 @@
 # smartstock-backend/apps/ingestion/chat_pipeline.py
 import logging
 import uuid
-from dataclasses import dataclass
-
 from apps.audit.models import AuditLog
 from apps.ai.services import ConversationService
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class PipelineResult:
-    engine: str
-    conversation: object | None
-    history: list
 
 
 class ChatPipeline:
@@ -100,7 +91,7 @@ class ChatPipeline:
     ):
         """Save user and assistant messages to conversation."""
         conv_service = ConversationService()
-        is_new = conversation.messages.count() == 0
+        is_new = not conversation.messages.exists()
         conv_service.save_message(
             conversation_id=conversation_id,
             role='user',

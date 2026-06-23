@@ -45,3 +45,56 @@ class TestChatPipelineConversation(TestCase):
         )
         self.assertIsNotNone(error)
         self.assertIn('not found', error['message'])
+
+
+class TestChatPipelineSaveMessages(TestCase):
+    @patch('apps.ingestion.chat_pipeline.ConversationService')
+    def test_save_messages_persists_both_messages(self, MockService):
+        """User and assistant messages are saved with correct arguments."""
+        mock_service = MockService.return_value
+        conversation = MagicMock()
+        conversation.messages.exists.return_value = False
+        conv_id = uuid.uuid4()
+        result = {'answer': 'Hello!', 'sources': ['doc1']}
+
+        ChatPipeline.save_messages(
+            conv_id, 'Hi', result, 'rag', 'auto', conversation
+        )
+
+        self.assertEqual(mock_service.save_message.call_count, 2)
+        calls = mock_service.save_message.call_args_list
+        # First call: user message
+        self.assertEqual(calls[0].kwargs['role'], 'user')
+        self.assertEqual(calls[0].kwargs['content'], 'Hi')
+        # Second call: assistant message
+        self.assertEqual(calls[1].kwargs['role'], 'assistant')
+        self.assertEqual(calls[1].kwargs['content'], 'Hello!')
+        self.assertEqual(calls[1].kwargs['sources'], ['doc1'])
+
+    @patch('apps.ingestion.chat_pipeline.ConversationService')
+    def test_save_messages_calls_auto_title_for_new_conversation(self, MockService):
+        """auto_title is called when conversation has no existing messages."""
+        mock_service = MockService.return_value
+        conversation = MagicMock()
+        conversation.messages.exists.return_value = False
+        conv_id = uuid.uuid4()
+
+        ChatPipeline.save_messages(
+            conv_id, 'First question', {}, 'rag', 'auto', conversation
+        )
+
+        mock_service.auto_title.assert_called_once_with(conv_id, 'First question')
+
+    @patch('apps.ingestion.chat_pipeline.ConversationService')
+    def test_save_messages_skips_auto_title_for_existing_conversation(self, MockService):
+        """auto_title is NOT called when conversation already has messages."""
+        mock_service = MockService.return_value
+        conversation = MagicMock()
+        conversation.messages.exists.return_value = True
+        conv_id = uuid.uuid4()
+
+        ChatPipeline.save_messages(
+            conv_id, 'Follow-up', {}, 'rag', 'auto', conversation
+        )
+
+        mock_service.auto_title.assert_not_called()
