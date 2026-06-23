@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import {
-  AlertTriangle,
   Check,
   FileText,
   Image as ImageIcon,
@@ -15,28 +14,30 @@ import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
 import { useInvoiceScan } from '../hooks/useInvoiceScan';
 import { useToastStore } from '../../../store/toastStore';
-import type { InvoiceFieldKey, InvoiceFields, InvoiceScanResult } from '../types';
+import InvoiceHeaderForm from '../components/InvoiceHeaderForm';
+import LineItemsTable from '../components/LineItemsTable';
+import type {
+  ConfirmInvoiceData,
+  InvoiceHeaderFields,
+  InvoiceHeaderKey,
+  InvoiceLineItem,
+  InvoiceScanResult,
+} from '../types';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 
-const FIELD_LABELS: Record<InvoiceFieldKey, string> = {
-  product_name: 'Product Name',
-  sku_code: 'SKU Code',
-  quantity_received: 'Quantity Received',
-  unit_price: 'Unit Price',
-  supplier_name: 'Supplier Name',
-};
-
-const FIELD_ORDER = Object.keys(FIELD_LABELS) as InvoiceFieldKey[];
-
-const emptyFields: InvoiceFields = {
-  product_name: '',
-  sku_code: '',
-  quantity_received: '',
-  unit_price: '',
+const EMPTY_HEADER: InvoiceHeaderFields = {
   supplier_name: '',
+  invoice_number: '',
+  invoice_date: '',
+  due_date: '',
+  invoice_total: '',
+  tax_amount: '',
+  currency: '',
 };
+
+const HEADER_KEYS = Object.keys(EMPTY_HEADER) as InvoiceHeaderKey[];
 
 type Preview =
   | { kind: 'image'; url: string; name: string }
@@ -57,34 +58,48 @@ function validateFile(file: File) {
   return '';
 }
 
-function normalizeFields(result: InvoiceScanResult): InvoiceFields {
-  return FIELD_ORDER.reduce<InvoiceFields>((acc, key) => {
-    const value = result.extracted_data?.[key];
-    acc[key] = value ?? '';
+function normalizeHeader(result: InvoiceScanResult): InvoiceHeaderFields {
+  const data = result.extracted_data ?? {};
+  return HEADER_KEYS.reduce<InvoiceHeaderFields>((acc, key) => {
+    acc[key] = data[key] ?? '';
     return acc;
-  }, { ...emptyFields });
+  }, { ...EMPTY_HEADER });
 }
 
-function confidenceTone(value = 0) {
-  if (value >= 0.9) {
-    return {
-      label: 'High',
-      className: 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200',
-      dot: 'bg-green-600 dark:bg-green-400',
-    };
+function normalizeLineItems(result: InvoiceScanResult): InvoiceLineItem[] {
+  const data = result.extracted_data ?? {};
+  if (Array.isArray(data.line_items) && data.line_items.length > 0) {
+    return data.line_items.map((line) => ({
+      item_name: String(line.item_name ?? ''),
+      sku_code: String(line.sku_code ?? ''),
+      quantity: line.quantity ?? '',
+      unit_price: line.unit_price ?? '',
+      total_price: line.total_price ?? '',
+    }));
   }
-  if (value >= 0.7) {
-    return {
-      label: 'Review',
-      className: 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
-      dot: 'bg-amber-600 dark:bg-amber-400',
-    };
+  // Legacy single-product fallback.
+  const hasLegacy = data.product_name || data.sku_code || data.quantity_received || data.unit_price;
+  if (hasLegacy) {
+    return [
+      {
+        item_name: String(data.product_name ?? ''),
+        sku_code: String(data.sku_code ?? ''),
+        quantity: data.quantity_received ?? '',
+        unit_price: data.unit_price ?? '',
+        total_price: '',
+      },
+    ];
   }
-  return {
-    label: 'Please verify',
-    className: 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-    dot: 'bg-red-600 dark:bg-red-400',
-  };
+  return [{ item_name: '', sku_code: '', quantity: '', unit_price: '', total_price: '' }];
+}
+
+function lineIsComplete(line: InvoiceLineItem) {
+  return (
+    String(line.item_name ?? '').trim() !== '' &&
+    String(line.sku_code ?? '').trim() !== '' &&
+    String(line.quantity ?? '').trim() !== '' &&
+    Number(line.quantity) >= 1
+  );
 }
 
 export default function InvoiceScanPage() {
@@ -94,16 +109,14 @@ export default function InvoiceScanPage() {
   const [dragActive, setDragActive] = useState(false);
   const [fileError, setFileError] = useState('');
   const [scanResult, setScanResult] = useState<InvoiceScanResult | null>(null);
-  const [fields, setFields] = useState<InvoiceFields>(emptyFields);
+  const [header, setHeader] = useState<InvoiceHeaderFields>(EMPTY_HEADER);
+  const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([]);
   const [confirmedResult, setConfirmedResult] = useState<InvoiceScanResult | null>(null);
   const { scan, confirm, reject, isProcessing } = useInvoiceScan();
   const addToast = useToastStore((s) => s.addToast);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const missingFields = useMemo(
-    () => new Set(scanResult?.missing_fields ?? []),
-    [scanResult?.missing_fields],
-  );
+  const lineConfidence = useMemo(() => scanResult?.confidence?.line_items, [scanResult]);
 
   useEffect(() => {
     return () => {
@@ -125,13 +138,18 @@ export default function InvoiceScanPage() {
     });
   }
 
+  function resetExtraction() {
+    setScanResult(null);
+    setHeader(EMPTY_HEADER);
+    setLineItems([]);
+    setConfirmedResult(null);
+  }
+
   function selectFile(file: File) {
     const error = validateFile(file);
     setFileError(error);
     setErrorMessage('');
-    setConfirmedResult(null);
-    setScanResult(null);
-    setFields(emptyFields);
+    resetExtraction();
     if (error) {
       setSelectedFile(null);
       setPreview((current) => {
@@ -153,10 +171,10 @@ export default function InvoiceScanPage() {
     try {
       const result = await scan.mutateAsync(file);
       setScanResult(result);
-      setFields(normalizeFields(result));
+      setHeader(normalizeHeader(result));
+      setLineItems(normalizeLineItems(result));
     } catch {
-      setScanResult(null);
-      addToast('Failed to scan invoice', 'error');
+      resetExtraction();
       setErrorMessage('Failed to scan invoice. Please try again.');
     }
   }
@@ -181,26 +199,32 @@ export default function InvoiceScanPage() {
     });
     setFileError('');
     setErrorMessage('');
-    setScanResult(null);
-    setFields(emptyFields);
-    setConfirmedResult(null);
+    resetExtraction();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   }
 
+  function handleHeaderChange(key: InvoiceHeaderKey, value: string) {
+    setHeader((current) => ({ ...current, [key]: value }));
+  }
+
   async function confirmScan() {
     if (!scanResult) return;
+    const confirmedData: ConfirmInvoiceData = {
+      ...header,
+      supplier_name: String(header.supplier_name ?? '').trim(),
+      line_items: lineItems,
+    };
     try {
       const result = await confirm.mutateAsync({
         scan_id: scanResult.scan_id,
-        confirmed_data: fields,
+        confirmed_data: confirmedData,
       });
       setScanResult(result);
       setConfirmedResult(result);
     } catch {
       setConfirmedResult(null);
-      addToast('Failed to confirm scan', 'error');
       setErrorMessage('Failed to confirm scan. Please try again.');
     }
   }
@@ -219,7 +243,11 @@ export default function InvoiceScanPage() {
     }
   }
 
-  const canConfirm = Boolean(scanResult) && !isProcessing && FIELD_ORDER.every((field) => String(fields[field] ?? '').trim());
+  const supplierFilled = String(header.supplier_name ?? '').trim() !== '';
+  const linesValid = lineItems.length > 0 && lineItems.every(lineIsComplete);
+  const canConfirm = Boolean(scanResult) && !isProcessing && supplierFilled && linesValid;
+
+  const inventoryResult = confirmedResult?.inventory_result;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -230,7 +258,12 @@ export default function InvoiceScanPage() {
             Upload a supplier invoice, verify the AI extraction, then add the received stock.
           </p>
         </div>
-        <Button variant="secondary" size="md" onClick={resetFlow} disabled={isProcessing || (!selectedFile && !scanResult)}>
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={resetFlow}
+          disabled={isProcessing || (!selectedFile && !scanResult)}
+        >
           <RotateCcw className="w-4 h-4" /> Reset
         </Button>
       </div>
@@ -241,7 +274,7 @@ export default function InvoiceScanPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-6 items-start">
         <Card title="Original Upload" subtitle="JPEG, PNG, or PDF. Maximum 5 MB.">
           <input
             ref={fileInputRef}
@@ -328,8 +361,8 @@ export default function InvoiceScanPage() {
         </Card>
 
         <Card
-          title="Extracted Fields"
-          subtitle={scanResult ? 'Review every value before confirming.' : 'Upload an invoice to extract product details.'}
+          title="Extracted Invoice"
+          subtitle={scanResult ? 'Review the header and line items before confirming.' : 'Upload an invoice to extract its details.'}
         >
           {!scanResult ? (
             <EmptyState
@@ -337,66 +370,44 @@ export default function InvoiceScanPage() {
               heading={scan.isPending ? 'Reading invoice' : 'No scan yet'}
               body={
                 scan.isPending
-                  ? 'The Vision API is extracting invoice fields now.'
-                  : 'Upload a supplier invoice to extract product name, SKU, quantity, price, and supplier.'
+                  ? 'The Vision API is extracting the invoice header and line items now.'
+                  : 'Upload a supplier invoice to extract the supplier, invoice details, and every line item.'
               }
             />
           ) : (
-            <>
+            <div className="space-y-6">
               {scanResult.status === 'partial' && (
-                <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-body text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-                  Some fields were missing from the scan. Fill them in before confirming.
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-body text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+                  Some values were missing from the scan. Fill them in before confirming.
                 </div>
               )}
 
-              <div className="space-y-4">
-                {FIELD_ORDER.map((field) => {
-                  const confidence = scanResult.confidence?.[field] ?? 0;
-                  const tone = confidenceTone(confidence);
-                  const lowConfidence = confidence < 0.7;
+              <InvoiceHeaderForm
+                header={header}
+                confidence={scanResult.confidence ?? {}}
+                onChange={handleHeaderChange}
+              />
 
-                  return (
-                    <div key={field}>
-                      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                        <label className="text-caption text-ink-muted" htmlFor={`invoice-${field}`}>
-                          {FIELD_LABELS[field]}
-                        </label>
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-eyebrow ${tone.className}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-                          {Math.round(confidence * 100)}% {tone.label}
-                        </span>
-                      </div>
-                      <input
-                        id={`invoice-${field}`}
-                        type={field === 'quantity_received' || field === 'unit_price' ? 'number' : 'text'}
-                        min={field === 'quantity_received' || field === 'unit_price' ? '0' : undefined}
-                        step={field === 'unit_price' ? '0.01' : field === 'quantity_received' ? '1' : undefined}
-                        value={String(fields[field] ?? '')}
-                        onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.value }))}
-                        className={`h-9 w-full rounded-md border bg-canvas px-3 text-body text-ink transition-colors hover:border-ink-muted focus:border-brand-600 focus:outline-none ${
-                          missingFields.has(field) || lowConfidence ? 'border-amber-300' : 'border-hairline'
-                        }`}
-                      />
-                      {(missingFields.has(field) || lowConfidence) && (
-                        <p className="mt-1 flex items-center gap-1 text-caption text-amber-800">
-                          <AlertTriangle className="w-3 h-3" /> Please verify this value.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <LineItemsTable items={lineItems} lineConfidence={lineConfidence} onChange={setLineItems} />
 
-              {confirmedResult?.inventory_result && (
-                <div className="mt-5 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-body text-green-900 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
-                  Inventory updated. Current on-hand quantity:{' '}
-                  <span className="font-medium tabular-nums">
-                    {confirmedResult.inventory_result.quantity_on_hand ?? 'updated'}
-                  </span>
+              {inventoryResult && (
+                <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-body text-green-900 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
+                  <p className="font-medium">
+                    {inventoryResult.lines_processed ?? inventoryResult.lines?.length ?? 0} line item(s) added to inventory.
+                  </p>
+                  {inventoryResult.lines_failed && inventoryResult.lines_failed.length > 0 && (
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-caption text-amber-800 dark:text-amber-300">
+                      {inventoryResult.lines_failed.map((failed, index) => (
+                        <li key={`${failed.sku_code}-${index}`}>
+                          {failed.sku_code || 'Line'}: {failed.error}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
 
-              <div className="mt-6 flex flex-col gap-3 border-t border-hairline pt-4 sm:flex-row">
+              <div className="flex flex-col gap-3 border-t border-hairline pt-4 sm:flex-row">
                 <Button variant="secondary" size="md" className="flex-1" onClick={rejectScan} disabled={isProcessing}>
                   <X className="w-4 h-4" /> Reject
                 </Button>
@@ -406,16 +417,11 @@ export default function InvoiceScanPage() {
                 </Button>
               </div>
 
-              <div className="mt-3 flex items-start gap-2 rounded-md bg-canvas-soft px-3 py-2 text-caption text-ink-muted">
+              <div className="flex items-start gap-2 rounded-md bg-canvas-soft px-3 py-2 text-caption text-ink-muted">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
                 <span>Confirmation is audited with the original extraction, your edited values, user ID, and timestamp.</span>
               </div>
-
-              <div className="flex items-start gap-2 rounded-md bg-canvas-soft px-3 py-2 text-caption text-ink-muted">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
-                <span>Extracted data is processed by AI and stored securely. PII (emails, phone numbers) is only visible to managers and administrators.</span>
-              </div>
-            </>
+            </div>
           )}
         </Card>
       </div>

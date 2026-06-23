@@ -108,6 +108,41 @@ class InvoiceScanEndpointTests(APITestCase):
         self.assertEqual(response.data['data']['status'], 'extracted')
         mock_instance.scan_invoice.assert_called_once()
 
+    @patch('apps.ingestion.views.InvoiceScanService')
+    def test_scan_returns_header_and_line_items(self, mock_svc_cls):
+        mock_instance = mock_svc_cls.return_value
+        mock_instance.scan_invoice.return_value = {
+            'scan_id': 2,
+            'status': 'extracted',
+            'extracted_data': {
+                'supplier_name': 'Acme',
+                'invoice_number': 'INV-2',
+                'line_items': [
+                    {
+                        'item_name': 'Mouse',
+                        'sku_code': 'WM-1',
+                        'quantity': 12,
+                        'unit_price': 21.25,
+                        'total_price': 255,
+                    },
+                ],
+                'product_name': 'Mouse',
+                'sku_code': 'WM-1',
+                'quantity_received': 12,
+                'unit_price': 21.25,
+            },
+            'confidence': {'supplier_name': 0.9, 'line_items': 0.85},
+            'missing_fields': [],
+            'failure_reason': '',
+            'confirmed_data': {},
+            'is_confirmed': False,
+        }
+        self._auth(self.manager)
+        response = self.client.post(self._url(), {'file': self._jpg_file()})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['data']['extracted_data']['line_items']), 1)
+        self.assertEqual(response.data['data']['extracted_data']['invoice_number'], 'INV-2')
+
     # --- Timeout ---
 
     @patch('apps.ingestion.views.InvoiceScanService')
@@ -196,6 +231,59 @@ class InvoiceScanConfirmTests(APITestCase):
         response = self.client.post(self._url(), payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['data']['status'], 'confirmed')
+
+    @patch('apps.ingestion.views.InvoiceScanService')
+    def test_confirm_with_line_items_success(self, mock_svc_cls):
+        mock_instance = mock_svc_cls.return_value
+        mock_instance.confirm_scan.return_value = {
+            'scan_id': 1,
+            'status': 'confirmed',
+            'inventory_result': {
+                'lines': [{'sku_code': 'WM-1'}, {'sku_code': 'KB-1'}],
+                'lines_processed': 2,
+                'lines_failed': [],
+            },
+        }
+        self._auth(self.manager)
+        payload = {
+            'scan_id': 1,
+            'confirmed_data': {
+                'supplier_name': 'Acme',
+                'invoice_number': 'INV-9',
+                'line_items': [
+                    {
+                        'item_name': 'Mouse',
+                        'sku_code': 'WM-1',
+                        'quantity': 12,
+                        'unit_price': 21.25,
+                        'total_price': 255,
+                    },
+                    {
+                        'item_name': 'Keyboard',
+                        'sku_code': 'KB-1',
+                        'quantity': 3,
+                        'unit_price': 40,
+                        'total_price': 120,
+                    },
+                ],
+            },
+        }
+        response = self.client.post(self._url(), payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['data']['inventory_result']['lines_processed'], 2)
+
+    @patch('apps.ingestion.views.InvoiceScanService')
+    def test_confirm_invalid_line_items_returns_422(self, mock_svc_cls):
+        self._auth(self.manager)
+        payload = {
+            'scan_id': 1,
+            'confirmed_data': {
+                'supplier_name': 'Acme',
+                'line_items': [{'item_name': 'Mouse'}],
+            },
+        }
+        response = self.client.post(self._url(), payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
     @patch('apps.ingestion.views.InvoiceScanService')
     def test_confirm_missing_required_fields_returns_422(self, mock_svc_cls):
