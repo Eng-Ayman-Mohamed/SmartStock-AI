@@ -27,6 +27,7 @@ from rest_framework.views import APIView
 from ai.llm.chain import prompt_injection_filter
 from ai.observability.langfuse import get_langfuse_alert_thresholds, get_langfuse_client
 from ai.rag.ingestion import ingest_pdf
+from apps.ai.services import ConversationService
 from apps.audit.models import AuditLog
 
 from .chat_pipeline import ChatPipeline
@@ -1086,19 +1087,46 @@ class ChatStreamView(APIView):
 
         def event_stream():
             """Generator that yields SSE events."""
+            conv_svc = ConversationService()
+
+            # Save user message BEFORE streaming (optimistic save)
+            if conversation_id:
+                try:
+                    conv_svc.save_message(
+                        conversation_id=conversation_id,
+                        role='user',
+                        content=query,
+                        mode=mode,
+                    )
+                except Exception:
+                    logger.exception('Failed to save user message')
+
             # Send metadata first
             metadata = {'engine': engine, 'mode': mode}
             if conversation_id:
                 metadata['conversation_id'] = str(conversation_id)
             yield f'event: metadata\ndata: {_json.dumps(metadata)}\n\n'
 
+            full_answer = ''
             try:
-                # Heartbeat before streaming to keep connection alive
-                yield ': thinking\n\n'
                 if engine == 'rag':
-                    yield from self._stream_rag(query, user, history, shared)
+                    for event in self._stream_rag(query, user, history, shared):
+                        if event['type'] == 'token':
+                            full_answer += event['content']
+                            yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                        elif event['type'] == 'done':
+                            done_data = {'sources': event.get('sources', [])}
+                            if event.get('action'):
+                                done_data['action'] = event['action']
+                            yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
                 else:
-                    yield from self._stream_nl_query(query, user, shared)
+                    for event in self._stream_nl_query(query, user, shared):
+                        full_answer += event['content']
+                        yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                    done_data = {'action': shared.get('action')}
+                    yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+
+                shared['full_answer'] = full_answer
             except Exception as exc:
                 logger.exception('Streaming chat failed')
                 error_msg = (
@@ -1107,24 +1135,24 @@ class ChatStreamView(APIView):
                     else 'An unexpected error occurred.'
                 )
                 yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
-                return
-
-            # Save to conversation after stream completes
-            if conversation_id:
-                full_answer = shared.get('full_answer', '')
-                try:
-                    ChatPipeline.save_messages(
-                        conversation_id,
-                        query,
-                        {'answer': full_answer},
-                        engine,
-                        mode,
-                        conversation,
-                    )
-                except Exception:
-                    logger.exception('Failed to save conversation')
-
-            yield 'event: done\ndata: {}\n\n'
+            finally:
+                # Always save assistant response if we have one
+                if conversation_id and shared.get('full_answer'):
+                    try:
+                        is_new = conv_svc.get_conversation(conversation_id, user).messages.filter(
+                            role='assistant'
+                        ).count() == 0
+                        conv_svc.save_message(
+                            conversation_id=conversation_id,
+                            role='assistant',
+                            content=shared['full_answer'],
+                            engine=engine,
+                            mode=mode,
+                        )
+                        if is_new:
+                            conv_svc.auto_title(conversation_id, query)
+                    except Exception:
+                        logger.exception('Failed to save assistant message')
 
         response = StreamingHttpResponse(
             event_stream(),
@@ -1135,25 +1163,24 @@ class ChatStreamView(APIView):
         return response
 
     def _stream_rag(self, query, user, history, shared):
-        """Stream RAG pipeline response."""
+        """Stream RAG pipeline response as event dictionaries."""
         service = RAGQueryService()
         full_answer = ''
 
-        yield ': searching documents...\n\n'
         for event in service.execute_stream(query, user=user, history=history):
             if event['type'] == 'token':
                 full_answer += event['content']
-                yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                yield {'type': 'token', 'content': event['content']}
             elif event['type'] == 'done':
                 done_data = {'sources': event.get('sources', [])}
                 if event.get('action'):
                     done_data['action'] = event['action']
-                yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
+                yield {'type': 'done', **done_data}
 
         shared['full_answer'] = full_answer
 
     def _stream_nl_query(self, query, user, shared):
-        """Stream NL Query pipeline response (streams only the formatter step)."""
+        """Stream NL Query pipeline response as event dictionaries."""
         from ai.llm.chain import call_gpt4o_formatter_stream, get_nl_chain
         from apps.inventory.views import (
             _handle_forecast_demand,
@@ -1171,7 +1198,6 @@ class ChatStreamView(APIView):
             raise ValueError('PROMPT_INJECTION_DETECTED')
 
         # Step B: NL chain (structured, not streamable)
-        yield ': classifying query...\n\n'
         chain_instance = get_nl_chain()
         chain_result = chain_instance.run(query)
         chain_dict = chain_result.to_dict()
@@ -1198,13 +1224,10 @@ class ChatStreamView(APIView):
         raw_data = handler(nl_filters)
 
         # Step D: Stream formatter
-        yield ': generating response...\n\n'
         full_answer = ''
         for chunk in call_gpt4o_formatter_stream(original_query=query, raw_data=raw_data):
             full_answer += chunk
-            yield f'event: token\ndata: {_json.dumps({"content": chunk})}\n\n'
+            yield {'type': 'token', 'content': chunk}
 
-        done_data = {'action': {'type': action_type, 'filters': filters}}
-        yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
-
+        shared['action'] = {'type': action_type, 'filters': filters}
         shared['full_answer'] = full_answer
