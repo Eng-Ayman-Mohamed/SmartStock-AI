@@ -30,7 +30,7 @@ CLASSIFIER_SYSTEM_PROMPT = (
     'manuals, or requires searching uploaded files.\n'
     '- "out_of_scope": The query is unrelated to inventory, warehouse operations, '
     'or the business domain.\n\n'
-    'Respond with ONLY a JSON object: {"intent": "<category>", "confidence": <0.0-1.0>}'
+    'Respond with ONLY a JSON object: {{"intent": "<category>", "confidence": <0.0-1.0>}}'
 )
 
 _classifier_prompt = ChatPromptTemplate.from_messages(
