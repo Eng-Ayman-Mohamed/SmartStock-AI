@@ -115,18 +115,27 @@ export default function ChatPanel() {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
+      {/* Mobile: absolute overlay drawer; md+: inline sidebar */}
       {sidebarOpen && (
-        <div className="w-64 shrink-0 h-full">
-          <ConversationSidebar
-            conversations={conversations}
-            activeId={activeConversation?.id ?? null}
-            onSelect={handleSelectConversation}
-            onNew={handleNewChat}
-            onDelete={removeConversation}
-            isLoading={convLoading}
+        <>
+          {/* Backdrop for mobile only */}
+          <div
+            className="fixed inset-0 bg-black/30 z-10 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
           />
-        </div>
+          <div className="absolute inset-y-0 left-0 z-20 w-64 md:relative md:z-auto md:shrink-0 h-full">
+            <ConversationSidebar
+              conversations={conversations}
+              activeId={activeConversation?.id ?? null}
+              onSelect={(id) => { handleSelectConversation(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+              onNew={() => { handleNewChat(); if (window.innerWidth < 768) setSidebarOpen(false); }}
+              onDelete={removeConversation}
+              isLoading={convLoading}
+            />
+          </div>
+        </>
       )}
 
       <div className="flex flex-col flex-1 h-full min-w-0">
@@ -159,7 +168,7 @@ export default function ChatPanel() {
         )}
 
         <div
-          className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+          className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-4"
           role="log"
           aria-label="Chat messages"
           aria-live="polite"
@@ -184,7 +193,7 @@ export default function ChatPanel() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="px-6 py-3 border-t border-hairline">
+        <div className="px-3 sm:px-6 py-3 border-t border-hairline">
           <div className="mb-2">
             <ModeSelector active={mode} onChange={setMode} />
           </div>

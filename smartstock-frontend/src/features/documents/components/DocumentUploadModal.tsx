@@ -91,7 +91,7 @@ export default function DocumentUploadModal({ open, onClose }: DocumentUploadMod
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-lg rounded-lg border border-hairline bg-canvas shadow-lg p-6 space-y-5">
+      <div className="relative z-10 mx-4 w-full max-w-lg rounded-lg border border-hairline bg-canvas shadow-lg p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-card-title text-ink">Upload Document</h2>

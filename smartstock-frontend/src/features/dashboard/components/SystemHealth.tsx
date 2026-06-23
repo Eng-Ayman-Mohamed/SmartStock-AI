@@ -40,7 +40,7 @@ export default function SystemHealth() {
   return (
     <Card title="System Health" subtitle={`Status: ${health.status}`}>
       <div className={`border rounded-lg p-3 ${overallColor}`}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {subsystems.map(({ key, label, icon: Icon }) => (
             <div key={key} className="flex items-center gap-2">
               <Icon className="w-4 h-4 text-ink-faint" />

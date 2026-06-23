@@ -36,22 +36,22 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
       aria-modal="true"
       aria-label={title}
     >
-      <div className="bg-canvas rounded-lg shadow-elevated w-full max-w-lg mx-4 animate-slideUp">
+      <div className="bg-canvas rounded-lg shadow-elevated w-full max-w-lg mx-4 animate-slideUp flex flex-col max-h-[90vh]">
         {title && (
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-hairline">
-            <h2 className="text-section-heading text-ink">{title}</h2>
+          <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b border-hairline shrink-0">
+            <h2 className="text-section-heading text-ink min-w-0 mr-3 truncate">{title}</h2>
             <button
               onClick={onClose}
-              className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+              className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors shrink-0"
               aria-label="Close dialog"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
-        <div className="p-6">{children}</div>
+        <div className="px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto flex-1 min-h-0">{children}</div>
         {footer && (
-          <div className="px-6 pb-6 pt-4 border-t border-hairline flex items-center justify-end gap-3">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-4 border-t border-hairline flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
             {footer}
           </div>
         )}

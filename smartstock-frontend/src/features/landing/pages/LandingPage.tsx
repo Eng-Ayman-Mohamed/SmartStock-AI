@@ -46,19 +46,19 @@ function Header() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <header className="flex items-center justify-between max-w-[920px] mx-auto w-full px-6 pt-6 pb-1">
+    <header className="flex items-center justify-between max-w-[920px] mx-auto w-full px-4 sm:px-6 pt-6 pb-1">
       <button
         onClick={() => navigate('/')}
-        className="flex items-center gap-2.5 cursor-pointer"
+        className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink"
         aria-label="SmartStock AI"
       >
-        <span className="grid place-items-center w-[26px] h-[26px] rounded-[7px] bg-brand-600 text-white font-bold text-sm leading-none">
+        <span className="grid place-items-center w-[26px] h-[26px] rounded-[7px] bg-brand-600 text-white font-bold text-sm leading-none shrink-0">
           S
         </span>
-        <span className="text-card-title font-bold text-ink tracking-tight">SmartStock AI</span>
+        <span className="text-card-title font-bold text-ink tracking-tight truncate">SmartStock AI</span>
       </button>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <ThemeToggle />
         {user ? (
           <button
@@ -95,7 +95,7 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col bg-canvas-soft text-ink-secondary">
       <Header />
 
-      <main className="flex-1 max-w-[920px] mx-auto w-full px-6">
+      <main className="flex-1 max-w-[920px] mx-auto w-full px-4 sm:px-6">
         {/* Hero */}
         <section className="pt-[clamp(48px,9vh,92px)] text-center animate-fadeIn">
           <div className="max-w-[680px] mx-auto">
@@ -164,9 +164,9 @@ export default function LandingPage() {
 
         {/* Features */}
         <section className="mt-[clamp(48px,8vw,76px)] pt-[clamp(36px,5vw,44px)] border-t border-hairline">
-          <div className="flex flex-wrap gap-x-7 gap-y-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-7 gap-y-8">
             {FEATURES.map(({ Icon, title, body }) => (
-              <article key={title} className="flex-1 min-w-[140px]">
+              <article key={title}>
                 <Icon size={22} strokeWidth={1.7} className="text-ink-muted mb-3.5" />
                 <h2 className="text-card-title font-semibold text-ink mb-1.5 leading-snug">
                   {title}
@@ -191,7 +191,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="max-w-[920px] mx-auto w-full px-6 mt-[clamp(40px,6vw,60px)] pt-6 pb-11">
+      <footer className="max-w-[920px] mx-auto w-full px-4 sm:px-6 mt-[clamp(40px,6vw,60px)] pt-6 pb-11">
         <p className="text-caption text-ink-muted">© {new Date().getFullYear()} SmartStock AI</p>
       </footer>
     </div>

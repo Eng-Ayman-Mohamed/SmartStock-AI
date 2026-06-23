@@ -41,7 +41,7 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-2xl max-h-[85vh] rounded-lg border border-hairline bg-canvas shadow-lg flex flex-col">
+      <div className="relative z-10 mx-4 w-full max-w-2xl max-h-[85vh] rounded-lg border border-hairline bg-canvas shadow-lg flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-hairline">
           <h2 className="text-card-title text-ink">Document Details</h2>
           <button
@@ -83,7 +83,7 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 <div className="flex items-center gap-2 text-body text-ink-secondary">
                   <Hash className="w-4 h-4 text-ink-faint" />
                   <span>{doc.total_chunks} chunks</span>
