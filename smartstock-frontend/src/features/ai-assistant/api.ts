@@ -122,7 +122,9 @@ export async function getConversation(id: string): Promise<ConversationDetail> {
 export async function getConversationMessages(id: string): Promise<ConversationDetail['messages']> {
   const { data } = await api.get(`/ai/conversations/${id}/messages/`);
   const unwrapped = data?.data ?? data;
-  return Array.isArray(unwrapped) ? unwrapped : [];
+  // Handle paginated response from PageNumberPagination
+  const items = unwrapped?.results ?? unwrapped;
+  return Array.isArray(items) ? items : [];
 }
 
 export async function deleteConversation(id: string): Promise<void> {

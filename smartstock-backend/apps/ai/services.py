@@ -42,7 +42,7 @@ class ConversationService:
 
     def get_history(self, conversation_id: uuid.UUID, limit: int = HISTORY_LIMIT):
         messages = self._message_repo.get_history(conversation_id, limit=limit)
-        return list(reversed(messages))
+        return messages[::-1]  # Slice-reverse is clearer than reversed()
 
     def get_history_for_llm(self, conversation_id: uuid.UUID, limit: int = HISTORY_LIMIT):
         messages = self.get_history(conversation_id, limit=limit)
