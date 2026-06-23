@@ -35,10 +35,16 @@ class ConversationViewSet(ViewSet):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._service = ConversationService()
+        self._service = None
+
+    @property
+    def service(self):
+        if self._service is None:
+            self._service = ConversationService()
+        return self._service
 
     def list(self, request):
-        conversations = self._service.list_conversations(request.user)
+        conversations = self.service.list_conversations(request.user)
         serializer = ChatConversationListSerializer(conversations, many=True)
         return Response({'status': 'success', 'data': serializer.data})
 
@@ -50,7 +56,7 @@ class ConversationViewSet(ViewSet):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         title = serializer.validated_data.get('title', 'New Conversation')
-        conversation = self._service.create_conversation(request.user, title)
+        conversation = self.service.create_conversation(request.user, title)
         detail = ChatConversationDetailSerializer(conversation)
         return Response(
             {'status': 'success', 'data': detail.data},
@@ -59,7 +65,7 @@ class ConversationViewSet(ViewSet):
 
     def retrieve(self, request, pk=None):
         try:
-            conversation = self._service.get_conversation(pk, request.user)
+            conversation = self.service.get_conversation(pk, request.user)
         except ValueError:
             return Response(
                 {'status': 'error', 'message': 'Conversation not found.'},
@@ -76,7 +82,7 @@ class ConversationViewSet(ViewSet):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         try:
-            conversation = self._service.rename_conversation(
+            conversation = self.service.rename_conversation(
                 pk, request.user, serializer.validated_data['title']
             )
         except ValueError:
@@ -89,7 +95,7 @@ class ConversationViewSet(ViewSet):
 
     def destroy(self, request, pk=None):
         try:
-            self._service.delete_conversation(pk, request.user)
+            self.service.delete_conversation(pk, request.user)
         except ValueError:
             return Response(
                 {'status': 'error', 'message': 'Conversation not found.'},
@@ -100,7 +106,7 @@ class ConversationViewSet(ViewSet):
     @action(detail=True, methods=['get'])
     def messages(self, request, pk=None):
         try:
-            conversation = self._service.get_conversation(pk, request.user)
+            conversation = self.service.get_conversation(pk, request.user)
         except ValueError:
             return Response(
                 {'status': 'error', 'message': 'Conversation not found.'},
