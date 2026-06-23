@@ -19,6 +19,7 @@ const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'));
 const ForbiddenPage = lazy(() => import('../features/auth/pages/ForbiddenPage'));
 const SuppliersPage = lazy(() => import('../features/purchasing/pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
+const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'));
 
 const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
   <Suspense fallback={<div className="flex items-center justify-center h-64 text-ink-faint">Loading...</div>}>
@@ -51,6 +52,7 @@ export const routes: RouteObject[] = [
           { path: 'documents', element: <SuspenseWrapper><DocumentsPage /></SuspenseWrapper> },
           { path: 'invoice-scan', element: <SuspenseWrapper><InvoiceScanPage /></SuspenseWrapper> },
           { path: 'suppliers', element: <SuspenseWrapper><SuppliersPage /></SuspenseWrapper> },
+          { path: 'notifications', element: <SuspenseWrapper><NotificationsPage /></SuspenseWrapper> },
         ],
       },
     ],

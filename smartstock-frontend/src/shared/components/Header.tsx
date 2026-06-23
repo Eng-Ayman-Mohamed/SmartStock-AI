@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, LogOut, Menu, User as UserIcon } from 'lucide-react';
+import { LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../features/auth/hooks/useAuth';
@@ -8,6 +8,7 @@ import { useServerHealth } from '../../shared/hooks/useServerHealth';
 import RoleBadge from '../../features/users/components/RoleBadge';
 import { getAvatarColor } from '../../shared/utils/avatar';
 import ThemeToggle from './ThemeToggle';
+import NotificationBell from '../../features/notifications/components/NotificationBell';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -111,12 +112,7 @@ export default function Header() {
 
         <div className="flex items-center gap-1.5 sm:gap-3">
           <ThemeToggle />
-          <button
-            className="relative flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-          </button>
+          <NotificationBell />
 
           {user && (
             <div className="relative">
