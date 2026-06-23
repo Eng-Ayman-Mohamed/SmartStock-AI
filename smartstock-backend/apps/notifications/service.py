@@ -80,6 +80,14 @@ def create_escalation_notification(
         message=message or _build_default_message(po, reason),
     )
 
+    NotificationService.create(
+        type=Notification.Type.ESCALATION,
+        severity="critical",
+        title=f"PO Escalation: {reason}",
+        message=message,
+        metadata={"po_id": po.id, "reason": reason, "channel": channel},
+    )
+
     logger.info(
         'Escalation notification created: PO-%s reason=%s id=%s',
         po.id,
