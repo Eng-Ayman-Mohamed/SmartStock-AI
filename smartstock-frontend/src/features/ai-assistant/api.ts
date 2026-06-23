@@ -1,4 +1,5 @@
 import api from '../../lib/axios';
+import { getApiBaseUrl } from '../../lib/config';
 import { useAuthStore } from '../../store/authStore';
 import type { ChatResponse, Conversation, ConversationDetail } from './types';
 
@@ -30,13 +31,7 @@ export async function* sendChatMessageStream(
   request: ChatRequest,
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
-  const envCfg = (window as unknown as Record<string, unknown>)['__ENV__'] as Record<string, string> | undefined;
-  const baseUrl =
-    envCfg?.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    envCfg?.VITE_API_URL ||
-    import.meta.env.VITE_API_URL ||
-    '/api';
+  const baseUrl = getApiBaseUrl();
 
   const token = useAuthStore.getState().token;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };

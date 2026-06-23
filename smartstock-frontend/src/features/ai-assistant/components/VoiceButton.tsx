@@ -90,11 +90,12 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
         onClick={startRecording}
         className="flex items-center justify-center w-9 h-9 rounded-full text-ink-muted hover:bg-canvas-soft hover:text-ink transition-colors shrink-0"
         aria-label="Start voice recording"
+        aria-describedby={error ? 'voice-error' : undefined}
       >
         <Mic className="w-4 h-4" />
       </button>
       {error && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded whitespace-nowrap pointer-events-none">
+        <span role="tooltip" id="voice-error" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-caption bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded whitespace-nowrap pointer-events-none">
           {error}
         </span>
       )}
