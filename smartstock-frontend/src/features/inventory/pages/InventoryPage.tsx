@@ -239,12 +239,11 @@ export default function InventoryPage() {
     {
       key: "qty",
       label: "On Hand",
-      align: "right",
       width: "160px",
       sortable: true,
       sortOrder: sortField === "qty" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
-        <div className="flex items-center gap-2 justify-end">
+        <div className="flex items-center gap-2">
           <span className="tabular-nums">{r.quantity}</span>
           <div className="w-16 h-2 rounded-full bg-hairline overflow-hidden shrink-0">
             <div
@@ -266,7 +265,6 @@ export default function InventoryPage() {
     {
       key: "reserved",
       label: "Reserved",
-      align: "right",
       width: "80px",
       sortable: true,
       sortOrder: sortField === "reserved" ? (sortOrder as "asc" | "desc") : undefined,
@@ -277,7 +275,6 @@ export default function InventoryPage() {
     {
       key: "reorder",
       label: "Reorder",
-      align: "right",
       width: "80px",
       sortable: true,
       sortOrder: sortField === "reorder" ? (sortOrder as "asc" | "desc") : undefined,
@@ -302,61 +299,58 @@ export default function InventoryPage() {
       sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <Badge variant={r.status}>{r.status}</Badge>,
     },
-    {
-      key: "actions",
-      label: "Actions",
-      align: "right",
-      width: "160px",
-      render: (r) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
-            onClick={() => setEditingProduct(r.product)}
-            disabled={!canManage}
-            aria-label={`Edit ${r.product.name}`}
-            title={canManage ? "Edit product" : "Manager role required"}
-          >
-            <PencilLine className="w-5 h-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200 dark:hover:text-green-300 dark:hover:border-green-600"
-            onClick={() =>
-              setAdjustingStock({ stockId: r.stockId, skuCode: r.sku.code })
-            }
-            disabled={!canManage || !r.stockId}
-            aria-label={`Adjust stock for ${r.sku.code}`}
-            title={
-              !canManage
-                ? "Manager role required"
-                : r.stockId
-                  ? "Adjust stock"
-                  : "No stock record"
-            }
-          >
-            <PackagePlus className="w-5 h-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200 dark:hover:text-red-300 dark:hover:border-red-600"
-            onClick={() => setDeletingProduct(r.product)}
-            disabled={!canDelete}
-            aria-label={`Delete ${r.product.name}`}
-            title={canDelete ? "Delete product" : "Admin role required"}
-          >
-            <Trash2 className="w-5 h-5" />
-          </Button>
-        </div>
-      ),
-    },
-  ], [sortField, sortOrder, canDelete, canManage]);
+  ], [sortField, sortOrder]);
+
+  function renderActions(r: Row) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-brand-700 hover:border-brand-200 dark:hover:text-brand-300 dark:hover:border-brand-600"
+          onClick={() => setEditingProduct(r.product)}
+          disabled={!canManage}
+          aria-label={`Edit ${r.product.name}`}
+          title={canManage ? "Edit product" : "Manager role required"}
+        >
+          <PencilLine className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-green-700 hover:border-green-200 dark:hover:text-green-300 dark:hover:border-green-600"
+          onClick={() =>
+            setAdjustingStock({ stockId: r.stockId, skuCode: r.sku.code })
+          }
+          disabled={!canManage || !r.stockId}
+          aria-label={`Adjust stock for ${r.sku.code}`}
+          title={
+            !canManage
+              ? "Manager role required"
+              : r.stockId
+                ? "Adjust stock"
+                : "No stock record"
+          }
+        >
+          <PackagePlus className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11 px-0 border border-hairline text-ink-muted hover:text-red-700 hover:border-red-200 dark:hover:text-red-300 dark:hover:border-red-600"
+          onClick={() => setDeletingProduct(r.product)}
+          disabled={!canDelete}
+          aria-label={`Delete ${r.product.name}`}
+          title={canDelete ? "Delete product" : "Admin role required"}
+        >
+          <Trash2 className="w-5 h-5" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn flex-1 min-h-0 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-page-heading text-ink">Inventory</h1>
@@ -471,8 +465,8 @@ export default function InventoryPage() {
           <div
             className={
               inventoryQuery.isFetching
-                ? "opacity-70 transition-opacity"
-                : "transition-opacity"
+                ? "opacity-70 transition-opacity flex-1 min-h-0 flex flex-col"
+                : "transition-opacity flex-1 min-h-0 flex flex-col"
             }
           >
             <DataTable
@@ -481,6 +475,8 @@ export default function InventoryPage() {
               keyExtractor={(r) => `${r.product.id}-${r.sku.code}`}
               caption="Inventory products and stock levels"
               onSort={handleSort}
+              actionsLabel="Actions"
+              renderActions={renderActions}
               pagination={{
                 ...pagination,
                 currentPage: page,

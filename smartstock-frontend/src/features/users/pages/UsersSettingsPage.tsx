@@ -89,7 +89,7 @@ export default function UsersSettingsPage() {
   ]);
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn flex-1 min-h-0 flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-page-heading text-ink">Team & permissions</h1>

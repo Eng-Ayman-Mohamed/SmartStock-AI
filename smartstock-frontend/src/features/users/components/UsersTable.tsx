@@ -128,42 +128,37 @@ export default function UsersTable({ users, emptyState, pagination, sortField, s
           <span className="text-caption text-ink-muted">{formatDate(u.date_joined)}</span>
         ),
       },
-      {
-        key: 'actions',
-        label: '',
-        align: 'right',
-        width: '16%',
-        render: (u) => {
-          const isSelf = currentUserId === u.id;
-          return (
-            <button
-              type="button"
-              onClick={() =>
-                deactivate.mutate(u.id, {
-                  onSuccess: () => addToast('User deactivated successfully', 'success'),
-                  onError: () => addToast('Failed to deactivate user', 'error'),
-                })
-              }
-              disabled={!u.is_active || isSelf || deactivate.isPending}
-              title={isSelf ? "You can't deactivate your own account" : 'Deactivate user'}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-caption font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-            >
-              <Power className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Deactivate</span>
-            </button>
-          );
-        },
-      },
     ],
-    [currentUserId, updateRole, deactivate, addToast, sortField, sortOrder],
+    [currentUserId, updateRole, addToast, sortField, sortOrder],
   );
+
+  function renderActions(u: User) {
+    const isSelf = currentUserId === u.id;
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          deactivate.mutate(u.id, {
+            onSuccess: () => addToast('User deactivated successfully', 'success'),
+            onError: () => addToast('Failed to deactivate user', 'error'),
+          })
+        }
+        disabled={!u.is_active || isSelf || deactivate.isPending}
+        title={isSelf ? "You can't deactivate your own account" : 'Deactivate user'}
+        className="inline-flex items-center gap-1 px-2 py-1 rounded text-caption font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+      >
+        <Power className="w-3.5 h-3.5" aria-hidden="true" />
+        <span>Deactivate</span>
+      </button>
+    );
+  }
 
   if (users.length === 0 && emptyState) {
     return <Card>{emptyState}</Card>;
   }
 
   return (
-    <Card>
+    <Card noPadding>
       <DataTable
         columns={columns}
         data={users}
@@ -171,6 +166,8 @@ export default function UsersTable({ users, emptyState, pagination, sortField, s
         caption="Team members"
         pagination={pagination}
         onSort={onSort}
+        actionsLabel="Actions"
+        renderActions={renderActions}
       />
     </Card>
   );

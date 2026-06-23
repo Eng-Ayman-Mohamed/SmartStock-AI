@@ -11,9 +11,9 @@ interface CardProps {
 
 export default function Card({ title, subtitle, action, children, className = '', noPadding = false }: CardProps) {
   return (
-    <div className={`bg-canvas border border-hairline rounded-lg ${className}`}>
+    <div className={`bg-canvas border border-hairline rounded-lg flex flex-col ${noPadding ? 'flex-1 min-h-0' : ''} ${className}`}>
       {(title || action) && (
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-hairline">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-hairline shrink-0">
           <div>
             {title && <h3 className="text-card-title text-ink">{title}</h3>}
             {subtitle && <p className="text-caption text-ink-muted mt-0.5">{subtitle}</p>}
@@ -21,7 +21,7 @@ export default function Card({ title, subtitle, action, children, className = ''
           {action && <div>{action}</div>}
         </div>
       )}
-      <div className={`${noPadding ? 'min-w-0' : 'p-6 min-w-0'}`}>
+      <div className={`${noPadding ? 'min-w-0 flex-1 min-h-0 flex flex-col' : 'p-6 min-w-0'}`}>
         {children}
       </div>
     </div>
