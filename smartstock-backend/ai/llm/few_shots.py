@@ -65,6 +65,12 @@ FEW_SHOT_EXAMPLES = [
             ']}}'
         ),
     },
+    # 3b. get_low_stock — vague reorder query with no filters
+    {
+        'action': NLQueryAction.GET_LOW_STOCK,
+        'user': 'Which items need reordering?',
+        'output': '{"action": "get_low_stock", "filters": {}}',
+    },
     # 4. forecast_demand — specific SKU (more precise than product_name)
     {
         'action': NLQueryAction.FORECAST_DEMAND,

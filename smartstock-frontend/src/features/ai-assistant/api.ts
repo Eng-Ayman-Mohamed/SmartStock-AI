@@ -129,8 +129,3 @@ export async function deleteConversation(id: string): Promise<void> {
   await api.delete(`/ai/conversations/${id}/`);
 }
 
-export async function renameConversation(id: string, title: string): Promise<ConversationDetail> {
-  const { data } = await api.patch(`/ai/conversations/${id}/`, { title });
-  return data?.data ?? data;
-}
-

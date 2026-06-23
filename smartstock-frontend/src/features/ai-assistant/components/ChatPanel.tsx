@@ -18,8 +18,8 @@ export default function ChatPanel() {
     selectConversation,
     startNewConversation,
     removeConversation,
-    updateTitle,
     clearActive,
+    loadConversations,
   } = useConversations();
 
   const [visibleError, setVisibleError] = useState<string | null>(null);
@@ -70,13 +70,14 @@ export default function ChatPanel() {
         setInput('');
         await sendMessage(query, newConv.id);
         await selectConversation(newConv.id);
+        await loadConversations();
         return;
       }
 
       setInput('');
       await sendMessage(query);
     },
-    [input, isLoading, activeConversation, startNewConversation, sendMessage, selectConversation],
+    [input, isLoading, activeConversation, startNewConversation, sendMessage, selectConversation, loadConversations],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -117,7 +118,6 @@ export default function ChatPanel() {
             onSelect={handleSelectConversation}
             onNew={handleNewChat}
             onDelete={removeConversation}
-            onRename={updateTitle}
             isLoading={convLoading}
           />
         </div>

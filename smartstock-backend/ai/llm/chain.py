@@ -3,6 +3,7 @@ import binascii
 import json
 import logging
 import re
+import time
 import unicodedata
 from typing import Optional
 from urllib.parse import unquote
@@ -128,6 +129,34 @@ _NL_PROMPT = ChatPromptTemplate.from_messages(
 _parser = NLQueryOutputParser()
 
 
+def _keyword_fallback(query: str) -> NLQueryResult:
+    """Simple keyword-based fallback when the LLM fails completely."""
+    q = query.lower()
+    if any(w in q for w in ['top', 'best', 'most sold', 'highest', 'best selling', 'top selling']):
+        return NLQueryResult(action=NLQueryAction.GET_TOP_PRODUCTS, filters=NLQueryFilters())
+    if any(
+        w in q
+        for w in [
+            'low stock',
+            'reorder',
+            'restock',
+            'running low',
+            'below reorder',
+            'need restocking',
+        ]
+    ):
+        return NLQueryResult(action=NLQueryAction.GET_LOW_STOCK, filters=NLQueryFilters())
+    if any(w in q for w in ['forecast', 'predict', 'demand', 'future', 'next 30', 'next 7']):
+        return NLQueryResult(action=NLQueryAction.FORECAST_DEMAND, filters=NLQueryFilters())
+    if any(w in q for w in ['supplier', 'vendor']):
+        return NLQueryResult(action=NLQueryAction.GET_SUPPLIER_INFO, filters=NLQueryFilters())
+    if any(w in q for w in ['total value', 'inventory value', 'worth', 'total stock', 'how much']):
+        return NLQueryResult(action=NLQueryAction.GET_TOTAL_VALUE, filters=NLQueryFilters())
+    if any(w in q for w in ['sales', 'sold', 'revenue', 'sell', 'sold last', 'sales report']):
+        return NLQueryResult(action=NLQueryAction.GET_SALES_REPORT, filters=NLQueryFilters())
+    return NLQueryResult(action=NLQueryAction.GET_INVENTORY, filters=NLQueryFilters())
+
+
 class NLQueryChain:
     """
     Thin wrapper around the LangChain chain using OpenAI function calling.
@@ -181,21 +210,49 @@ class NLQueryChain:
         raise NLQueryParseError('No tool call or content in LLM response')
 
     def run(self, query: str) -> NLQueryResult:
-        try:
-            logger.info('Running NL query chain with tool_choice=required')
-            response = invoke_with_langfuse(
-                self._chain,
-                {
-                    'few_shot_query': _FEW_SHOT_PROMPT.format(query=query),
-                },
-            )
-            return self._parse_tool_call(response)
-        except NLQueryParseError as exc:
-            logger.warning('NLQueryParseError for query %r: %s', query, exc)
-            return NLQueryResult(
-                action=NLQueryAction.GET_INVENTORY,
-                filters=NLQueryFilters(),
-            )
+        for attempt in range(3):
+            try:
+                logger.info(
+                    'Running NL query chain with tool_choice=required (attempt %d/3)', attempt + 1
+                )
+                response = invoke_with_langfuse(
+                    self._chain,
+                    {
+                        'few_shot_query': _FEW_SHOT_PROMPT.format(query=query),
+                    },
+                )
+                return self._parse_tool_call(response)
+            except NLQueryParseError as exc:
+                logger.warning('NLQueryParseError for query %r: %s', query, exc)
+                return NLQueryResult(
+                    action=NLQueryAction.GET_INVENTORY,
+                    filters=NLQueryFilters(),
+                )
+            except Exception as exc:
+                is_transient = (
+                    'timeout' in str(exc).lower()
+                    or 'timed out' in str(exc).lower()
+                    or 'rate' in str(exc).lower()
+                    or '429' in str(exc)
+                    or 'too many' in str(exc).lower()
+                    or 'RESOURCE_EXHAUSTED' in str(exc)
+                    or 'tool_use_failed' in str(exc).lower()
+                    or 'bad_request' in str(exc).lower()
+                    or 'invalid_request_error' in str(exc).lower()
+                )
+                if is_transient and attempt < 2:
+                    wait = 2 * (attempt + 1)
+                    logger.warning(
+                        'NL chain transient error on attempt %d: %s — retrying in %ds',
+                        attempt + 1,
+                        exc,
+                        wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                # For non-transient errors, fall back to keyword-based classification
+                logger.warning('NL chain non-transient error, using keyword fallback: %s', exc)
+                return _keyword_fallback(query)
 
 
 # -- Prompt-injection filter --------------------------------------------------

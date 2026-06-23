@@ -6,7 +6,6 @@ import {
   getConversation,
   getConversationMessages,
   deleteConversation,
-  renameConversation,
 } from '../api';
 
 export default function useConversations() {
@@ -84,26 +83,14 @@ export default function useConversations() {
   const removeConversation = useCallback(async (id: string) => {
     try {
       setError(null);
-      await deleteConversation(id);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
       if (activeConversation?.id === id) {
         setActiveConversation(null);
       }
-      await loadConversations();
+      await deleteConversation(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete conversation');
-    }
-  }, [activeConversation, loadConversations]);
-
-  const updateTitle = useCallback(async (id: string, title: string) => {
-    try {
-      setError(null);
-      await renameConversation(id, title);
       await loadConversations();
-      if (activeConversation?.id === id) {
-        setActiveConversation((prev) => (prev ? { ...prev, title } : null));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rename conversation');
     }
   }, [activeConversation, loadConversations]);
 
@@ -121,7 +108,6 @@ export default function useConversations() {
     loadConversationMessages,
     startNewConversation,
     removeConversation,
-    updateTitle,
     clearActive,
   };
 }

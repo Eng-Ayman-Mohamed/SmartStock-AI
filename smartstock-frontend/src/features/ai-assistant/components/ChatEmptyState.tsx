@@ -3,7 +3,7 @@ import { Bot } from 'lucide-react';
 const suggestions = [
   'What products are low on stock?',
   'Show me supplier performance this month',
-  'Which items need reordering?',
+  "What's my total inventory value?",
 ];
 
 interface ChatEmptyStateProps {
