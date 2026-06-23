@@ -22,8 +22,6 @@ import { useForecastDashboard } from '../../forecasting/hooks/useForecastDashboa
 import ReorderAlertList from '../components/ReorderAlertList';
 import AgentRunStatus from '../components/AgentRunStatus';
 import PendingPOQueue from '../components/PendingPOQueue';
-import SupplierWarningBadge from '../components/SupplierWarningBadge';
-import MonitoringBanners from '../components/MonitoringBanners';
 import SystemHealth from '../components/SystemHealth';
 
 interface ChartPoint {
@@ -165,7 +163,6 @@ export default function DashboardPage() {
       qc.invalidateQueries({ queryKey: ['forecast-dashboard'] }),
       qc.invalidateQueries({ queryKey: ['overdue-suppliers'] }),
       qc.invalidateQueries({ queryKey: ['sku-count'] }),
-      qc.invalidateQueries({ queryKey: ['monitoring-banners'] }),
       qc.invalidateQueries({ queryKey: ['health-full'] }),
     ]);
     setIsRefreshing(false);
@@ -253,12 +250,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <SupplierWarningBadge />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <MonitoringBanners />
-        <SystemHealth />
-      </div>
+      <SystemHealth />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {skuLoading ? (

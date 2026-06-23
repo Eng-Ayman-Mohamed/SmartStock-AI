@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/ai/nlquery/', NLQueryEndpointView.as_view(), name='nl-query-endpoint'),
     path('api/audit/logs/', include('apps.audit.urls')),
     path('api/monitoring/', include('apps.monitoring.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
     path('metrics/', MetricsView.as_view(), name='metrics'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

@@ -205,6 +205,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'ai', 'description': 'AI-powered NL queries and document ingestion'},
         {'name': 'health', 'description': 'Service health and readiness probes'},
         {'name': 'audit', 'description': 'Audit logs and activity tracking'},
+        {'name': 'notifications', 'description': 'Notification center endpoints'},
     ],
 }
 
@@ -366,6 +367,10 @@ CELERY_BEAT_SCHEDULE = {
     'archive-old-agent-runs-daily': {
         'task': 'apps.monitoring.tasks.archive_old_agent_runs',
         'schedule': crontab(hour=4, minute=0),  # 04:00 UTC daily
+    },
+    'check-overdue-suppliers': {
+        'task': 'apps.purchasing.tasks.check_overdue_suppliers',
+        'schedule': 3600,  # every hour
     },
 }
 

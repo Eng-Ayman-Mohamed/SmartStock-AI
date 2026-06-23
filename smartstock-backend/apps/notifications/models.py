@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -42,3 +43,65 @@ class EscalationNotification(models.Model):
 
     def __str__(self) -> str:
         return f'Escalation for PO-{self.po_id}: {self.reason} ({self.status})'
+
+
+class Notification(models.Model):
+    class Type(models.TextChoices):
+        MONITORING = 'monitoring', 'Monitoring Alert'
+        ESCALATION = 'escalation', 'Escalation Notification'
+        FORECAST = 'forecast', 'Forecast Alert'
+        REORDER = 'reorder', 'Reorder Alert'
+
+    class Severity(models.TextChoices):
+        INFO = 'info', 'Info'
+        WARNING = 'warning', 'Warning'
+        CRITICAL = 'critical', 'Critical'
+
+    type = models.CharField(max_length=20, choices=Type.choices)
+    severity = models.CharField(max_length=20, choices=Severity.choices, default=Severity.INFO)
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'notification'
+        verbose_name_plural = 'notifications'
+        indexes = [
+            models.Index(fields=['type', 'severity', 'created_at'], name='idx_notif_type_sev'),
+        ]
+
+    def __str__(self):
+        return f'[{self.severity}] {self.title}'
+
+
+class UserNotification(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='user_notifications',
+    )
+    notification = models.ForeignKey(
+        Notification,
+        on_delete=models.CASCADE,
+        related_name='user_notifications',
+    )
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'user notification'
+        verbose_name_plural = 'user notifications'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'notification'], name='uniq_user_notification')
+        ]
+        indexes = [
+            models.Index(fields=['user', 'is_read'], name='idx_user_notif_read'),
+        ]
+
+    def __str__(self):
+        return f'{self.user} - {self.notification}'
