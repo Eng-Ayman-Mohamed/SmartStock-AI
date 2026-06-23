@@ -43,6 +43,12 @@ class VisionExtractor:
         'Use this schema: '
     )
 
+    # PDF rasterization settings. Groq/OpenAI vision endpoints reject PDFs sent
+    # as image_url, so PDF invoices are rendered to JPEG pages first. The cap
+    # bounds token usage while still covering multi-page invoices.
+    PDF_DPI = 200
+    MAX_PDF_PAGES = 5
+
     def __init__(self, client=None, model: str = None, timeout: int = 15):
         from ai.llm.provider_config import PROVIDER, get_provider_config
 
@@ -97,6 +103,19 @@ class VisionExtractor:
         """Extract invoice data using OpenAI-compatible vision API (OpenAI/Groq)."""
         from ai.llm.provider_config import get_vision_client
 
+        if self._is_pdf(file_data_url):
+            image_urls = self._convert_pdf_to_images(file_data_url)
+        else:
+            image_urls = [file_data_url]
+
+        user_content = [
+            {
+                'type': 'text',
+                'text': 'Extract the invoice header fields and every line-item row.',
+            },
+        ]
+        user_content.extend({'type': 'image_url', 'image_url': {'url': url}} for url in image_urls)
+
         client = self.client or get_vision_client()
         response = client.chat.completions.create(
             model=self.model,
@@ -108,18 +127,57 @@ class VisionExtractor:
                 },
                 {
                     'role': 'user',
-                    'content': [
-                        {
-                            'type': 'text',
-                            'text': 'Extract the invoice header fields and every line-item row.',
-                        },
-                        {'type': 'image_url', 'image_url': {'url': file_data_url}},
-                    ],
+                    'content': user_content,
                 },
             ],
         )
         content = response.choices[0].message.content or ''
         return self._parse_json(content)
+
+    @staticmethod
+    def _is_pdf(file_data_url: str) -> bool:
+        """Return True when a data URL carries a PDF payload."""
+        header = file_data_url.split(',', 1)[0]
+        return 'application/pdf' in header.lower()
+
+    def _convert_pdf_to_images(self, pdf_data_url: str) -> list[str]:
+        """Rasterize a base64 PDF data URL into JPEG image data URLs (one per page).
+
+        Vision endpoints that only accept raster images need the PDF rendered
+        first. Raises ValueError with an actionable message on any failure so the
+        caller surfaces a clean "malformed" error instead of a raw 400/500.
+        """
+        import base64
+        from io import BytesIO
+
+        _, b64data = pdf_data_url.split(',', 1)
+        pdf_bytes = base64.b64decode(b64data)
+
+        try:
+            from pdf2image import convert_from_bytes
+        except ImportError as exc:
+            raise ValueError(
+                'PDF invoice support requires the pdf2image package and the '
+                'Poppler system dependency.'
+            ) from exc
+
+        try:
+            pages = convert_from_bytes(pdf_bytes, dpi=self.PDF_DPI, last_page=self.MAX_PDF_PAGES)
+        except Exception as exc:
+            raise ValueError(
+                f'Could not read PDF invoice (corrupt file or Poppler not installed): {exc}'
+            ) from exc
+
+        if not pages:
+            raise ValueError('PDF invoice contained no readable pages.')
+
+        image_urls = []
+        for page in pages:
+            buffer = BytesIO()
+            page.convert('RGB').save(buffer, format='JPEG', quality=85)
+            encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
+            image_urls.append(f'data:image/jpeg;base64,{encoded}')
+        return image_urls
 
     def _parse_json(self, content: str) -> dict:
         cleaned = content.strip()
