@@ -2,6 +2,9 @@ import logging
 
 from django.utils import timezone
 
+from apps.notifications.models import Notification
+from apps.notifications.service import NotificationService
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +61,14 @@ def send_dashboard_notification(alert_event) -> bool:
             alert_event=alert_event,
         )
         logger.info('Dashboard banner created: %s', banner.title)
+
+        NotificationService.create(
+            type=Notification.Type.MONITORING,
+            severity=alert_event.rule.severity,
+            title=alert_event.rule.name,
+            message=alert_event.message,
+            metadata={"alert_event_id": alert_event.id, "rule_name": alert_event.rule.name},
+        )
         return True
     except Exception as exc:
         logger.exception('Failed to create dashboard banner: %s', exc)
