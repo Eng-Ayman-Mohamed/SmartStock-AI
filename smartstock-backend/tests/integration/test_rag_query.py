@@ -325,7 +325,7 @@ class RAGQueryServiceTests(APITestCase):
 
         service = RAGQueryService()
         service._embeddings = MagicMock()
-        service._embeddings.embed_query.return_value = [0.1] * 1536
+        service._embeddings.embed_query.return_value = [0.1] * 768
 
         with (
             patch('apps.ingestion.services.RAGQueryService.hybrid_search') as mock_search,
@@ -407,7 +407,7 @@ class RAGQueryFullPipelineTests(APITestCase):
 
         # Mock embeddings
         mock_embeddings = MagicMock()
-        mock_embeddings.embed_query.return_value = [0.1] * 1536
+        mock_embeddings.embed_query.return_value = [0.1] * 768
         mock_emb_model.return_value = mock_embeddings
 
         # Mock DB cursor for hybrid search

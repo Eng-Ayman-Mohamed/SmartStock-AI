@@ -94,7 +94,7 @@ class IngestPdfTest(TestCase):
 
     def test_ingest_pdf_creates_chunks(self, mock_embeddings_cls):
         mock_instance = MagicMock()
-        mock_instance.embed_documents.return_value = [[0.1] * 1536]
+        mock_instance.embed_documents.return_value = [[0.1] * 768]
         mock_embeddings_cls.return_value = mock_instance
 
         result = ingest_pdf(self.tmp.name)
@@ -104,7 +104,7 @@ class IngestPdfTest(TestCase):
 
     def test_ingest_pdf_replaces_existing_chunks(self, mock_embeddings_cls):
         mock_instance = MagicMock()
-        mock_instance.embed_documents.return_value = [[0.1] * 1536]
+        mock_instance.embed_documents.return_value = [[0.1] * 768]
         mock_embeddings_cls.return_value = mock_instance
 
         result1 = ingest_pdf(self.tmp.name)
@@ -123,8 +123,8 @@ class BatchEmbeddingTest(TestCase):
     def test_batch_delay_respected(self, mock_embeddings_cls):
         mock_instance = MagicMock()
         mock_instance.embed_documents.side_effect = [
-            [[0.1] * 1536] * BATCH_SIZE,
-            [[0.2] * 1536],
+            [[0.1] * 768] * BATCH_SIZE,
+            [[0.2] * 768],
         ]
         mock_embeddings_cls.return_value = mock_instance
 

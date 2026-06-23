@@ -43,7 +43,7 @@ class Document(models.Model):
 
 class DocumentChunk(models.Model):
     chunk_text = models.TextField()
-    embedding = VectorField(dimensions=1024, null=True, blank=True)
+    embedding = VectorField(dimensions=768, null=True, blank=True)
     tsvector = SearchVectorField(null=True, blank=True)
     source_document = models.CharField(max_length=500)
     page_number = models.IntegerField(null=True, blank=True)
@@ -72,12 +72,10 @@ class DocumentChunk(models.Model):
 
     @classmethod
     def get_embedding_dimensions(cls):
-        provider = os.getenv('LLM_PROVIDER', 'openai').lower()
-        provider_embeddings = {
-            'openai': 1536,
-            'gemini': 768,
-        }
-        return provider_embeddings.get(provider, 1024)
+        from ai.llm.provider_config import get_provider_config
+
+        config = get_provider_config()
+        return config.get('embedding_dimensions') or 3072
 
 
 class InvoiceScan(models.Model):

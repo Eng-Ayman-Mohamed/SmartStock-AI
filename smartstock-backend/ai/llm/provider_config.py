@@ -140,6 +140,7 @@ def get_embeddings():
                 return GoogleGenerativeAIEmbeddings(
                     model=config['embedding_model'],
                     google_api_key=get_api_key(),
+                    output_dimensionality=config['embedding_dimensions'],
                 )
 
             from langchain_openai import OpenAIEmbeddings
@@ -176,6 +177,7 @@ def get_embeddings():
         return GoogleGenerativeAIEmbeddings(
             model='gemini-embedding-001',
             google_api_key=gemini_key,
+            output_dimensionality=768,
         )
 
     raise ImproperlyConfigured(

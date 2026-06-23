@@ -687,6 +687,10 @@ class RAGQueryService:
 
         # Step 3: If no relevant chunks found
         if not top_chunks or all(c.get('score', 0) < 0.3 for c in top_chunks):
+            yield {
+                'type': 'token',
+                'content': 'I cannot find this information in the provided records.',
+            }
             yield {'type': 'done', 'sources': [], 'action': None}
             return
 
