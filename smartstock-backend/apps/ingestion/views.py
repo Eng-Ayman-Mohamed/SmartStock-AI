@@ -1087,6 +1087,9 @@ class ChatStreamView(APIView):
             conv_svc = ConversationService()
             heartbeat_interval = 15  # seconds
             last_heartbeat = time.time()
+            assistant_msg_id = None
+            last_flush_time = 0.0
+            FLUSH_INTERVAL = 1  # seconds between partial saves
 
             def _check_heartbeat():
                 """Yield a keepalive comment if enough time has passed."""
@@ -1097,11 +1100,44 @@ class ChatStreamView(APIView):
                     return ': keepalive\n\n'
                 return None
 
-            def _save_assistant_message(content, msg_sources):
-                """Persist the assistant reply to DB. Called explicitly, not in finally."""
-                if not conversation_id or not content:
+            def _create_placeholder():
+                """Create an empty assistant message so it exists in the DB."""
+                nonlocal assistant_msg_id
+                if not conversation_id:
                     return
                 try:
+                    msg = conv_svc.save_message(
+                        conversation_id=conversation_id,
+                        role='assistant',
+                        content='',
+                        engine=engine,
+                        mode=mode,
+                    )
+                    assistant_msg_id = msg.id
+                except Exception:
+                    logger.exception('Failed to create assistant message placeholder')
+
+            def _flush_to_db(content, msg_sources):
+                """Update the placeholder with current accumulated text."""
+                if not assistant_msg_id or not content:
+                    return
+                try:
+                    from apps.ai.models import ChatMessage
+
+                    ChatMessage.objects.filter(pk=assistant_msg_id).update(
+                        content=content,
+                        sources=msg_sources,
+                    )
+                except Exception:
+                    logger.exception('Failed to flush assistant message to DB')
+
+            def _finalize(content, msg_sources):
+                """Final save: create if no placeholder, update if placeholder exists."""
+                if not conversation_id or not content:
+                    return
+                if assistant_msg_id:
+                    _flush_to_db(content, msg_sources)
+                else:
                     conv_svc.save_message(
                         conversation_id=conversation_id,
                         role='assistant',
@@ -1110,6 +1146,7 @@ class ChatStreamView(APIView):
                         mode=mode,
                         sources=msg_sources,
                     )
+                try:
                     is_new = (
                         conv_svc.get_conversation(conversation_id, user)
                         .messages.filter(role='assistant')
@@ -1119,7 +1156,7 @@ class ChatStreamView(APIView):
                     if is_new:
                         conv_svc.auto_title(conversation_id, query)
                 except Exception:
-                    logger.exception('Failed to save assistant message')
+                    logger.exception('Failed to auto-title conversation')
 
             # Save user message BEFORE streaming (optimistic save)
             if conversation_id:
@@ -1132,6 +1169,12 @@ class ChatStreamView(APIView):
                     )
                 except Exception:
                     logger.exception('Failed to save user message')
+
+                # Create assistant placeholder BEFORE streaming — this row
+                # will be updated as tokens arrive. If the generator is
+                # abandoned (client disconnects), the row persists with
+                # whatever was last flushed.
+                _create_placeholder()
 
             # Send metadata first
             metadata = {'engine': engine, 'mode': mode}
@@ -1147,12 +1190,16 @@ class ChatStreamView(APIView):
                         if event['type'] == 'token':
                             full_answer += event['content']
                             yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                            # Periodically flush partial answer to DB so
+                            # if the generator is abandoned, the user sees
+                            # whatever was accumulated when they come back.
+                            now = time.time()
+                            if now - last_flush_time >= FLUSH_INTERVAL:
+                                _flush_to_db(full_answer, [])
+                                last_flush_time = now
                         elif event['type'] == 'done':
                             sources = event.get('sources', [])
-                            # Save BEFORE yielding done — if the yield
-                            # fails (client disconnected), the message
-                            # is already persisted.
-                            _save_assistant_message(full_answer, sources)
+                            _finalize(full_answer, sources)
                             done_data = {'sources': sources}
                             if event.get('action'):
                                 done_data['action'] = event['action']
@@ -1164,19 +1211,21 @@ class ChatStreamView(APIView):
                     for event in self._stream_nl_query(query, user, shared):
                         full_answer += event['content']
                         yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                        now = time.time()
+                        if now - last_flush_time >= FLUSH_INTERVAL:
+                            _flush_to_db(full_answer, [])
+                            last_flush_time = now
                         hb = _check_heartbeat()
                         if hb:
                             yield hb
-                    _save_assistant_message(full_answer, [])
+                    _finalize(full_answer, [])
                     done_data = {'action': shared.get('action')}
                     yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
 
             except GeneratorExit:
-                # Client disconnected mid-stream. Django/gunicorn abandon
-                # the generator without calling close(), so this may not
-                # even fire. Best-effort: do NOT leave an empty placeholder
-                # — there is none. The partial response is lost, which is
-                # acceptable (user can retry).
+                # Client disconnected mid-stream. Flush whatever we have.
+                if assistant_msg_id and full_answer:
+                    _flush_to_db(full_answer, [])
                 logger.info('Stream aborted by client disconnect')
             except Exception as exc:
                 logger.exception('Streaming chat failed')
