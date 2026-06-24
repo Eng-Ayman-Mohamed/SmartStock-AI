@@ -1447,18 +1447,11 @@ def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
 
         avg_response = po_qs.filter(
             status='confirmed', sent_at__isnull=False, confirmed_at__isnull=False
-        ).aggregate(
-            avg_days=Avg(
-                ExpressionWrapper(
-                    F('confirmed_at') - F('sent_at'),
-                    output_field=DecimalField(max_digits=10, decimal_places=2),
-                )
-            )
-        )['avg_days']
+        ).aggregate(avg_days=Avg(F('confirmed_at') - F('sent_at')))['avg_days']
 
         avg_response_days = 0
         if avg_response is not None:
-            avg_response_days = round(float(avg_response.total_seconds()) / 86400, 1)
+            avg_response_days = round(avg_response.total_seconds() / 86400, 1)
 
         on_time_count = 0
         confirmed_pos = po_qs.filter(
