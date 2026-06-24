@@ -16,6 +16,8 @@ class AuthEndpointTests(APITestCase):
             password='StrongPass123!',
             role='viewer',
         )
+        cls.user.email_verified = True
+        cls.user.save(update_fields=['email_verified'])
 
     def _login_url(self):
         return '/api/auth/login/'

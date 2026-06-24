@@ -12,15 +12,21 @@ class AuthTestBase(TestCase):
         cls.admin = CustomUser.objects.create_user(
             username='auth_admin', email='auth_admin@test.com', password='pass123', role='admin'
         )
+        cls.admin.email_verified = True
+        cls.admin.save(update_fields=['email_verified'])
         cls.manager = CustomUser.objects.create_user(
             username='auth_manager',
             email='auth_manager@test.com',
             password='pass123',
             role='manager',
         )
+        cls.manager.email_verified = True
+        cls.manager.save(update_fields=['email_verified'])
         cls.viewer = CustomUser.objects.create_user(
             username='auth_viewer', email='auth_viewer@test.com', password='pass123', role='viewer'
         )
+        cls.viewer.email_verified = True
+        cls.viewer.save(update_fields=['email_verified'])
 
 
 class MeViewTests(AuthTestBase):
