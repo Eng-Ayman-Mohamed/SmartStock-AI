@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt \
     && rm -rf /usr/local/lib/python3.12/site-packages/prophet/stan_model/cmdstan-2.33.1
 
 COPY entrypoint.sh /entrypoint.sh
