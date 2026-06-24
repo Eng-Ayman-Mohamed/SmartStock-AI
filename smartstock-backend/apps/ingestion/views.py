@@ -1087,7 +1087,6 @@ class ChatStreamView(APIView):
             conv_svc = ConversationService()
             heartbeat_interval = 15  # seconds
             last_heartbeat = time.time()
-            assistant_msg_id = None
 
             def _check_heartbeat():
                 """Yield a keepalive comment if enough time has passed."""
@@ -1097,6 +1096,30 @@ class ChatStreamView(APIView):
                     last_heartbeat = now
                     return ': keepalive\n\n'
                 return None
+
+            def _save_assistant_message(content, msg_sources):
+                """Persist the assistant reply to DB. Called explicitly, not in finally."""
+                if not conversation_id or not content:
+                    return
+                try:
+                    conv_svc.save_message(
+                        conversation_id=conversation_id,
+                        role='assistant',
+                        content=content,
+                        engine=engine,
+                        mode=mode,
+                        sources=msg_sources,
+                    )
+                    is_new = (
+                        conv_svc.get_conversation(conversation_id, user)
+                        .messages.filter(role='assistant')
+                        .count()
+                        == 1
+                    )
+                    if is_new:
+                        conv_svc.auto_title(conversation_id, query)
+                except Exception:
+                    logger.exception('Failed to save assistant message')
 
             # Save user message BEFORE streaming (optimistic save)
             if conversation_id:
@@ -1109,22 +1132,6 @@ class ChatStreamView(APIView):
                     )
                 except Exception:
                     logger.exception('Failed to save user message')
-
-                # Create assistant message placeholder BEFORE streaming so it
-                # always exists in the DB — even if the client disconnects
-                # mid-stream, the row is there and the finally block just
-                # needs to UPDATE the content.
-                try:
-                    placeholder = conv_svc.save_message(
-                        conversation_id=conversation_id,
-                        role='assistant',
-                        content='',
-                        engine=engine,
-                        mode=mode,
-                    )
-                    assistant_msg_id = placeholder.id
-                except Exception:
-                    logger.exception('Failed to create assistant message placeholder')
 
             # Send metadata first
             metadata = {'engine': engine, 'mode': mode}
@@ -1142,6 +1149,10 @@ class ChatStreamView(APIView):
                             yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
                         elif event['type'] == 'done':
                             sources = event.get('sources', [])
+                            # Save BEFORE yielding done — if the yield
+                            # fails (client disconnected), the message
+                            # is already persisted.
+                            _save_assistant_message(full_answer, sources)
                             done_data = {'sources': sources}
                             if event.get('action'):
                                 done_data['action'] = event['action']
@@ -1156,9 +1167,17 @@ class ChatStreamView(APIView):
                         hb = _check_heartbeat()
                         if hb:
                             yield hb
+                    _save_assistant_message(full_answer, [])
                     done_data = {'action': shared.get('action')}
                     yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
 
+            except GeneratorExit:
+                # Client disconnected mid-stream. Django/gunicorn abandon
+                # the generator without calling close(), so this may not
+                # even fire. Best-effort: do NOT leave an empty placeholder
+                # — there is none. The partial response is lost, which is
+                # acceptable (user can retry).
+                logger.info('Stream aborted by client disconnect')
             except Exception as exc:
                 logger.exception('Streaming chat failed')
                 error_msg = (
@@ -1167,46 +1186,6 @@ class ChatStreamView(APIView):
                     else 'An unexpected error occurred.'
                 )
                 yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
-                # Remove the placeholder on error — error is shown in UI
-                # but should not be persisted as an assistant message.
-                if assistant_msg_id:
-                    try:
-                        from apps.ai.models import ChatMessage
-
-                        ChatMessage.objects.filter(pk=assistant_msg_id).delete()
-                    except Exception:
-                        logger.exception('Failed to delete assistant message placeholder')
-            finally:
-                # Update the placeholder with the actual response.
-                # The row already exists — we just UPDATE content (and
-                # sources for RAG).  This works even on abort because the
-                # placeholder was created before streaming started.
-                if assistant_msg_id and full_answer:
-                    try:
-                        from apps.ai.models import ChatMessage
-
-                        ChatMessage.objects.filter(pk=assistant_msg_id).update(
-                            content=full_answer,
-                            sources=sources,
-                        )
-                        # Touch conversation updated_at
-                        from apps.ai.models import ChatConversation
-
-                        ChatConversation.objects.filter(pk=conversation_id).update(
-                            updated_at=timezone.now()
-                        )
-                        if conversation_id:
-                            is_new = (
-                                conv_svc.get_conversation(conversation_id, user)
-                                .messages.filter(role='assistant')
-                                .exclude(pk=assistant_msg_id)
-                                .count()
-                                == 0
-                            )
-                            if is_new:
-                                conv_svc.auto_title(conversation_id, query)
-                    except Exception:
-                        logger.exception('Failed to update assistant message')
 
         response = StreamingHttpResponse(
             event_stream(),
