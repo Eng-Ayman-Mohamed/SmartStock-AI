@@ -3,5 +3,5 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.prod"
 
 [deploy]
-startCommand = "celery -A config worker --loglevel=info --pool=solo --concurrency=1"
+startCommand = "celery -A config worker --loglevel=info --pool=solo --concurrency=1 --without-mingle --without-gossip"
 restartPolicyType = "ON_FAILURE"
