@@ -3,5 +3,5 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.prod"
 
 [deploy]
-startCommand = "celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler --without-mingle"
+startCommand = "celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
 restartPolicyType = "ON_FAILURE"
