@@ -1,5 +1,6 @@
 import logging
 import os
+import ssl
 from datetime import timedelta
 from pathlib import Path
 
@@ -336,12 +337,14 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
 
 # Required for Upstash TLS (rediss://)
+import ssl
+
 CELERY_BROKER_USE_SSL = {
-    'ssl_cert_reqs': 'CERT_NONE'
+    'ssl_cert_reqs': ssl.CERT_NONE
 } if os.environ.get('CELERY_BROKER_URL', '').startswith('rediss://') else None
 
 CELERY_REDIS_BACKEND_USE_SSL = {
-    'ssl_cert_reqs': 'CERT_NONE'
+    'ssl_cert_reqs': ssl.CERT_NONE
 } if os.environ.get('CELERY_RESULT_BACKEND', '').startswith('rediss://') else None
 
 CELERY_BROKER_POOL_LIMIT = 1
