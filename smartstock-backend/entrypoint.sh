@@ -10,6 +10,10 @@ if [ -z "$DATABASE_URL" ] || echo "$DATABASE_URL" | grep -qE '@(localhost|db)(:|
 fi
 
 python manage.py migrate --noinput
-python manage.py collectstatic --noinput
+
+# Only run collectstatic in production (dev uses Django's DEBUG static serving)
+if [ "$DJANGO_SETTINGS_MODULE" = "config.settings.production" ]; then
+  python manage.py collectstatic --noinput
+fi
 
 exec "$@"
