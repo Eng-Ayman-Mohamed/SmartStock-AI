@@ -30,6 +30,7 @@ from .services import generate_verification_token, send_verification_email, veri
 
 class TokenRefreshView(BaseTokenRefreshView):
     serializer_class = CookieTokenRefreshSerializer
+    throttle_classes = []
     envelope_exempt = True
 
     @extend_schema(
@@ -54,10 +55,8 @@ class TokenRefreshView(BaseTokenRefreshView):
                 key='refresh_token',
                 value=refresh_token,
                 httponly=True,
-                # Security: Always use Secure in production, HTTPonly for authentication
                 secure=IS_PRODUCTION or not settings.DEBUG,
-                # Security: Use Strict SameSite in production to prevent CSRF
-                samesite='Strict' if IS_PRODUCTION else 'Lax',
+                samesite='None' if IS_PRODUCTION else 'Lax',
                 max_age=3 * 24 * 60 * 60,
             )
         return response
@@ -216,7 +215,7 @@ class LoginView(TokenObtainPairView):
             value=validated_data['refresh'],
             httponly=True,
             secure=IS_PRODUCTION or not settings.DEBUG,
-            samesite='Strict' if IS_PRODUCTION else 'Lax',
+            samesite='None' if IS_PRODUCTION else 'Lax',
             max_age=3 * 24 * 60 * 60,
         )
         return response

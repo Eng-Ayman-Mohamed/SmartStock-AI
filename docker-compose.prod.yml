@@ -29,7 +29,7 @@ services:
   backend:
     build:
       context: ./smartstock-backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
     container_name: smartstock_backend
     env_file:
       - .env
@@ -61,7 +61,7 @@ services:
   celery:
     build:
       context: ./smartstock-backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
     container_name: smartstock_celery
     command: celery -A config worker --loglevel=info
     env_file:
@@ -84,7 +84,7 @@ services:
   celery-beat:
     build:
       context: ./smartstock-backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
     container_name: smartstock_celery_beat
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
@@ -107,7 +107,7 @@ services:
   frontend:
     build:
       context: ./smartstock-frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
       target: production
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}

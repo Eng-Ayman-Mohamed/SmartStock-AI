@@ -18,6 +18,9 @@ if not ALLOWED_HOSTS:
 
     raise ImproperlyConfigured('ALLOWED_HOSTS environment variable is required in production.')
 
+if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('healthcheck.railway.app')
+
 _extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 _default_csrf = 'https://smart-stock-dev.vercel.app'
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in (_extra_csrf or _default_csrf).split(',') if o.strip()]
@@ -50,3 +53,11 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@smartstock.ai')
+
+# Use separate Redis (Upstash) for Django cache — keeps REDIS_URL dedicated to Celery broker
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.environ.get('CACHE_REDIS_URL'),
+    }
+}

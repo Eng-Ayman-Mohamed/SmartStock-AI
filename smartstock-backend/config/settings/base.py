@@ -1,5 +1,6 @@
 import logging
 import os
+import ssl
 from datetime import timedelta
 from pathlib import Path
 
@@ -248,11 +249,6 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
-    'AUTH_COOKIE_HTTP_ONLY': True,
-    # Secure: Always require HTTPS in production, allow HTTP only in development
-    'AUTH_COOKIE_SECURE': IS_PRODUCTION or not DEBUG,
-    # SameSite: Strict is default. Only use 'None' if explicitly required for cross-origin (requires Secure=True)
-    'AUTH_COOKIE_SAMESITE': 'Strict' if IS_PRODUCTION else 'Lax',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
 CORS_ALLOWED_ORIGINS = os.environ.get(
@@ -332,11 +328,24 @@ if not os.environ.get('CI'):
         logger.warning('Environment validation skipped — settings may be incomplete.')
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
-CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get(
+
+_broker_url = os.environ.get('REDIS_URL') or os.environ.get(
     'CELERY_BROKER_URL', 'redis://localhost:6379/0'
 )
-CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
+_result_url = os.environ.get('REDIS_URL') or os.environ.get(
     'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'
+)
+
+CELERY_BROKER_URL = _broker_url
+CELERY_RESULT_BACKEND = _result_url
+
+# Required for Upstash TLS (rediss://)
+CELERY_BROKER_USE_SSL = (
+    {'ssl_cert_reqs': ssl.CERT_NONE} if _broker_url.startswith('rediss://') else None
+)
+
+CELERY_REDIS_BACKEND_USE_SSL = (
+    {'ssl_cert_reqs': ssl.CERT_NONE} if _result_url.startswith('rediss://') else None
 )
 
 CELERY_BEAT_SCHEDULE = {

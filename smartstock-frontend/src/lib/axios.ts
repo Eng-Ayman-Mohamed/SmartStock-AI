@@ -128,9 +128,10 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const refreshToken = useAuthStore.getState().refreshToken;
         const { data } = await api.post<{ access: string; refresh?: string }>(
           '/auth/refresh/',
-          {},
+          refreshToken ? { refresh: refreshToken } : {},
           { withCredentials: true }
         );
         const newToken = data.access;
