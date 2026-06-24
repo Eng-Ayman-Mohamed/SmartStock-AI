@@ -335,11 +335,10 @@ REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
 CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get(
     'CELERY_BROKER_URL', 'redis://localhost:6379/0'
 )
-CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
-    'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'
-)
+CELERY_RESULT_BACKEND = None
 CELERY_BROKER_POOL_LIMIT = 1
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TASK_IGNORE_RESULT = True
 
 CELERY_BEAT_SCHEDULE = {
     'purge-audit-logs-daily': {
