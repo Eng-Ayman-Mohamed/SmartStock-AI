@@ -1205,8 +1205,10 @@ class ChatStreamView(APIView):
             _handle_get_low_stock,
             _handle_get_sales_report,
             _handle_get_supplier_info,
+            _handle_get_supplier_performance,
             _handle_get_top_products,
             _handle_get_total_value,
+            _handle_help,
         )
 
         # Defense-in-depth: prompt injection check
@@ -1230,6 +1232,8 @@ class ChatStreamView(APIView):
             'get_supplier_info': _handle_get_supplier_info,
             'get_total_value': _handle_get_total_value,
             'get_top_products': _handle_get_top_products,
+            'get_supplier_performance': _handle_get_supplier_performance,
+            'help': _handle_help,
         }
         handler = handler_map.get(action_type)
         if not handler:

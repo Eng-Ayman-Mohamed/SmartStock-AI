@@ -28,9 +28,11 @@ def build_system_prompt() -> str:
     few_shots = build_few_shot_block()
 
     out_of_scope_block = (
-        '- If the request is outside inventory scope, respond with exactly '
-        'the JSON string: "error" key with value "Out of scope request", and '
-        'no other keys.\n'
+        '- If the request is outside inventory scope (e.g. greeting, weather, general chat), '
+        'respond with exactly the JSON string: "action" set to "help" and "filters" as an '
+        'empty object. Example: {{"action": "help", "filters": {{}}}}\n'
+        '- If the request is too vague to determine a specific action (e.g. "what can you do", '
+        '"tell me about the system", "help"), also respond with: {{"action": "help", "filters": {{}}}}\n'
     )
 
     return (

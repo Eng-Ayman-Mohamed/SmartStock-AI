@@ -8,18 +8,18 @@ const severityConfig: Record<
 > = {
   critical: {
     icon: AlertCircle,
-    color: "text-red-600",
-    bg: "bg-red-50",
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-50 dark:bg-red-900/30",
   },
   warning: {
     icon: AlertTriangle,
-    color: "text-orange-600",
-    bg: "bg-orange-50",
+    color: "text-orange-600 dark:text-orange-400",
+    bg: "bg-orange-50 dark:bg-orange-900/30",
   },
   info: {
     icon: Info,
-    color: "text-brand-600",
-    bg: "bg-brand-50",
+    color: "text-brand-600 dark:text-brand-400",
+    bg: "bg-brand-50 dark:bg-brand-900/30",
   },
 };
 

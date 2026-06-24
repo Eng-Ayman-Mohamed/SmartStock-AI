@@ -1271,4 +1271,212 @@ return;
 
 ---
 
+### 26. New NL Query Action: Supplier Performance (2026-06-24)
 
+**Problem:** When users asked "what is the suppliers performance" or "how are my suppliers performing?", the system fell back to `get_supplier_info` which only returned basic contact information (name, email, phone, address). No actual performance metrics were calculated.
+
+**Root cause:** No `get_supplier_performance` action existed in the NL query system. The LLM classified performance queries as `get_supplier_info` since it was the closest match.
+
+### 26a. Solution: New `get_supplier_performance` Action
+
+Added a complete end-to-end NL query action that calculates supplier performance metrics from purchase order data.
+
+**Metrics calculated per supplier:**
+
+| Metric | Calculation |
+|--------|-------------|
+| Total orders | `COUNT(purchase_orders)` per supplier |
+| Total spend | `SUM(total_cost)` per supplier |
+| Confirmation rate | `COUNT(status='confirmed') / COUNT(all orders)` |
+| Failure rate | `COUNT(status IN ('failed','timeout')) / COUNT(all orders)` |
+| Avg response days | `AVG(confirmed_at - sent_at)` for confirmed POs |
+| On-time rate | `% of confirmed POs where response_time <= default_lead_time_days` |
+| Most ordered SKU | `COUNT(purchase_orders)` grouped by `sku__code`, ordered descending |
+| Status breakdown | Group count by status per supplier |
+
+**Default behavior:** Returns top 5 suppliers ordered by name. Supports filtering by `supplier_name` and `is_active`.
+
+### 26b. Files Modified
+
+| File | Change | Why |
+|------|--------|-----|
+| `ai/llm/schemas.py` | Added `GET_SUPPLIER_PERFORMANCE = 'get_supplier_performance'` to `NLQueryAction` enum; added allowed fields `['supplier_name', 'is_active']` | Register new action in the system |
+| `ai/llm/few_shots.py` | Added few-shot example: "How are my suppliers performing?" → `get_supplier_performance` | Teach the LLM when to use this action |
+| `ai/llm/chain.py` | Added `get_supplier_performance` to tool description; added keyword fallback for 'supplier performance', 'supplier metric', 'how are suppliers', 'supplier scorecard' | Ensure action is recognized by LLM and keyword fallback |
+| `apps/inventory/views.py` | Added `_handle_get_supplier_performance()` handler (~80 lines); added to handler map, dispatch logic, and view wrapper method; added pattern cache entries for 'supplier performance' and 'supplier metrics' | Core performance calculation logic |
+| `tests/unit/test_nlquery.py` | Updated action count (8→9); added end-to-end test case for `get_supplier_performance` | Test coverage |
+
+### 26c. Handler Implementation Details
+
+```python
+def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
+    # 1. Filter suppliers by name/is_active if conditions provided
+    # 2. For each supplier (top 5 by default):
+    #    - Query all PurchaseOrders for that supplier
+    #    - Calculate confirmation_rate, failure_rate, avg_response_days, on_time_rate
+    #    - Find most ordered SKU via annotate + Count
+    #    - Build status_breakdown dict
+    # 3. Return list of performance dicts
+```
+
+**Key design decisions:**
+- Uses `PurchaseOrder` model (not `Supplier` model) for metrics — all performance data comes from PO history
+- `on_time_rate` compares `confirmed_at - sent_at` against `supplier.default_lead_time_days`
+- `avg_response_days` uses `DecimalField` + `ExpressionWrapper` for precise time difference calculation
+- Returns `status_breakdown` dict with counts per status (only non-zero statuses included)
+
+### 26d. Example Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "answer": "Here are the top 5 supplier performance metrics...",
+    "raw_data": [
+      {
+        "supplier_id": 1,
+        "supplier_name": "Evans, Tucker and Adams",
+        "total_orders": 15,
+        "total_spend": 45230.50,
+        "confirmation_rate": 0.93,
+        "failure_rate": 0.04,
+        "avg_response_days": 5.2,
+        "on_time_rate": 0.87,
+        "most_ordered_sku": "CHAIR-PRO-2",
+        "status_breakdown": {
+          "confirmed": 14,
+          "failed": 1
+        }
+      }
+    ]
+  }
+}
+```
+
+### 26e. Testing
+
+73/73 NL query unit tests passed. New test case added to `END_TO_END_CASES`:
+- Input: "How are my suppliers performing?"
+- Expected action: `get_supplier_performance`
+- Expected filters: empty conditions array
+
+---
+
+### 27. Help Guidance for Vague/Out-of-Scope Queries (2026-06-24)
+
+**Problem:** When users asked vague questions like "hello", "what can you do", "help", or out-of-scope queries like "what's the weather", the system either:
+1. Silently returned a full inventory data dump (defaulting to `GET_INVENTORY`)
+2. Returned generic error messages like "Sorry, something went wrong"
+
+Users had no idea what the system could do or how to phrase their queries.
+
+### 27a. Solution: New `help` Action + Guidance Response
+
+Added a `help` action that returns a structured guidance message listing all capabilities with example queries.
+
+**Three layers of detection:**
+
+| Layer | Location | What it catches |
+|-------|----------|-----------------|
+| System prompt | `ai/llm/prompts.py` | LLM returns `{"action": "help", "filters": {}}` for greetings, vague questions, out-of-scope queries |
+| Keyword fallback | `ai/llm/chain.py` | Exact matches: "hello", "hi", "hey", "help", "what can you do", etc. + queries < 3 chars |
+| Default fallback | `ai/llm/chain.py` | Any unrecognized query (changed from `GET_INVENTORY` to `HELP`) |
+
+### 27b. Files Modified
+
+| File | Change | Why |
+|------|--------|-----|
+| `ai/llm/schemas.py` | Added `HELP = 'help'` to `NLQueryAction` enum; added empty `[]` allowed fields | Register help action |
+| `ai/llm/prompts.py` | Changed out-of-scope instruction from `{"error": "Out of scope request"}` to `{"action": "help", "filters": {}}` | LLM now returns a structured action instead of an error signal |
+| `ai/llm/chain.py` | Added `help` to tool description; added vague query detection in `_keyword_fallback()`; changed default fallback from `GET_INVENTORY` to `HELP`; changed `NLQueryParseError` catch to return `HELP` | Detect vague queries and return guidance |
+| `apps/inventory/views.py` | Added `_handle_help()` function returning structured capabilities list; added `help` to handler map and dispatch | Return guidance message |
+| `smartstock-frontend/src/features/ai-assistant/hooks/useChat.ts` | Updated generic error message to include capability hints | Better UX on errors |
+| `tests/unit/test_nlquery.py` | Updated action count (8→9); updated fallback test assertions (`GET_INVENTORY` → `HELP`); updated out-of-scope test to check for new prompt text | Test coverage |
+
+### 27c. Help Response Content
+
+The `_handle_help()` function returns:
+
+```
+I'm SmartStock AI, your warehouse inventory analytics assistant.
+I can help you with the following:
+
+**Inventory**
+- Show me all products / low stock items / out of stock items
+- Filter by category, SKU, supplier, or stock level
+
+**Sales**
+- Sales report by date range or product
+- Top selling products
+
+**Suppliers**
+- Supplier contact info and list
+- Supplier performance metrics (confirmation rate, response time, on-time rate)
+
+**Forecasting**
+- Demand forecast for specific products or SKUs
+
+**Value**
+- Total inventory value
+
+Try asking something like:
+- "Show me low stock items in Electronics"
+- "How are my suppliers performing?"
+- "What is the demand forecast for SKU CHAIR-PRO-2?"
+- "Give me the sales report for March"
+- "Show top 5 selling products"
+```
+
+### 27d. Updated Keyword Fallback Priority
+
+```
+1. help          — "hello", "hi", "hey", "help", "what can you do", len < 3
+2. get_top_products — "top", "best", "most sold", "highest"
+3. get_low_stock    — "low stock", "reorder", "restock", "need restocking"
+4. get_supplier_performance — "supplier performance", "supplier metric", "how are suppliers"
+5. forecast_demand  — "forecast", "predict", "demand", "next 30"
+6. get_supplier_info — "supplier", "vendor"
+7. get_total_value  — "total value", "inventory value", "worth"
+8. get_sales_report — "sales", "sold", "revenue"
+9. help (default)   — any unrecognized query
+```
+
+### 27e. Updated Error Messages (Frontend)
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| Generic error | "Sorry, something went wrong. Please try again." | "Sorry, something went wrong. You can try rephrasing your question or ask me about inventory, sales, suppliers, forecasting, or inventory value." |
+| Quota error | Unchanged | Unchanged |
+| Timeout error | Unchanged | Unchanged |
+
+### 27f. User Experience (Before vs After)
+
+| Query | Before | After |
+|-------|--------|-------|
+| "hello" | Full inventory dump (50+ products) | "I'm SmartStock AI... I can help with inventory, sales, suppliers..." |
+| "what can you do" | Full inventory dump | Help message with capabilities + example queries |
+| "help" | Full inventory dump | Help message |
+| "what's the weather" | Error or inventory dump | Help message |
+| Random gibberish | Error or inventory dump | Help message |
+
+### 27g. OpenAI API Impact
+
+**No additional cost.** The `help` action is handled entirely in Python (keyword matching + static response). No LLM call is needed for the guidance message. The LLM's tool calling still classifies vague queries (1 call), but the formatter call (call 2) receives the static help text instead of raw DB data — same token cost.
+
+### 27h. Testing
+
+73/73 NL query unit tests passed. Key test updates:
+- `test_all_nine_actions_exist` — verifies 9 actions in enum
+- `test_action_allowed_fields_are_non_empty` — skips `help` (empty fields expected)
+- `test_chain_falls_back_on_parse_error` — now returns `HELP` instead of `GET_INVENTORY`
+- `test_chain_falls_back_on_unknown_action` — now returns `HELP`
+- `test_chain_falls_back_on_disallowed_field` — now returns `HELP`
+- `test_system_prompt_includes_out_of_scope_instruction` — checks for new `"action" set to "help"` text
+
+### 27i. Bug Fix: LangChain Template Parsing
+
+During implementation, discovered that unescaped `{` and `}` in the `out_of_scope_block` in `prompts.py` caused `LangChain`'s `FewShotPromptTemplate` to fail with `ValueError: Invalid format specifier in f-string template. Nested replacement fields are not allowed.`
+
+**Fix:** Escaped braces in `out_of_scope_block` from `{"action": "help", "filters": {}}` to `{{"action": "help", "filters": {{}}}}`.
+
+---
