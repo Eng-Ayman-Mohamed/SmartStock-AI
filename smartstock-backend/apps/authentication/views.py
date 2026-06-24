@@ -289,9 +289,7 @@ class ResendVerificationView(APIView):
                 response={'type': 'object', 'properties': {'detail': {'type': 'string'}}},
                 description='Verification email sent',
             ),
-            400: OpenApiResponse(
-                response=ErrorResponseSerializer, description='Validation error'
-            ),
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Validation error'),
         },
         tags=['auth'],
         auth=[],
@@ -305,7 +303,9 @@ class ResendVerificationView(APIView):
             token = generate_verification_token(user)
             send_verification_email(user, token)
         return Response(
-            {'detail': 'If that email is registered and unverified, a verification link has been sent.'},
+            {
+                'detail': 'If that email is registered and unverified, a verification link has been sent.'
+            },
             status=status.HTTP_200_OK,
         )
 

@@ -27,7 +27,9 @@ class CustomUser(AbstractUser):
 
 
 class EmailVerificationToken(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='verification_tokens')
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name='verification_tokens'
+    )
     token = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
