@@ -54,10 +54,10 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@smartstock.ai')
 
-# Use local memory cache instead of Redis to save connections on Railway free tier
+# Use separate Redis (Upstash) for Django cache — keeps REDIS_URL dedicated to Celery broker
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'smartstock-prod-cache',
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.environ.get('CACHE_REDIS_URL'),
     }
 }
