@@ -101,6 +101,9 @@ export default function VerifyEmailPage() {
               <>
                 <XCircle className="w-10 h-10 text-red-600" />
                 <p className="text-body text-ink">{message}</p>
+                <p className="text-caption text-ink-muted">
+                  Your email may already be verified. Try signing in.
+                </p>
                 <Link
                   to="/login"
                   className="mt-2 inline-flex items-center justify-center h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-700 transition-colors"

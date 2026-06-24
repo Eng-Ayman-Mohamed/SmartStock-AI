@@ -14,7 +14,6 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      COHERE_API_KEY: ${COHERE_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:

@@ -24,19 +24,32 @@ def _get_classifier_llm():
 CLASSIFIER_SYSTEM_PROMPT = (
     'You are an intent classifier for a warehouse management system. '
     'Classify the user query into exactly one category:\n'
-    '- "nl_query": The query asks about live inventory data — stock levels, products, '
-    'suppliers, sales, forecasts, reorder status, or any operational database query.\n'
-    '- "rag": The query asks about documents, policies, procedures, guidelines, '
-    'manuals, or requires searching uploaded files.\n'
+    '- "nl_query": The query asks about live inventory data that can be looked up in a database — '
+    'current stock levels, product lists, supplier contacts, individual sales records, '
+    'low stock alerts, reorder status, or forecasts for specific SKUs.\n'
+    '- "rag": The query asks about business reports, financial summaries, company policies, '
+    'procedures, guidelines, manuals, historical trends, quarterly performance, revenue, '
+    'profit, MAPE accuracy, warehouse operations, return rates, or anything that would '
+    'be found in an uploaded document or report rather than a live database query.\n'
     '- "out_of_scope": The query is unrelated to inventory, warehouse operations, '
     'or the business domain.\n\n'
+    'IMPORTANT: Questions about revenue, profit, quarterly results, business metrics, '
+    'MAPE, return rates, shrinkage, supplier reliability scores, warehouse capacity, '
+    'hiring plans, CapEx, insurance, or company policies are ALWAYS "rag" because '
+    'this data lives in reports and documents, not in the inventory database.\n\n'
+    'FOLLOW-UP CONTEXT: If conversation history is provided, use it to understand '
+    'follow-up questions. For example, "why can\'t you?" after a RAG answer means '
+    'the user is asking about the same topic (RAG). "tell me more" after an inventory '
+    'query means the user wants more inventory details (nl_query). '
+    'Follow-up questions inherit the intent of the previous exchange unless they '
+    'clearly shift to a different topic.\n\n'
     'Respond with ONLY a JSON object: {{"intent": "<category>", "confidence": <0.0-1.0>}}'
 )
 
 _classifier_prompt = ChatPromptTemplate.from_messages(
     [
         ('system', CLASSIFIER_SYSTEM_PROMPT),
-        ('user', '{query}'),
+        ('human', '{context}{query}'),
     ]
 )
 
@@ -57,6 +70,38 @@ _KEYWORD_MAP = {
         'how to',
         'rules',
         'return policy',
+        'revenue',
+        'profit',
+        'quarterly',
+        'q2',
+        'q3',
+        'q1',
+        'q4',
+        'report',
+        'business',
+        'metrics',
+        'performance',
+        'mape',
+        'reliability',
+        'shrinkage',
+        'insurance',
+        'capex',
+        'hiring',
+        'outlook',
+        'warehouse location',
+        'department',
+        'contact',
+        'utilization',
+        'capacity',
+        'throughput',
+        'warehouse',
+        'austin',
+        'atlanta',
+        'chicago',
+        'region',
+        'sq ft',
+        'square feet',
+        'cold storage',
     ],
     'nl_query': [
         'stock',
@@ -82,17 +127,29 @@ def classify_intent_fast(query: str) -> ClassificationResult | None:
     return None
 
 
-def classify_intent(query: str) -> ClassificationResult:
+def classify_intent(query: str, history: list | None = None) -> ClassificationResult:
     """
     Classify a user query into nl_query, rag, or out_of_scope using GPT-4o-mini.
+    Accepts optional conversation history for follow-up context.
     Returns a ClassificationResult with intent and confidence.
     On failure, defaults to nl_query with 0.5 confidence (safer for operational queries).
     """
     llm = _get_classifier_llm()
     chain = _classifier_prompt | llm | StrOutputParser()
 
+    # Build context from conversation history
+    context = ''
+    if history:
+        recent = history[-4:]  # Last 2 exchanges max
+        lines = ['Conversation so far:']
+        for msg in recent:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')[:150]
+            lines.append(f'{role}: {content}')
+        context = '\n'.join(lines) + '\n\n'
+
     try:
-        raw = invoke_with_langfuse(chain, {'query': query})
+        raw = invoke_with_langfuse(chain, {'query': query, 'context': context})
         parsed = json.loads(raw.strip())
         intent = parsed.get('intent', 'nl_query')
         confidence = float(parsed.get('confidence', 0.5))

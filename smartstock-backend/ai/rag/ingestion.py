@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 
 import pypdf
+from django.contrib.postgres.search import SearchVector
 from django.db import transaction
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -140,6 +141,11 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
             )
         created = DocumentChunk.objects.bulk_create(bulk)
 
+        chunk_ids = [c.id for c in created]
+        DocumentChunk.objects.filter(id__in=chunk_ids).update(
+            tsvector=SearchVector('chunk_text', config='english')
+        )
+
     if document_id:
         actual_count = DocumentChunk.objects.filter(document_id=document_id).count()
     else:
@@ -156,13 +162,3 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
         'chunks': len(created),
         'api_calls': (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE,
     }
-
-
-def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=overlap,
-        length_function=lambda t: len(t.split()),
-        separators=['\n\n', '\n', '.', ' ', ''],
-    )
-    return splitter.split_text(text)
