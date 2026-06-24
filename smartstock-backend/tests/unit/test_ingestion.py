@@ -9,29 +9,10 @@ from django.test import TestCase
 from ai.rag.ingestion import (
     BATCH_SIZE,
     chunk_pdf_pages,
-    chunk_text,
     extract_text_from_pdf,
     ingest_pdf,
 )
 from apps.ingestion.models import DocumentChunk
-
-
-class ChunkTextTest(TestCase):
-    def test_chunk_text_single_chunk(self):
-        text = 'short text'
-        result = chunk_text(text, chunk_size=100, overlap=0)
-        self.assertEqual(result, ['short text'])
-
-    def test_chunk_text_multiple_chunks(self):
-        text = 'word ' * 600
-        result = chunk_text(text, chunk_size=512, overlap=50)
-        self.assertGreater(len(result), 1)
-        for chunk in result:
-            words = chunk.split()
-            self.assertLessEqual(len(words), 512)
-
-    def test_chunk_text_empty(self):
-        self.assertEqual(chunk_text(''), [])
 
 
 class ExtractTextFromPdfTest(TestCase):

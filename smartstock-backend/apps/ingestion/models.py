@@ -73,7 +73,7 @@ class DocumentChunk(models.Model):
         from ai.llm.provider_config import get_provider_config
 
         config = get_provider_config()
-        return config.get('embedding_dimensions') or 3072
+        return config.get('embedding_dimensions') or 1024
 
 
 class InvoiceScan(models.Model):

@@ -163,12 +163,3 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
         'api_calls': (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE,
     }
 
-
-def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=overlap,
-        length_function=lambda t: len(t.split()),
-        separators=['\n\n', '\n', '.', ' ', ''],
-    )
-    return splitter.split_text(text)
