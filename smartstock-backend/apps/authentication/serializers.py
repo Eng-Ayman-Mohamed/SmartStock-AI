@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password as django_validate_password
@@ -7,6 +9,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from rest_framework_simplejwt.settings import api_settings as jwt_api_settings
 
 from .models import CustomUser
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -63,6 +67,12 @@ class CookieTokenRefreshSerializer(serializers.Serializer):
         request = self.context['request']
         refresh = attrs.get('refresh') or request.COOKIES.get(
             getattr(settings, 'SIMPLE_JWT', {}).get('AUTH_COOKIE', 'refresh_token')
+        )
+        logger.warning(
+            'Refresh: body_token=%s cookie_token=%s cookie_keys=%s',
+            bool(attrs.get('refresh')),
+            bool(request.COOKIES.get('refresh_token')),
+            list(request.COOKIES.keys()),
         )
         if not refresh:
             raise serializers.ValidationError('Refresh token not found in cookies.')

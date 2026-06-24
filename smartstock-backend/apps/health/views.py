@@ -5,6 +5,7 @@ import os
 from django.core.cache import cache
 from django.db import connections
 from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -152,11 +153,10 @@ class ReadinessView(APIView):
 class FullHealthView(APIView):
     """Comprehensive health check -- verifies database, redis, celery, storage, and agents.
 
-    Requires internal network or valid X-Health-Secret header.
+    Requires authentication (JWT token).
     """
 
-    authentication_classes = []
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
     throttle_classes = [HealthRateThrottle]
 
     @extend_schema(
@@ -168,16 +168,6 @@ class FullHealthView(APIView):
         auth=[],
     )
     def get(self, request):
-        secret = os.environ.get('HEALTH_SECRET_HEADER', '')
-        provided = request.META.get('HTTP_X_HEALTH_SECRET', '')
-
-        if secret and provided == secret:
-            pass
-        elif _is_internal_request(request):
-            pass
-        else:
-            return Response({'status': 'forbidden'}, status=403)
-
         checks = {}
 
         checks['database'] = 'ok' if _check_database() else 'error'
