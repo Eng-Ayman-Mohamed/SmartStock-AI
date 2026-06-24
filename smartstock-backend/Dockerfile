@@ -14,14 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
+RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \
     pip install -r requirements.txt \
     && rm -rf /usr/local/lib/python3.12/site-packages/prophet/stan_model/cmdstan-2.33.1
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-RUN useradd -m -r appuser && chown -R appuser /app
+RUN useradd -m -r appuser
 
 COPY --chown=appuser:appuser . .
 
@@ -34,4 +34,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 ENTRYPOINT ["/entrypoint.sh"]
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--threads", "2", "--timeout", "120", "--worker-class", "gthread", "--max-requests", "1000", "--max-requests-jitter", "50"]
+# Railway overrides this via railway.toml startCommand.
+# This CMD is used for local docker compose only.
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120"]
