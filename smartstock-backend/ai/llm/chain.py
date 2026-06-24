@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 class NLQueryToolSchema(BaseModel):
     action: str = Field(
-        description='Action enum value (get_inventory, get_sales_report, get_low_stock, forecast_demand, get_supplier_info, get_total_value, get_top_products)'
+        description='Action enum value (get_inventory, get_sales_report, get_low_stock, forecast_demand, get_supplier_info, get_total_value, get_top_products, get_supplier_performance)'
     )
     filters: Optional[dict] = Field(
         default=None, description='Filter conditions, sort, limit, offset'
@@ -146,6 +146,19 @@ def _keyword_fallback(query: str) -> NLQueryResult:
         ]
     ):
         return NLQueryResult(action=NLQueryAction.GET_LOW_STOCK, filters=NLQueryFilters())
+    if any(
+        w in q
+        for w in [
+            'supplier performance',
+            'supplier metric',
+            'supplier rate',
+            'how are suppliers',
+            'supplier scorecard',
+        ]
+    ):
+        return NLQueryResult(
+            action=NLQueryAction.GET_SUPPLIER_PERFORMANCE, filters=NLQueryFilters()
+        )
     if any(w in q for w in ['forecast', 'predict', 'demand', 'future', 'next 30', 'next 7']):
         return NLQueryResult(action=NLQueryAction.FORECAST_DEMAND, filters=NLQueryFilters())
     if any(w in q for w in ['supplier', 'vendor']):

@@ -124,6 +124,12 @@ FEW_SHOT_EXAMPLES = [
         'user': 'Find all products whose name contains chair',
         'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "product_name", "op": "contains", "value": "chair"}]}}',
     },
+    # 13. get_supplier_performance — supplier performance metrics
+    {
+        'action': NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        'user': 'How are my suppliers performing?',
+        'output': '{"action": "get_supplier_performance", "filters": {}}',
+    },
 ]
 
 

@@ -3,9 +3,10 @@ import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from decimal import Decimal
 
 from django.core.cache import cache
-from django.db.models import DecimalField, ExpressionWrapper, F, Min, Q, Sum, Value
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Min, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from drf_spectacular.utils import (
     OpenApiExample,
@@ -60,6 +61,8 @@ _QUERY_PATTERN_CACHE: list[tuple[str, str, dict]] = [
     ('total inventory value', 'get_total_value', {}),
     ('supplier info', 'get_supplier_info', {}),
     ('all suppliers', 'get_supplier_info', {}),
+    ('supplier performance', 'get_supplier_performance', {}),
+    ('supplier metrics', 'get_supplier_performance', {}),
     ('all products', 'get_inventory', {}),
     ('show products', 'get_inventory', {}),
     ('list products', 'get_inventory', {}),
@@ -1395,6 +1398,105 @@ def _handle_get_top_products(filters: NLQueryFilters) -> list:
     ]
 
 
+def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
+    if isinstance(filters, dict):
+        filters = NLQueryFilters.from_dict(filters)
+
+    from apps.purchasing.models import PurchaseOrder
+
+    limit = filters.limit or 5
+
+    supplier_q = Q()
+    for c in filters.conditions:
+        field = getattr(c, 'field', c.get('field') if isinstance(c, dict) else None)
+        op = getattr(c, 'op', c.get('op', 'eq') if isinstance(c, dict) else 'eq')
+        value = getattr(c, 'value', c.get('value') if isinstance(c, dict) else None)
+        if field == 'supplier_name':
+            suffix = '__icontains' if op == 'contains' else ''
+            supplier_q &= Q(**{f'name{suffix}': value})
+        elif field == 'is_active':
+            supplier_q &= Q(is_active=value)
+
+    suppliers = Supplier.objects.filter(supplier_q).order_by('name')[:limit]
+
+    results = []
+    for supplier in suppliers:
+        po_qs = PurchaseOrder.objects.filter(supplier=supplier)
+        total_orders = po_qs.count()
+
+        if total_orders == 0:
+            results.append({
+                'supplier_id': supplier.id,
+                'supplier_name': supplier.name,
+                'total_orders': 0,
+                'total_spend': 0,
+                'confirmation_rate': 0,
+                'failure_rate': 0,
+                'avg_response_days': 0,
+                'on_time_rate': 0,
+                'most_ordered_sku': None,
+            })
+            continue
+
+        confirmed_count = po_qs.filter(status='confirmed').count()
+        failed_count = po_qs.filter(status__in=['failed', 'timeout']).count()
+
+        total_cost = po_qs.aggregate(total=Sum('total_cost'))['total'] or Decimal('0')
+
+        avg_response = po_qs.filter(
+            status='confirmed', sent_at__isnull=False, confirmed_at__isnull=False
+        ).aggregate(
+            avg_days=Avg(
+                ExpressionWrapper(
+                    F('confirmed_at') - F('sent_at'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                )
+            )
+        )['avg_days']
+
+        avg_response_days = 0
+        if avg_response is not None:
+            avg_response_days = round(float(avg_response.total_seconds()) / 86400, 1)
+
+        on_time_count = 0
+        confirmed_pos = po_qs.filter(status='confirmed', sent_at__isnull=False, confirmed_at__isnull=False)
+        for po in confirmed_pos:
+            actual_days = (po.confirmed_at - po.sent_at).total_seconds() / 86400
+            if actual_days <= supplier.default_lead_time_days:
+                on_time_count += 1
+
+        on_time_rate = round(on_time_count / confirmed_count, 2) if confirmed_count > 0 else 0
+
+        most_ordered = (
+            po_qs.values('sku__code')
+            .annotate(order_count=Count('id'))
+            .order_by('-order_count')
+            .first()
+        )
+
+        status_breakdown = {}
+        for s in ['confirmed', 'failed', 'timeout', 'cancelled', 'rejected', 'draft',
+                  'pending_approval', 'approved', 'email_sent', 'sent', 'waiting_confirmation']:
+            cnt = po_qs.filter(status=s).count()
+            if cnt > 0:
+                status_breakdown[s] = cnt
+
+        results.append({
+            'supplier_id': supplier.id,
+            'supplier_name': supplier.name,
+            'total_orders': total_orders,
+            'total_spend': float(total_cost),
+            'confirmation_rate': round(confirmed_count / total_orders, 2),
+            'failure_rate': round(failed_count / total_orders, 2),
+            'avg_response_days': avg_response_days,
+            'on_time_rate': on_time_rate,
+            'most_ordered_sku': most_ordered['sku__code'] if most_ordered else None,
+            'status_breakdown': status_breakdown,
+        })
+
+    return results
+
+
 _handler_map = {
     'get_inventory': _handle_get_inventory,
     'get_sales_report': _handle_get_sales_report,
@@ -1403,6 +1505,7 @@ _handler_map = {
     'get_supplier_info': _handle_get_supplier_info,
     'get_total_value': _handle_get_total_value,
     'get_top_products': _handle_get_top_products,
+    'get_supplier_performance': _handle_get_supplier_performance,
 }
 
 
@@ -1584,6 +1687,8 @@ class NLQueryEndpointView(APIView):
                 raw_data = self._handle_get_total_value(filters)
             elif action_type == 'get_top_products':
                 raw_data = self._handle_get_top_products(filters)
+            elif action_type == 'get_supplier_performance':
+                raw_data = self._handle_get_supplier_performance(filters)
             else:
                 return Response(
                     {'status': 'error', 'message': f'Unknown action type: {action_type}'},
@@ -1724,6 +1829,11 @@ class NLQueryEndpointView(APIView):
         limit = filters.limit or 10
         top = top[:limit]
         return list(top)
+
+    def _handle_get_supplier_performance(self, filters):
+        return _handle_get_supplier_performance(
+            NLQueryFilters.from_dict(filters) if isinstance(filters, dict) else filters
+        )
 
     # -- Tracing ---------------------------------------------------------------
 

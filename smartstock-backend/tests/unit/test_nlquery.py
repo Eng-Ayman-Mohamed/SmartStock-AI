@@ -33,8 +33,8 @@ from ai.llm.schemas import (
 
 
 class TestNLQueryAction:
-    def test_all_seven_actions_exist(self):
-        """schemas.py must declare all 7 action values."""
+    def test_all_eight_actions_exist(self):
+        """schemas.py must declare all 8 action values."""
         values = {a.value for a in NLQueryAction}
         assert values == {
             'get_inventory',
@@ -44,6 +44,7 @@ class TestNLQueryAction:
             'get_supplier_info',
             'get_total_value',
             'get_top_products',
+            'get_supplier_performance',
         }
 
     def test_action_is_string_enum(self):
@@ -290,6 +291,7 @@ class TestFewShotExamples:
         The 5 examples must cover the 5 action types tested end-to-end.
         get_total_value and get_top_products are valid enum members but are
         not required in the MQ3 few-shot set.
+        get_supplier_performance is a new action type added for supplier performance metrics.
         """
         required = {
             NLQueryAction.GET_INVENTORY,
@@ -297,6 +299,7 @@ class TestFewShotExamples:
             NLQueryAction.GET_LOW_STOCK,
             NLQueryAction.FORECAST_DEMAND,
             NLQueryAction.GET_SUPPLIER_INFO,
+            NLQueryAction.GET_SUPPLIER_PERFORMANCE,
         }
         actions = {ex['action'] for ex in FEW_SHOT_EXAMPLES}
         assert actions == required, f'Few-shot examples cover {actions}, expected {required}'
@@ -486,6 +489,22 @@ END_TO_END_CASES = [
             and r.filters.conditions[1].value is True
         ),
         "supplier starts_with 'Tech' AND is_active=True",
+    ),
+    # 6. get_supplier_performance — basic query with no filters
+    (
+        'get_supplier_performance',
+        'How are my suppliers performing?',
+        json.dumps(
+            {
+                'action': 'get_supplier_performance',
+                'filters': {},
+            }
+        ),
+        NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        lambda r: (
+            len(r.filters.conditions) == 0
+        ),
+        'no conditions, empty filters',
     ),
 ]
 
