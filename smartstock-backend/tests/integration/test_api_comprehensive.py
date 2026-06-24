@@ -19,12 +19,16 @@ class AuthEndpointComprehensiveTest(APITestCase):
             password='testpass123',
             role='admin',
         )
+        cls.admin.email_verified = True
+        cls.admin.save(update_fields=['email_verified'])
         cls.manager = CustomUser.objects.create_user(
             email='auth_manager@test.com',
             username='auth_manager@test.com',
             password='testpass123',
             role='manager',
         )
+        cls.manager.email_verified = True
+        cls.manager.save(update_fields=['email_verified'])
 
     def _auth_header(self, user):
         refresh = RefreshToken.for_user(user)

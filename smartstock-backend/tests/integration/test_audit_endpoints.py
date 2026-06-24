@@ -18,18 +18,24 @@ class AuditLogEndpointTests(APITestCase):
             password='testpass123',
             role='admin',
         )
+        cls.admin.email_verified = True
+        cls.admin.save(update_fields=['email_verified'])
         cls.manager = CustomUser.objects.create_user(
             email='manager@test.com',
             username='manager@test.com',
             password='testpass123',
             role='manager',
         )
+        cls.manager.email_verified = True
+        cls.manager.save(update_fields=['email_verified'])
         cls.viewer = CustomUser.objects.create_user(
             email='viewer@test.com',
             username='viewer@test.com',
             password='testpass123',
             role='viewer',
         )
+        cls.viewer.email_verified = True
+        cls.viewer.save(update_fields=['email_verified'])
 
         # Seed audit log entries for listing and filtering tests
         AuditLog.objects.create(
