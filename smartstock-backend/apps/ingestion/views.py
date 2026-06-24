@@ -782,7 +782,12 @@ class ChatEndpointView(APIView):
         conversation_id = serializer.validated_data.get('conversation_id')
 
         # --- Validate and classify via shared pipeline ---
-        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        engine, error_response = ChatPipeline.validate_and_classify(
+            query,
+            mode,
+            request.user,
+            conversation_id=conversation_id,
+        )
         if error_response:
             return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -968,7 +973,10 @@ class ChatEndpointView(APIView):
             answer = call_gpt4o_formatter(original_query=query, raw_data=raw_data)
         except Exception as exc:
             logger.exception('Formatter failed: %s', exc)
-            answer = f'Here is the requested information: {raw_data}'
+            answer = (
+                'I was able to retrieve the data but could not format a natural '
+                'language summary. Please try rephrasing your question.'
+            )
 
         return {
             'answer': answer,
@@ -1063,7 +1071,12 @@ class ChatStreamView(APIView):
         conversation_id = serializer.validated_data.get('conversation_id')
 
         # --- Validate and classify via shared pipeline ---
-        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        engine, error_response = ChatPipeline.validate_and_classify(
+            query,
+            mode,
+            request.user,
+            conversation_id=conversation_id,
+        )
         if error_response:
             return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 

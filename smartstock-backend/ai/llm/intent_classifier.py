@@ -37,13 +37,19 @@ CLASSIFIER_SYSTEM_PROMPT = (
     'MAPE, return rates, shrinkage, supplier reliability scores, warehouse capacity, '
     'hiring plans, CapEx, insurance, or company policies are ALWAYS "rag" because '
     'this data lives in reports and documents, not in the inventory database.\n\n'
+    'FOLLOW-UP CONTEXT: If conversation history is provided, use it to understand '
+    'follow-up questions. For example, "why can\'t you?" after a RAG answer means '
+    'the user is asking about the same topic (RAG). "tell me more" after an inventory '
+    'query means the user wants more inventory details (nl_query). '
+    'Follow-up questions inherit the intent of the previous exchange unless they '
+    'clearly shift to a different topic.\n\n'
     'Respond with ONLY a JSON object: {{"intent": "<category>", "confidence": <0.0-1.0>}}'
 )
 
 _classifier_prompt = ChatPromptTemplate.from_messages(
     [
         ('system', CLASSIFIER_SYSTEM_PROMPT),
-        ('user', '{query}'),
+        ('human', '{context}{query}'),
     ]
 )
 
@@ -121,17 +127,29 @@ def classify_intent_fast(query: str) -> ClassificationResult | None:
     return None
 
 
-def classify_intent(query: str) -> ClassificationResult:
+def classify_intent(query: str, history: list | None = None) -> ClassificationResult:
     """
     Classify a user query into nl_query, rag, or out_of_scope using GPT-4o-mini.
+    Accepts optional conversation history for follow-up context.
     Returns a ClassificationResult with intent and confidence.
     On failure, defaults to nl_query with 0.5 confidence (safer for operational queries).
     """
     llm = _get_classifier_llm()
     chain = _classifier_prompt | llm | StrOutputParser()
 
+    # Build context from conversation history
+    context = ''
+    if history:
+        recent = history[-4:]  # Last 2 exchanges max
+        lines = ['Conversation so far:']
+        for msg in recent:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')[:150]
+            lines.append(f'{role}: {content}')
+        context = '\n'.join(lines) + '\n\n'
+
     try:
-        raw = invoke_with_langfuse(chain, {'query': query})
+        raw = invoke_with_langfuse(chain, {'query': query, 'context': context})
         parsed = json.loads(raw.strip())
         intent = parsed.get('intent', 'nl_query')
         confidence = float(parsed.get('confidence', 0.5))
