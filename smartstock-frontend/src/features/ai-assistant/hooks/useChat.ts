@@ -162,7 +162,7 @@ export default function useChat(conversationId?: string | null) {
           ? 'AI service quota has been reached. Please try again shortly.'
           : isTimeout
             ? 'Request timed out. Please try a simpler question.'
-            : 'Sorry, something went wrong. Please try again.';
+            : "Sorry, something went wrong. You can try rephrasing your question or ask me about inventory, sales, suppliers, forecasting, or inventory value.";
         // Remove the empty AI message and add error message
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== aiMessageId);
@@ -242,7 +242,7 @@ export default function useChat(conversationId?: string | null) {
         ? 'AI service quota has been reached. Please try again shortly.'
         : isTimeout
           ? 'Request timed out. Please try a simpler question.'
-          : 'Sorry, something went wrong. Please try again.';
+          : "Sorry, something went wrong. You can try rephrasing your question or ask me about inventory, sales, suppliers, forecasting, or inventory value.";
       setMessages((prev) => {
         const filtered = prev.filter((m) => m.id !== aiMessageId);
         return [

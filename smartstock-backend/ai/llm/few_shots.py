@@ -128,7 +128,7 @@ FEW_SHOT_EXAMPLES = [
     {
         'action': NLQueryAction.GET_SUPPLIER_PERFORMANCE,
         'user': 'How are my suppliers performing?',
-        'output': '{"action": "get_supplier_performance", "filters": {}}',
+        'output': '{"action": "get_supplier_performance", "filters": {"conditions": []}}',
     },
 ]
 

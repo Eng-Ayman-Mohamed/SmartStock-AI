@@ -1514,6 +1514,36 @@ def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
     return results
 
 
+def _handle_help(filters: NLQueryFilters) -> list:
+    return [
+        {
+            'message': (
+                "I'm SmartStock AI, your warehouse inventory analytics assistant. "
+                'I can help you with the following:\n\n'
+                '**Inventory**\n'
+                '- Show me all products / low stock items / out of stock items\n'
+                '- Filter by category, SKU, supplier, or stock level\n\n'
+                '**Sales**\n'
+                '- Sales report by date range or product\n'
+                '- Top selling products\n\n'
+                '**Suppliers**\n'
+                '- Supplier contact info and list\n'
+                '- Supplier performance metrics (confirmation rate, response time, on-time rate)\n\n'
+                '**Forecasting**\n'
+                '- Demand forecast for specific products or SKUs\n\n'
+                '**Value**\n'
+                '- Total inventory value\n\n'
+                'Try asking something like:\n'
+                '- "Show me low stock items in Electronics"\n'
+                '- "How are my suppliers performing?"\n'
+                '- "What is the demand forecast for SKU CHAIR-PRO-2?"\n'
+                '- "Give me the sales report for March"\n'
+                '- "Show top 5 selling products"'
+            )
+        }
+    ]
+
+
 _handler_map = {
     'get_inventory': _handle_get_inventory,
     'get_sales_report': _handle_get_sales_report,
@@ -1523,6 +1553,7 @@ _handler_map = {
     'get_total_value': _handle_get_total_value,
     'get_top_products': _handle_get_top_products,
     'get_supplier_performance': _handle_get_supplier_performance,
+    'help': _handle_help,
 }
 
 
@@ -1706,6 +1737,8 @@ class NLQueryEndpointView(APIView):
                 raw_data = self._handle_get_top_products(filters)
             elif action_type == 'get_supplier_performance':
                 raw_data = self._handle_get_supplier_performance(filters)
+            elif action_type == 'help':
+                raw_data = _handle_help(filters)
             else:
                 return Response(
                     {'status': 'error', 'message': f'Unknown action type: {action_type}'},
