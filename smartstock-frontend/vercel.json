@@ -6,6 +6,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://smartstock-api-production.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
