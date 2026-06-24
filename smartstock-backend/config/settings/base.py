@@ -333,12 +333,14 @@ if not os.environ.get('CI'):
         logger.warning('Environment validation skipped — settings may be incomplete.')
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get(
+    'CELERY_BROKER_URL', 'redis://localhost:6379/0'
+)
+CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
+    'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'
+)
 
 # Required for Upstash TLS (rediss://)
-import ssl
-
 CELERY_BROKER_USE_SSL = {
     'ssl_cert_reqs': ssl.CERT_NONE
 } if os.environ.get('CELERY_BROKER_URL', '').startswith('rediss://') else None
@@ -346,11 +348,6 @@ CELERY_BROKER_USE_SSL = {
 CELERY_REDIS_BACKEND_USE_SSL = {
     'ssl_cert_reqs': ssl.CERT_NONE
 } if os.environ.get('CELERY_RESULT_BACKEND', '').startswith('rediss://') else None
-
-CELERY_BROKER_POOL_LIMIT = 1
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_REDIS_MAX_CONNECTIONS = 2
-CELERY_TASK_IGNORE_RESULT = True
 
 CELERY_BEAT_SCHEDULE = {
     'purge-audit-logs-daily': {

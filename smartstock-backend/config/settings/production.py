@@ -59,8 +59,5 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': os.environ.get('CACHE_REDIS_URL'),
-        'OPTIONS': {
-            'SSL_CERT_REQS': None,
-        } if os.environ.get('CACHE_REDIS_URL', '').startswith('rediss://') else {},
     }
 }
