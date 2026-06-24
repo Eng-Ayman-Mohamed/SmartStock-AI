@@ -1,0 +1,209 @@
+# =============================================================================
+# SmartStock AI — Docker Compose (Railway-optimized)
+# =============================================================================
+# RAILWAY DEPLOYMENT NOTES:
+#   - Railway does not use docker-compose directly. Each service below maps to
+#     a separate Railway service on your project canvas.
+#   - Add a Postgres plugin and a Redis plugin to your Railway project, then
+#     reference their URLs in your environment variables.
+#   - Drag-and-drop this file onto the Railway canvas to auto-import services,
+#     then configure variables and domains per service.
+#   - The monitoring stack (Prometheus, Grafana, Alertmanager) is commented out
+#     below. For dashboards, use Grafana Cloud's free tier instead:
+#     https://grafana.com/products/cloud/
+#
+# LOCAL TESTING:
+#   cp .env.example .env  # fill in all values including VITE_API_URL
+#   docker compose -f docker-compose.prod.yml up --build
+# =============================================================================
+
+networks:
+  smartstock_net:
+    driver: bridge
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Backend — Django + Gunicorn
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./smartstock-backend
+      dockerfile: Dockerfile
+    container_name: smartstock_backend
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/ready/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - smartstock_net
+    # Railway: set START COMMAND to → gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker
+  # ---------------------------------------------------------------------------
+  celery:
+    build:
+      context: ./smartstock-backend
+      dockerfile: Dockerfile
+    container_name: smartstock_celery
+    command: celery -A config worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping --timeout 5 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    networks:
+      - smartstock_net
+    # Railway: set START COMMAND to → celery -A config worker --loglevel=info
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat — Scheduled Tasks
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    build:
+      context: ./smartstock-backend
+      dockerfile: Dockerfile
+    container_name: smartstock_celery_beat
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - smartstock_net
+    # Railway: set START COMMAND to → celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  # ---------------------------------------------------------------------------
+  # Frontend — React (Nginx, production build)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./smartstock-frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+    container_name: smartstock_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    networks:
+      - smartstock_net
+    # Railway: exposes port 80. Railway auto-assigns an HTTPS domain.
+    # VITE_API_URL must be set as a Railway build variable (not runtime),
+    # since Vite bakes it into the JS bundle at build time.
+    # Set it in your root .env file or Railway's Variables tab.
+
+  # ---------------------------------------------------------------------------
+  # Monitoring Stack
+  # ---------------------------------------------------------------------------
+  # NOT SUITABLE for Railway free tier (resource-heavy, requires persistent
+  # volumes and localhost-only port binding).
+  #
+  # ALTERNATIVE: Use Grafana Cloud free tier (https://grafana.com/products/cloud/)
+  #   → 10k metrics, 50GB logs, 14-day retention — zero infrastructure needed.
+  #   Point your Django app's prometheus_client at Grafana Cloud's push endpoint.
+  #
+  # Uncomment below only for local development or a self-hosted VPS deployment.
+  # ---------------------------------------------------------------------------
+
+  # prometheus:
+  #   image: prom/prometheus:v2.53.0
+  #   container_name: smartstock_prometheus
+  #   volumes:
+  #     - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - ./monitoring/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+  #     - prometheus_data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #     - '--storage.tsdb.retention.time=30d'
+  #     - '--web.enable-lifecycle'
+  #   ports:
+  #     - "127.0.0.1:9090:9090"  # localhost only — put behind a reverse proxy with auth for production
+  #   networks:
+  #     - smartstock_net
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # alertmanager:
+  #   image: prom/alertmanager:v0.27.0
+  #   container_name: smartstock_alertmanager
+  #   volumes:
+  #     - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+  #   command:
+  #     - '--config.file=/etc/alertmanager/alertmanager.yml'
+  #     - '--storage.path=/alertmanager'
+  #   ports:
+  #     - "127.0.0.1:9093:9093"  # localhost only
+  #   networks:
+  #     - smartstock_net
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # grafana:
+  #   image: grafana/grafana:11.1.0
+  #   container_name: smartstock_grafana
+  #   environment:
+  #     GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER:-admin}
+  #     GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD:?GF_ADMIN_PASSWORD is required}
+  #     GF_USERS_ALLOW_SIGN_UP: "false"
+  #   volumes:
+  #     - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+  #     - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+  #     - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+  #     - grafana_data:/var/lib/grafana
+  #   ports:
+  #     - "127.0.0.1:3001:3000"  # localhost only
+  #   networks:
+  #     - smartstock_net
+  #   depends_on:
+  #     prometheus:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
