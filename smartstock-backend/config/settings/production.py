@@ -18,6 +18,9 @@ if not ALLOWED_HOSTS:
 
     raise ImproperlyConfigured('ALLOWED_HOSTS environment variable is required in production.')
 
+if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('healthcheck.railway.app')
+
 _extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 _default_csrf = 'https://smart-stock-dev.vercel.app'
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in (_extra_csrf or _default_csrf).split(',') if o.strip()]
