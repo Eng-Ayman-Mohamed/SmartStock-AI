@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 
 import pypdf
+from django.contrib.postgres.search import SearchVector
 from django.db import transaction
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -129,6 +130,7 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
                 DocumentChunk(
                     chunk_text=chunk_data['text'],
                     embedding=embedding,
+                    tsvector=SearchVector(chunk_data['text'], config='english'),
                     source_document=filename,
                     page_number=chunk_data['page_number'],
                     document_id=document_id,

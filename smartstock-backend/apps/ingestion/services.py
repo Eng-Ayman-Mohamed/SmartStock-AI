@@ -610,15 +610,18 @@ class RAGQueryService:
         # Step 1: Hybrid search (embeds query + dense + sparse search)
         search_results = self.hybrid_search(query, top_k=10)
 
-        # Step 2: Rerank to top 3 chunks
+        # Step 2: Rerank to top 5 chunks (broader context)
         try:
-            top_chunks = self.rerank(query, search_results, top_n=3)
+            top_chunks = self.rerank(query, search_results, top_n=5)
         except ConnectionError:
             logger.warning('Cohere unavailable — falling back to vector-score ranking')
-            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:3]
+            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:5]
 
         # Step 3: If no relevant chunks found, return explicit no-answer
-        if not top_chunks or all(c.get('score', 0) < 0.3 for c in top_chunks):
+        # Use rerank_score when available (Cohere), fall back to original score
+        if not top_chunks or all(
+            c.get('rerank_score', c.get('score', 0)) < 0.3 for c in top_chunks
+        ):
             latency_ms = round((time.time() - start) * 1000)
             return {
                 'answer': 'I cannot find this information in the provided records.',
@@ -678,15 +681,17 @@ class RAGQueryService:
         # Step 1: Hybrid search
         search_results = self.hybrid_search(query, top_k=10)
 
-        # Step 2: Rerank to top 3 chunks
+        # Step 2: Rerank to top 5 chunks
         try:
-            top_chunks = self.rerank(query, search_results, top_n=3)
+            top_chunks = self.rerank(query, search_results, top_n=5)
         except ConnectionError:
             logger.warning('Cohere unavailable — falling back to vector-score ranking')
-            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:3]
+            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:5]
 
         # Step 3: If no relevant chunks found
-        if not top_chunks or all(c.get('score', 0) < 0.3 for c in top_chunks):
+        if not top_chunks or all(
+            c.get('rerank_score', c.get('score', 0)) < 0.3 for c in top_chunks
+        ):
             yield {
                 'type': 'token',
                 'content': 'I cannot find this information in the provided records.',
