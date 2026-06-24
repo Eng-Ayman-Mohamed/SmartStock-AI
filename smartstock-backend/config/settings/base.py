@@ -333,21 +333,21 @@ if not os.environ.get('CI'):
         logger.warning('Environment validation skipped — settings may be incomplete.')
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/1')
-CELERY_BROKER_URL = os.environ.get('REDIS_URL') or os.environ.get(
-    'CELERY_BROKER_URL', 'redis://localhost:6379/0'
-)
-CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL') or os.environ.get(
-    'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'
-)
+
+_broker_url = os.environ.get('REDIS_URL') or os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+_result_url = os.environ.get('REDIS_URL') or os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+
+CELERY_BROKER_URL = _broker_url
+CELERY_RESULT_BACKEND = _result_url
 
 # Required for Upstash TLS (rediss://)
 CELERY_BROKER_USE_SSL = {
     'ssl_cert_reqs': ssl.CERT_NONE
-} if os.environ.get('CELERY_BROKER_URL', '').startswith('rediss://') else None
+} if _broker_url.startswith('rediss://') else None
 
 CELERY_REDIS_BACKEND_USE_SSL = {
     'ssl_cert_reqs': ssl.CERT_NONE
-} if os.environ.get('CELERY_RESULT_BACKEND', '').startswith('rediss://') else None
+} if _result_url.startswith('rediss://') else None
 
 CELERY_BEAT_SCHEDULE = {
     'purge-audit-logs-daily': {
