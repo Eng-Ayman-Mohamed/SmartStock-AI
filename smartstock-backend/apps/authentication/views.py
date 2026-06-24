@@ -27,6 +27,7 @@ from .serializers import (
 
 class TokenRefreshView(BaseTokenRefreshView):
     serializer_class = CookieTokenRefreshSerializer
+    throttle_classes = []
     envelope_exempt = True
 
     @extend_schema(

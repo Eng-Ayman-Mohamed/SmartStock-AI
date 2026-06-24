@@ -42,9 +42,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!get().isBootstrapping) return;
     set({ isBootstrapping: true });
     try {
+      const currentRefreshToken = get().refreshToken;
       const { data: refreshData } = await api.post<{ access: string; refresh?: string }>(
         '/auth/refresh/',
-        {},
+        currentRefreshToken ? { refresh: currentRefreshToken } : {},
         { withCredentials: true },
       );
       if (refreshData?.access) {

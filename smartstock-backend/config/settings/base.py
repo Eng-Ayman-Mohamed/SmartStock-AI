@@ -249,11 +249,6 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'refresh_token',
-    'AUTH_COOKIE_HTTP_ONLY': True,
-    # Secure: Always require HTTPS in production, allow HTTP only in development
-    'AUTH_COOKIE_SECURE': IS_PRODUCTION or not DEBUG,
-    # SameSite: Strict is default. Only use 'None' if explicitly required for cross-origin (requires Secure=True)
-    'AUTH_COOKIE_SAMESITE': 'Strict' if IS_PRODUCTION else 'Lax',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.CustomTokenObtainPairSerializer',
 }
 CORS_ALLOWED_ORIGINS = os.environ.get(
