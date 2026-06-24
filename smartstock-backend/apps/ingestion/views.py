@@ -1087,6 +1087,7 @@ class ChatStreamView(APIView):
             conv_svc = ConversationService()
             heartbeat_interval = 15  # seconds
             last_heartbeat = time.time()
+            assistant_msg_id = None
 
             def _check_heartbeat():
                 """Yield a keepalive comment if enough time has passed."""
@@ -1109,6 +1110,22 @@ class ChatStreamView(APIView):
                 except Exception:
                     logger.exception('Failed to save user message')
 
+                # Create assistant message placeholder BEFORE streaming so it
+                # always exists in the DB — even if the client disconnects
+                # mid-stream, the row is there and the finally block just
+                # needs to UPDATE the content.
+                try:
+                    placeholder = conv_svc.save_message(
+                        conversation_id=conversation_id,
+                        role='assistant',
+                        content='',
+                        engine=engine,
+                        mode=mode,
+                    )
+                    assistant_msg_id = placeholder.id
+                except Exception:
+                    logger.exception('Failed to create assistant message placeholder')
+
             # Send metadata first
             metadata = {'engine': engine, 'mode': mode}
             if conversation_id:
@@ -1116,6 +1133,7 @@ class ChatStreamView(APIView):
             yield f'event: metadata\ndata: {_json.dumps(metadata)}\n\n'
 
             full_answer = ''
+            sources = []
             try:
                 if engine == 'rag':
                     for event in self._stream_rag(query, user, history, shared):
@@ -1123,7 +1141,8 @@ class ChatStreamView(APIView):
                             full_answer += event['content']
                             yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
                         elif event['type'] == 'done':
-                            done_data = {'sources': event.get('sources', [])}
+                            sources = event.get('sources', [])
+                            done_data = {'sources': sources}
                             if event.get('action'):
                                 done_data['action'] = event['action']
                             yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
@@ -1140,7 +1159,6 @@ class ChatStreamView(APIView):
                     done_data = {'action': shared.get('action')}
                     yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
 
-                shared['full_answer'] = full_answer
             except Exception as exc:
                 logger.exception('Streaming chat failed')
                 error_msg = (
@@ -1149,30 +1167,46 @@ class ChatStreamView(APIView):
                     else 'An unexpected error occurred.'
                 )
                 yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
-            finally:
-                # Always save assistant response if we have one.
-                # On abort (user switches chat), shared is empty but the local
-                # full_answer has been accumulating tokens — use it as fallback.
-                saved_answer = shared.get('full_answer') or full_answer
-                if conversation_id and saved_answer:
+                # Remove the placeholder on error — error is shown in UI
+                # but should not be persisted as an assistant message.
+                if assistant_msg_id:
                     try:
-                        is_new = (
-                            conv_svc.get_conversation(conversation_id, user)
-                            .messages.filter(role='assistant')
-                            .count()
-                            == 0
-                        )
-                        conv_svc.save_message(
-                            conversation_id=conversation_id,
-                            role='assistant',
-                            content=saved_answer,
-                            engine=engine,
-                            mode=mode,
-                        )
-                        if is_new:
-                            conv_svc.auto_title(conversation_id, query)
+                        from apps.ai.models import ChatMessage
+
+                        ChatMessage.objects.filter(pk=assistant_msg_id).delete()
                     except Exception:
-                        logger.exception('Failed to save assistant message')
+                        logger.exception('Failed to delete assistant message placeholder')
+            finally:
+                # Update the placeholder with the actual response.
+                # The row already exists — we just UPDATE content (and
+                # sources for RAG).  This works even on abort because the
+                # placeholder was created before streaming started.
+                if assistant_msg_id and full_answer:
+                    try:
+                        from apps.ai.models import ChatMessage
+
+                        ChatMessage.objects.filter(pk=assistant_msg_id).update(
+                            content=full_answer,
+                            sources=sources,
+                        )
+                        # Touch conversation updated_at
+                        from apps.ai.models import ChatConversation
+
+                        ChatConversation.objects.filter(pk=conversation_id).update(
+                            updated_at=timezone.now()
+                        )
+                        if conversation_id:
+                            is_new = (
+                                conv_svc.get_conversation(conversation_id, user)
+                                .messages.filter(role='assistant')
+                                .exclude(pk=assistant_msg_id)
+                                .count()
+                                == 0
+                            )
+                            if is_new:
+                                conv_svc.auto_title(conversation_id, query)
+                    except Exception:
+                        logger.exception('Failed to update assistant message')
 
         response = StreamingHttpResponse(
             event_stream(),
