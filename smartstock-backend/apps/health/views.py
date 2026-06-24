@@ -156,7 +156,6 @@ class FullHealthView(APIView):
     Requires authentication (JWT token).
     """
 
-    authentication_classes = []
     permission_classes = [IsAuthenticated]
     throttle_classes = [HealthRateThrottle]
 
