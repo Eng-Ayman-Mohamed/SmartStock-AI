@@ -24,12 +24,19 @@ def _get_classifier_llm():
 CLASSIFIER_SYSTEM_PROMPT = (
     'You are an intent classifier for a warehouse management system. '
     'Classify the user query into exactly one category:\n'
-    '- "nl_query": The query asks about live inventory data — stock levels, products, '
-    'suppliers, sales, forecasts, reorder status, or any operational database query.\n'
-    '- "rag": The query asks about documents, policies, procedures, guidelines, '
-    'manuals, or requires searching uploaded files.\n'
+    '- "nl_query": The query asks about live inventory data that can be looked up in a database — '
+    'current stock levels, product lists, supplier contacts, individual sales records, '
+    'low stock alerts, reorder status, or forecasts for specific SKUs.\n'
+    '- "rag": The query asks about business reports, financial summaries, company policies, '
+    'procedures, guidelines, manuals, historical trends, quarterly performance, revenue, '
+    'profit, MAPE accuracy, warehouse operations, return rates, or anything that would '
+    'be found in an uploaded document or report rather than a live database query.\n'
     '- "out_of_scope": The query is unrelated to inventory, warehouse operations, '
     'or the business domain.\n\n'
+    'IMPORTANT: Questions about revenue, profit, quarterly results, business metrics, '
+    'MAPE, return rates, shrinkage, supplier reliability scores, warehouse capacity, '
+    'hiring plans, CapEx, insurance, or company policies are ALWAYS "rag" because '
+    'this data lives in reports and documents, not in the inventory database.\n\n'
     'Respond with ONLY a JSON object: {{"intent": "<category>", "confidence": <0.0-1.0>}}'
 )
 
@@ -57,6 +64,27 @@ _KEYWORD_MAP = {
         'how to',
         'rules',
         'return policy',
+        'revenue',
+        'profit',
+        'quarterly',
+        'q2',
+        'q3',
+        'q1',
+        'q4',
+        'report',
+        'business',
+        'metrics',
+        'performance',
+        'mape',
+        'reliability',
+        'shrinkage',
+        'insurance',
+        'capex',
+        'hiring',
+        'outlook',
+        'warehouse location',
+        'department',
+        'contact',
     ],
     'nl_query': [
         'stock',
