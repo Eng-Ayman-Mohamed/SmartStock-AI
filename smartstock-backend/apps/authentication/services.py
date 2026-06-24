@@ -50,25 +50,28 @@ def send_verification_email(user: CustomUser, token: EmailVerificationToken) -> 
         raise
 
 
-def verify_email_token(token_str: str) -> tuple[bool, str]:
+def verify_email_token(token_str: str) -> tuple[bool, str, int]:
+    """Verify an email verification token.
+
+    Returns (success, message, http_status).
+    Idempotent: already-verified accounts return 200, not 400.
+    """
     try:
         verification = EmailVerificationToken.objects.select_related('user').get(token=token_str)
     except EmailVerificationToken.DoesNotExist:
-        return False, 'Invalid or expired verification link.'
+        return False, 'Invalid or expired verification link.', 400
 
     if verification.is_expired():
         verification.delete()
-        return False, 'Verification link has expired. Please request a new one.'
+        return False, 'Verification link has expired. Please request a new one.', 400
 
     user = verification.user
-    already_verified = user.email_verified
 
-    if not already_verified:
-        user.email_verified = True
-        user.save(update_fields=['email_verified'])
-
-    if already_verified:
+    if user.email_verified:
         verification.delete()
-        return True, 'Email already verified. You can now log in.'
+        return True, 'Email already verified. You can now log in.', 200
 
-    return True, 'Email verified successfully. You can now log in.'
+    user.email_verified = True
+    user.save(update_fields=['email_verified'])
+    verification.delete()
+    return True, 'Email verified successfully. You can now log in.', 200
