@@ -501,9 +501,7 @@ END_TO_END_CASES = [
             }
         ),
         NLQueryAction.GET_SUPPLIER_PERFORMANCE,
-        lambda r: (
-            len(r.filters.conditions) == 0
-        ),
+        lambda r: len(r.filters.conditions) == 0,
         'no conditions, empty filters',
     ),
 ]

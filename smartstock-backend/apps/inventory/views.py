@@ -1425,17 +1425,19 @@ def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
         total_orders = po_qs.count()
 
         if total_orders == 0:
-            results.append({
-                'supplier_id': supplier.id,
-                'supplier_name': supplier.name,
-                'total_orders': 0,
-                'total_spend': 0,
-                'confirmation_rate': 0,
-                'failure_rate': 0,
-                'avg_response_days': 0,
-                'on_time_rate': 0,
-                'most_ordered_sku': None,
-            })
+            results.append(
+                {
+                    'supplier_id': supplier.id,
+                    'supplier_name': supplier.name,
+                    'total_orders': 0,
+                    'total_spend': 0,
+                    'confirmation_rate': 0,
+                    'failure_rate': 0,
+                    'avg_response_days': 0,
+                    'on_time_rate': 0,
+                    'most_ordered_sku': None,
+                }
+            )
             continue
 
         confirmed_count = po_qs.filter(status='confirmed').count()
@@ -1459,7 +1461,9 @@ def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
             avg_response_days = round(float(avg_response.total_seconds()) / 86400, 1)
 
         on_time_count = 0
-        confirmed_pos = po_qs.filter(status='confirmed', sent_at__isnull=False, confirmed_at__isnull=False)
+        confirmed_pos = po_qs.filter(
+            status='confirmed', sent_at__isnull=False, confirmed_at__isnull=False
+        )
         for po in confirmed_pos:
             actual_days = (po.confirmed_at - po.sent_at).total_seconds() / 86400
             if actual_days <= supplier.default_lead_time_days:
@@ -1475,24 +1479,37 @@ def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
         )
 
         status_breakdown = {}
-        for s in ['confirmed', 'failed', 'timeout', 'cancelled', 'rejected', 'draft',
-                  'pending_approval', 'approved', 'email_sent', 'sent', 'waiting_confirmation']:
+        for s in [
+            'confirmed',
+            'failed',
+            'timeout',
+            'cancelled',
+            'rejected',
+            'draft',
+            'pending_approval',
+            'approved',
+            'email_sent',
+            'sent',
+            'waiting_confirmation',
+        ]:
             cnt = po_qs.filter(status=s).count()
             if cnt > 0:
                 status_breakdown[s] = cnt
 
-        results.append({
-            'supplier_id': supplier.id,
-            'supplier_name': supplier.name,
-            'total_orders': total_orders,
-            'total_spend': float(total_cost),
-            'confirmation_rate': round(confirmed_count / total_orders, 2),
-            'failure_rate': round(failed_count / total_orders, 2),
-            'avg_response_days': avg_response_days,
-            'on_time_rate': on_time_rate,
-            'most_ordered_sku': most_ordered['sku__code'] if most_ordered else None,
-            'status_breakdown': status_breakdown,
-        })
+        results.append(
+            {
+                'supplier_id': supplier.id,
+                'supplier_name': supplier.name,
+                'total_orders': total_orders,
+                'total_spend': float(total_cost),
+                'confirmation_rate': round(confirmed_count / total_orders, 2),
+                'failure_rate': round(failed_count / total_orders, 2),
+                'avg_response_days': avg_response_days,
+                'on_time_rate': on_time_rate,
+                'most_ordered_sku': most_ordered['sku__code'] if most_ordered else None,
+                'status_breakdown': status_breakdown,
+            }
+        )
 
     return results
 
