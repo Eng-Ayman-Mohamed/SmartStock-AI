@@ -130,7 +130,6 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
                 DocumentChunk(
                     chunk_text=chunk_data['text'],
                     embedding=embedding,
-                    tsvector=SearchVector(chunk_data['text'], config='english'),
                     source_document=filename,
                     page_number=chunk_data['page_number'],
                     document_id=document_id,
@@ -141,6 +140,11 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
                 )
             )
         created = DocumentChunk.objects.bulk_create(bulk)
+
+        chunk_ids = [c.id for c in created]
+        DocumentChunk.objects.filter(id__in=chunk_ids).update(
+            tsvector=SearchVector('chunk_text', config='english')
+        )
 
     if document_id:
         actual_count = DocumentChunk.objects.filter(document_id=document_id).count()

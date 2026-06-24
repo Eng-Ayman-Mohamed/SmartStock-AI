@@ -499,10 +499,19 @@ class RAGQueryService:
                     model='rerank-english-v3.0',
                 )
                 break
+            except cohere.errors.TooManyRequestsError:
+                wait = min(2 ** (attempt + 2), 30)
+                logger.warning(
+                    'Cohere rerank rate-limited (attempt %d), retrying in %ds...',
+                    attempt + 1,
+                    wait,
+                )
+                time.sleep(wait)
+                last_error = ConnectionError('Cohere rate limit exceeded')
             except Exception as e:
                 last_error = e
                 if attempt < 2:
-                    wait = 2**attempt
+                    wait = 2 ** (attempt + 1)
                     logger.warning(
                         'Cohere rerank attempt %d failed (%s), retrying in %ds...',
                         attempt + 1,
@@ -619,8 +628,10 @@ class RAGQueryService:
 
         # Step 3: If no relevant chunks found, return explicit no-answer
         # Use rerank_score when available (Cohere), fall back to original score
+        # Threshold 0.05: rerank scores for partially-matching chunks can be low but still useful.
+        # The LLM decides final relevance — we just filter out complete noise.
         if not top_chunks or all(
-            c.get('rerank_score', c.get('score', 0)) < 0.3 for c in top_chunks
+            c.get('rerank_score', c.get('score', 0)) < 0.05 for c in top_chunks
         ):
             latency_ms = round((time.time() - start) * 1000)
             return {
@@ -690,7 +701,7 @@ class RAGQueryService:
 
         # Step 3: If no relevant chunks found
         if not top_chunks or all(
-            c.get('rerank_score', c.get('score', 0)) < 0.3 for c in top_chunks
+            c.get('rerank_score', c.get('score', 0)) < 0.05 for c in top_chunks
         ):
             yield {
                 'type': 'token',
