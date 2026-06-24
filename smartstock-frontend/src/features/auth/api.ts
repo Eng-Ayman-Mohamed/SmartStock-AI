@@ -7,8 +7,8 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
   return data;
 }
 
-export async function register(payload: RegisterPayload): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/auth/register/', payload);
+export async function register(payload: RegisterPayload): Promise<{ detail: string }> {
+  const { data } = await api.post<{ detail: string }>('/auth/register/', payload);
   return data;
 }
 
@@ -29,5 +29,15 @@ export async function logout(): Promise<void> {
 
 export async function me(): Promise<User> {
   const { data } = await api.get<User>('/auth/me/');
+  return data;
+}
+
+export async function verifyEmail(token: string): Promise<{ detail: string }> {
+  const { data } = await api.post<{ detail: string }>('/auth/verify-email/', { token });
+  return data;
+}
+
+export async function resendVerification(email: string): Promise<{ detail: string }> {
+  const { data } = await api.post<{ detail: string }>('/auth/resend-verification/', { email });
   return data;
 }

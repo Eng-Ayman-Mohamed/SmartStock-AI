@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { resendVerification } from '../api';
 import Button from '../../../shared/components/Button';
 import PasswordField from '../../../shared/components/PasswordField';
 
@@ -17,6 +18,8 @@ export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const formErrorId = 'login-form-error';
   const emailErrId = 'login-email-error';
@@ -45,6 +48,19 @@ export default function LoginForm() {
     const fromPath = state?.from?.pathname ?? '/dashboard';
     const redirectTo = fromPath === '/login' || fromPath === '/register' ? '/dashboard' : fromPath;
     await login({ email: email.trim(), password }, redirectTo);
+  }
+
+  async function handleResend() {
+    if (!email.trim()) return;
+    setResending(true);
+    try {
+      await resendVerification(email.trim());
+      setResent(true);
+    } catch {
+      // Silently ignore — we don't want to leak whether the email exists
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
@@ -107,7 +123,20 @@ export default function LoginForm() {
           role="alert"
           className="rounded-md border border-red-100 bg-red-50 px-3 py-2 text-caption text-red-600"
         >
-          {error.message}
+          <p>{error.message}</p>
+          {error.kind === 'email_not_verified' && !resent && (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              className="mt-2 text-brand-600 hover:text-brand-800 font-medium underline"
+            >
+              {resending ? 'Sending...' : 'Resend verification email'}
+            </button>
+          )}
+          {resent && (
+            <p className="mt-2 text-green-700">Verification email sent. Check your inbox.</p>
+          )}
         </div>
       )}
 

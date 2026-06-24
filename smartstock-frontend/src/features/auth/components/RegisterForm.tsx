@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MailCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../../../shared/components/Button';
 import PasswordField from '../../../shared/components/PasswordField';
@@ -26,6 +26,7 @@ export default function RegisterForm() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Fields>({});
+  const [registered, setRegistered] = useState(false);
 
   const formErrorId = 'register-form-error';
   const nameErrId = 'register-name-error';
@@ -80,13 +81,36 @@ export default function RegisterForm() {
     if (!validate()) return;
 
     try {
-      await register({ name: name.trim(), email: email.trim(), password }, '/dashboard');
+      await register({ name: name.trim(), email: email.trim(), password });
+      setRegistered(true);
     } catch (err) {
       const serverErrors = pickServerErrors(err);
       if (Object.keys(serverErrors).length > 0) {
         setFieldErrors(serverErrors);
       }
     }
+  }
+
+  if (registered) {
+    return (
+      <div className="flex flex-col items-center text-center gap-4 py-4">
+        <MailCheck className="w-10 h-10 text-green-600" />
+        <div>
+          <p className="text-body font-medium text-ink">Check your email</p>
+          <p className="mt-1 text-caption text-ink-muted">
+            We sent a verification link to <span className="font-medium text-ink">{email}</span>.
+            Click the link to activate your account.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/login')}
+          className="mt-2 text-brand-600 hover:text-brand-800 text-caption font-medium"
+        >
+          Go to Sign in
+        </button>
+      </div>
+    );
   }
 
   return (

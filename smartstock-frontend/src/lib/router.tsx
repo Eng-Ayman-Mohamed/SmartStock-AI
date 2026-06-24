@@ -18,6 +18,7 @@ const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage'));
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'));
 const ForbiddenPage = lazy(() => import('../features/auth/pages/ForbiddenPage'));
+const VerifyEmailPage = lazy(() => import('../features/auth/pages/VerifyEmailPage'));
 const SuppliersPage = lazy(() => import('../features/purchasing/pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
 const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'));
 
@@ -37,6 +38,7 @@ export const routes: RouteObject[] = [
     ],
   },
   { path: 'forbidden', element: <SuspenseWrapper><ForbiddenPage /></SuspenseWrapper> },
+  { path: 'verify-email', element: <SuspenseWrapper><VerifyEmailPage /></SuspenseWrapper> },
   {
     element: <ProtectedRoute />,
     children: [

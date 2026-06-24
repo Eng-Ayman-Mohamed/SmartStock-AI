@@ -5,12 +5,22 @@ import { useAuthStore } from '../../../store/authStore';
 import * as authApi from '../api';
 import type { LoginPayload, RegisterPayload } from '../types';
 
-export type AuthError = { kind: 'invalid_credentials' | 'network' | 'validation' | 'unknown'; message: string; fields?: Record<string, string[]> };
+export type AuthError = { kind: 'invalid_credentials' | 'email_not_verified' | 'network' | 'validation' | 'already_exists' | 'unknown'; message: string; fields?: Record<string, string[]> };
 
 function toAuthError(err: unknown): AuthError {
   if (axios.isAxiosError(err)) {
     if (!err.response) {
       return { kind: 'network', message: "Can't reach the server. Check your connection and try again." };
+    }
+    const data = err.response.data as Record<string, unknown> | undefined;
+    if (err.response.status === 403 && data?.error === 'EmailNotVerified') {
+      return { kind: 'email_not_verified', message: (data.message as string) || 'Please verify your email before logging in.' };
+    }
+    if (err.response.status === 409) {
+      return {
+        kind: 'already_exists',
+        message: (data?.message as string) || 'An account with this email already exists. Check your email for the verification link, or resend it.',
+      };
     }
     if (err.response.status === 401 || err.response.status === 400) {
       return { kind: 'invalid_credentials', message: 'Invalid email or password.' };
@@ -61,15 +71,11 @@ export function useAuth() {
   );
 
   const register = useCallback(
-    async (payload: RegisterPayload, redirectTo: string = '/dashboard') => {
+    async (payload: RegisterPayload) => {
       setError(null);
       setIsSubmitting(true);
       try {
-        const res = await authApi.register(payload);
-        setToken(res.access);
-        setRefreshToken(res.refresh);
-        setUser(res.user);
-        navigate(redirectTo, { replace: true });
+        await authApi.register(payload);
       } catch (err) {
         setError(toAuthError(err));
         throw err;
@@ -77,7 +83,7 @@ export function useAuth() {
         setIsSubmitting(false);
       }
     },
-    [navigate, setToken, setRefreshToken, setUser],
+    [],
   );
 
   const logout = useCallback(async () => {
