@@ -592,10 +592,11 @@ def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
         return result
     except Exception as exc:
         logger.warning('GPT-4o formatter failed: %s', exc)
-        return (
-            'I was able to retrieve the data but could not format a natural '
-            'language summary. Please try rephrasing your question.'
-        )
+        fallback = f'Here is the requested information: {raw_data}'
+        if not validate_response_safety(fallback):
+            logger.warning('GPT-4o formatter fallback blocked by response safety validator')
+            return "I'm sorry, I cannot provide that information."
+        return fallback
 
 
 def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
@@ -628,7 +629,9 @@ def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
                 yield chunk
     except Exception as exc:
         logger.warning('GPT-4o formatter stream failed: %s', exc)
-        yield (
-            'I was able to retrieve the data but could not format a natural '
-            'language summary. Please try rephrasing your question.'
-        )
+        fallback = f'Here is the requested information: {raw_data}'
+        if not validate_response_safety(fallback):
+            logger.warning('GPT-4o formatter fallback blocked by response safety validator')
+            yield "I'm sorry, I cannot provide that information."
+        else:
+            yield fallback
