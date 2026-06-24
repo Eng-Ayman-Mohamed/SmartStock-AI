@@ -87,6 +87,7 @@ export default function useChat(conversationId?: string | null) {
     abortRef.current = null;
     lastFailedText.current = null;
     isLoadingRef.current = false;
+    sendingRef.current = false;
     setIsLoading(false);
   }, []);
 
@@ -134,14 +135,11 @@ export default function useChat(conversationId?: string | null) {
             aiText = aiText + actionInfo;
           }
 
-          const nlAiMessage: Message = {
-            id: createId(),
-            role: 'ai',
-            text: aiText,
-            engine: 'nl_query',
-            timestamp: Date.now(),
-          };
-          setMessages((prev) => [...prev, nlAiMessage]);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMessageId ? { ...m, text: aiText, engine: 'nl_query' } : m,
+            ),
+          );
         } else {
           await executeStreamQuery(
             trimmed,

@@ -668,7 +668,8 @@ def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
     except Exception as exc:
         logger.warning('GPT-4o formatter stream failed: %s', exc)
         fallback = f'Here is the requested information: {raw_data}'
-        if validate_response_safety(fallback):
-            yield fallback
-        else:
+        if not validate_response_safety(fallback):
+            logger.warning('GPT-4o formatter fallback blocked by response safety validator')
             yield "I'm sorry, I cannot provide that information."
+        else:
+            yield fallback
