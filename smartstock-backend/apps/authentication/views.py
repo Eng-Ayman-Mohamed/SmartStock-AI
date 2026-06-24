@@ -19,10 +19,13 @@ from .serializers import (
     MeSerializer,
     MeUpdateSerializer,
     RegisterSerializer,
+    ResendVerificationSerializer,
     RoleUpdateSerializer,
     UserCreateSerializer,
     UserSerializer,
+    VerifyEmailSerializer,
 )
+from .services import generate_verification_token, send_verification_email, verify_email_token
 
 
 class TokenRefreshView(BaseTokenRefreshView):
@@ -112,28 +115,14 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        from rest_framework_simplejwt.tokens import RefreshToken
-
-        refresh = RefreshToken.for_user(user)
-        response = Response(
+        token = generate_verification_token(user)
+        send_verification_email(user, token)
+        return Response(
             {
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-                'user': MeSerializer(user).data,
+                'detail': 'Account created. Please check your email to verify your address.',
             },
             status=status.HTTP_201_CREATED,
         )
-        from config.settings.base import IS_PRODUCTION
-
-        response.set_cookie(
-            key='refresh_token',
-            value=str(refresh),
-            httponly=True,
-            secure=IS_PRODUCTION or not settings.DEBUG,
-            samesite='Strict' if IS_PRODUCTION else 'Lax',
-            max_age=3 * 24 * 60 * 60,
-        )
-        return response
 
 
 class LoginView(TokenObtainPairView):
@@ -203,6 +192,16 @@ class LoginView(TokenObtainPairView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         user = getattr(serializer, 'user', None)
+        if user and not user.email_verified:
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'EmailNotVerified',
+                    'message': 'Please verify your email before logging in.',
+                    'code': 403,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         validated_data = serializer.validated_data
         response = Response(
             {
@@ -245,6 +244,70 @@ class LogoutView(APIView):
         refresh_cookie_name = getattr(settings, 'REFRESH_TOKEN_COOKIE_NAME', 'refresh_token')
         response.delete_cookie(refresh_cookie_name)
         return response
+
+
+class VerifyEmailView(APIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    envelope_exempt = True
+
+    @extend_schema(
+        request=VerifyEmailSerializer,
+        responses={
+            200: OpenApiResponse(
+                response={'type': 'object', 'properties': {'detail': {'type': 'string'}}},
+                description='Email verified successfully',
+            ),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Invalid or expired token'
+            ),
+        },
+        tags=['auth'],
+        auth=[],
+    )
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        success, message = verify_email_token(serializer.validated_data['token'])
+        if success:
+            return Response({'detail': message}, status=status.HTTP_200_OK)
+        return Response(
+            {'status': 'error', 'error': 'VerificationFailed', 'message': message, 'code': 400},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class ResendVerificationView(APIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    envelope_exempt = True
+
+    @extend_schema(
+        request=ResendVerificationSerializer,
+        responses={
+            200: OpenApiResponse(
+                response={'type': 'object', 'properties': {'detail': {'type': 'string'}}},
+                description='Verification email sent',
+            ),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Validation error'
+            ),
+        },
+        tags=['auth'],
+        auth=[],
+    )
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        user = CustomUser.objects.filter(email__iexact=email).first()
+        if user and not user.email_verified:
+            token = generate_verification_token(user)
+            send_verification_email(user, token)
+        return Response(
+            {'detail': 'If that email is registered and unverified, a verification link has been sent.'},
+            status=status.HTTP_200_OK,
+        )
 
 
 class MeView(APIView):

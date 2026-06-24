@@ -220,3 +220,20 @@ class RoleUpdateSerializer(serializers.ModelSerializer):
         if value not in CustomUser.Role.values:
             raise serializers.ValidationError('Invalid role.')
         return value
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+
+
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value: str) -> str:
+        try:
+            user = CustomUser.objects.get(email__iexact=value)
+        except CustomUser.DoesNotExist:
+            return value
+        if user.email_verified:
+            raise serializers.ValidationError('This email is already verified.')
+        return value
