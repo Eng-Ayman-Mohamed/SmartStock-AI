@@ -74,18 +74,18 @@ export default function NotificationFilters({ filters, onChange }: Props) {
         <label className="block text-caption font-medium text-ink-secondary mb-2">
           Date Range
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2">
           <input
             type="date"
             value={filters.date_from ?? ""}
             onChange={(e) => onChange({ ...filters, date_from: e.target.value || undefined })}
-            className="flex-1 px-3 py-1.5 rounded-lg border border-hairline bg-canvas text-body text-ink focus:border-brand-600 focus:outline-none transition-colors"
+            className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-hairline bg-canvas text-body text-ink focus:border-brand-600 focus:outline-none transition-colors"
           />
           <input
             type="date"
             value={filters.date_to ?? ""}
             onChange={(e) => onChange({ ...filters, date_to: e.target.value || undefined })}
-            className="flex-1 px-3 py-1.5 rounded-lg border border-hairline bg-canvas text-body text-ink focus:border-brand-600 focus:outline-none transition-colors"
+            className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-hairline bg-canvas text-body text-ink focus:border-brand-600 focus:outline-none transition-colors"
           />
         </div>
       </div>

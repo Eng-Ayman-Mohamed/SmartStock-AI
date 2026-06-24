@@ -23,7 +23,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="animate-fadeIn flex flex-col flex-1 min-h-0">
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex items-center justify-between gap-3 shrink-0">
         <h1 className="text-page-heading text-ink">Notifications</h1>
         {notifications.length > 0 && (
           <Button

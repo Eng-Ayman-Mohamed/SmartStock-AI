@@ -83,7 +83,7 @@ export default function NotificationItem({ notification, onClose }: Props) {
       </div>
       <button
         onClick={handleDismiss}
-        className="text-ink-faint hover:text-ink-muted"
+        className="flex items-center justify-center w-7 h-7 shrink-0 text-ink-faint hover:text-ink-muted"
         aria-label="Dismiss"
       >
         <span className="sr-only">Dismiss</span>

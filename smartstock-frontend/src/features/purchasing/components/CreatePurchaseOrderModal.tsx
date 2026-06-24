@@ -47,7 +47,7 @@ export default function CreatePurchaseOrderModal({
       onClose={onClose}
       title="New Purchase Order"
       footer={
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button variant="secondary" size="md" onClick={onClose}>
             <X className="w-4 h-4" /> Cancel
           </Button>
@@ -108,7 +108,7 @@ export default function CreatePurchaseOrderModal({
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-caption text-ink-muted mb-1">
               Quantity

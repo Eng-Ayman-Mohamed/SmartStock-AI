@@ -233,7 +233,7 @@ export default function DocumentsPage() {
       {deleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/40" onClick={() => setDeleteId(null)} aria-hidden="true" />
-          <div className="relative z-10 w-full max-w-sm rounded-lg border border-hairline bg-canvas shadow-lg p-6 space-y-4">
+          <div className="relative z-10 mx-4 w-full max-w-sm rounded-lg border border-hairline bg-canvas shadow-lg p-6 space-y-4">
             <h3 className="text-card-title text-ink">Delete Document</h3>
             <p className="text-body text-ink-muted">
               This will remove the document from the list and deactivate its chunks. The AI assistant will no longer search this document.

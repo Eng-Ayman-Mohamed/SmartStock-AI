@@ -155,7 +155,7 @@ export default function SkuChart({ sku, colorIdx, hasAlert }: SkuChartProps) {
       </div>
 
       <div className="mt-4 -mx-5 px-5 overflow-x-auto">
-        <table className="w-full text-caption text-ink-secondary" aria-label={`Forecast data for ${sku.product_name}`}>
+        <table className="w-full min-w-[320px] text-caption text-ink-secondary" aria-label={`Forecast data for ${sku.product_name}`}>
           <thead>
             <tr className="border-b border-hairline">
               <th className="text-left py-1 pr-2 font-medium text-ink-faint">Date</th>

@@ -24,13 +24,13 @@ interface StatCardProps {
 
 export default function StatCard({ label, value, trend, icon: Icon, accent = 'none' }: StatCardProps) {
   return (
-    <div className={`bg-canvas rounded-lg border border-hairline p-6 h-24 min-w-0 flex flex-col justify-between ${accentBorders[accent]}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-caption font-medium text-ink-muted uppercase tracking-[0.05em]">{label}</span>
-        {Icon && <Icon className="w-4 h-4 text-ink-faint" aria-hidden="true" />}
+    <div className={`bg-canvas rounded-lg border border-hairline p-4 sm:p-6 min-h-24 min-w-0 flex flex-col justify-between ${accentBorders[accent]}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-caption font-medium text-ink-muted uppercase tracking-[0.05em] min-w-0 truncate">{label}</span>
+        {Icon && <Icon className="w-4 h-4 text-ink-faint shrink-0" aria-hidden="true" />}
       </div>
-      <div className="flex items-end justify-between">
-        <span className="text-[26px] font-medium text-ink tabular-nums leading-none">{value}</span>
+      <div className="flex items-end justify-between gap-2 mt-2">
+        <span className="text-[22px] sm:text-[26px] font-medium text-ink tabular-nums leading-none min-w-0 truncate">{value}</span>
         {trend && (
           <span className={`text-caption tabular-nums ${
             trend.direction === 'up'

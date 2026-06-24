@@ -119,7 +119,7 @@ export default function ReorderAlertList({ onRefresh, isRefreshing }: Props) {
                     <p className="text-caption text-ink-faint mt-0.5">{item.supplier_name}</p>
                   )}
                 </div>
-                <Badge variant={styles.badge}>{styles.label}</Badge>
+                <span className="shrink-0"><Badge variant={styles.badge}>{styles.label}</Badge></span>
               </div>
             );
           })}

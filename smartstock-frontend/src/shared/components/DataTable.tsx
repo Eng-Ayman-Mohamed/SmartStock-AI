@@ -46,7 +46,7 @@ function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagina
   return (
     <div className={fillHeight ? 'min-w-0 flex flex-col flex-1 min-h-0' : 'min-w-0'}>
       <div className={fillHeight ? 'overflow-auto flex-1 min-h-0' : 'overflow-x-auto'}>
-          <table className="w-full table-fixed border-collapse">
+          <table className="w-full table-fixed border-collapse min-w-[480px]">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead className="sticky top-0 z-10">
             <tr className="bg-canvas-soft border-b border-hairline">

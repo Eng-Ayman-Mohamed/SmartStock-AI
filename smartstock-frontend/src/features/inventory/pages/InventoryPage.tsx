@@ -408,7 +408,7 @@ export default function InventoryPage() {
           />
         </div>
         <select
-          className="h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
+          className="w-full sm:w-auto h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
@@ -422,7 +422,7 @@ export default function InventoryPage() {
           <option value="Out of Stock">Out of Stock</option>
         </select>
         <select
-          className="h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
+          className="w-full sm:w-auto h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
           value={categoryFilter}
           onChange={(e) => {
             setCategoryFilter(e.target.value);
