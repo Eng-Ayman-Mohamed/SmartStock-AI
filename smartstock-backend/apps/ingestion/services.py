@@ -610,11 +610,13 @@ class RAGQueryService:
             key = (doc, page)
             if key not in seen and doc:
                 seen.add(key)
-                sources.append({
-                    'document': doc,
-                    'page': page,
-                    'chunk_text': chunk.get('chunk_text', chunk.get('content', '')),
-                })
+                sources.append(
+                    {
+                        'document': doc,
+                        'page': page,
+                        'chunk_text': chunk.get('chunk_text', chunk.get('content', '')),
+                    }
+                )
         return sources
 
     def execute(self, query: str, user=None, history: list | None = None) -> dict:

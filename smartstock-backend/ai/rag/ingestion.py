@@ -162,4 +162,3 @@ def ingest_pdf(file_path: str, document_id: int | None = None) -> dict:
         'chunks': len(created),
         'api_calls': (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE,
     }
-
