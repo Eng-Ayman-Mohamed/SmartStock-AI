@@ -21,6 +21,7 @@ class MetricsView(APIView):
 
     permission_classes = []
     authentication_classes = []
+    throttle_classes = []
 
     def get(self, request):
         return HttpResponse(
@@ -132,5 +133,32 @@ class EvaluationMetricsView(APIView):
                     'evaluation_timestamp': time.time(),
                     'duration_ms': round(duration_ms),
                 },
+            }
+        )
+
+
+class LLMProviderHealthView(APIView):
+    """Return LLM provider health status and circuit breaker states (admin only)."""
+
+    permission_classes = [IsAuthenticated, IsAdminOnly]
+
+    def get(self, request):
+        from ai.llm.llm_provider_manager import get_provider_manager
+
+        manager = get_provider_manager()
+        health = manager.get_health_report()
+        return Response({'status': 'success', 'data': health})
+
+    def post(self, request):
+        """Reset circuit breaker for a provider."""
+        from ai.llm.llm_provider_manager import get_provider_manager
+
+        provider_name = request.data.get('provider')
+        manager = get_provider_manager()
+        manager.reset_circuit_breaker(provider_name)
+        return Response(
+            {
+                'status': 'success',
+                'message': f'Circuit breaker reset for {provider_name or "all providers"}',
             }
         )

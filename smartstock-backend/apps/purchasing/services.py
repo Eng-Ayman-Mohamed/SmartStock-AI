@@ -1,4 +1,7 @@
+import logging
+
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.dispatch import Signal
 from django.utils import timezone
 
@@ -6,7 +9,10 @@ from apps.audit.models import AuditLog
 from core.exceptions import IllegalPOTransitionError
 from infrastructure.email import EmailService
 
+from .models import PurchaseOrder
 from .repositories import PurchasingRepository
+
+logger = logging.getLogger(__name__)
 
 po_approved = Signal()
 po_rejected = Signal()
@@ -28,6 +34,7 @@ class PurchasingService:
     def __init__(self, repo=None):
         self.repo = repo or PurchasingRepository()
 
+    @transaction.atomic
     def draft_po(
         self,
         sku_id: int,
@@ -36,13 +43,35 @@ class PurchasingService:
         user,
         po_number: str = None,
         total_cost=None,
+        agent_reasoning: str = '',
+        notes: str = '',
     ):
+        active_statuses = ['draft', 'pending_approval', 'approved']
+        existing = (
+            PurchaseOrder.objects.select_for_update()
+            .filter(
+                sku_id=sku_id,
+                supplier_id=supplier_id,
+                quantity=quantity,
+                status__in=active_statuses,
+            )
+            .first()
+        )
+        if existing:
+            logger.info(
+                'Dedup: returning existing PO id=%s for sku=%s supplier=%s qty=%s',
+                existing.id, sku_id, supplier_id, quantity,
+            )
+            return existing
+
         data = {
             'sku_id': sku_id,
             'quantity': quantity,
             'supplier_id': supplier_id,
             'requested_by': user,
             'status': 'draft',
+            'agent_reasoning': agent_reasoning,
+            'notes': notes,
         }
         if po_number:
             data['po_number'] = po_number

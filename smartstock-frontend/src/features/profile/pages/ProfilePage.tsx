@@ -9,13 +9,13 @@ import EditProfileModal from '../components/EditProfileModal';
 
 const sectionFields: Record<string, { label: string; value: string }[]> = {
   Notifications: [
-    { label: 'Low Stock Alerts', value: 'Email + In-app' },
-    { label: 'PO Approvals', value: 'Email + In-app' },
-    { label: 'Forecast Reports', value: 'Weekly digest' },
+    { label: 'Low Stock Alerts', value: 'Configured in system settings' },
+    { label: 'PO Approvals', value: 'Configured in system settings' },
+    { label: 'Forecast Reports', value: 'Configured in system settings' },
   ],
   Security: [
-    { label: 'Session Timeout', value: '30 minutes' },
-    { label: 'API Access', value: 'Active — 2 keys' },
+    { label: 'Session Timeout', value: 'Managed by administrator' },
+    { label: 'API Access', value: 'Managed by administrator' },
   ],
 };
 

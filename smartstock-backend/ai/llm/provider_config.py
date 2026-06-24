@@ -1,8 +1,9 @@
 """
-provider_config.py — Multi-provider LLM configuration.
+provider_config.py — Multi-provider LLM configuration with automatic failover.
 
-Supports OpenAI, Groq, and Google Gemini as LLM/embedding providers.
-Controlled by LLM_PROVIDER env var (default: openai).
+Supports OpenAI, Groq, Google Gemini, and xAI as LLM/embedding providers.
+Failover priority: OpenAI → Gemini → xAI (no manual intervention).
+All LLM calls must route through LLMProviderManager (no direct provider calls).
 
 Groq uses OpenAI-compatible API, so ChatOpenAI works with a base_url override.
 Gemini uses langchain-google-genai for embeddings.
@@ -34,7 +35,7 @@ _PROVIDERS = {
     'groq': {
         'chat_model': 'llama-3.3-70b-versatile',
         'chat_model_mini': 'llama-3.1-8b-instant',
-        'embedding_model': None,  # Groq has no embedding API
+        'embedding_model': None,
         'embedding_dimensions': None,
         'whisper_model': 'whisper-large-v3',
         'vision_model': 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -47,7 +48,7 @@ _PROVIDERS = {
         'chat_model_mini': 'gemini-2.0-flash',
         'embedding_model': 'gemini-embedding-001',
         'embedding_dimensions': 768,
-        'whisper_model': None,  # Gemini has no Whisper equivalent
+        'whisper_model': None,
         'vision_model': 'gemini-2.0-flash',
         'supports_vision': True,
         'base_url': None,
@@ -56,7 +57,7 @@ _PROVIDERS = {
     'xai': {
         'chat_model': 'grok-2-1212',
         'chat_model_mini': 'grok-2-1212',
-        'embedding_model': None,  # xAI has no embedding API
+        'embedding_model': None,
         'embedding_dimensions': None,
         'whisper_model': None,
         'vision_model': 'grok-2-1212',
@@ -90,32 +91,46 @@ def get_api_key_for_provider(provider_name: str) -> str:
 
 
 def get_chat_llm(temperature=0, model_override=None):
-    """Get a chat LLM instance for the active provider."""
-    config = get_provider_config()
-    model = model_override or config['chat_model']
-    api_key = get_api_key()
+    """
+    Get a chat LLM instance with automatic failover.
 
-    if PROVIDER == 'gemini':
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        return ChatGoogleGenerativeAI(
-            model=model,
+    Routes through LLMProviderManager for circuit breaker + retry + failover.
+    Falls back to direct provider creation if manager is unavailable.
+    """
+    try:
+        from .llm_provider_manager import get_provider_manager
+        manager = get_provider_manager()
+        return manager.get_llm(
             temperature=temperature,
-            google_api_key=api_key,
+            model_override=model_override,
         )
+    except Exception as e:
+        logger.warning(
+            "LLMProviderManager failed (%s), falling back to direct provider", e
+        )
+        # Fallback: direct creation (no failover)
+        config = get_provider_config()
+        model = model_override or config['chat_model']
+        api_key = get_api_key()
 
-    from langchain_openai import ChatOpenAI
+        if PROVIDER == 'gemini':
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            return ChatGoogleGenerativeAI(
+                model=model,
+                temperature=temperature,
+                google_api_key=api_key,
+            )
 
-    kwargs = {
-        'model': model,
-        'temperature': temperature,
-        'api_key': api_key,
-        'request_timeout': 30,
-    }
-    if config['base_url']:
-        kwargs['base_url'] = config['base_url']
-
-    return ChatOpenAI(**kwargs)
+        from langchain_openai import ChatOpenAI
+        kwargs = {
+            'model': model,
+            'temperature': temperature,
+            'api_key': api_key,
+            'request_timeout': 30,
+        }
+        if config['base_url']:
+            kwargs['base_url'] = config['base_url']
+        return ChatOpenAI(**kwargs)
 
 
 def get_chat_llm_mini(temperature=0):

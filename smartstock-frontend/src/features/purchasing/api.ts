@@ -88,7 +88,7 @@ export async function listPendingPOs(page = 1, pageSize = 20): Promise<Paginated
         product: item.product_name,
         sku: item.sku_code,
         supplier: item.supplier_name,
-        predicted_stockout: 'N/A',
+        predicted_stockout: (item as Record<string, unknown>).predicted_stockout as string ?? 'No forecast data',
         recommended_qty: qty,
         unit_cost: Math.round((total / qty) * 100) / 100,
         estimated_total_cost: `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,

@@ -20,7 +20,10 @@ from apps.monitoring.tasks import record_agent_run_task
 try:
     from langchain.agents import create_react_agent as create_agent
 except ImportError:
-    create_agent = None
+    try:
+        from langchain.agents import create_agent
+    except ImportError:
+        create_agent = None
 
 logger = logging.getLogger(__name__)
 

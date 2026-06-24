@@ -54,6 +54,13 @@ class PurchaseOrder(models.Model):
         verbose_name = 'purchase order'
         verbose_name_plural = 'purchase orders'
         ordering = ['-created_at', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['sku', 'supplier', 'quantity', 'status'],
+                condition=models.Q(status__in=['draft', 'pending_approval', 'approved']),
+                name='uq_active_po_per_sku_supplier_qty',
+            ),
+        ]
         indexes = [
             models.Index(fields=['status', '-created_at'], name='idx_po_status_created'),
             models.Index(fields=['sku']),

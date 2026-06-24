@@ -28,6 +28,10 @@ OPTIONAL_ENV_VARS = {
     'DEFAULT_FROM_EMAIL': 'noreply@smartstock.ai',
     'ESCALATION_RECIPIENT_EMAILS': '',
     'HEALTH_SECRET_HEADER': '',
+    # LLM provider failover keys (at least one is needed for LLM to work)
+    'GROQ_API_KEY': '',
+    'GOOGLE_API_KEY': '',
+    'XAI_API_KEY': '',
 }
 
 logger = logging.getLogger(__name__)

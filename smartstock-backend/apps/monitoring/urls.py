@@ -5,6 +5,7 @@ from .views import (
     DashboardBannersView,
     DismissBannerView,
     EvaluationMetricsView,
+    LLMProviderHealthView,
     TriggerAlertEvaluationView,
 )
 
@@ -15,4 +16,5 @@ urlpatterns = [
     path('alerts/', AlertEventsView.as_view(), name='alert-events'),
     path('alerts/evaluate/', TriggerAlertEvaluationView.as_view(), name='trigger-alert-evaluation'),
     path('evaluation/', EvaluationMetricsView.as_view(), name='evaluation-metrics'),
+    path('llm-health/', LLMProviderHealthView.as_view(), name='llm-provider-health'),
 ]

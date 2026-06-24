@@ -13,6 +13,9 @@ class PurchaseOrderWorkflowService:
         self.repo = repo or PurchaseOrderWorkflowRepository()
 
     def create_workflow(self, po_id: int) -> PurchaseOrderWorkflow:
+        existing = self.repo.get_by_po_id(po_id)
+        if existing:
+            return existing
         return self.repo.create(
             {
                 'purchase_order_id': po_id,

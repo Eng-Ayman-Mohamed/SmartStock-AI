@@ -20,6 +20,8 @@ if not ALLOWED_HOSTS:
 
 if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('healthcheck.railway.app')
+if 'backend' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('backend')
 
 _extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 _default_csrf = 'https://smart-stock-dev.vercel.app'
