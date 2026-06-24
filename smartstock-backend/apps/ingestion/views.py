@@ -1150,8 +1150,11 @@ class ChatStreamView(APIView):
                 )
                 yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
             finally:
-                # Always save assistant response if we have one
-                if conversation_id and shared.get('full_answer'):
+                # Always save assistant response if we have one.
+                # On abort (user switches chat), shared is empty but the local
+                # full_answer has been accumulating tokens — use it as fallback.
+                saved_answer = shared.get('full_answer') or full_answer
+                if conversation_id and saved_answer:
                     try:
                         is_new = (
                             conv_svc.get_conversation(conversation_id, user)
@@ -1162,7 +1165,7 @@ class ChatStreamView(APIView):
                         conv_svc.save_message(
                             conversation_id=conversation_id,
                             role='assistant',
-                            content=shared['full_answer'],
+                            content=saved_answer,
                             engine=engine,
                             mode=mode,
                         )

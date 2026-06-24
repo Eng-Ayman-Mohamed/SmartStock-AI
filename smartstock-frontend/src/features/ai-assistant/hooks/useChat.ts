@@ -87,6 +87,7 @@ export default function useChat(conversationId?: string | null) {
     abortRef.current = null;
     lastFailedText.current = null;
     isLoadingRef.current = false;
+    sendingRef.current = false;
     setIsLoading(false);
   }, []);
 
