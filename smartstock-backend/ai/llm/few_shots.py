@@ -130,6 +130,18 @@ FEW_SHOT_EXAMPLES = [
         'user': 'How are my suppliers performing?',
         'output': '{"action": "get_supplier_performance", "filters": {"conditions": []}}',
     },
+    # 14. get_supplier_performance — single supplier name filter
+    {
+        'action': NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        'user': 'Show performance for supplier Evans, Tucker and Adams',
+        'output': '{"action": "get_supplier_performance", "filters": {"conditions": [{"field": "supplier_name", "op": "eq", "value": "Evans, Tucker and Adams"}]}}',
+    },
+    # 15. get_supplier_performance — this month / date range
+    {
+        'action': NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        'user': 'Show me supplier performance this month',
+        'output': '{"action": "get_supplier_performance", "filters": {"conditions": [{"field": "date_from", "op": "gte", "value": "2026-06-01"}, {"field": "date_to", "op": "lte", "value": "2026-06-30"}]}}',
+    },
 ]
 
 
