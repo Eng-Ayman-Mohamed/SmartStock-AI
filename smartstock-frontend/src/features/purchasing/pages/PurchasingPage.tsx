@@ -300,6 +300,7 @@ export default function PurchasingPage() {
             caption="Purchase order history"
             pagination={poPaginationConfig}
             onSort={handleSort}
+            fillHeight={false}
           />
         )}
       </Card>
