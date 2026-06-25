@@ -25,7 +25,7 @@ export default function AuthBootstrap({ children }: AuthBootstrapProps) {
         aria-label="Loading application"
       >
         <div className="flex items-center gap-3">
-          <img src="/smart-32.png" alt="SmartStock AI" className="w-8 h-8 shrink-0" />
+          <img src="/smart-32.png" alt="SmartStock AI" className="w-8 h-8 shrink-0" loading="lazy" />
           <span className="text-body text-ink-muted">Loading SmartStock AI…</span>
         </div>
       </div>

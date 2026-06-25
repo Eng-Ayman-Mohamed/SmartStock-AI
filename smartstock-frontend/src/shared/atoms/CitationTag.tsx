@@ -39,7 +39,7 @@ export default function CitationTag({ sourceDocument, page, chunkText }: Citatio
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((prev) => !prev); } }}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/50 transition-colors cursor-pointer align-middle"
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-purple-50 text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/50 transition-colors cursor-pointer align-middle min-h-[44px]"
         style={{ fontSize: '11px', lineHeight: '16px' }}
         aria-expanded={open}
         aria-label={`Source: ${sourceDocument}, Page: ${page}`}

@@ -11,6 +11,7 @@ import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
 import EmptyState from '../../../shared/components/EmptyState';
 import Badge from '../../../shared/components/Badge';
+import Input from '../../../shared/components/Input';
 import Skeleton from '../../../shared/components/Skeleton';
 import Modal from '../../../shared/components/Modal';
 import DataTable from '../../../shared/components/DataTable';
@@ -181,6 +182,7 @@ export function SuppliersPage() {
       key: 'contact_email',
       label: 'Contact Email',
       width: '19%',
+      className: 'hidden sm:table-cell',
       sortable: true,
       sortOrder: sortField === 'contact_email' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="truncate block text-ink-muted">{isViewer ? '—' : (r.contact_email || '—')}</span>,
@@ -189,18 +191,21 @@ export function SuppliersPage() {
       key: 'contact_phone',
       label: 'Contact Phone',
       width: '10%',
+      className: 'hidden md:table-cell',
       render: (r) => <span className="truncate block text-ink-muted">{isViewer ? '—' : (r.contact_phone || '—')}</span>,
     },
     {
       key: 'address',
       label: 'Address',
       width: '16%',
+      className: 'hidden md:table-cell',
       render: (r) => <span className="truncate block text-ink-muted">{r.address || '—'}</span>,
     },
     {
       key: 'default_lead_time_days',
       label: 'Lead Time',
       width: '9%',
+      className: 'hidden md:table-cell',
       sortable: true,
       sortOrder: sortField === 'default_lead_time_days' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <span className="tabular-nums">{r.default_lead_time_days} days</span>,
@@ -208,7 +213,7 @@ export function SuppliersPage() {
     {
       key: 'is_active',
       label: 'Status',
-      width: '9%',
+      width: '20%',
       sortable: true,
       sortOrder: sortField === 'is_active' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (r) => <Badge variant={r.is_active ? 'Active' : 'Inactive'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>,
@@ -276,20 +281,20 @@ export function SuppliersPage() {
       {queryError && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200 flex items-center justify-between">
           <span>Failed to load suppliers. Please try again later.</span>
-          <button onClick={() => refetch()} className="underline text-sm font-medium">Retry</button>
+          <button onClick={() => refetch()} className="underline text-sm font-medium min-h-[44px] px-2">Retry</button>
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint" aria-hidden="true" />
-          <input
+          <Input
             type="text"
             placeholder="Search suppliers by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-9 pl-10 pr-4 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
             aria-label="Search suppliers"
+            className="!pl-10 !rounded-full"
           />
         </div>
       </div>
@@ -344,11 +349,10 @@ export function SuppliersPage() {
         <div className="space-y-4">
           <div>
             <label className="block text-caption text-ink-muted mb-1">Supplier Name *</label>
-            <input
+            <Input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               placeholder="Acme Supplies"
               aria-label="Supplier name"
             />
@@ -356,60 +360,61 @@ export function SuppliersPage() {
           </div>
           <div>
             <label className="block text-caption text-ink-muted mb-1">Contact Email *</label>
-            <input
+            <Input
               type="email"
               value={formData.contact_email}
               onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               placeholder="contact@acme.com"
               aria-label="Contact email"
+              autoComplete="email"
             />
             {formErrors.contact_email && <p className="text-caption text-red-600 mt-1">{formErrors.contact_email}</p>}
           </div>
           <div>
             <label className="block text-caption text-ink-muted mb-1">Contact Phone</label>
-            <input
-              type="text"
+            <Input
+              type="tel"
+              inputMode="tel"
               value={formData.contact_phone || ''}
               onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               placeholder="+1 (555) 123-4567"
               aria-label="Contact phone"
+              autoComplete="tel"
             />
           </div>
           <div>
             <label className="block text-caption text-ink-muted mb-1">Address</label>
-            <input
+            <Input
               type="text"
               value={formData.address || ''}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               placeholder="123 Main St, City, State"
               aria-label="Address"
+              autoCapitalize="street-address"
             />
           </div>
           <div>
             <label className="block text-caption text-ink-muted mb-1">Default Lead Time (Days) *</label>
-            <input
+            <Input
               type="number"
+              inputMode="numeric"
               value={formData.default_lead_time_days}
               onChange={(e) => setFormData({ ...formData, default_lead_time_days: parseInt(e.target.value) || 0 })}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               placeholder="7"
               aria-label="Default lead time in days"
             />
             {formErrors.default_lead_time_days && <p className="text-caption text-red-600 mt-1">{formErrors.default_lead_time_days}</p>}
           </div>
-          <div className="flex items-center gap-2">
+          <label htmlFor="is_active" className="flex items-center gap-2 min-h-[44px] cursor-pointer">
             <input
               type="checkbox"
               id="is_active"
               checked={formData.is_active}
               onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="w-4 h-4 rounded border-hairline text-brand-600 focus:ring-brand-600"
+              className="w-5 h-5 rounded border-hairline text-brand-600 focus:ring-brand-600"
             />
-            <label htmlFor="is_active" className="text-body text-ink">Active Supplier</label>
-          </div>
+            <span className="text-body text-ink">Active Supplier</span>
+          </label>
         </div>
       </Modal>
 

@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import Button from '../../../shared/components/Button';
+import Input from '../../../shared/components/Input';
 import { ConfidenceBadge } from '../confidence';
 import type { InvoiceLineItem } from '../types';
 
@@ -98,14 +99,15 @@ export default function LineItemsTable({ items, lineConfidence, onChange }: Line
                 <tr key={index} className="border-t border-hairline">
                   {COLUMNS.map((column) => (
                     <td key={column.key} className="px-2 py-1.5 align-top">
-                      <input
+                      <Input
                         type={column.type}
+                        inputMode={column.type === 'number' ? 'decimal' : undefined}
                         step={column.type === 'number' ? '0.01' : undefined}
                         min={column.type === 'number' ? '0' : undefined}
                         value={item[column.key] == null ? '' : String(item[column.key])}
                         onChange={(event) => updateCell(index, column.key, event.target.value)}
                         aria-label={`${column.label} for line ${index + 1}`}
-                        className={`h-9 w-full ${column.width} rounded-md border border-hairline bg-canvas px-2.5 text-body text-ink transition-colors hover:border-ink-muted focus:border-brand-600 focus:outline-none`}
+                        className={column.width}
                       />
                     </td>
                   ))}
@@ -114,7 +116,7 @@ export default function LineItemsTable({ items, lineConfidence, onChange }: Line
                       type="button"
                       onClick={() => removeRow(index)}
                       aria-label={`Remove line ${index + 1}`}
-                      className="text-ink-faint transition-colors hover:text-red-600"
+                      className="text-ink-faint transition-colors hover:text-red-600 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

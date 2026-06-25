@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import Modal from "../../../shared/components/Modal";
 import Button from "../../../shared/components/Button";
+import Input from "../../../shared/components/Input";
+import Select from "../../../shared/components/Select";
 import type { SKUOption, SupplierOption } from "../api";
 
 interface CreatePurchaseOrderModalProps {
@@ -76,10 +78,9 @@ export default function CreatePurchaseOrderModal({
           <label className="block text-caption text-ink-muted mb-1">
             SKU
           </label>
-          <select
+          <Select
             value={form.sku}
             onChange={(e) => update("sku", Number(e.target.value))}
-            className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
             aria-label="Select SKU"
           >
             <option value={0}>Select a SKU...</option>
@@ -88,16 +89,15 @@ export default function CreatePurchaseOrderModal({
                 {sku.code} - {sku.product_name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="block text-caption text-ink-muted mb-1">
             Supplier
           </label>
-          <select
+          <Select
             value={form.supplier}
             onChange={(e) => update("supplier", Number(e.target.value))}
-            className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
             aria-label="Select supplier"
           >
             <option value={0}>Select a supplier...</option>
@@ -106,19 +106,19 @@ export default function CreatePurchaseOrderModal({
                 {supplier.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-caption text-ink-muted mb-1">
               Quantity
             </label>
-            <input
+            <Input
               type="number"
               min={1}
+              inputMode="numeric"
               value={form.quantity}
               onChange={(e) => update("quantity", Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               aria-label="Quantity"
             />
           </div>
@@ -126,13 +126,13 @@ export default function CreatePurchaseOrderModal({
             <label className="block text-caption text-ink-muted mb-1">
               Total Cost ($)
             </label>
-            <input
+            <Input
               type="number"
               min={0}
               step={0.01}
+              inputMode="decimal"
               value={form.total_cost}
               onChange={(e) => update("total_cost", Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               aria-label="Total cost"
             />
           </div>
