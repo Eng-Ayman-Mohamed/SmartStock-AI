@@ -26,7 +26,7 @@ export default function ChatEmptyState({ onSelectSuggestion }: ChatEmptyStatePro
             key={s}
             type="button"
             onClick={() => onSelectSuggestion(s)}
-            className="px-4 py-2 rounded-xl border border-hairline bg-canvas text-caption text-ink-muted hover:border-brand-600 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all text-left break-words"
+            className="px-4 py-3 min-h-[44px] rounded-xl border border-hairline bg-canvas text-caption text-ink-muted hover:border-brand-600 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all text-left break-words"
           >
             {s}
           </button>

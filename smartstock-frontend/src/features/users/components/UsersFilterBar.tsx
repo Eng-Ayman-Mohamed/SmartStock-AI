@@ -1,6 +1,7 @@
 import { Search, Check } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import type { StatusFilter } from '../types';
+import Input from '../../../shared/components/Input';
 
 interface UsersFilterBarProps {
   query: string;
@@ -32,13 +33,13 @@ export default function UsersFilterBar({
           className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint pointer-events-none"
           aria-hidden="true"
         />
-        <input
+        <Input
           type="search"
           value={query}
           onChange={(e: ChangeEvent<HTMLInputElement>) => onQueryChange(e.target.value)}
           placeholder="Search by name or email"
           aria-label="Search users"
-          className="w-full h-9 pl-9 pr-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
+          className="!pl-9"
         />
       </div>
 
@@ -51,7 +52,7 @@ export default function UsersFilterBar({
                 key={s.value}
                 type="button"
                 onClick={() => onStatusChange(s.value)}
-                className={`inline-flex items-center gap-1 px-2.5 h-8 rounded text-caption font-medium transition-colors ${
+                className={`inline-flex items-center gap-1 px-2.5 h-11 min-h-[44px] rounded text-caption font-medium transition-colors ${
                   isSelected
                     ? 'bg-brand-50 text-brand-800 dark:bg-brand-900/30 dark:text-brand-200'
                     : 'text-ink-muted hover:text-ink'

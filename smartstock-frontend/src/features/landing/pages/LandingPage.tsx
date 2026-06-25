@@ -49,7 +49,7 @@ function Header() {
     <header className="flex items-center justify-between max-w-[920px] mx-auto w-full px-4 sm:px-6 pt-6 pb-1">
       <button
         onClick={() => navigate('/')}
-        className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink"
+        className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink min-h-[44px]"
         aria-label="SmartStock AI"
       >
         <span className="grid place-items-center w-[26px] h-[26px] rounded-[7px] bg-brand-600 text-white font-bold text-sm leading-none shrink-0">
@@ -63,7 +63,7 @@ function Header() {
         {user ? (
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 rounded-full px-1.5 py-0.5 hover:bg-canvas transition-colors"
+            className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-canvas transition-colors min-h-[44px]"
           >
             <span className="text-caption font-medium text-ink-secondary hover:text-ink transition-colors">
               Dashboard
@@ -77,7 +77,7 @@ function Header() {
         ) : (
           <button
             onClick={() => navigate('/login')}
-            className="text-caption font-medium text-ink-secondary hover:text-brand-600 transition-colors"
+            className="text-caption font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] px-2"
           >
             Log in
           </button>
@@ -122,14 +122,14 @@ export default function LandingPage() {
               {user ? (
                 <button
                   onClick={() => navigate('/dashboard')}
-                  className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors"
+                  className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] px-3"
                 >
                   Go to dashboard
                 </button>
               ) : (
                 <button
                   onClick={() => navigate('/login')}
-                  className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors"
+                  className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] px-3"
                 >
                   Log in
                 </button>

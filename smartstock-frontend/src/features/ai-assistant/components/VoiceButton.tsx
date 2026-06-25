@@ -41,7 +41,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
       <div className="relative group">
         <button
           disabled
-          className="flex items-center justify-center w-9 h-9 rounded-full bg-canvas-soft text-ink-faint transition-colors cursor-not-allowed"
+          className="flex items-center justify-center w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-canvas-soft text-ink-faint transition-colors cursor-not-allowed"
           aria-label="Voice input not supported"
         >
           <Mic className="w-4 h-4" />
@@ -63,7 +63,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
         <AudioBars level={audioLevel} />
         <button
           onClick={stopRecording}
-          className="flex items-center justify-center w-9 h-9 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shrink-0 animate-pulse"
+          className="flex items-center justify-center w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shrink-0 animate-pulse"
           aria-label="Stop recording"
         >
           <Square className="w-4 h-4" />
@@ -76,7 +76,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
     return (
       <button
         disabled
-        className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400 transition-colors cursor-wait"
+        className="flex items-center justify-center w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400 transition-colors cursor-wait"
         aria-label="Transcribing..."
       >
         <Loader2 className="w-4 h-4 animate-spin" />
@@ -88,7 +88,7 @@ export default function VoiceButton({ onTranscript }: VoiceButtonProps) {
     <div className="relative">
       <button
         onClick={startRecording}
-        className="flex items-center justify-center w-9 h-9 rounded-full text-ink-muted hover:bg-canvas-soft hover:text-ink transition-colors shrink-0"
+        className="flex items-center justify-center w-11 h-11 min-h-[44px] min-w-[44px] rounded-full text-ink-muted hover:bg-canvas-soft hover:text-ink transition-colors shrink-0"
         aria-label="Start voice recording"
         aria-describedby={error ? 'voice-error' : undefined}
       >

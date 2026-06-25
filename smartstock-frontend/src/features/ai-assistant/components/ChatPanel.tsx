@@ -142,7 +142,7 @@ export default function ChatPanel() {
         <div className="flex items-center gap-2 px-4 py-2 border-b border-hairline">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 rounded text-ink-faint hover:text-ink hover:bg-canvas-soft transition-colors"
+            className="p-2.5 min-w-[44px] min-h-[44px] rounded text-ink-faint hover:text-ink hover:bg-canvas-soft transition-colors"
             aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           >
             {sidebarOpen ? (
@@ -161,7 +161,7 @@ export default function ChatPanel() {
         {visibleError && (
           <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-sm text-red-700">
             <span className="flex-1">{visibleError}</span>
-            <button onClick={() => setVisibleError(null)} className="p-0.5 rounded hover:bg-red-100">
+            <button onClick={() => setVisibleError(null)} className="p-2 min-w-[44px] min-h-[44px] rounded hover:bg-red-100">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -183,7 +183,7 @@ export default function ChatPanel() {
             <div className="flex justify-center">
               <button
                 onClick={retryLastMessage}
-                className="flex items-center gap-1.5 text-sm text-ink-muted hover:text-brand-600 transition-colors"
+                className="flex items-center gap-1.5 text-sm text-ink-muted hover:text-brand-600 transition-colors min-h-[44px] px-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 Retry
@@ -224,7 +224,7 @@ export default function ChatPanel() {
             <button
               onClick={() => handleSend()}
               disabled={isLoading || !input.trim()}
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint transition-colors shrink-0 mb-0.5"
+              className="flex items-center justify-center w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-brand-600 text-white hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint transition-colors shrink-0 mb-0.5"
               aria-label="Send message"
             >
               <Send className="w-4 h-4" />

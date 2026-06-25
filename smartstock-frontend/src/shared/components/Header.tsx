@@ -82,11 +82,11 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-10 px-4 sm:px-6 border-b border-hairline bg-canvas">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-12 px-4 sm:px-6 border-b border-hairline bg-canvas">
       <div className="flex items-center gap-2 min-w-0 shrink">
         <button
           onClick={toggleSidebar}
-          className="md:hidden flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors shrink-0"
+          className="md:hidden flex items-center justify-center w-11 h-11 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors shrink-0"
           aria-label="Toggle navigation"
         >
           <Menu className="w-4 h-4" />
@@ -121,7 +121,7 @@ export default function Header() {
                 onClick={() => setMenuOpen((o) => !o)}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-canvas-soft transition-colors"
+                className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-canvas-soft transition-colors min-w-[44px] min-h-[44px]"
               >
                 <div
                   className={`w-7 h-7 rounded-full ${getAvatarColor(user.name)} flex items-center justify-center text-white text-[11px] font-medium`}
@@ -154,7 +154,7 @@ export default function Header() {
                       type="button"
                       role="menuitem"
                       onClick={onProfile}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-caption text-ink hover:bg-canvas-soft"
+                      className="w-full flex items-center gap-2 px-3 py-3 text-caption text-ink hover:bg-canvas-soft"
                     >
                       <UserIcon className="w-4 h-4" aria-hidden="true" />
                       <span>Profile</span>
@@ -164,7 +164,7 @@ export default function Header() {
                       role="menuitem"
                       onClick={onSignOut}
                       disabled={isSubmitting}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-caption text-ink hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center gap-2 px-3 py-3 text-caption text-ink hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <LogOut className="w-4 h-4" aria-hidden="true" />
                       <span>Sign out</span>

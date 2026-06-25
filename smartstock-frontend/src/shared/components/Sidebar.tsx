@@ -96,12 +96,12 @@ export default function Sidebar() {
       >
         <div className="flex items-center h-10 px-3 border-b border-hairline">
           <div className="flex items-center gap-2">
-            <img src="/smart-32.png" alt="SmartStock AI" className="w-7 h-7 shrink-0" />
+            <img src="/smart-32.png" alt="SmartStock AI" className="w-7 h-7 shrink-0" loading="lazy" />
             <span className="text-card-title font-medium text-ink">SmartStock AI</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors ml-auto"
+            className="flex items-center justify-center w-11 h-11 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors ml-auto"
             aria-label="Close navigation"
           >
             <X className="w-4 h-4" />
@@ -142,7 +142,7 @@ export default function Sidebar() {
         aria-label="Navigation sidebar"
       >
         <div className={`flex items-center h-10 px-3 border-b border-hairline ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
-          <img src="/smart-24.png" alt="SmartStock AI" className="w-6 h-6 shrink-0" />
+          <img src="/smart-24.png" alt="SmartStock AI" className="w-6 h-6 shrink-0" loading="lazy" />
           {!sidebarCollapsed && <span className="text-card-title font-medium text-ink truncate">SmartStock AI</span>}
         </div>
 
@@ -184,7 +184,7 @@ export default function Sidebar() {
         <div className="px-2 py-2 border-t border-hairline">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex items-center justify-center w-full h-9 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors duration-150"
+            className="flex items-center justify-center w-full h-11 min-h-[44px] rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors duration-150"
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}

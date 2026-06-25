@@ -15,6 +15,7 @@ export default function NotificationsPage() {
     date_to?: string;
   }>({});
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { data, isLoading } = useNotifications({ ...filters, page, page_size: 20 });
   const { markAllRead } = useNotificationActions();
   const notifications = data?.results ?? [];
@@ -22,26 +23,42 @@ export default function NotificationsPage() {
   const totalPages = Math.ceil(totalCount / 20);
 
   return (
-    <div className="animate-fadeIn flex flex-col flex-1 min-h-0">
+    <div className="animate-fadeIn flex flex-col flex-1 min-h-0 w-full">
       <div className="flex items-center justify-between gap-3 shrink-0">
         <h1 className="text-page-heading text-ink">Notifications</h1>
-        {notifications.length > 0 && (
+        <div className="flex items-center gap-2">
+          {notifications.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => markAllRead.mutate()}
+            >
+              Mark all read
+            </Button>
+          )}
           <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => markAllRead.mutate()}
+            variant="secondary"
+            size="md"
+            onClick={() => setFiltersOpen((o) => !o)}
+            className="lg:hidden"
           >
-            Mark all read
+            {filtersOpen ? 'Hide Filters' : 'Show Filters'}
           </Button>
-        )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0 mt-4">
-        <aside className="lg:col-span-1 shrink-0 overflow-y-auto">
+      {filtersOpen && (
+        <div className="lg:hidden mt-4 shrink-0">
+          <NotificationFilters filters={filters} onChange={(f) => { setFilters(f); setPage(1); }} />
+        </div>
+      )}
+
+      <div className="flex gap-6 flex-1 min-h-0 mt-4">
+        <aside className="hidden lg:block lg:w-64 shrink-0 overflow-y-auto">
           <NotificationFilters filters={filters} onChange={(f) => { setFilters(f); setPage(1); }} />
         </aside>
 
-        <main className="lg:col-span-3 flex flex-col min-h-0">
+        <main className="flex-1 min-w-0 flex flex-col min-h-0">
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading ? (
               <div className="text-center py-8 text-body text-ink-muted">Loading...</div>

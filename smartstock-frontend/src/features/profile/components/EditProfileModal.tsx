@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../../../shared/components/Modal';
+import Input from '../../../shared/components/Input';
 import Button from '../../../shared/components/Button';
 import { useAuthStore } from '../../../store/authStore';
 import { useToastStore } from '../../../store/toastStore';
@@ -69,12 +70,11 @@ export default function EditProfileModal({ open, onClose }: Props) {
           <label htmlFor="name" className="block text-body text-ink-muted mb-1">
             Name
           </label>
-          <input
+          <Input
             id="name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-500"
             placeholder="Your name"
           />
         </div>
@@ -82,12 +82,11 @@ export default function EditProfileModal({ open, onClose }: Props) {
           <label htmlFor="email" className="block text-body text-ink-muted mb-1">
             Email
           </label>
-          <input
+          <Input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-500"
             placeholder="your@email.com"
           />
         </div>

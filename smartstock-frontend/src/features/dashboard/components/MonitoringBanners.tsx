@@ -38,7 +38,7 @@ function BannerItem({ banner }: { banner: MonitoringBanner }) {
       </div>
       <button
         onClick={handleDismiss}
-        className="shrink-0 p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        className="shrink-0 p-2.5 min-w-[44px] min-h-[44px] rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
         title="Dismiss"
       >
         <X className="w-3.5 h-3.5" />

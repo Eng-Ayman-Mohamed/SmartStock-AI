@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { FileText, Loader2, Upload, X } from 'lucide-react';
 import Button from '../../../shared/components/Button';
+import Select from '../../../shared/components/Select';
 import { useUploadDocument } from '../hooks/useDocuments';
 import type { DocType } from '../types';
 
@@ -99,7 +100,7 @@ export default function DocumentUploadModal({ open, onClose }: DocumentUploadMod
           </div>
           <button
             onClick={onClose}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -110,18 +111,17 @@ export default function DocumentUploadModal({ open, onClose }: DocumentUploadMod
           <label className="text-caption text-ink-muted mb-1 block" htmlFor="doc-type">
             Document Type
           </label>
-          <select
+          <Select
             id="doc-type"
             value={docType}
             onChange={(e) => setDocType(e.target.value as DocType)}
-            className="h-9 w-full rounded-md border border-hairline bg-canvas px-3 text-body text-ink transition-colors hover:border-ink-muted focus:border-brand-600 focus:outline-none"
           >
             {DOC_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <input

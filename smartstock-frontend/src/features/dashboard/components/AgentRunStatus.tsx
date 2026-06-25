@@ -64,7 +64,7 @@ export default function AgentRunStatus() {
       ) : error ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-body text-red-600">Failed to load agent runs.</p>
-          <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600">Try again</button>
+          <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600 min-h-[44px]">Try again</button>
         </div>
       ) : !runs || runs.length === 0 ? (
         <div className="flex items-center gap-3 py-6">

@@ -21,7 +21,7 @@ export default function ModeSelector({ active, onChange }: ModeSelectorProps) {
           role="radio"
           aria-checked={active === m.key}
           onClick={() => onChange(m.key)}
-          className={`px-3 py-1.5 rounded-md text-caption font-medium transition-all ${
+          className={`px-3 py-2.5 min-h-[44px] rounded-md text-caption font-medium transition-all ${
             active === m.key
               ? 'bg-brand-600 text-white shadow-sm'
               : 'text-ink-muted hover:text-ink hover:bg-canvas'

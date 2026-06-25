@@ -3,6 +3,7 @@ import { Loader2, X } from 'lucide-react';
 import { useCreateUser } from '../hooks/useUsers';
 import { ROLE_META } from './RoleBadge';
 import type { Role } from '../types';
+import Input from '../../../shared/components/Input';
 import PasswordField from '../../../shared/components/PasswordField';
 
 interface InviteUserModalProps {
@@ -99,7 +100,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-muted hover:bg-canvas-soft"
+            className="flex items-center justify-center w-11 h-11 rounded-md text-ink-faint hover:text-ink-muted hover:bg-canvas-soft"
           >
             <X className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -110,7 +111,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             <label htmlFor="invite-name" className="block text-caption font-medium text-ink mb-1.5">
               Full name
             </label>
-            <input
+            <Input
               id="invite-name"
               type="text"
               autoComplete="name"
@@ -121,7 +122,6 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                 if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: undefined }));
               }}
               aria-invalid={Boolean(fieldErrors.name)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
               placeholder="Jane Doe"
             />
             {fieldErrors.name && (
@@ -133,7 +133,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             <label htmlFor="invite-email" className="block text-caption font-medium text-ink mb-1.5">
               Email
             </label>
-            <input
+            <Input
               id="invite-email"
               type="email"
               autoComplete="email"
@@ -144,7 +144,6 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                 if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
               }}
               aria-invalid={Boolean(fieldErrors.email)}
-              className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
               placeholder="user@company.com"
             />
             {fieldErrors.email && (
@@ -190,7 +189,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
                     role="radio"
                     aria-checked={isSelected}
                     onClick={() => setRole(r)}
-                    className={`px-3 py-2 rounded-md border text-caption font-medium text-left transition-colors ${
+                    className={`px-3 py-3 rounded-md border text-caption font-medium text-left transition-colors min-h-[44px] ${
                       isSelected
                         ? 'border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-900/30 dark:text-brand-200'
                         : 'border-hairline bg-canvas text-ink-secondary hover:border-ink-faint'
@@ -218,14 +217,14 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             <button
               type="button"
               onClick={onClose}
-              className="px-3 h-9 rounded-md text-caption font-medium text-ink-secondary hover:bg-canvas-soft"
+              className="px-3 h-11 min-h-[44px] rounded-md text-caption font-medium text-ink-secondary hover:bg-canvas-soft"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createUser.isPending}
-              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 h-11 min-h-[44px] px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-800 disabled:bg-canvas-soft disabled:text-ink-faint disabled:cursor-not-allowed"
             >
               {createUser.isPending ? (
                 <>

@@ -101,7 +101,7 @@ export default function PendingPOQueue() {
       ) : error ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-body text-red-600">{error?.message ?? 'Failed to load purchase orders.'}</p>
-          <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600">Try again</button>
+          <button onClick={() => refetch()} className="underline text-sm font-medium text-red-600 min-h-[44px]">Try again</button>
         </div>
       ) : !pos || pos.length === 0 ? (
         <EmptyState

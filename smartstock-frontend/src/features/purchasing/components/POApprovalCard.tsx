@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, X, RotateCcw, AlertTriangle, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import Button from '../../../shared/components/Button';
 import Badge from '../../../shared/components/Badge';
+import Input from '../../../shared/components/Input';
 import { useApprovePO, useRejectPO } from '../hooks/usePurchasing';
 import type { PendingPO } from '../types';
 
@@ -152,13 +153,14 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
           {/* Quantity row */}
           <div className="flex items-center gap-2 pt-2">
             <p className="text-caption text-ink-muted">Recommended qty:</p>
-            <input
+            <Input
               type="number"
+              inputMode="numeric"
               value={editableQty}
               onChange={(e) => setEditableQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
               disabled={readOnly}
               aria-label="Purchase order quantity"
-              className="w-20 h-8 px-2 rounded-md border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="!w-24 !h-11"
             />
           </div>
 
