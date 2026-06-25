@@ -64,6 +64,8 @@ ACTION_ALLOWED_FIELDS: Dict[str, List[str]] = {
     'get_supplier_performance': [
         'supplier_name',
         'is_active',
+        'date_from',
+        'date_to',
     ],
     'help': [],
 }

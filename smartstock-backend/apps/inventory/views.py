@@ -78,13 +78,17 @@ def _match_cached_query(query: str) -> tuple[str, dict] | None:
 
     Uses word-boundary matching to avoid false positives (e.g. "show products" won't match
     "don't show products"). Also skips the cache if the query contains negation words within
-    a short distance of the matched pattern.
+    a short distance of the matched pattern, or if the query has more than 2 extra words
+    beyond the pattern (meaning entities like supplier names or dates may need LLM extraction).
     """
     lower_q = query.strip().lower()
+    q_words = lower_q.split()
     for pattern, cached_action, cached_filters in _QUERY_PATTERN_CACHE:
         if not re.search(r'\b' + re.escape(pattern) + r'\b', lower_q):
             continue
-        words = set(lower_q.split())
+        if len(q_words) - len(pattern.split()) > 2:
+            continue
+        words = set(q_words)
         if words & _NEGATION_WORDS:
             continue
         return cached_action, cached_filters
@@ -1407,21 +1411,40 @@ def _handle_get_supplier_performance(filters: NLQueryFilters) -> list:
     limit = filters.limit or 5
 
     supplier_q = Q()
+    date_q = Q()
     for c in filters.conditions:
         field = getattr(c, 'field', c.get('field') if isinstance(c, dict) else None)
         op = getattr(c, 'op', c.get('op', 'eq') if isinstance(c, dict) else 'eq')
         value = getattr(c, 'value', c.get('value') if isinstance(c, dict) else None)
         if field == 'supplier_name':
-            suffix = '__icontains' if op == 'contains' else ''
-            supplier_q &= Q(**{f'name{suffix}': value})
+            if op == 'in' and isinstance(value, list):
+                if not value:
+                    return []
+                supplier_q &= Q(name__in=value)
+            elif op == 'contains':
+                supplier_q &= Q(name__icontains=value)
+            elif op == 'eq':
+                supplier_q &= Q(name__iexact=value)
+            elif op == 'starts_with':
+                supplier_q &= Q(name__istarts_with=value)
+            elif op == 'ends_with':
+                supplier_q &= Q(name__iends_with=value)
+            else:
+                supplier_q &= Q(**{f'name__{op}': value})
         elif field == 'is_active':
             supplier_q &= Q(is_active=value)
+        elif field == 'date_from':
+            date_q &= Q(created_at__gte=value)
+        elif field == 'date_to':
+            date_q &= Q(created_at__lte=value)
 
     suppliers = Supplier.objects.filter(supplier_q).order_by('name')[:limit]
 
     results = []
     for supplier in suppliers:
         po_qs = PurchaseOrder.objects.filter(supplier=supplier)
+        if date_q:
+            po_qs = po_qs.filter(date_q)
         total_orders = po_qs.count()
 
         if total_orders == 0:
