@@ -14,7 +14,7 @@ export default function NotificationDropdown({ onClose }: Props) {
   const notifications = data?.results ?? [];
 
   return (
-    <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-canvas rounded-xl shadow-elevated border border-hairline z-50">
+    <div className="fixed left-4 right-4 sm:absolute sm:left-auto sm:right-0 mt-2 sm:w-96 bg-canvas rounded-xl shadow-elevated border border-hairline z-[60] max-h-[70vh] overflow-hidden flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
         <h3 className="text-section-heading text-ink">Notifications</h3>
         {notifications.length > 0 && (
@@ -26,7 +26,7 @@ export default function NotificationDropdown({ onClose }: Props) {
           </button>
         )}
       </div>
-      <div className="max-h-[min(24rem,60vh)] overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
           <div className="p-4 text-center text-body text-ink-muted">Loading...</div>
         ) : notifications.length === 0 ? (
