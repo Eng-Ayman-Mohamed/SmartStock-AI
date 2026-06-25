@@ -106,9 +106,7 @@ class DashboardBannersView(APIView):
             response=ErrorResponseSerializer, description='Authentication required'
         ),
         403: OpenApiResponse(response=ErrorResponseSerializer, description='Manager or above only'),
-        404: OpenApiResponse(
-            response=ErrorResponseSerializer, description='Banner not found'
-        ),
+        404: OpenApiResponse(response=ErrorResponseSerializer, description='Banner not found'),
     },
     tags=['monitoring'],
 )

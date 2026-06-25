@@ -43,9 +43,7 @@ from .serializers import NotificationListSerializer, NotificationSerializer
         request=NotificationSerializer,
         responses={
             201: NotificationSerializer,
-            400: OpenApiResponse(
-                response=ErrorResponseSerializer, description='Bad request'
-            ),
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
             401: OpenApiResponse(
                 response=ErrorResponseSerializer, description='Authentication required'
             ),
@@ -58,9 +56,7 @@ from .serializers import NotificationListSerializer, NotificationSerializer
         request=NotificationSerializer,
         responses={
             200: NotificationSerializer,
-            400: OpenApiResponse(
-                response=ErrorResponseSerializer, description='Bad request'
-            ),
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
             401: OpenApiResponse(
                 response=ErrorResponseSerializer, description='Authentication required'
             ),
@@ -76,9 +72,7 @@ from .serializers import NotificationListSerializer, NotificationSerializer
         request=NotificationSerializer,
         responses={
             200: NotificationSerializer,
-            400: OpenApiResponse(
-                response=ErrorResponseSerializer, description='Bad request'
-            ),
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
             401: OpenApiResponse(
                 response=ErrorResponseSerializer, description='Authentication required'
             ),
@@ -210,7 +204,9 @@ class NotificationViewSet(viewsets.ModelViewSet):
         200: OpenApiResponse(
             response={
                 'type': 'object',
-                'properties': {'count': {'type': 'integer', 'description': 'Number of unread notifications'}},
+                'properties': {
+                    'count': {'type': 'integer', 'description': 'Number of unread notifications'}
+                },
             },
             description='Unread notification count',
         ),

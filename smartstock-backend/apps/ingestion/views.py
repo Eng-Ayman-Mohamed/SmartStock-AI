@@ -578,15 +578,14 @@ class TranscribeView(APIView):
             ),
             description='Invoice scanned successfully',
         ),
-        400: OpenApiResponse(
-            response=ErrorResponseSerializer, description='Bad request'
-        ),
+        400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
         422: OpenApiResponse(
             response=ValidationErrorResponseSerializer,
             description='Invoice extraction malformed',
         ),
         501: OpenApiResponse(
-            response=ErrorResponseSerializer, description='Provider does not support vision',
+            response=ErrorResponseSerializer,
+            description='Provider does not support vision',
         ),
         504: OpenApiResponse(
             response=ErrorResponseSerializer,
@@ -648,12 +647,8 @@ class InvoiceScanView(APIView):
             ),
             description='Invoice scan confirmed',
         ),
-        400: OpenApiResponse(
-            response=ValidationErrorResponseSerializer, description='Bad request'
-        ),
-        403: OpenApiResponse(
-            response=ErrorResponseSerializer, description='Permission denied'
-        ),
+        400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description='Permission denied'),
         404: OpenApiResponse(
             response=ErrorResponseSerializer, description='Invoice scan not found'
         ),
@@ -727,9 +722,7 @@ class InvoiceScanConfirmView(APIView):
             ),
             description='Invoice scan rejected',
         ),
-        403: OpenApiResponse(
-            response=ErrorResponseSerializer, description='Permission denied'
-        ),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description='Permission denied'),
         404: OpenApiResponse(
             response=ErrorResponseSerializer, description='Invoice scan not found'
         ),
@@ -1142,7 +1135,8 @@ class ChatEndpointView(APIView):
             response=ErrorResponseSerializer, description='Conversation not found'
         ),
         422: OpenApiResponse(
-            response=ValidationErrorResponseSerializer, description='Validation error',
+            response=ValidationErrorResponseSerializer,
+            description='Validation error',
         ),
     },
     examples=[
