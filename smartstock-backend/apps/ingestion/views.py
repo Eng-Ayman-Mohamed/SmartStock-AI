@@ -41,6 +41,7 @@ from .serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
     InvoiceScanConfirmSerializer,
+    InvoiceScanSerializer,
     InvoiceScanUploadSerializer,
     RAGQuerySerializer,
     TranscriptionSerializer,
@@ -564,6 +565,35 @@ class TranscribeView(APIView):
 # ---------------------------------------------------------------------------
 
 
+@extend_schema(
+    request=InvoiceScanUploadSerializer,
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                'InvoiceScanResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': InvoiceScanSerializer(),
+                },
+            ),
+            description='Invoice scanned successfully',
+        ),
+        400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
+        422: OpenApiResponse(
+            response=ValidationErrorResponseSerializer,
+            description='Invoice extraction malformed',
+        ),
+        501: OpenApiResponse(
+            response=ErrorResponseSerializer,
+            description='Provider does not support vision',
+        ),
+        504: OpenApiResponse(
+            response=ErrorResponseSerializer,
+            description='Invoice extraction timed out',
+        ),
+    },
+    tags=['ai'],
+)
 class InvoiceScanView(APIView):
     permission_classes = [IsManagerOrAbove]
     throttle_classes = [ScopedRateThrottle]
@@ -604,6 +634,33 @@ class InvoiceScanView(APIView):
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    request=InvoiceScanConfirmSerializer,
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                'InvoiceScanConfirmResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': InvoiceScanSerializer(),
+                },
+            ),
+            description='Invoice scan confirmed',
+        ),
+        400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description='Permission denied'),
+        404: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice scan not found'
+        ),
+        409: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice already confirmed'
+        ),
+        422: OpenApiResponse(
+            response=ValidationErrorResponseSerializer, description='Validation error'
+        ),
+    },
+    tags=['ai'],
+)
 class InvoiceScanConfirmView(APIView):
     permission_classes = [IsManagerOrAbove]
     throttle_classes = [ScopedRateThrottle]
@@ -652,6 +709,29 @@ class InvoiceScanConfirmView(APIView):
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                'InvoiceScanRejectResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': InvoiceScanSerializer(),
+                },
+            ),
+            description='Invoice scan rejected',
+        ),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description='Permission denied'),
+        404: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice scan not found'
+        ),
+        409: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice already confirmed'
+        ),
+    },
+    tags=['ai'],
+)
 class InvoiceScanRejectView(APIView):
     permission_classes = [IsManagerOrAbove]
     throttle_classes = [ScopedRateThrottle]
@@ -1048,6 +1128,34 @@ class ChatEndpointView(APIView):
 # ---------------------------------------------------------------------------
 
 
+@extend_schema(
+    request=ChatSerializer,
+    responses={
+        200: OpenApiResponse(
+            response={'type': 'string', 'format': 'text/event-stream'},
+            description='SSE event stream with metadata, token, and done events',
+        ),
+        400: OpenApiResponse(
+            response=ErrorResponseSerializer,
+            description='Bad request or prompt injection detected',
+        ),
+        404: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Conversation not found'
+        ),
+        422: OpenApiResponse(
+            response=ValidationErrorResponseSerializer,
+            description='Validation error',
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            'Stream Request',
+            value={'query': 'How many Widget-001 do we have?'},
+            request_only=True,
+        ),
+    ],
+    tags=['ai'],
+)
 class ChatStreamView(APIView):
     """
     POST /api/ai/chat/stream/
