@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-xPQekRTU.js";import{n as t,t as n}from"./esm-BploDlvE.js";var r,i=e((()=>{n(),r=t(e=>({sidebarOpen:!1,sidebarCollapsed:!1,toggleSidebar:()=>e(e=>({sidebarOpen:!e.sidebarOpen})),setSidebarOpen:t=>e({sidebarOpen:t}),setSidebarCollapsed:t=>e({sidebarCollapsed:t})}))}));export{r as n,i as t};
