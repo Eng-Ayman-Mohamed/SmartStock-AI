@@ -103,6 +103,7 @@ export const WithPagination: Story = {
 };
 
 export const Sortable: Story = {
+  args: { data: sampleData },
   render: (args) => {
     const [sortKey, setSortKey] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');

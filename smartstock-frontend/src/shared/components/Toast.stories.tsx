@@ -14,7 +14,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function addToast(type: 'success' | 'error' | 'info', message: string) {
-  useToastStore.getState().addToast({ type, message });
+  useToastStore.getState().addToast(message, type);
 }
 
 export const Success: Story = {

@@ -10,6 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+storybook-static
+
+# Vitest/storybook snapshots
+__snapshots__
+
 *.local
 
 # Env files - never commit real secrets/credentials.

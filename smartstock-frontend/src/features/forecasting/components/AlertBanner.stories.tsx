@@ -8,6 +8,9 @@ const mockSku = {
   current_stock: 5,
   reorder_point: 20,
   predicted_demand_30d: 45,
+  stockout_risk: true,
+  forecast: [],
+  confidence_score: 0.85,
 };
 
 const meta = {
@@ -35,7 +38,7 @@ export const Critical: Story = {
 export const Warning: Story = {
   args: {
     alert: {
-      sku: { ...mockSku, current_stock: 18 },
+      sku: { ...mockSku, current_stock: 18, stockout_risk: false },
       severity: 'warning',
       message: 'Widget Alpha has only 18 units, which may be insufficient for the forecasted 30-day demand of 45.',
     },
