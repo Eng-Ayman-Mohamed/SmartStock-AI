@@ -1,5 +1,5 @@
 import type { Preview } from '@storybook/react-vite';
-import { withRouter } from '../src/shared/test-utils/decorators';
+import { withRouter, withQueryClient } from '../src/shared/test-utils/decorators';
 import '../src/index.css';
 
 const preview: Preview = {
@@ -31,6 +31,7 @@ const preview: Preview = {
   },
   decorators: [
     withRouter,
+    withQueryClient,
     (Story, context) => {
       const theme = context.globals.theme;
       const root = document.documentElement;
