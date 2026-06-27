@@ -1,7 +1,6 @@
 import type { ChatMode } from '../types';
 
 const modes: { key: ChatMode; label: string }[] = [
-  { key: 'auto', label: 'Ask AI' },
   { key: 'nl_query', label: 'NL Query' },
   { key: 'rag', label: 'Search Documents' },
 ];

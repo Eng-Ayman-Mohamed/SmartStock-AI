@@ -1,4 +1,4 @@
-export type ChatMode = 'auto' | 'nl_query' | 'rag';
+export type ChatMode = 'nl_query' | 'rag';
 
 export interface Citation {
   document: string;
