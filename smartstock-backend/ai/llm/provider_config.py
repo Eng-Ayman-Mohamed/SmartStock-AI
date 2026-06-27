@@ -1,9 +1,9 @@
 """
-provider_config.py — Multi-provider LLM configuration with automatic failover.
+provider_config.py — Multi-provider LLM configuration.
 
 Supports OpenAI, Groq, Google Gemini, and xAI as LLM/embedding providers.
-Failover priority: OpenAI → Gemini → xAI (no manual intervention).
-All LLM calls must route through LLMProviderManager (no direct provider calls).
+get_chat_llm() creates LLM instances directly for the configured provider.
+For failover/circuit-breaker, use LLMProviderManager.get_llm().
 
 Groq uses OpenAI-compatible API, so ChatOpenAI works with a base_url override.
 Gemini uses langchain-google-genai for embeddings.
@@ -92,46 +92,35 @@ def get_api_key_for_provider(provider_name: str) -> str:
 
 def get_chat_llm(temperature=0, model_override=None):
     """
-    Get a chat LLM instance with automatic failover.
+    Get a chat LLM instance for the active provider.
 
-    Routes through LLMProviderManager for circuit breaker + retry + failover.
-    Falls back to direct provider creation if manager is unavailable.
+    Creates the LLM directly based on the configured provider (PROVIDER).
+    For failover/circuit-breaker, use LLMProviderManager.get_llm() instead.
     """
-    try:
-        from .llm_provider_manager import get_provider_manager
+    config = get_provider_config()
+    model = model_override or config['chat_model']
+    api_key = get_api_key()
 
-        manager = get_provider_manager()
-        return manager.get_llm(
+    if PROVIDER == 'gemini':
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        return ChatGoogleGenerativeAI(
+            model=model,
             temperature=temperature,
-            model_override=model_override,
+            google_api_key=api_key,
         )
-    except Exception as e:
-        logger.warning('LLMProviderManager failed (%s), falling back to direct provider', e)
-        # Fallback: direct creation (no failover)
-        config = get_provider_config()
-        model = model_override or config['chat_model']
-        api_key = get_api_key()
 
-        if PROVIDER == 'gemini':
-            from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import ChatOpenAI
 
-            return ChatGoogleGenerativeAI(
-                model=model,
-                temperature=temperature,
-                google_api_key=api_key,
-            )
-
-        from langchain_openai import ChatOpenAI
-
-        kwargs = {
-            'model': model,
-            'temperature': temperature,
-            'api_key': api_key,
-            'request_timeout': 30,
-        }
-        if config['base_url']:
-            kwargs['base_url'] = config['base_url']
-        return ChatOpenAI(**kwargs)
+    kwargs = {
+        'model': model,
+        'temperature': temperature,
+        'api_key': api_key,
+        'request_timeout': 30,
+    }
+    if config['base_url']:
+        kwargs['base_url'] = config['base_url']
+    return ChatOpenAI(**kwargs)
 
 
 def get_chat_llm_mini(temperature=0):

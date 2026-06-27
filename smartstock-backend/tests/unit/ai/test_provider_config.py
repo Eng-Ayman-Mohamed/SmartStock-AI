@@ -75,10 +75,7 @@ class ProviderConfigGetChatLlmTest(TestCase):
                 self.assertEqual(mock_cls.call_args.kwargs['model'], 'custom-model')
 
     @patch('langchain_openai.ChatOpenAI')
-    @patch(
-        'ai.llm.llm_provider_manager.get_provider_manager', side_effect=RuntimeError('no manager')
-    )
-    def test_groq_sets_base_url(self, _mock_mgr, mock_cls):
+    def test_groq_sets_base_url(self, mock_cls):
         from ai.llm import provider_config
 
         with patch.object(provider_config, 'PROVIDER', 'groq'):
