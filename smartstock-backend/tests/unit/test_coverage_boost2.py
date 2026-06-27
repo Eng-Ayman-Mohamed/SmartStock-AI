@@ -437,7 +437,10 @@ class AiConversationServiceAutoTitleTests(TestCase):
 class ProviderConfigGeminiChatLlmTests(TestCase):
     @patch('ai.llm.provider_config.get_api_key', return_value='fake-key')
     @patch('langchain_google_genai.ChatGoogleGenerativeAI')
-    def test_get_chat_llm_gemini(self, mock_google, mock_key):
+    @patch(
+        'ai.llm.llm_provider_manager.get_provider_manager', side_effect=RuntimeError('no manager')
+    )
+    def test_get_chat_llm_gemini(self, _mock_mgr, mock_google, mock_key):
         import ai.llm.provider_config as pc
 
         original = pc.PROVIDER
