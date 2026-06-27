@@ -28,6 +28,7 @@ def _dense_search(query: str, query_embedding: list[float], top_k: int = 10) -> 
             c.source_document,
             c.page_number,
             c.metadata,
+            c.document_id,
             1 - (c.embedding <=> %s::vector) AS vector_score
         FROM ingestion_documentchunk c
         LEFT JOIN ingestion_document d ON d.id = c.document_id
@@ -50,8 +51,9 @@ def _dense_search(query: str, query_embedding: list[float], top_k: int = 10) -> 
                 'source_document': row[2],
                 'page_number': row[3],
                 'metadata': row[4] or {},
-                'score': float(row[5]) if row[5] is not None else 0.0,
-                'vector_score': float(row[5]) if row[5] is not None else 0.0,
+                'document_id': row[5],
+                'score': float(row[6]) if row[6] is not None else 0.0,
+                'vector_score': float(row[6]) if row[6] is not None else 0.0,
             }
             for row in rows
         ]
@@ -69,6 +71,7 @@ def _sparse_search(query: str, top_k: int = 10) -> list[dict]:
             c.source_document,
             c.page_number,
             c.metadata,
+            c.document_id,
             ts_rank(c."tsvector", plainto_tsquery('english', %s)) AS fts_score
         FROM ingestion_documentchunk c
         LEFT JOIN ingestion_document d ON d.id = c.document_id
@@ -90,8 +93,9 @@ def _sparse_search(query: str, top_k: int = 10) -> list[dict]:
                 'source_document': row[2],
                 'page_number': row[3],
                 'metadata': row[4] or {},
-                'score': float(row[5]) if row[5] is not None else 0.0,
-                'fts_score': float(row[5]) if row[5] is not None else 0.0,
+                'document_id': row[5],
+                'score': float(row[6]) if row[6] is not None else 0.0,
+                'fts_score': float(row[6]) if row[6] is not None else 0.0,
             }
             for row in rows
         ]

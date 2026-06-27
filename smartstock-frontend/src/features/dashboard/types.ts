@@ -12,6 +12,17 @@ export interface ReorderAlert {
   predicted_stockout_date: string | null;
 }
 
+export interface AgentRun {
+  id: number;
+  agent_name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PurchaseOrder {
   id: number;
   sku: number;

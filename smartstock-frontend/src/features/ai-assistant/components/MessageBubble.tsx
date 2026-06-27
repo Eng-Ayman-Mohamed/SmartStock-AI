@@ -30,6 +30,7 @@ function parseAnswerText(text: string, sources: Message['sources']) {
         key={`${doc}-${page}-${match.index}`}
         sourceDocument={doc}
         page={page}
+        documentId={source?.document_id}
         chunkText={source?.chunk_text}
       />,
     );

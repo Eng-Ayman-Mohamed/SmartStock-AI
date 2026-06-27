@@ -110,7 +110,7 @@ jobs:
           cache-dependency-path: smartstock-frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc --noEmit
+      - run: npx tsc -b --clean && npx tsc -b
 
   frontend-build:
     runs-on: ubuntu-latest
