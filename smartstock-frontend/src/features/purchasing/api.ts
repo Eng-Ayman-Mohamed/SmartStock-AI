@@ -168,11 +168,12 @@ export async function listPOHistory(
     page,
     page_size: pageSize,
     ordering: ordering || undefined,
+    // Exclude draft/pending server-side so the paginated count matches the rows shown.
+    status_exclude: 'draft,pending_approval',
   };
   const res = await api.get<POHistoryRaw[]>('/purchasing/orders/', { params });
   return {
     results: (res.data ?? [])
-      .filter((item) => item.status !== 'pending_approval' && item.status !== 'draft')
       .map((item) => ({
         id: `PO-${item.id}`,
         product_name: item.product_name,

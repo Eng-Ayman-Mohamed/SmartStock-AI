@@ -10,11 +10,11 @@ Branch: `fix/bug-sweep-20260627`
 | Setup C | Local Postgres + Redis for dev | Done | c5596e7 |
 | 1 | Remove the "Ask AI" button | Fixed | 1b0f0c5 |
 | 2 | Source badge opens a blank object | Fixed (NEEDS-VERIFICATION) | see log |
-| 3 | Tables "suspense" not complete | _pending_ | — |
+| 3 | Tables "suspense" not complete | Fixed (same root cause as Bug 7) | see log |
 | 4 | Invoice scan with PDF not working | _pending_ | — |
 | 5 | Registration email in production | _pending_ | — |
 | 6 | Inventory actions | _pending_ | — |
-| 7 | PO history table | _pending_ | — |
+| 7 | PO history table | Fixed | see log |
 | 8 | "Create new order" button | _pending_ | — |
 
 ---
@@ -53,3 +53,16 @@ Branch: `fix/bug-sweep-20260627`
 - **Verification:** `npx tsc --noEmit` → exit 0; `npx eslint api.ts` → exit 0. Reproduced the live RAG path: `POST /api/ai/chat/stream/` returns `event: done` with `{"sources":[...]}` in the correct `{document, page, chunk_text}` shape (no envelope on the SSE stream, so the streaming UI path was already correct).
 - **Notes / follow-ups:** NEEDS-VERIFICATION for the exact end-user symptom: the active chat UI uses the **streaming** path (`sendChatMessageStream`), which already returns correct shapes; the fixed `sendChatMessage` is the non-streamed helper. With the seeded `DocumentChunk` rows lacking real embeddings, RAG returns no sources locally, so a populated badge can't be reproduced until a real document is ingested (see Bug 4). If the blank badge persists after ingesting a real PDF, the remaining cause would be data-level (a `page_number` of `null` not matching the `[Source: …, Page: N]` marker in the answer text), not an API-shape mismatch.
 - **Commit:** `fix(ai-assistant): unwrap response envelope in sendChatMessage`
+
+## Bug 3 — Tables "suspense" not complete  /  Bug 7 — PO history table
+
+> Bugs 3 and 7 are the **same defect**. Investigation found no broken React Suspense boundary or never-resolving query: the only `Suspense` in the app is route-level code-splitting (`router.tsx`) with a working fallback, and every list table uses clean server pagination — **except** the PO History table. Its "loads the top then stalls" symptom is the PO-history pagination bug below. One fix resolves both.
+
+- **Status:** Fixed
+- **Symptom:** The Purchase-Order History table shows fewer rows than the page size (rows silently missing) and an inflated total in the pager; navigating pages yields empty/short pages, so the table looks frozen / incomplete.
+- **Root cause:** `listPOHistory` fetched `/purchasing/orders/` with **no status filter** (server-side pagination over ALL statuses), then discarded `draft`/`pending_approval` rows **client-side**. But the pagination `total` came from the server's unfiltered count, so `totalPages`/`hasNext` were computed from 500 records while only history-eligible rows were shown. Because default ordering is `-created_at`, the newest (pending) orders land on page 1 and get filtered away, leaving empty pages. Regressed when the view was switched from client-side to server-side pagination without a matching server-side status filter (`PurchaseOrderViewSet.filterset_fields = ['status']` only supports exact match, with no "not in" lookup).
+- **Fix:** Added server-side exclusion so the paginated count matches the visible rows. Backend: new `PurchaseOrderFilter` (with a `CharInFilter = BaseInFilter + CharFilter` mixin) exposing `status_exclude`, and `PurchaseOrderViewSet` now uses `filterset_class = PurchaseOrderFilter` (the exact `status` filter is preserved). Frontend: `listPOHistory` passes `status_exclude=draft,pending_approval` and no longer filters client-side.
+- **Files changed:** `smartstock-backend/apps/purchasing/views.py`, `smartstock-frontend/src/features/purchasing/api.ts`
+- **Verification:** `manage.py check` → no issues; `ruff check --no-cache` → passed; `tsc --noEmit` / `eslint` → exit 0. Live API: `GET /purchasing/orders/?status_exclude=draft,pending_approval` returns only history statuses (no draft/pending) with `meta.total = 402` (vs 500 unfiltered) — the count now matches the filtered rows, so pagination is correct on every page.
+- **Notes / follow-ups:** The `status_exclude` param is additive and backward-compatible; existing `?status=` exact filtering is unchanged.
+- **Commit:** `fix(purchasing): exclude draft/pending from PO history server-side`

@@ -152,6 +152,23 @@ class SupplierViewSet(viewsets.ModelViewSet):
         return [IsManagerOrAbove()]
 
 
+class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
+    """Splits a comma-separated value into a list for `in`/`not in` lookups."""
+
+
+class PurchaseOrderFilter(django_filters.FilterSet):
+    """Adds `status_exclude` so the PO-history view can drop draft/pending rows
+    server-side (keeping pagination counts consistent with the visible rows),
+    while preserving the existing exact `status` filter."""
+
+    status = django_filters.CharFilter(field_name='status')
+    status_exclude = CharInFilter(field_name='status', exclude=True)
+
+    class Meta:
+        model = PurchaseOrder
+        fields = ['status']
+
+
 @extend_schema_view(
     list=extend_schema(
         responses={
@@ -252,7 +269,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     ).all()
     serializer_class = PurchaseOrderSerializer
     permission_classes = [IsAuthenticated]
-    filterset_fields = ['status']
+    filterset_class = PurchaseOrderFilter
     ordering_fields = [
         'id',
         'sku__product__name',
