@@ -69,7 +69,9 @@ class ChatPipeline:
                     else:
                         engine = classification.intent
             except Exception:
-                logger.warning('Intent classification failed; defaulting to nl_query', exc_info=True)
+                logger.warning(
+                    'Intent classification failed; defaulting to nl_query', exc_info=True
+                )
                 engine = 'nl_query'
         else:
             engine = mode

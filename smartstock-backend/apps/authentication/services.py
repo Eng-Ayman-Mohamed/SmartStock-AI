@@ -26,6 +26,7 @@ def send_verification_email(user: CustomUser, token: EmailVerificationToken) -> 
 
     try:
         from infrastructure.email import send_verification_email_task
+
         send_verification_email_task.delay(
             email=user.email,
             verify_url=verify_url,
@@ -33,7 +34,9 @@ def send_verification_email(user: CustomUser, token: EmailVerificationToken) -> 
         )
         logger.info('Verification email queued for %s', user.email)
     except Exception:
-        logger.exception('Failed to queue verification email for %s; falling back to sync', user.email)
+        logger.exception(
+            'Failed to queue verification email for %s; falling back to sync', user.email
+        )
         _send_verification_email_sync(user, verify_url)
 
 
@@ -55,7 +58,9 @@ def _send_verification_email_sync(user: CustomUser, verify_url: str) -> None:
     try:
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@smartstock.ai')
         logger.info('Sending verification email from=%s to=%s (sync)', from_email, user.email)
-        send_mail(subject=subject, message=message, from_email=from_email, recipient_list=[user.email])
+        send_mail(
+            subject=subject, message=message, from_email=from_email, recipient_list=[user.email]
+        )
         logger.info('Verification email sent to %s (sync)', user.email)
     except Exception:
         logger.exception('Failed to send verification email to %s (sync)', user.email)

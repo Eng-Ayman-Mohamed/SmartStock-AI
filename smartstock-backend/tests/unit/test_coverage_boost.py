@@ -358,5 +358,6 @@ class PurchasingTaskTests(TestCase):
 
     def test_check_overdue_suppliers_returns_created_count(self):
         from apps.purchasing.tasks import check_overdue_suppliers
+
         result = check_overdue_suppliers()
         self.assertIn('created', result)

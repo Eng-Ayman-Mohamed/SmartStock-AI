@@ -64,7 +64,10 @@ class PurchasingService:
         if existing:
             logger.info(
                 'Dedup: returning existing PO id=%s for sku=%s supplier=%s qty=%s',
-                existing.id, sku_id, supplier_id, quantity,
+                existing.id,
+                sku_id,
+                supplier_id,
+                quantity,
             )
             return existing
 
@@ -90,9 +93,7 @@ class PurchasingService:
             raise IllegalPOTransitionError(
                 f'Only draft or pending approval orders can be approved. Current status: {po.status}'
             )
-        PurchaseOrder.objects.filter(pk=po_id).update(
-            status='approved', approved_by_id=user.id
-        )
+        PurchaseOrder.objects.filter(pk=po_id).update(status='approved', approved_by_id=user.id)
         po.refresh_from_db()
         po_approved.send(sender=self.__class__, po=po, user=user)
 
@@ -108,7 +109,11 @@ class PurchasingService:
         from django.template.loader import render_to_string
 
         if po.message_id:
-            logger.info('PO-%s already has email sent (message_id=%s); skipping duplicate', po.id, po.message_id)
+            logger.info(
+                'PO-%s already has email sent (message_id=%s); skipping duplicate',
+                po.id,
+                po.message_id,
+            )
             return
 
         supplier = po.supplier
@@ -130,7 +135,9 @@ class PurchasingService:
         )
         logger.info(
             'PO-%s supplier email dispatched to %s (message_id=%s)',
-            po.id, supplier.contact_email, message_id,
+            po.id,
+            supplier.contact_email,
+            message_id,
         )
 
     @transaction.atomic
@@ -290,5 +297,3 @@ class PurchasingService:
             'confirmed': po.status == 'confirmed',
             'timed_out': False,
         }
-
-

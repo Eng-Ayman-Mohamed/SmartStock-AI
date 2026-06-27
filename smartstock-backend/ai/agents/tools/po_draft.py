@@ -25,6 +25,7 @@ class PODraftTool(BaseTool):
             total_cost = input.get('total_cost', '0.00')
 
             from apps.authentication.models import CustomUser
+
             user = None
             if user_id is not None:
                 try:

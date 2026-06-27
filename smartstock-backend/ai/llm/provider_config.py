@@ -99,15 +99,14 @@ def get_chat_llm(temperature=0, model_override=None):
     """
     try:
         from .llm_provider_manager import get_provider_manager
+
         manager = get_provider_manager()
         return manager.get_llm(
             temperature=temperature,
             model_override=model_override,
         )
     except Exception as e:
-        logger.warning(
-            "LLMProviderManager failed (%s), falling back to direct provider", e
-        )
+        logger.warning('LLMProviderManager failed (%s), falling back to direct provider', e)
         # Fallback: direct creation (no failover)
         config = get_provider_config()
         model = model_override or config['chat_model']
@@ -115,6 +114,7 @@ def get_chat_llm(temperature=0, model_override=None):
 
         if PROVIDER == 'gemini':
             from langchain_google_genai import ChatGoogleGenerativeAI
+
             return ChatGoogleGenerativeAI(
                 model=model,
                 temperature=temperature,
@@ -122,6 +122,7 @@ def get_chat_llm(temperature=0, model_override=None):
             )
 
         from langchain_openai import ChatOpenAI
+
         kwargs = {
             'model': model,
             'temperature': temperature,

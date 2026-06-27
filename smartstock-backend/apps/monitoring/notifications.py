@@ -35,6 +35,7 @@ def send_alert_email(alert_event) -> bool:
 
     try:
         from infrastructure.email import send_alert_email_task
+
         send_alert_email_task.delay(subject=subject, body=body)
         logger.info('Alert email queued: %s to %s', alert_event.rule.name, recipients)
         return True

@@ -11,6 +11,7 @@ Usage:
     cd smartstock-backend
     python scripts/test_email_e2e.py
 """
+
 import logging
 import os
 import time
@@ -52,7 +53,9 @@ def ensure_test_suppliers():
             },
         )
         action = 'Created' if created else 'Updated'
-        logger.info(f'{action} supplier: {supplier.name} <{supplier.contact_email}> (id={supplier.id})')
+        logger.info(
+            f'{action} supplier: {supplier.name} <{supplier.contact_email}> (id={supplier.id})'
+        )
         suppliers.append(supplier)
     return suppliers
 
@@ -100,6 +103,7 @@ def test_po_approval_email():
         return
 
     from apps.inventory.models import SKU
+
     sku = SKU.objects.first()
     if not sku:
         logger.error('No SKUs found in database')

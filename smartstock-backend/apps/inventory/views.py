@@ -1763,7 +1763,10 @@ class NLQueryEndpointView(APIView):
         except Exception:
             logger.exception('Database execution error for action %s', action_type)
             return Response(
-                {'status': 'error', 'message': 'An unexpected error occurred while processing your request.'},
+                {
+                    'status': 'error',
+                    'message': 'An unexpected error occurred while processing your request.',
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

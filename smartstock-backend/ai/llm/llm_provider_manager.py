@@ -23,15 +23,16 @@ logger = logging.getLogger(__name__)
 
 
 class ProviderStatus(Enum):
-    HEALTHY = "healthy"
-    DEGRADED = "degraded"
-    FAILED = "failed"
-    CIRCUIT_OPEN = "circuit_open"
+    HEALTHY = 'healthy'
+    DEGRADED = 'degraded'
+    FAILED = 'failed'
+    CIRCUIT_OPEN = 'circuit_open'
 
 
 @dataclass
 class ProviderHealth:
     """Tracks health state for a single provider."""
+
     name: str
     status: ProviderStatus = ProviderStatus.HEALTHY
     consecutive_failures: int = 0
@@ -70,7 +71,7 @@ class ProviderHealth:
                 self.status = ProviderStatus.CIRCUIT_OPEN
                 self.circuit_open_until = time.time() + self.CIRCUIT_TIMEOUT
                 logger.warning(
-                    "Circuit breaker OPEN for %s after %d failures.",
+                    'Circuit breaker OPEN for %s after %d failures.',
                     self.name,
                     self.consecutive_failures,
                 )
@@ -80,7 +81,7 @@ class ProviderHealth:
     def is_available(self) -> bool:
         if self.status == ProviderStatus.CIRCUIT_OPEN:
             if self.circuit_open_until and time.time() > self.circuit_open_until:
-                logger.info("Circuit breaker half-open for %s", self.name)
+                logger.info('Circuit breaker half-open for %s', self.name)
                 self.status = ProviderStatus.DEGRADED
                 return True
             return False
@@ -115,13 +116,13 @@ class FailoverChatLLM(BaseChatModel):
 
     @property
     def _llm_type(self) -> str:
-        return "failover-chat-llm"
+        return 'failover-chat-llm'
 
     @property
     def _identifying_params(self) -> dict:
         return {
-            "provider_pool": self.provider_names,
-            "primary": self.provider_names[0] if self.provider_names else None,
+            'provider_pool': self.provider_names,
+            'primary': self.provider_names[0] if self.provider_names else None,
         }
 
     def bind_tools(self, tools, **kwargs):
@@ -153,8 +154,11 @@ class FailoverChatLLM(BaseChatModel):
         )
 
     def _generate(
-        self, messages: List[BaseMessage], stop: Optional[List[str]] = None,
-        run_manager: Any = None, **kwargs: Any,
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Any = None,
+        **kwargs: Any,
     ) -> ChatResult:
         last_error = None
         for provider_name, llm in self.llm_pool:
@@ -170,17 +174,22 @@ class FailoverChatLLM(BaseChatModel):
                 last_error = e
                 is_transient = self._is_transient_error(e)
                 logger.warning(
-                    "LLM call failed on %s (transient=%s): %s",
-                    provider_name, is_transient, str(e)[:200],
+                    'LLM call failed on %s (transient=%s): %s',
+                    provider_name,
+                    is_transient,
+                    str(e)[:200],
                 )
                 if not is_transient:
                     raise
                 continue
-        raise RuntimeError(f"All providers failed. Last error: {last_error}")
+        raise RuntimeError(f'All providers failed. Last error: {last_error}')
 
     def _stream(
-        self, messages: List[BaseMessage], stop: Optional[List[str]] = None,
-        run_manager: Any = None, **kwargs: Any,
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Any = None,
+        **kwargs: Any,
     ) -> Iterator[AIMessageChunk]:
         last_error = None
         for provider_name, llm in self.llm_pool:
@@ -198,15 +207,28 @@ class FailoverChatLLM(BaseChatModel):
                 if not self._is_transient_error(e):
                     raise
                 continue
-        raise RuntimeError(f"All providers failed. Last error: {last_error}")
+        raise RuntimeError(f'All providers failed. Last error: {last_error}')
 
     @staticmethod
     def _is_transient_error(e: Exception) -> bool:
         msg = str(e).lower()
-        return any(kw in msg for kw in (
-            '429', 'rate', 'too many', 'resource_exhausted', 'timeout',
-            'timed out', 'connection', '503', '502', 'overloaded', 'quota', 'throttl',
-        ))
+        return any(
+            kw in msg
+            for kw in (
+                '429',
+                'rate',
+                'too many',
+                'resource_exhausted',
+                'timeout',
+                'timed out',
+                'connection',
+                '503',
+                '502',
+                'overloaded',
+                'quota',
+                'throttl',
+            )
+        )
 
 
 class LLMProviderManager:
@@ -229,18 +251,20 @@ class LLMProviderManager:
             if self._initialized:
                 return
             from .provider_config import _PROVIDERS
+
             self._providers_config = _PROVIDERS
             for name in _PROVIDERS:
                 self._health[name] = ProviderHealth(name=name)
             self._initialized = True
             logger.info(
-                "LLMProviderManager initialized: %s",
-                " -> ".join(self.PROVIDER_PRIORITY),
+                'LLMProviderManager initialized: %s',
+                ' -> '.join(self.PROVIDER_PRIORITY),
             )
 
     def _get_available_providers(self) -> List[str]:
         self._initialize()
         import os
+
         available = []
         for name in self.PROVIDER_PRIORITY:
             if name not in self._health:
@@ -269,8 +293,8 @@ class LLMProviderManager:
 
         if not providers_to_try:
             raise RuntimeError(
-                "No LLM providers available. "
-                f"Health: { {n: h.status.value for n, h in self._health.items()} }"
+                'No LLM providers available. '
+                f'Health: { {n: h.status.value for n, h in self._health.items()} }'
             )
 
         llm_pool = []
@@ -278,13 +302,17 @@ class LLMProviderManager:
             try:
                 llm = self._create_llm(pname, temperature, model_override)
                 llm_pool.append((pname, llm))
-                logger.info("Created LLM: %s/%s", pname, model_override or self._providers_config[pname]['chat_model'])
+                logger.info(
+                    'Created LLM: %s/%s',
+                    pname,
+                    model_override or self._providers_config[pname]['chat_model'],
+                )
             except Exception as e:
                 self._health[pname].record_failure()
-                logger.warning("Failed to create LLM for %s: %s", pname, e)
+                logger.warning('Failed to create LLM for %s: %s', pname, e)
 
         if not llm_pool:
-            raise RuntimeError("All providers failed to create LLM instances")
+            raise RuntimeError('All providers failed to create LLM instances')
 
         return FailoverChatLLM(
             llm_pool=llm_pool,
@@ -296,22 +324,31 @@ class LLMProviderManager:
         config = self._providers_config[provider_name]
         model = model_override or config['chat_model']
         import os
+
         api_key = os.getenv(config['api_key_env'], '')
         if not api_key:
-            raise ValueError(f"No API key for {provider_name}")
+            raise ValueError(f'No API key for {provider_name}')
 
         if provider_name == 'gemini':
             from langchain_google_genai import ChatGoogleGenerativeAI
+
             return ChatGoogleGenerativeAI(
-                model=model, temperature=temperature,
-                google_api_key=api_key, request_timeout=30,
-                max_retries=0, model_kwargs={'max_remote_calls': 1},
+                model=model,
+                temperature=temperature,
+                google_api_key=api_key,
+                request_timeout=30,
+                max_retries=0,
+                model_kwargs={'max_remote_calls': 1},
             )
 
         from langchain_openai import ChatOpenAI
+
         kwargs = {
-            'model': model, 'temperature': temperature,
-            'api_key': api_key, 'request_timeout': 30, 'max_retries': 0,
+            'model': model,
+            'temperature': temperature,
+            'api_key': api_key,
+            'request_timeout': 30,
+            'max_retries': 0,
         }
         if config['base_url']:
             kwargs['base_url'] = config['base_url']
@@ -335,9 +372,9 @@ class LLMProviderManager:
                 'consecutive_failures': h.consecutive_failures,
                 'total_calls': h.total_calls,
                 'total_failures': h.total_failures,
-                'error_rate': f"{h.error_rate:.1%}",
-                'avg_latency_ms': f"{h.avg_latency_ms:.1f}",
-                'score': f"{h.score():.3f}",
+                'error_rate': f'{h.error_rate:.1%}',
+                'avg_latency_ms': f'{h.avg_latency_ms:.1f}',
+                'score': f'{h.score():.3f}',
             }
             for name, h in self._health.items()
         }

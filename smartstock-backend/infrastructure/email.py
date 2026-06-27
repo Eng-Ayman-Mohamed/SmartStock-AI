@@ -58,7 +58,12 @@ def _send_email_sync(subject: str, body: str, recipient: str) -> dict:
         return {'status': 'sent', 'message_id': message_id, 'recipient': recipient}
     except Exception as exc:
         logger.exception('Email %s to %s failed: %s', message_id, recipient, exc)
-        return {'status': 'failed', 'message_id': message_id, 'recipient': recipient, 'error': str(exc)}
+        return {
+            'status': 'failed',
+            'message_id': message_id,
+            'recipient': recipient,
+            'error': str(exc),
+        }
 
 
 @shared_task(
@@ -75,7 +80,10 @@ def send_email_task(self, subject: str, body: str, recipient: str) -> dict:
     try:
         logger.info(
             'Sending email %s to %s (attempt %d/%d)',
-            message_id, recipient, retry_number + 1, MAX_RETRIES + 1,
+            message_id,
+            recipient,
+            retry_number + 1,
+            MAX_RETRIES + 1,
         )
         msg = EmailMessage(
             subject=subject,
@@ -107,10 +115,16 @@ def send_email_task(self, subject: str, body: str, recipient: str) -> dict:
             countdown = RETRY_COUNTDOWN[min(retry_number, len(RETRY_COUNTDOWN) - 1)]
             logger.warning(
                 'Email %s to %s failed (attempt %d/%d). Retrying in %ds',
-                message_id, recipient, next_retry, MAX_RETRIES + 1, countdown,
+                message_id,
+                recipient,
+                next_retry,
+                MAX_RETRIES + 1,
+                countdown,
             )
             raise self.retry(exc=exc, countdown=countdown)
-        logger.error('Email %s to %s permanently failed after %d retries', message_id, recipient, MAX_RETRIES)
+        logger.error(
+            'Email %s to %s permanently failed after %d retries', message_id, recipient, MAX_RETRIES
+        )
         return {
             'status': 'permanently_failed',
             'message_id': message_id,

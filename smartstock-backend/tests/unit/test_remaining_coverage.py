@@ -348,9 +348,7 @@ class StubToolTests(TestCase):
 
         class _FakeService:
             def draft_po(self, **kwargs):
-                return SimpleNamespace(
-                    id=42, status='draft', sku_id=1, supplier_id=5, quantity=100
-                )
+                return SimpleNamespace(id=42, status='draft', sku_id=1, supplier_id=5, quantity=100)
 
         tool = PODraftTool(service=_FakeService())
         result = tool.run(

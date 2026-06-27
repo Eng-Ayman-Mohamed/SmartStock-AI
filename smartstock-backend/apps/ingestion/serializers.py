@@ -98,9 +98,16 @@ class TranscriptionSerializer(serializers.Serializer):
     audio = serializers.FileField()
 
     ALLOWED_AUDIO_TYPES = {
-        'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav',
-        'audio/ogg', 'audio/flac', 'audio/mp4', 'audio/m4a',
-        'audio/webm', 'audio/aac',
+        'audio/mpeg',
+        'audio/mp3',
+        'audio/wav',
+        'audio/x-wav',
+        'audio/ogg',
+        'audio/flac',
+        'audio/mp4',
+        'audio/m4a',
+        'audio/webm',
+        'audio/aac',
     }
 
     def validate_audio(self, file):

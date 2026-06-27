@@ -6,27 +6,26 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("inventory", "0002_remove_salesrecord_inventory_s_sku_id_92dcd2_idx_and_more"),
-        ("purchasing", "0002_purchaseorder_purchasing__sku_id_44310b_idx_and_more"),
+        ('inventory', '0002_remove_salesrecord_inventory_s_sku_id_92dcd2_idx_and_more'),
+        ('purchasing', '0002_purchaseorder_purchasing__sku_id_44310b_idx_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="purchaseorder",
-            name="created_by_agent",
+            model_name='purchaseorder',
+            name='created_by_agent',
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name="purchaseorder",
-            name="agent_name",
-            field=models.CharField(blank=True, default="", max_length=100),
+            model_name='purchaseorder',
+            name='agent_name',
+            field=models.CharField(blank=True, default='', max_length=100),
         ),
         migrations.AddField(
-            model_name="purchaseorder",
-            name="agent_run_id",
+            model_name='purchaseorder',
+            name='agent_run_id',
             field=models.IntegerField(blank=True, null=True),
         ),
     ]

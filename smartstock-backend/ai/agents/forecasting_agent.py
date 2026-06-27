@@ -78,9 +78,7 @@ class ForecastingAgent:
             if isinstance(_val, str):
                 _is_safe, _ = prompt_injection_filter(_val)
                 if not _is_safe:
-                    raise ValueError(
-                        'Request blocked: prompt injection detected in input payload'
-                    )
+                    raise ValueError('Request blocked: prompt injection detected in input payload')
         agent_run = create_agent_run('forecasting_agent')
         _started_at = time.time()
         trace_spans = []

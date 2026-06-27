@@ -5,25 +5,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("inventory", "0002_remove_salesrecord_inventory_s_sku_id_92dcd2_idx_and_more"),
+        ('inventory', '0002_remove_salesrecord_inventory_s_sku_id_92dcd2_idx_and_more'),
         (
-            "purchasing",
-            "0003_purchaseorder_agent_name_purchaseorder_agent_run_id_and_more",
+            'purchasing',
+            '0003_purchaseorder_agent_name_purchaseorder_agent_run_id_and_more',
         ),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name="purchaseorder",
+            model_name='purchaseorder',
             constraint=models.UniqueConstraint(
-                condition=models.Q(
-                    ("status__in", ["draft", "pending_approval", "approved"])
-                ),
-                fields=("sku", "supplier", "quantity", "status"),
-                name="uq_active_po_per_sku_supplier_qty",
+                condition=models.Q(('status__in', ['draft', 'pending_approval', 'approved'])),
+                fields=('sku', 'supplier', 'quantity', 'status'),
+                name='uq_active_po_per_sku_supplier_qty',
             ),
         ),
     ]
