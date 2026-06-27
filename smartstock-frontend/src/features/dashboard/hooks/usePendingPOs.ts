@@ -20,6 +20,7 @@ export function useApprovePO() {
     mutationFn: (poId: number) => approvePO(poId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pending-pos'] });
+      qc.invalidateQueries({ queryKey: ['po-history'] });
     },
   });
 }
@@ -30,6 +31,7 @@ export function useRejectPO() {
     mutationFn: (poId: number) => rejectPO(poId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pending-pos'] });
+      qc.invalidateQueries({ queryKey: ['po-history'] });
     },
   });
 }

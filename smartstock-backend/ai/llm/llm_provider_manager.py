@@ -8,16 +8,16 @@ all LLM calls must route through LLMProviderManager.
 Failover priority: Groq → OpenAI → Gemini → xAI
 """
 
-import time
 import logging
-from enum import Enum
-from typing import Any, Dict, Iterator, List, Optional
+import time
 from dataclasses import dataclass, field
+from enum import Enum
 from threading import Lock
+from typing import Any, Dict, Iterator, List, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
-from langchain_core.outputs import ChatGeneration, ChatResult
+from langchain_core.messages import AIMessageChunk, BaseMessage
+from langchain_core.outputs import ChatResult
 
 logger = logging.getLogger(__name__)
 

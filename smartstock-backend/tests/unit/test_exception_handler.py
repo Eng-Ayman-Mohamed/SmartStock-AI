@@ -79,7 +79,7 @@ class GenericExceptionHandlerTest(ExceptionHandlerTest):
         exc = ValueError('Something went wrong')
         response = self._call_handler(exc)
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.data['error'], 'ValueError')
+        self.assertEqual(response.data['error'], 'ServerError')
         self.assertIn('Something went wrong', str(response.data['message']))
 
 

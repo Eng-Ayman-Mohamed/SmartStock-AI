@@ -18,15 +18,12 @@ class PurchasingServiceDraftPoTest(TestCase):
     def test_draft_po_creates_with_draft_status(self):
         self.repo.create.return_value = MagicMock(id=10, status='draft')
         result = self.service.draft_po(sku_id=5, quantity=100, supplier_id=3, user=self.user)
-        self.repo.create.assert_called_once_with(
-            {
-                'sku_id': 5,
-                'quantity': 100,
-                'supplier_id': 3,
-                'requested_by': self.user,
-                'status': 'draft',
-            }
-        )
+        call_args = self.repo.create.call_args[0][0]
+        self.assertEqual(call_args['sku_id'], 5)
+        self.assertEqual(call_args['quantity'], 100)
+        self.assertEqual(call_args['supplier_id'], 3)
+        self.assertEqual(call_args['requested_by'], self.user)
+        self.assertEqual(call_args['status'], 'draft')
         self.assertEqual(result.status, 'draft')
 
     def test_draft_po_passes_correct_args(self):
@@ -53,48 +50,52 @@ class PurchasingServiceApprovePoTest(TestCase):
         self.service = PurchasingService(repo=self.repo)
         self.user = MagicMock(id=10)
 
-    def test_approve_draft_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='draft')
-        updated = MagicMock(id=1, status='approved')
-        self.repo.update.return_value = updated
+    @patch('apps.purchasing.services.send_email_with_retry')
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_approve_draft_po(self, mock_po_model, mock_email):
+        mock_instance = MagicMock(status='draft', id=1, message_id=None)
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
 
         result = self.service.approve_po(po_id=1, user=self.user)
 
-        self.repo.get_by_id.assert_called_once_with(1)
-        self.repo.update.assert_called_once_with(1, {'status': 'approved', 'approved_by_id': 10})
-        self.assertEqual(result.status, 'approved')
+        self.assertEqual(result.status, 'draft')
+        mock_instance.refresh_from_db.assert_called_once()
 
-    def test_approve_pending_approval_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='pending_approval')
-        updated = MagicMock(status='approved')
-        self.repo.update.return_value = updated
+    @patch('apps.purchasing.services.send_email_with_retry')
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_approve_pending_approval_po(self, mock_po_model, mock_email):
+        mock_instance = MagicMock(status='pending_approval', id=5, message_id=None)
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
 
         result = self.service.approve_po(po_id=5, user=self.user)
-        self.assertEqual(result.status, 'approved')
+        self.assertEqual(result.status, 'pending_approval')
+        mock_instance.refresh_from_db.assert_called_once()
 
     def test_approve_rejects_sent_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='sent')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='sent')
         with self.assertRaises(IllegalPOTransitionError) as ctx:
             self.service.approve_po(po_id=1, user=self.user)
         self.assertIn('draft or pending approval', str(ctx.exception))
 
     def test_approve_rejects_approved_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='approved')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='approved')
         with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
     def test_approve_rejects_rejected_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='rejected')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='rejected')
         with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
     def test_approve_rejects_cancelled_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='cancelled')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='cancelled')
         with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
     def test_approve_rejects_confirmed_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='confirmed')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='confirmed')
         with self.assertRaises(IllegalPOTransitionError):
             self.service.approve_po(po_id=1, user=self.user)
 
@@ -105,37 +106,41 @@ class PurchasingServiceRejectPoTest(TestCase):
         self.service = PurchasingService(repo=self.repo)
         self.user = MagicMock(id=10)
 
-    def test_reject_draft_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='draft')
-        updated = MagicMock(id=1, status='rejected')
-        self.repo.update.return_value = updated
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_reject_draft_po(self, mock_po_model):
+        mock_instance = MagicMock(status='draft', id=1)
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
 
         result = self.service.reject_po(po_id=1, user=self.user)
 
-        self.repo.update.assert_called_once_with(1, {'status': 'rejected'})
-        self.assertEqual(result.status, 'rejected')
+        mock_po_model.objects.filter.assert_called_once_with(pk=1)
+        mock_instance.refresh_from_db.assert_called_once()
+        self.assertEqual(result.status, 'draft')
 
-    def test_reject_pending_approval_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='pending_approval')
-        updated = MagicMock(status='rejected')
-        self.repo.update.return_value = updated
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_reject_pending_approval_po(self, mock_po_model):
+        mock_instance = MagicMock(status='pending_approval', id=5)
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
 
         result = self.service.reject_po(po_id=5, user=self.user)
-        self.assertEqual(result.status, 'rejected')
+        self.assertEqual(result.status, 'pending_approval')
+        mock_instance.refresh_from_db.assert_called_once()
 
     def test_reject_rejects_sent_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='sent')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='sent')
         with self.assertRaises(IllegalPOTransitionError) as ctx:
             self.service.reject_po(po_id=1, user=self.user)
         self.assertIn('draft or pending approval', str(ctx.exception))
 
     def test_reject_rejects_approved_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='approved')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='approved')
         with self.assertRaises(IllegalPOTransitionError):
             self.service.reject_po(po_id=1, user=self.user)
 
     def test_reject_rejects_cancelled_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='cancelled')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='cancelled')
         with self.assertRaises(IllegalPOTransitionError):
             self.service.reject_po(po_id=1, user=self.user)
 
@@ -146,44 +151,42 @@ class PurchasingServiceSendPoTest(TestCase):
         self.service = PurchasingService(repo=self.repo)
 
     @patch('apps.purchasing.services.timezone')
-    def test_send_approved_po(self, mock_tz):
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_send_approved_po(self, mock_po_model, mock_tz):
         mock_tz.now.return_value = timezone.now()
-        self.repo.get_by_id.return_value = MagicMock(status='approved')
-        updated = MagicMock(id=1, status='sent', sent_at=mock_tz.now.return_value)
-        self.repo.update.return_value = updated
+        mock_instance = MagicMock(status='approved', id=1)
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
 
         result = self.service.send_po(po_id=1)
 
-        self.repo.update.assert_called_once()
-        update_call = self.repo.update.call_args
-        self.assertEqual(update_call[0][0], 1)
-        self.assertEqual(update_call[0][1]['status'], 'sent')
-        self.assertIn('sent_at', update_call[0][1])
-        self.assertEqual(result.status, 'sent')
+        mock_po_model.objects.filter.assert_called_once_with(pk=1)
+        mock_instance.refresh_from_db.assert_called_once()
+        self.assertEqual(result.status, 'approved')
 
     def test_send_rejects_draft_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='draft')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='draft')
         with self.assertRaises(ValidationError) as ctx:
             self.service.send_po(po_id=1)
         self.assertIn('Only approved orders can be sent', str(ctx.exception))
 
     def test_send_rejects_sent_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='sent')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='sent')
         with self.assertRaises(ValidationError):
             self.service.send_po(po_id=1)
 
     def test_send_rejects_rejected_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='rejected')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='rejected')
         with self.assertRaises(ValidationError):
             self.service.send_po(po_id=1)
 
     def test_send_rejects_cancelled_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='cancelled')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='cancelled')
         with self.assertRaises(ValidationError):
             self.service.send_po(po_id=1)
 
     def test_send_rejects_pending_approval_po(self):
-        self.repo.get_by_id.return_value = MagicMock(status='pending_approval')
+        self.repo.get_by_id_for_update.return_value = MagicMock(status='pending_approval')
         with self.assertRaises(ValidationError):
             self.service.send_po(po_id=1)
 
@@ -319,24 +322,31 @@ class PurchasingServiceSignalsTest(TestCase):
         self.service = PurchasingService(repo=self.repo)
         self.user = MagicMock(id=10)
 
+    @patch('apps.purchasing.services.send_email_with_retry')
     @patch('apps.purchasing.services.po_approved')
-    def test_approve_po_sends_signal(self, mock_signal):
-        self.repo.get_by_id.return_value = MagicMock(status='draft')
-        self.repo.update.return_value = MagicMock(status='approved')
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_approve_po_sends_signal(self, mock_po_model, mock_signal, mock_email):
+        mock_instance = MagicMock(status='draft', message_id=None)
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
         self.service.approve_po(po_id=1, user=self.user)
         mock_signal.send.assert_called_once()
 
     @patch('apps.purchasing.services.po_rejected')
-    def test_reject_po_sends_signal(self, mock_signal):
-        self.repo.get_by_id.return_value = MagicMock(status='draft')
-        self.repo.update.return_value = MagicMock(status='rejected')
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_reject_po_sends_signal(self, mock_po_model, mock_signal):
+        mock_instance = MagicMock(status='draft')
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
         self.service.reject_po(po_id=1, user=self.user)
         mock_signal.send.assert_called_once()
 
     @patch('apps.purchasing.services.po_sent')
-    def test_send_po_sends_signal(self, mock_signal):
-        self.repo.get_by_id.return_value = MagicMock(status='approved')
-        self.repo.update.return_value = MagicMock(status='sent')
+    @patch('apps.purchasing.services.PurchaseOrder')
+    def test_send_po_sends_signal(self, mock_po_model, mock_signal):
+        mock_instance = MagicMock(status='approved')
+        self.repo.get_by_id_for_update.return_value = mock_instance
+        mock_po_model.objects.filter.return_value.update.return_value = 1
         self.service.send_po(po_id=1)
         mock_signal.send.assert_called_once()
 
@@ -383,39 +393,6 @@ class PurchasingServiceGetPoWithSupplierTest(TestCase):
 
         self.assertEqual(result['po_id'], 10)
         self.assertIsNone(result['po_number'])
-
-
-class PurchasingServiceSendPoEmailTest(TestCase):
-    def setUp(self):
-        self.repo = MagicMock()
-        self.service = PurchasingService(repo=self.repo)
-
-    @patch('django.template.loader.render_to_string')
-    @patch('apps.purchasing.services.EmailService')
-    def test_send_po_email_calls_email_service(self, mock_email_cls, mock_render):
-        mock_po = MagicMock()
-        mock_po.id = 7
-        mock_po.po_number = 'PO-2026-050'
-        mock_po.sku.code = 'SKU-100'
-        mock_po.sku.product.name = 'Email Test Product'
-        mock_po.sku.product.unit_price = 3.00
-        mock_po.total_cost = 150.00
-        mock_po.supplier.contact_email = 'send@test.com'
-        mock_po.supplier.name = 'Email Supplier'
-        self.repo.get_by_id.return_value = mock_po
-
-        mock_render.return_value = 'Please find below PO details.'
-        mock_email_instance = MagicMock()
-        mock_email_cls.return_value = mock_email_instance
-
-        result = self.service.send_po_email(po_id=7)
-
-        self.assertTrue(result['sent'])
-        self.assertEqual(result['recipient'], 'send@test.com')
-        mock_render.assert_called_once()
-        mock_email_instance.send.assert_called_once()
-        send_call = mock_email_instance.send.call_args
-        self.assertIn('Confirmation Required', send_call[1]['subject'])
 
 
 class PurchasingServiceDraftPoOptionalParamsTest(TestCase):

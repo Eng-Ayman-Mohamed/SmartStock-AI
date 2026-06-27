@@ -16,11 +16,9 @@ import Skeleton from '../../../shared/components/Skeleton';
 import { Package, AlertTriangle, ShoppingCart, TrendingUp, RefreshCw, AlertCircle } from 'lucide-react';
 import { useReorderAlerts } from '../hooks/useReorderAlerts';
 import { usePendingPOs } from '../hooks/usePendingPOs';
-import { useAgentRuns } from '../hooks/useAgentRuns';
 import { useSKUCount } from '../hooks/useSKUCount';
 import { useForecastDashboard } from '../../forecasting/hooks/useForecastDashboard';
 import ReorderAlertList from '../components/ReorderAlertList';
-import AgentRunStatus from '../components/AgentRunStatus';
 import PendingPOQueue from '../components/PendingPOQueue';
 import SystemHealth from '../components/SystemHealth';
 
@@ -132,34 +130,24 @@ function ForecastChart({ data, reorderPoint }: { data: ChartPoint[] | null; reor
   );
 }
 
-function isAgentPipelineStale(runs: { created_at: string }[] | undefined): boolean {
-  if (!runs || runs.length === 0) return true;
-  const now = new Date();
-  const mostRecent = new Date(runs[0].created_at);
-  const diffMs = now.getTime() - mostRecent.getTime();
-  const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
-  return diffMs >= STALE_THRESHOLD_MS;
-}
-
 export default function DashboardPage() {
   const qc = useQueryClient();
   const { data: alerts, isLoading: alertsLoading, isError: alertsError } = useReorderAlerts();
   const { data: pendingPOs, isLoading: pendingLoading, isError: pendingError } = usePendingPOs();
   const { data: forecastData, isLoading: forecastLoading, isError: forecastError } = useForecastDashboard();
-  const { data: agentRuns, isError: agentError } = useAgentRuns();
   const { data: skuCount, isLoading: skuLoading, isError: skuError } = useSKUCount();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const isError = alertsError || pendingError || forecastError || agentError || skuError;
+  const isError = alertsError || pendingError || forecastError || skuError;
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
     await Promise.all([
       qc.invalidateQueries({ queryKey: ['reorder-alerts'] }),
-      qc.invalidateQueries({ queryKey: ['agent-runs'] }),
       qc.invalidateQueries({ queryKey: ['pending-pos'] }),
+      qc.invalidateQueries({ queryKey: ['po-history'] }),
       qc.invalidateQueries({ queryKey: ['forecast-dashboard'] }),
       qc.invalidateQueries({ queryKey: ['overdue-suppliers'] }),
       qc.invalidateQueries({ queryKey: ['sku-count'] }),
@@ -170,7 +158,6 @@ export default function DashboardPage() {
 
   const lowStockCount = alerts?.length ?? 0;
   const pendingPOCount = pendingPOs?.length ?? 0;
-  const agentStale = isAgentPipelineStale(agentRuns);
 
   const forecastAccuracy = useMemo(() => {
     if (!forecastData?.skus?.length) return null;
@@ -243,13 +230,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {agentStale && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-200">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <p className="text-body">Agent pipeline may not be running.</p>
-        </div>
-      )}
-
       <SystemHealth />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -291,7 +271,6 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PendingPOQueue />
-        <AgentRunStatus />
       </div>
     </div>
   );

@@ -9,8 +9,13 @@ logger = logging.getLogger(__name__)
 SUPPLIER_TIMEOUT_HOURS = 48
 
 
-@shared_task
-def check_supplier_timeouts() -> dict:
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True,
+)
+def check_supplier_timeouts(self) -> dict:
     """Detect supplier purchase orders that have exceeded the response timeout.
 
     Finds POs with status in ('email_sent', 'waiting_confirmation') where

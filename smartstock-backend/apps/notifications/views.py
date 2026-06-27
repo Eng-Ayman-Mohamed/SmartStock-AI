@@ -21,7 +21,10 @@ class NotificationViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch']
 
     def get_queryset(self):
-        qs = Notification.objects.prefetch_related('user_notifications').all()
+        """Return only notifications associated with the current user."""
+        qs = Notification.objects.filter(
+            user_notifications__user=self.request.user
+        ).prefetch_related('user_notifications').distinct()
         notif_type = self.request.query_params.get('type')
         if notif_type:
             qs = qs.filter(type=notif_type)

@@ -9,9 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 def send_alert_email(alert_event) -> bool:
-    """Send email notification for an alert event. Returns True on success."""
+    """Queue alert email via Celery for retry/audit. Returns True on success."""
     from django.conf import settings
-    from django.core.mail import send_mail
 
     recipients = getattr(settings, 'ESCALATION_RECIPIENT_EMAILS', [])
     if not recipients:
@@ -35,17 +34,12 @@ def send_alert_email(alert_event) -> bool:
         body += f'\nResolved at: {alert_event.resolved_at.isoformat() if alert_event.resolved_at else "N/A"}\n'
 
     try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@smartstock.ai'),
-            recipient_list=recipients,
-            fail_silently=False,
-        )
-        logger.info('Alert email sent: %s to %s', alert_event.rule.name, recipients)
+        from infrastructure.email import send_alert_email_task
+        send_alert_email_task.delay(subject=subject, body=body)
+        logger.info('Alert email queued: %s to %s', alert_event.rule.name, recipients)
         return True
     except Exception as exc:
-        logger.exception('Failed to send alert email for %s: %s', alert_event.rule.name, exc)
+        logger.exception('Failed to queue alert email for %s: %s', alert_event.rule.name, exc)
         return False
 
 

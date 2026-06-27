@@ -1,4 +1,5 @@
 import logging
+import math
 
 from django.core.cache import cache
 
@@ -123,7 +124,7 @@ class ForecastingService:
                             break
                 # Normalize MAPE: Prophet returns raw ratio (0.0-1.0), seed data returns percentage (2-25).
                 # If MAPE > 1, it's already a percentage; if <= 1, multiply by 100.
-                if mape is not None:
+                if mape is not None and math.isfinite(mape):
                     mape_pct = mape * 100 if mape <= 1.0 else mape
                     confidence = max(0, min(100, round(100 - mape_pct)))
                 else:
@@ -146,8 +147,8 @@ class ForecastingService:
                     'stockout_risk': stockout_risk,
                     'supplier': supplier_name,
                     'lead_time_days': lead_time_days,
-                    'mae': row.mae,
-                    'mape': mape,
+                    'mae': row.mae if row.mae is not None and math.isfinite(row.mae) else None,
+                    'mape': mape if mape is not None and math.isfinite(mape) else None,
                     'model_version': row.model_version,
                     'confidence_score': confidence,
                     'predicted_demand_30d': 0,
@@ -238,6 +239,12 @@ class ForecastingService:
         result = self.engine.predict(df, periods=30)
 
         created = 0
+        mae = result['mae']
+        mape = result['mape']
+        if mae is not None and not math.isfinite(mae):
+            mae = None
+        if mape is not None and not math.isfinite(mape):
+            mape = None
         for pred in result['results']:
             self.repo.upsert(
                 sku_id=sku.id,
@@ -245,8 +252,8 @@ class ForecastingService:
                 predicted_quantity=pred['predicted_quantity'],
                 lower_bound=pred['lower_bound'],
                 upper_bound=pred['upper_bound'],
-                mae=result['mae'],
-                mape=result['mape'],
+                mae=mae,
+                mape=mape,
                 model_version=result['model_version'],
             )
             created += 1
@@ -257,6 +264,6 @@ class ForecastingService:
             'forecast_days': created,
             'model_version': result['model_version'],
             'forecast_method': result.get('forecast_method', 'unknown'),
-            'mae': result['mae'],
-            'mape': result['mape'],
+            'mae': mae,
+            'mape': mape,
         }

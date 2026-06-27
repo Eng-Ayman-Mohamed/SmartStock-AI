@@ -284,5 +284,5 @@ class ForecastJobStatusView(APIView):
         if result.status == 'SUCCESS':
             response_data['result'] = result.result
         elif result.status == 'FAILURE':
-            response_data['error'] = str(result.result)
+            response_data['error'] = 'Task execution failed. Check server logs for details.'
         return Response(response_data)

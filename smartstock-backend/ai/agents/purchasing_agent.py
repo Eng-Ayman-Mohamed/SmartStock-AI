@@ -1,10 +1,13 @@
 import logging
 import time
 
+from django.conf import settings
+
 from ai.agents.tools.confirmation_listener import ConfirmationListenerTool
 from ai.agents.tools.email_send import EmailSendTool
 from ai.agents.tools.po_draft import PODraftTool
 from ai.agents.tracking import complete_agent_run, create_agent_run
+from ai.llm.chain import prompt_injection_filter
 from ai.observability.langfuse import trace_agent_run
 from apps.audit.models import AgentRun
 from apps.monitoring.tasks import record_agent_run_task
@@ -62,6 +65,17 @@ class PurchasingAgent:
         Returns:
             dict with workflow result, status, and PO details.
         """
+        # Prompt injection guard — reject malicious context before execution
+        for _key, _val in context.items():
+            if isinstance(_val, str):
+                _is_safe, _ = prompt_injection_filter(_val)
+                if not _is_safe:
+                    return {
+                        'agent': 'purchasing_agent',
+                        'error': 'Request blocked: prompt injection detected in input payload',
+                        'status': 'failed',
+                    }
+
         agent_run = create_agent_run('purchasing_agent')
         _started_at = time.time()
         trace_spans = []
@@ -161,7 +175,8 @@ class PurchasingAgent:
 
         user = context.get('user')
 
-        if context.get('auto_approve'):
+        # Auto-approve is disabled in production to prevent unintended PO approvals
+        if context.get('auto_approve') and not settings.IS_PRODUCTION:
             if user is not None:
                 self.purchasing_service.approve_po(po_id, user)
             self.workflow_service.update_status(workflow_id, PurchaseOrderWorkflow.Status.APPROVED)

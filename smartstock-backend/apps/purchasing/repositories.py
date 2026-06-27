@@ -10,6 +10,9 @@ class PurchasingRepository(BaseRepository):
             'sku__product', 'supplier', 'requested_by', 'approved_by'
         ).get(pk=id)
 
+    def get_by_id_for_update(self, id: int):
+        return PurchaseOrder.objects.select_for_update().get(pk=id)
+
     def get_all(self):
         return PurchaseOrder.objects.select_related(
             'sku__product', 'supplier', 'requested_by', 'approved_by'

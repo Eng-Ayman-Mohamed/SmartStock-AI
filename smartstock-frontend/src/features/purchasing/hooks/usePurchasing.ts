@@ -20,6 +20,7 @@ export function useApprovePO() {
     mutationFn: ({ id }: { id: string }) => purchasingApi.approvePO(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: purchasingQueryKey });
+      void qc.invalidateQueries({ queryKey: poHistoryQueryKey });
     },
   });
 }
@@ -30,6 +31,7 @@ export function useRejectPO() {
     mutationFn: ({ id }: { id: string }) => purchasingApi.rejectPO(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: purchasingQueryKey });
+      void qc.invalidateQueries({ queryKey: poHistoryQueryKey });
     },
   });
 }

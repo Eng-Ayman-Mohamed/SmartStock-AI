@@ -7,8 +7,13 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def purge_old_audit_logs():
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True,
+)
+def purge_old_audit_logs(self):
     from apps.audit.models import AuditLog
 
     cutoff = timezone.now() - timedelta(days=90)
@@ -17,8 +22,13 @@ def purge_old_audit_logs():
     return {'deleted': deleted}
 
 
-@shared_task
-def create_audit_log_task(user_id: int, event: str, data_snapshot: dict):
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True,
+)
+def create_audit_log_task(self, user_id: int, event: str, data_snapshot: dict):
     """Create an audit log entry asynchronously."""
     from apps.audit.models import AuditLog
     from apps.authentication.models import CustomUser

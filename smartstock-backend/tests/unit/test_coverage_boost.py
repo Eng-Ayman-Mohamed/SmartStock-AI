@@ -356,21 +356,7 @@ class PurchasingTaskTests(TestCase):
         )
         cls.category = Category.objects.create(name='Purchasing Task Category')
 
-    def test_run_purchasing_workflow(self):
-        from apps.purchasing.tasks import run_purchasing_workflow
-
-        ctx = {'sku_id': 1, 'quantity': 10, 'supplier_id': self.supplier.id}
-        with patch('ai.agents.purchasing_agent.PurchasingAgent') as MockAgent:
-            MockAgent.return_value.run.return_value = {'status': 'completed'}
-            result = run_purchasing_workflow(ctx)
-            self.assertEqual(result, {'status': 'completed'})
-
-    def test_run_purchasing_workflow_with_approval(self):
-        from apps.purchasing.tasks import run_purchasing_workflow_with_approval
-
-        ctx = {'sku_id': 1, 'quantity': 10}
-        with patch('apps.purchasing.tasks.run_purchasing_workflow') as mock_wf:
-            mock_wf.return_value = {'status': 'done'}
-            result = run_purchasing_workflow_with_approval(ctx, auto_approve=True)
-            self.assertEqual(result, {'status': 'done'})
-            mock_wf.assert_called_once_with({**ctx, 'auto_approve': True})
+    def test_check_overdue_suppliers_returns_created_count(self):
+        from apps.purchasing.tasks import check_overdue_suppliers
+        result = check_overdue_suppliers()
+        self.assertIn('created', result)

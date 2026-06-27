@@ -6,8 +6,13 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def run_forecasting_agent(sku_ids: list[int] | None = None):
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True,
+)
+def run_forecasting_agent(self, sku_ids: list[int] | None = None):
     """Run the Forecasting Agent via Celery.
 
     Args:
@@ -32,11 +37,22 @@ def run_forecasting_agent(sku_ids: list[int] | None = None):
     job = group(run_forecast_single_sku.s(sku_id) for sku_id in sku_ids)
     result = job.apply_async()
 
+    try:
+        cache.delete_pattern('forecast_dashboard_*')
+    except Exception:
+        logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
+
     return {'dispatched': len(sku_ids), 'group_id': str(result.id)}
 
 
-@shared_task(rate_limit='10/m')
-def run_forecast_single_sku(sku_id: int):
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True,
+    rate_limit='10/m',
+)
+def run_forecast_single_sku(self, sku_id: int):
     """Forecast a single SKU in parallel."""
     from ai.agents.tracking import complete_agent_run, create_agent_run
     from apps.audit.models import AgentRun
@@ -50,17 +66,10 @@ def run_forecast_single_sku(sku_id: int):
     try:
         service = ForecastingService()
         result = service.run_forecast(sku_id=sku_id)
-        try:
-            cache.delete_pattern('forecast_dashboard_*')
-            if result:
-                sku_code = result[0].get('sku')
-                if sku_code:
-                    cache.delete(f'forecast_sku_{sku_code}')
-        except Exception:
-            logger.warning('Failed to invalidate forecast cache', exc_info=True)
     except Exception as e:
         status = AgentRun.Status.FAILED
         error = str(e)
+        result = []
     finally:
         complete_agent_run(agent_run.id, status=status, error_message=error)
 

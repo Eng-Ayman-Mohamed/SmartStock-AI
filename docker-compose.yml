@@ -3,6 +3,28 @@ networks:
     driver: bridge
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: smartstock_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - smartstock_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: smartstock_mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - smartstock_net
+
   backend:
     build:
       context: ./smartstock-backend
@@ -12,6 +34,14 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      mailpit:
+        condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
     healthcheck:
@@ -33,6 +63,12 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping --timeout 5 || exit 1"]
       interval: 30s
@@ -52,6 +88,12 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "test -f /proc/1/status"]
       interval: 30s

@@ -294,8 +294,7 @@ class POStatusCheckToolTest(TestCase):
 class PODraftToolTest(TestCase):
     def test_creates_draft_po(self):
         mock_po = SimpleNamespace(id=10, status='draft', sku_id=5, supplier_id=3, quantity=100)
-        mock_repo = SimpleNamespace(create=lambda data: mock_po)
-        tool = PODraftTool(service=SimpleNamespace(repo=mock_repo))
+        tool = PODraftTool(service=SimpleNamespace(draft_po=lambda **kwargs: mock_po))
         result = tool.run(
             {
                 'sku_id': '5',
@@ -312,28 +311,31 @@ class PODraftToolTest(TestCase):
     def test_includes_user_id(self):
         captured = {}
 
-        def fake_create(data):
-            captured.update(data)
+        def fake_draft_po(**kwargs):
+            captured.update(kwargs)
             return SimpleNamespace(id=20, status='draft', sku_id=1, supplier_id=1, quantity=10)
 
-        tool = PODraftTool(service=SimpleNamespace(repo=SimpleNamespace(create=fake_create)))
-        tool.run(
-            {
-                'sku_id': '1',
-                'quantity': '10',
-                'supplier_id': '1',
-                'user_id': '99',
-                'agent_reasoning': 'low stock',
-            }
-        )
-        self.assertEqual(captured['requested_by_id'], 99)
+        tool = PODraftTool(service=SimpleNamespace(draft_po=fake_draft_po))
+        mock_user = SimpleNamespace(id=99)
+        with patch('apps.authentication.models.CustomUser') as mock_user_model:
+            mock_user_model.objects.get.return_value = mock_user
+            tool.run(
+                {
+                    'sku_id': '1',
+                    'quantity': '10',
+                    'supplier_id': '1',
+                    'user_id': '99',
+                    'agent_reasoning': 'low stock',
+                }
+            )
+        self.assertEqual(captured['user'].id, 99)
         self.assertEqual(captured['agent_reasoning'], 'low stock')
 
     def test_failure_returns_error(self):
-        def fake_create(data):
+        def fake_draft_po(**kwargs):
             raise ValueError('DB error')
 
-        tool = PODraftTool(service=SimpleNamespace(repo=SimpleNamespace(create=fake_create)))
+        tool = PODraftTool(service=SimpleNamespace(draft_po=fake_draft_po))
         result = tool.run({'sku_id': '1', 'quantity': '10', 'supplier_id': '1'})
         self.assertIsNone(result['po_id'])
         self.assertEqual(result['status'], 'failed')
