@@ -215,7 +215,7 @@ export default function DashboardPage() {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="inline-flex items-center gap-2 h-9 px-4 text-body font-medium text-ink-secondary bg-canvas border border-hairline rounded-full hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-2 h-9 min-h-[44px] px-4 text-body font-medium text-ink-secondary bg-canvas border border-hairline rounded-full hover:bg-canvas-soft disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -226,7 +226,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <p className="text-body flex-1">Failed to load dashboard data.</p>
-          <button onClick={handleRefresh} className="text-caption font-medium text-red-700 dark:text-red-300 hover:underline">Retry</button>
+          <button onClick={handleRefresh} className="text-caption font-medium text-red-700 dark:text-red-300 hover:underline min-h-[44px]">Retry</button>
         </div>
       )}
 

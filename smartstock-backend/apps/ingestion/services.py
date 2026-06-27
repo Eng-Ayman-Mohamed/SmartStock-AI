@@ -499,10 +499,19 @@ class RAGQueryService:
                     model='rerank-english-v3.0',
                 )
                 break
+            except cohere.errors.TooManyRequestsError:
+                wait = min(2 ** (attempt + 2), 30)
+                logger.warning(
+                    'Cohere rerank rate-limited (attempt %d), retrying in %ds...',
+                    attempt + 1,
+                    wait,
+                )
+                time.sleep(wait)
+                last_error = ConnectionError('Cohere rate limit exceeded')
             except Exception as e:
                 last_error = e
                 if attempt < 2:
-                    wait = 2**attempt
+                    wait = 2 ** (attempt + 1)
                     logger.warning(
                         'Cohere rerank attempt %d failed (%s), retrying in %ds...',
                         attempt + 1,
@@ -601,7 +610,13 @@ class RAGQueryService:
             key = (doc, page)
             if key not in seen and doc:
                 seen.add(key)
-                sources.append({'document': doc, 'page': page})
+                sources.append(
+                    {
+                        'document': doc,
+                        'page': page,
+                        'chunk_text': chunk.get('chunk_text', chunk.get('content', '')),
+                    }
+                )
         return sources
 
     def execute(self, query: str, user=None, history: list | None = None) -> dict:
@@ -610,15 +625,20 @@ class RAGQueryService:
         # Step 1: Hybrid search (embeds query + dense + sparse search)
         search_results = self.hybrid_search(query, top_k=10)
 
-        # Step 2: Rerank to top 3 chunks
+        # Step 2: Rerank to top 5 chunks (broader context)
         try:
-            top_chunks = self.rerank(query, search_results, top_n=3)
+            top_chunks = self.rerank(query, search_results, top_n=5)
         except ConnectionError:
             logger.warning('Cohere unavailable — falling back to vector-score ranking')
-            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:3]
+            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:5]
 
         # Step 3: If no relevant chunks found, return explicit no-answer
-        if not top_chunks or all(c.get('score', 0) < 0.3 for c in top_chunks):
+        # Use rerank_score when available (Cohere), fall back to original score
+        # Threshold 0.05: rerank scores for partially-matching chunks can be low but still useful.
+        # The LLM decides final relevance — we just filter out complete noise.
+        if not top_chunks or all(
+            c.get('rerank_score', c.get('score', 0)) < 0.05 for c in top_chunks
+        ):
             latency_ms = round((time.time() - start) * 1000)
             return {
                 'answer': 'I cannot find this information in the provided records.',
@@ -678,15 +698,17 @@ class RAGQueryService:
         # Step 1: Hybrid search
         search_results = self.hybrid_search(query, top_k=10)
 
-        # Step 2: Rerank to top 3 chunks
+        # Step 2: Rerank to top 5 chunks
         try:
-            top_chunks = self.rerank(query, search_results, top_n=3)
+            top_chunks = self.rerank(query, search_results, top_n=5)
         except ConnectionError:
             logger.warning('Cohere unavailable — falling back to vector-score ranking')
-            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:3]
+            top_chunks = sorted(search_results, key=lambda c: c.get('score', 0), reverse=True)[:5]
 
         # Step 3: If no relevant chunks found
-        if not top_chunks or all(c.get('score', 0) < 0.3 for c in top_chunks):
+        if not top_chunks or all(
+            c.get('rerank_score', c.get('score', 0)) < 0.05 for c in top_chunks
+        ):
             yield {
                 'type': 'token',
                 'content': 'I cannot find this information in the provided records.',

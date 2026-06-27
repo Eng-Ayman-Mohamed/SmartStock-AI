@@ -16,6 +16,8 @@ import { usePagination } from "../../../shared/hooks/usePagination";
 import { useAuthStore } from "../../../store/authStore";
 import Card from "../../../shared/components/Card";
 import Button from "../../../shared/components/Button";
+import Input from "../../../shared/components/Input";
+import Select from "../../../shared/components/Select";
 import EmptyState from "../../../shared/components/EmptyState";
 import Badge from "../../../shared/components/Badge";
 import Skeleton from "../../../shared/components/Skeleton";
@@ -211,6 +213,7 @@ export default function InventoryPage() {
       key: "sku",
       label: "SKU",
       width: "130px",
+      className: "hidden sm:table-cell",
       sortable: true,
       sortOrder: sortField === "sku" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
@@ -228,6 +231,7 @@ export default function InventoryPage() {
       key: "category",
       label: "Category",
       width: "130px",
+      className: "hidden md:table-cell",
       sortable: true,
       sortOrder: sortField === "category" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
@@ -240,6 +244,7 @@ export default function InventoryPage() {
       key: "qty",
       label: "On Hand",
       width: "160px",
+      className: "hidden sm:table-cell",
       sortable: true,
       sortOrder: sortField === "qty" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
@@ -266,6 +271,7 @@ export default function InventoryPage() {
       key: "reserved",
       label: "Reserved",
       width: "80px",
+      className: "hidden lg:table-cell",
       sortable: true,
       sortOrder: sortField === "reserved" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
@@ -276,6 +282,7 @@ export default function InventoryPage() {
       key: "reorder",
       label: "Reorder",
       width: "80px",
+      className: "hidden lg:table-cell",
       sortable: true,
       sortOrder: sortField === "reorder" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <span className="tabular-nums">{r.reorderPoint}</span>,
@@ -284,6 +291,7 @@ export default function InventoryPage() {
       key: "supplier",
       label: "Supplier",
       sortable: true,
+      className: "hidden md:table-cell",
       sortOrder: sortField === "supplier" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => (
         <span className="truncate block text-ink-muted">
@@ -294,7 +302,7 @@ export default function InventoryPage() {
     {
       key: "status",
       label: "Status",
-      width: "120px",
+      width: "15%",
       sortable: true,
       sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <Badge variant={r.status}>{r.status}</Badge>,
@@ -303,7 +311,7 @@ export default function InventoryPage() {
 
   function renderActions(r: Row) {
     return (
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 ml-1">
         <Button
           variant="ghost"
           size="sm"
@@ -395,7 +403,7 @@ export default function InventoryPage() {
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint"
             aria-hidden="true"
           />
-          <input
+          <Input
             type="text"
             placeholder="Search by product name or SKU..."
             value={search}
@@ -403,12 +411,12 @@ export default function InventoryPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full h-9 pl-10 pr-4 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
+            className="pl-10 pr-4 rounded-full"
             aria-label="Search products"
           />
         </div>
-        <select
-          className="w-full sm:w-auto h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
+        <Select
+          className="sm:w-auto rounded-full"
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
@@ -420,9 +428,9 @@ export default function InventoryPage() {
           <option value="In Stock">In Stock</option>
           <option value="Low Stock">Low Stock</option>
           <option value="Out of Stock">Out of Stock</option>
-        </select>
-        <select
-          className="w-full sm:w-auto h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink-secondary hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors duration-150"
+        </Select>
+        <Select
+          className="sm:w-auto rounded-full"
           value={categoryFilter}
           onChange={(e) => {
             setCategoryFilter(e.target.value);
@@ -436,13 +444,13 @@ export default function InventoryPage() {
               {cat.name}
             </option>
           ))}
-        </select>
+          </Select>
       </div>
 
       {inventoryQuery.isError && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-body text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200 flex items-center justify-between">
           <span>Failed to load inventory data.</span>
-          <button onClick={() => inventoryQuery.refetch()} className="underline text-sm font-medium">Retry</button>
+          <button onClick={() => inventoryQuery.refetch()} className="underline text-sm font-medium min-h-[44px]">Retry</button>
         </div>
       )}
 

@@ -7,7 +7,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center mb-8">
           <Link to="/" className="flex items-center gap-2 mb-2">
-            <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" />
+            <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" loading="lazy" />
             <span className="text-card-title font-semibold text-ink">SmartStock AI</span>
           </Link>
           <h1 className="text-section-heading font-semibold text-ink">Welcome back</h1>

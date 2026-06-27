@@ -207,6 +207,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'health', 'description': 'Service health and readiness probes'},
         {'name': 'audit', 'description': 'Audit logs and activity tracking'},
         {'name': 'notifications', 'description': 'Notification center endpoints'},
+        {'name': 'monitoring', 'description': 'Dashboard banners, alerts, and evaluation metrics'},
     ],
 }
 

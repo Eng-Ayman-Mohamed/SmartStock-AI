@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, MailCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import Input from '../../../shared/components/Input';
 import Button from '../../../shared/components/Button';
 import PasswordField from '../../../shared/components/PasswordField';
 
@@ -105,7 +106,7 @@ export default function RegisterForm() {
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="mt-2 text-brand-600 hover:text-brand-800 text-caption font-medium"
+          className="mt-2 text-brand-600 hover:text-brand-800 text-caption font-medium min-h-[44px] px-2"
         >
           Go to Sign in
         </button>
@@ -119,11 +120,13 @@ export default function RegisterForm() {
         <label htmlFor="name" className="block text-caption font-medium text-ink mb-1.5">
           Full name
         </label>
-        <input
+        <Input
           id="name"
           name="name"
           type="text"
           autoComplete="name"
+          autoCapitalize="words"
+          autoCorrect="off"
           required
           value={name}
           onChange={(e) => {
@@ -132,8 +135,8 @@ export default function RegisterForm() {
           }}
           aria-invalid={Boolean(fieldErrors.name)}
           aria-describedby={fieldErrors.name ? nameErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="Jane Doe"
+          variant={fieldErrors.name ? 'error' : 'default'}
         />
         {fieldErrors.name && (
           <p id={nameErrId} className="mt-1 text-caption text-red-600">
@@ -146,7 +149,7 @@ export default function RegisterForm() {
         <label htmlFor="email" className="block text-caption font-medium text-ink mb-1.5">
           Email
         </label>
-        <input
+        <Input
           id="email"
           name="email"
           type="email"
@@ -159,8 +162,8 @@ export default function RegisterForm() {
           }}
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? emailErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="you@company.com"
+          variant={fieldErrors.email ? 'error' : 'default'}
         />
         {fieldErrors.email && (
           <p id={emailErrId} className="mt-1 text-caption text-red-600">
@@ -245,7 +248,7 @@ export default function RegisterForm() {
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="text-brand-600 hover:text-brand-800 font-medium"
+          className="text-brand-600 hover:text-brand-800 font-medium min-h-[44px] px-2"
         >
           Sign in
         </button>

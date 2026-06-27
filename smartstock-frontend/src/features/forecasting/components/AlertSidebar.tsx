@@ -76,7 +76,7 @@ export default function AlertSidebar({ alerts, onDismiss, isModalOpen, onModalCl
                 </div>
                 <button
                   onClick={() => setIsCollapsed(true)}
-                  className="shrink-0 p-1 rounded hover:bg-hairline transition-colors"
+                  className="shrink-0 p-2.5 min-w-[44px] min-h-[44px] rounded hover:bg-hairline transition-colors"
                   aria-label="Collapse alerts panel"
                 >
                   <X className="w-4 h-4 text-ink-muted" />
@@ -109,7 +109,7 @@ export default function AlertSidebar({ alerts, onDismiss, isModalOpen, onModalCl
               </div>
               <button
                 onClick={onModalClose}
-                className="shrink-0 p-1 rounded hover:bg-hairline transition-colors"
+                className="shrink-0 p-2.5 min-w-[44px] min-h-[44px] rounded hover:bg-hairline transition-colors"
                 aria-label="Close alerts"
               >
                 <X className="w-5 h-5 text-ink-muted" />

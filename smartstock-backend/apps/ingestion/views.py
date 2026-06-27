@@ -41,6 +41,7 @@ from .serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
     InvoiceScanConfirmSerializer,
+    InvoiceScanSerializer,
     InvoiceScanUploadSerializer,
     RAGQuerySerializer,
     TranscriptionSerializer,
@@ -564,6 +565,35 @@ class TranscribeView(APIView):
 # ---------------------------------------------------------------------------
 
 
+@extend_schema(
+    request=InvoiceScanUploadSerializer,
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                'InvoiceScanResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': InvoiceScanSerializer(),
+                },
+            ),
+            description='Invoice scanned successfully',
+        ),
+        400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
+        422: OpenApiResponse(
+            response=ValidationErrorResponseSerializer,
+            description='Invoice extraction malformed',
+        ),
+        501: OpenApiResponse(
+            response=ErrorResponseSerializer,
+            description='Provider does not support vision',
+        ),
+        504: OpenApiResponse(
+            response=ErrorResponseSerializer,
+            description='Invoice extraction timed out',
+        ),
+    },
+    tags=['ai'],
+)
 class InvoiceScanView(APIView):
     permission_classes = [IsManagerOrAbove]
     throttle_classes = [ScopedRateThrottle]
@@ -604,6 +634,33 @@ class InvoiceScanView(APIView):
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    request=InvoiceScanConfirmSerializer,
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                'InvoiceScanConfirmResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': InvoiceScanSerializer(),
+                },
+            ),
+            description='Invoice scan confirmed',
+        ),
+        400: OpenApiResponse(response=ValidationErrorResponseSerializer, description='Bad request'),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description='Permission denied'),
+        404: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice scan not found'
+        ),
+        409: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice already confirmed'
+        ),
+        422: OpenApiResponse(
+            response=ValidationErrorResponseSerializer, description='Validation error'
+        ),
+    },
+    tags=['ai'],
+)
 class InvoiceScanConfirmView(APIView):
     permission_classes = [IsManagerOrAbove]
     throttle_classes = [ScopedRateThrottle]
@@ -652,6 +709,29 @@ class InvoiceScanConfirmView(APIView):
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                'InvoiceScanRejectResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': InvoiceScanSerializer(),
+                },
+            ),
+            description='Invoice scan rejected',
+        ),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description='Permission denied'),
+        404: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice scan not found'
+        ),
+        409: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Invoice already confirmed'
+        ),
+    },
+    tags=['ai'],
+)
 class InvoiceScanRejectView(APIView):
     permission_classes = [IsManagerOrAbove]
     throttle_classes = [ScopedRateThrottle]
@@ -782,7 +862,12 @@ class ChatEndpointView(APIView):
         conversation_id = serializer.validated_data.get('conversation_id')
 
         # --- Validate and classify via shared pipeline ---
-        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        engine, error_response = ChatPipeline.validate_and_classify(
+            query,
+            mode,
+            request.user,
+            conversation_id=conversation_id,
+        )
         if error_response:
             return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -968,7 +1053,10 @@ class ChatEndpointView(APIView):
             answer = call_gpt4o_formatter(original_query=query, raw_data=raw_data)
         except Exception as exc:
             logger.exception('Formatter failed: %s', exc)
-            answer = f'Here is the requested information: {raw_data}'
+            answer = (
+                'I was able to retrieve the data but could not format a natural '
+                'language summary. Please try rephrasing your question.'
+            )
 
         return {
             'answer': answer,
@@ -1040,6 +1128,34 @@ class ChatEndpointView(APIView):
 # ---------------------------------------------------------------------------
 
 
+@extend_schema(
+    request=ChatSerializer,
+    responses={
+        200: OpenApiResponse(
+            response={'type': 'string', 'format': 'text/event-stream'},
+            description='SSE event stream with metadata, token, and done events',
+        ),
+        400: OpenApiResponse(
+            response=ErrorResponseSerializer,
+            description='Bad request or prompt injection detected',
+        ),
+        404: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Conversation not found'
+        ),
+        422: OpenApiResponse(
+            response=ValidationErrorResponseSerializer,
+            description='Validation error',
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            'Stream Request',
+            value={'query': 'How many Widget-001 do we have?'},
+            request_only=True,
+        ),
+    ],
+    tags=['ai'],
+)
 class ChatStreamView(APIView):
     """
     POST /api/ai/chat/stream/
@@ -1063,7 +1179,12 @@ class ChatStreamView(APIView):
         conversation_id = serializer.validated_data.get('conversation_id')
 
         # --- Validate and classify via shared pipeline ---
-        engine, error_response = ChatPipeline.validate_and_classify(query, mode, request.user)
+        engine, error_response = ChatPipeline.validate_and_classify(
+            query,
+            mode,
+            request.user,
+            conversation_id=conversation_id,
+        )
         if error_response:
             return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1087,6 +1208,9 @@ class ChatStreamView(APIView):
             conv_svc = ConversationService()
             heartbeat_interval = 15  # seconds
             last_heartbeat = time.time()
+            assistant_msg_id = None
+            last_flush_time = 0.0
+            FLUSH_INTERVAL = 1  # seconds between partial saves
 
             def _check_heartbeat():
                 """Yield a keepalive comment if enough time has passed."""
@@ -1096,6 +1220,64 @@ class ChatStreamView(APIView):
                     last_heartbeat = now
                     return ': keepalive\n\n'
                 return None
+
+            def _create_placeholder():
+                """Create an empty assistant message so it exists in the DB."""
+                nonlocal assistant_msg_id
+                if not conversation_id:
+                    return
+                try:
+                    msg = conv_svc.save_message(
+                        conversation_id=conversation_id,
+                        role='assistant',
+                        content='',
+                        engine=engine,
+                        mode=mode,
+                    )
+                    assistant_msg_id = msg.id
+                except Exception:
+                    logger.exception('Failed to create assistant message placeholder')
+
+            def _flush_to_db(content, msg_sources):
+                """Update the placeholder with current accumulated text."""
+                if not assistant_msg_id or not content:
+                    return
+                try:
+                    from apps.ai.models import ChatMessage
+
+                    ChatMessage.objects.filter(pk=assistant_msg_id).update(
+                        content=content,
+                        sources=msg_sources,
+                    )
+                except Exception:
+                    logger.exception('Failed to flush assistant message to DB')
+
+            def _finalize(content, msg_sources):
+                """Final save: create if no placeholder, update if placeholder exists."""
+                if not conversation_id or not content:
+                    return
+                if assistant_msg_id:
+                    _flush_to_db(content, msg_sources)
+                else:
+                    conv_svc.save_message(
+                        conversation_id=conversation_id,
+                        role='assistant',
+                        content=content,
+                        engine=engine,
+                        mode=mode,
+                        sources=msg_sources,
+                    )
+                try:
+                    is_new = (
+                        conv_svc.get_conversation(conversation_id, user)
+                        .messages.filter(role='assistant')
+                        .count()
+                        == 1
+                    )
+                    if is_new:
+                        conv_svc.auto_title(conversation_id, query)
+                except Exception:
+                    logger.exception('Failed to auto-title conversation')
 
             # Save user message BEFORE streaming (optimistic save)
             if conversation_id:
@@ -1109,6 +1291,12 @@ class ChatStreamView(APIView):
                 except Exception:
                     logger.exception('Failed to save user message')
 
+                # Create assistant placeholder BEFORE streaming — this row
+                # will be updated as tokens arrive. If the generator is
+                # abandoned (client disconnects), the row persists with
+                # whatever was last flushed.
+                _create_placeholder()
+
             # Send metadata first
             metadata = {'engine': engine, 'mode': mode}
             if conversation_id:
@@ -1116,14 +1304,24 @@ class ChatStreamView(APIView):
             yield f'event: metadata\ndata: {_json.dumps(metadata)}\n\n'
 
             full_answer = ''
+            sources = []
             try:
                 if engine == 'rag':
                     for event in self._stream_rag(query, user, history, shared):
                         if event['type'] == 'token':
                             full_answer += event['content']
                             yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                            # Periodically flush partial answer to DB so
+                            # if the generator is abandoned, the user sees
+                            # whatever was accumulated when they come back.
+                            now = time.time()
+                            if now - last_flush_time >= FLUSH_INTERVAL:
+                                _flush_to_db(full_answer, [])
+                                last_flush_time = now
                         elif event['type'] == 'done':
-                            done_data = {'sources': event.get('sources', [])}
+                            sources = event.get('sources', [])
+                            _finalize(full_answer, sources)
+                            done_data = {'sources': sources}
                             if event.get('action'):
                                 done_data['action'] = event['action']
                             yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
@@ -1134,13 +1332,22 @@ class ChatStreamView(APIView):
                     for event in self._stream_nl_query(query, user, shared):
                         full_answer += event['content']
                         yield f'event: token\ndata: {_json.dumps({"content": event["content"]})}\n\n'
+                        now = time.time()
+                        if now - last_flush_time >= FLUSH_INTERVAL:
+                            _flush_to_db(full_answer, [])
+                            last_flush_time = now
                         hb = _check_heartbeat()
                         if hb:
                             yield hb
+                    _finalize(full_answer, [])
                     done_data = {'action': shared.get('action')}
                     yield f'event: done\ndata: {_json.dumps(done_data)}\n\n'
 
-                shared['full_answer'] = full_answer
+            except GeneratorExit:
+                # Client disconnected mid-stream. Flush whatever we have.
+                if assistant_msg_id and full_answer:
+                    _flush_to_db(full_answer, [])
+                logger.info('Stream aborted by client disconnect')
             except Exception as exc:
                 logger.exception('Streaming chat failed')
                 error_msg = (
@@ -1149,27 +1356,6 @@ class ChatStreamView(APIView):
                     else 'An unexpected error occurred.'
                 )
                 yield f'event: error\ndata: {_json.dumps({"message": error_msg})}\n\n'
-            finally:
-                # Always save assistant response if we have one
-                if conversation_id and shared.get('full_answer'):
-                    try:
-                        is_new = (
-                            conv_svc.get_conversation(conversation_id, user)
-                            .messages.filter(role='assistant')
-                            .count()
-                            == 0
-                        )
-                        conv_svc.save_message(
-                            conversation_id=conversation_id,
-                            role='assistant',
-                            content=shared['full_answer'],
-                            engine=engine,
-                            mode=mode,
-                        )
-                        if is_new:
-                            conv_svc.auto_title(conversation_id, query)
-                    except Exception:
-                        logger.exception('Failed to save assistant message')
 
         response = StreamingHttpResponse(
             event_stream(),
@@ -1205,8 +1391,10 @@ class ChatStreamView(APIView):
             _handle_get_low_stock,
             _handle_get_sales_report,
             _handle_get_supplier_info,
+            _handle_get_supplier_performance,
             _handle_get_top_products,
             _handle_get_total_value,
+            _handle_help,
         )
 
         # Defense-in-depth: prompt injection check
@@ -1230,6 +1418,8 @@ class ChatStreamView(APIView):
             'get_supplier_info': _handle_get_supplier_info,
             'get_total_value': _handle_get_total_value,
             'get_top_products': _handle_get_top_products,
+            'get_supplier_performance': _handle_get_supplier_performance,
+            'help': _handle_help,
         }
         handler = handler_map.get(action_type)
         if not handler:

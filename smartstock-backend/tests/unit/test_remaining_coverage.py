@@ -637,9 +637,11 @@ class PurgeOldAuditLogsTests(TestCase):
 
 
 class IngestDocumentCommandTests(TestCase):
+    @patch('apps.ingestion.management.commands.ingest_document.Document')
     @patch('apps.ingestion.management.commands.ingest_document.ingest_pdf')
     @patch('apps.ingestion.management.commands.ingest_document.time')
-    def test_handle_success(self, mock_time, mock_ingest):
+    @patch('apps.ingestion.management.commands.ingest_document.os.path.getsize', return_value=1024)
+    def test_handle_success(self, mock_getsize, mock_time, mock_ingest, mock_doc_cls):
         mock_time.time.side_effect = [0, 1.5]
         mock_ingest.return_value = {
             'filename': 'test.pdf',
@@ -647,15 +649,26 @@ class IngestDocumentCommandTests(TestCase):
             'chunks': 20,
             'api_calls': 2,
         }
+        mock_doc = mock_doc_cls.objects.create.return_value
+        mock_doc.id = 1
         from django.core.management import call_command
 
         call_command('ingest_document', file='test.pdf')
+        mock_ingest.assert_called_once_with('test.pdf', document_id=1)
+        mock_doc.save.assert_called_once_with(update_fields=['total_chunks'])
 
+    @patch('apps.ingestion.management.commands.ingest_document.Document')
     @patch('apps.ingestion.management.commands.ingest_document.ingest_pdf')
-    def test_handle_failure(self, mock_ingest):
+    @patch('apps.ingestion.management.commands.ingest_document.time')
+    @patch('apps.ingestion.management.commands.ingest_document.os.path.getsize', return_value=1024)
+    def test_handle_failure(self, mock_getsize, mock_time, mock_ingest, mock_doc_cls):
+        mock_time.time.side_effect = [0, 1.5]
         mock_ingest.side_effect = RuntimeError('bad file')
+        mock_doc = mock_doc_cls.objects.create.return_value
+        mock_doc.id = 1
         from django.core.management import call_command
         from django.core.management.base import CommandError
 
         with self.assertRaises(CommandError):
             call_command('ingest_document', file='bad.pdf')
+        mock_doc.delete.assert_called_once()

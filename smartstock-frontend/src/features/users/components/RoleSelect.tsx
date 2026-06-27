@@ -56,7 +56,7 @@ export default function RoleSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
-        className="inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-1.5 min-h-[44px] min-w-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span className="sr-only">Current role: {ROLE_META[value].label}</span>
         <ChevronDown

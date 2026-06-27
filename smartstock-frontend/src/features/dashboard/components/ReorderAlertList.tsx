@@ -75,7 +75,7 @@ export default function ReorderAlertList({ onRefresh, isRefreshing }: Props) {
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="p-1.5 rounded-md text-ink-muted hover:text-ink hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2.5 min-w-[44px] min-h-[44px] rounded-md text-ink-muted hover:text-ink hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Refresh alerts"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />

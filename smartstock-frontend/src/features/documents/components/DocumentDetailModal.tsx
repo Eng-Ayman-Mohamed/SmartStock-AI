@@ -46,7 +46,7 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
           <h2 className="text-card-title text-ink">Document Details</h2>
           <button
             onClick={onClose}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -75,7 +75,7 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
                     href={doc.cloudinary_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 p-1.5 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
+                    className="shrink-0 p-2.5 min-w-[44px] min-h-[44px] rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
                     title="Open original file"
                   >
                     <ExternalLink className="w-4 h-4" />

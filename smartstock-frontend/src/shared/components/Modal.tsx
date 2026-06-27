@@ -42,7 +42,7 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
             <h2 className="text-section-heading text-ink min-w-0 mr-3 truncate">{title}</h2>
             <button
               onClick={onClose}
-              className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors shrink-0"
+              className="flex items-center justify-center w-11 h-11 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors shrink-0"
               aria-label="Close dialog"
             >
               <X className="w-4 h-4" />

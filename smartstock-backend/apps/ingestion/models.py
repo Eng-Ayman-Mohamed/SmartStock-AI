@@ -41,7 +41,7 @@ class Document(models.Model):
 
 class DocumentChunk(models.Model):
     chunk_text = models.TextField()
-    embedding = VectorField(dimensions=768, null=True, blank=True)
+    embedding = VectorField(dimensions=1024, null=True, blank=True)
     tsvector = SearchVectorField(null=True, blank=True)
     source_document = models.CharField(max_length=500)
     page_number = models.IntegerField(null=True, blank=True)
@@ -73,7 +73,7 @@ class DocumentChunk(models.Model):
         from ai.llm.provider_config import get_provider_config
 
         config = get_provider_config()
-        return config.get('embedding_dimensions') or 3072
+        return config.get('embedding_dimensions') or 1024
 
 
 class InvoiceScan(models.Model):

@@ -17,6 +17,7 @@ import EmptyState from '../../../shared/components/EmptyState';
 import DocumentDetailModal from '../components/DocumentDetailModal';
 import DocumentEditModal from '../components/DocumentEditModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
+import Modal from '../../../shared/components/Modal';
 import { useDocuments, useDeleteDocument } from '../hooks/useDocuments';
 import type { Document } from '../types';
 
@@ -137,7 +138,7 @@ export default function DocumentsPage() {
       <div className="flex items-center justify-end gap-1">
         <button
           onClick={() => setDetailId(row.id)}
-          className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
           aria-label={`View ${row.original_filename}`}
           title="View details"
         >
@@ -145,7 +146,7 @@ export default function DocumentsPage() {
         </button>
         <button
           onClick={() => setEditId(row.id)}
-          className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
           aria-label={`Edit ${row.original_filename}`}
           title="Edit document"
         >
@@ -153,7 +154,7 @@ export default function DocumentsPage() {
         </button>
         <button
           onClick={() => setDeleteId(row.id)}
-          className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/30"
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/30"
           aria-label={`Delete ${row.original_filename}`}
           title="Delete document"
         >
@@ -230,36 +231,35 @@ export default function DocumentsPage() {
       <DocumentDetailModal documentId={detailId} onClose={() => setDetailId(null)} />
       <DocumentEditModal documentId={editId} onClose={() => setEditId(null)} />
 
-      {deleteId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/40" onClick={() => setDeleteId(null)} aria-hidden="true" />
-          <div className="relative z-10 mx-4 w-full max-w-sm rounded-lg border border-hairline bg-canvas shadow-lg p-6 space-y-4">
-            <h3 className="text-card-title text-ink">Delete Document</h3>
-            <p className="text-body text-ink-muted">
-              This will remove the document from the list and deactivate its chunks. The AI assistant will no longer search this document.
-            </p>
-            <div className="flex gap-3 border-t border-hairline pt-4">
-              <Button variant="secondary" size="md" className="flex-1" onClick={() => setDeleteId(null)} disabled={deleteDoc.isPending}>
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                size="md"
-                className="flex-1"
-                onClick={() => {
-                  if (deleteId !== null) {
-                    deleteDoc.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
-                  }
-                }}
-                disabled={deleteDoc.isPending}
-              >
-                {deleteDoc.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        title="Delete Document"
+        footer={
+          <>
+            <Button variant="secondary" size="md" onClick={() => setDeleteId(null)} disabled={deleteDoc.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="md"
+              onClick={() => {
+                if (deleteId !== null) {
+                  deleteDoc.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
+                }
+              }}
+              disabled={deleteDoc.isPending}
+            >
+              {deleteDoc.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <p className="text-body text-ink-secondary">
+          This will remove the document from the list and deactivate its chunks. The AI assistant will no longer search this document.
+        </p>
+      </Modal>
     </div>
   );
 }

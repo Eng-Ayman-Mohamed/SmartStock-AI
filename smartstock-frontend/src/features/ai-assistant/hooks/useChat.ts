@@ -87,6 +87,7 @@ export default function useChat(conversationId?: string | null) {
     abortRef.current = null;
     lastFailedText.current = null;
     isLoadingRef.current = false;
+    sendingRef.current = false;
     setIsLoading(false);
   }, []);
 
@@ -134,14 +135,11 @@ export default function useChat(conversationId?: string | null) {
             aiText = aiText + actionInfo;
           }
 
-          const nlAiMessage: Message = {
-            id: createId(),
-            role: 'ai',
-            text: aiText,
-            engine: 'nl_query',
-            timestamp: Date.now(),
-          };
-          setMessages((prev) => [...prev, nlAiMessage]);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMessageId ? { ...m, text: aiText, engine: 'nl_query' } : m,
+            ),
+          );
         } else {
           await executeStreamQuery(
             trimmed,
@@ -162,7 +160,7 @@ export default function useChat(conversationId?: string | null) {
           ? 'AI service quota has been reached. Please try again shortly.'
           : isTimeout
             ? 'Request timed out. Please try a simpler question.'
-            : 'Sorry, something went wrong. Please try again.';
+            : "Sorry, something went wrong. You can try rephrasing your question or ask me about inventory, sales, suppliers, forecasting, or inventory value.";
         // Remove the empty AI message and add error message
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== aiMessageId);
@@ -242,7 +240,7 @@ export default function useChat(conversationId?: string | null) {
         ? 'AI service quota has been reached. Please try again shortly.'
         : isTimeout
           ? 'Request timed out. Please try a simpler question.'
-          : 'Sorry, something went wrong. Please try again.';
+          : "Sorry, something went wrong. You can try rephrasing your question or ask me about inventory, sales, suppliers, forecasting, or inventory value.";
       setMessages((prev) => {
         const filtered = prev.filter((m) => m.id !== aiMessageId);
         return [

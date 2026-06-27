@@ -20,7 +20,7 @@ export default function NotificationDropdown({ onClose }: Props) {
         {notifications.length > 0 && (
           <button
             onClick={() => markAllRead.mutate()}
-            className="text-caption text-brand-600 hover:text-brand-800"
+            className="text-caption text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-200"
           >
             Mark all read
           </button>
@@ -41,7 +41,7 @@ export default function NotificationDropdown({ onClose }: Props) {
         <Link
           to="/notifications"
           onClick={onClose}
-          className="block text-center text-caption text-brand-600 hover:text-brand-800"
+          className="block text-center text-caption text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-200 min-h-[44px] leading-[44px]"
         >
           View all notifications
         </Link>

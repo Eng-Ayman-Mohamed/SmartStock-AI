@@ -1,5 +1,5 @@
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -7,14 +7,83 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authentication.permissions import IsViewerOrAbove
+from config.schema_serializers import ErrorResponseSerializer
 
 from .models import Notification, UserNotification
 from .serializers import NotificationListSerializer, NotificationSerializer
 
 
 @extend_schema_view(
-    list=extend_schema(tags=['notifications'], summary='List notifications'),
-    retrieve=extend_schema(tags=['notifications'], summary='Get notification'),
+    list=extend_schema(
+        responses={
+            200: NotificationListSerializer(many=True),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+        },
+        tags=['notifications'],
+        summary='List notifications',
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: NotificationSerializer,
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Notification not found'
+            ),
+        },
+        tags=['notifications'],
+        summary='Get notification',
+    ),
+    create=extend_schema(
+        request=NotificationSerializer,
+        responses={
+            201: NotificationSerializer,
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+        },
+        tags=['notifications'],
+        summary='Create notification',
+    ),
+    update=extend_schema(
+        request=NotificationSerializer,
+        responses={
+            200: NotificationSerializer,
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Notification not found'
+            ),
+        },
+        tags=['notifications'],
+        summary='Update notification',
+    ),
+    partial_update=extend_schema(
+        request=NotificationSerializer,
+        responses={
+            200: NotificationSerializer,
+            400: OpenApiResponse(response=ErrorResponseSerializer, description='Bad request'),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Notification not found'
+            ),
+        },
+        tags=['notifications'],
+        summary='Partially update notification',
+    ),
 )
 class NotificationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsViewerOrAbove]
@@ -44,7 +113,27 @@ class NotificationViewSet(viewsets.ModelViewSet):
             return NotificationListSerializer
         return NotificationSerializer
 
-    @extend_schema(tags=['notifications'], summary='Mark notification as read')
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {'status': {'type': 'string', 'example': 'success'}},
+                },
+                description='Notification marked as read',
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Notification not found'
+            ),
+        },
+        tags=['notifications'],
+        summary='Mark notification as read',
+    )
     @action(detail=True, methods=['post'])
     def mark_read(self, request, pk=None):
         notification = self.get_object()
@@ -56,7 +145,24 @@ class NotificationViewSet(viewsets.ModelViewSet):
         user_notification.save()
         return Response({'status': 'success'})
 
-    @extend_schema(tags=['notifications'], summary='Mark all notifications as read')
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {'status': {'type': 'string', 'example': 'success'}},
+                },
+                description='All notifications marked as read',
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+        },
+        tags=['notifications'],
+        summary='Mark all notifications as read',
+    )
     @action(detail=False, methods=['post'])
     def mark_all_read(self, request):
         unread_ids = Notification.objects.filter(
@@ -68,7 +174,27 @@ class NotificationViewSet(viewsets.ModelViewSet):
         )
         return Response({'status': 'success'})
 
-    @extend_schema(tags=['notifications'], summary='Dismiss notification')
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response={
+                    'type': 'object',
+                    'properties': {'status': {'type': 'string', 'example': 'success'}},
+                },
+                description='Notification dismissed',
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Notification not found'
+            ),
+        },
+        tags=['notifications'],
+        summary='Dismiss notification',
+    )
     @action(detail=True, methods=['post'])
     def dismiss(self, request, pk=None):
         notification = self.get_object()
@@ -76,7 +202,24 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response({'status': 'success'})
 
 
-@extend_schema(tags=['notifications'], summary='Get unread notification count')
+@extend_schema(
+    responses={
+        200: OpenApiResponse(
+            response={
+                'type': 'object',
+                'properties': {
+                    'count': {'type': 'integer', 'description': 'Number of unread notifications'}
+                },
+            },
+            description='Unread notification count',
+        ),
+        401: OpenApiResponse(
+            response=ErrorResponseSerializer, description='Authentication required'
+        ),
+    },
+    tags=['notifications'],
+    summary='Get unread notification count',
+)
 class UnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 

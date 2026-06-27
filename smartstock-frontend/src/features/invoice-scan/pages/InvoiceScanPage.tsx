@@ -347,7 +347,7 @@ export default function InvoiceScanPage() {
               <div className="rounded-lg border border-hairline bg-canvas-soft p-2">
                 <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-md bg-canvas">
                   {preview?.kind === 'image' ? (
-                    <img src={preview.url} alt="Uploaded invoice preview" className="h-full w-full object-contain" />
+                    <img src={preview.url} alt="Uploaded invoice preview" className="h-full w-full object-contain" loading="lazy" />
                   ) : (
                     <div className="flex flex-col items-center gap-3 text-ink-muted">
                       <FileText className="w-16 h-16 text-hairline" />

@@ -1,4 +1,5 @@
 import type { NotificationType, NotificationSeverity } from "../types";
+import Input from '../../../shared/components/Input';
 
 interface Props {
   filters: {
@@ -37,7 +38,7 @@ export default function NotificationFilters({ filters, onChange }: Props) {
               onClick={() =>
                 onChange({ ...filters, type: filters.type === t.value ? undefined : t.value })
               }
-              className={`px-3 py-1 rounded-full text-caption font-medium transition-colors ${
+              className={`px-3 py-2.5 rounded-full text-caption font-medium transition-colors min-h-[44px] ${
                 filters.type === t.value
                   ? "bg-brand-600 text-white"
                   : "bg-canvas-soft text-ink-secondary hover:bg-canvas hover:text-ink"
@@ -59,7 +60,7 @@ export default function NotificationFilters({ filters, onChange }: Props) {
               onClick={() =>
                 onChange({ ...filters, severity: filters.severity === s.value ? undefined : s.value })
               }
-              className={`px-3 py-1 rounded-full text-caption font-medium transition-colors ${
+              className={`px-3 py-2.5 rounded-full text-caption font-medium transition-colors min-h-[44px] ${
                 filters.severity === s.value
                   ? "bg-brand-600 text-white"
                   : "bg-canvas-soft text-ink-secondary hover:bg-canvas hover:text-ink"
@@ -75,13 +76,13 @@ export default function NotificationFilters({ filters, onChange }: Props) {
           Date Range
         </label>
         <div className="flex flex-col gap-2">
-          <input
+          <Input
             type="date"
             value={filters.date_from ?? ""}
             onChange={(e) => onChange({ ...filters, date_from: e.target.value || undefined })}
             className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-hairline bg-canvas text-body text-ink focus:border-brand-600 focus:outline-none transition-colors"
           />
-          <input
+          <Input
             type="date"
             value={filters.date_to ?? ""}
             onChange={(e) => onChange({ ...filters, date_to: e.target.value || undefined })}

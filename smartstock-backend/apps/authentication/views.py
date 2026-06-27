@@ -267,11 +267,11 @@ class VerifyEmailView(APIView):
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        success, message = verify_email_token(serializer.validated_data['token'])
+        success, message, http_status = verify_email_token(serializer.validated_data['token'])
         if success:
             return Response({'detail': message}, status=status.HTTP_200_OK)
         return Response(
-            {'status': 'error', 'error': 'VerificationFailed', 'message': message, 'code': 400},
+            {'detail': message},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

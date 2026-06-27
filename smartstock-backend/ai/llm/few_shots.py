@@ -124,6 +124,24 @@ FEW_SHOT_EXAMPLES = [
         'user': 'Find all products whose name contains chair',
         'output': '{"action": "get_inventory", "filters": {"conditions": [{"field": "product_name", "op": "contains", "value": "chair"}]}}',
     },
+    # 13. get_supplier_performance — supplier performance metrics
+    {
+        'action': NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        'user': 'How are my suppliers performing?',
+        'output': '{"action": "get_supplier_performance", "filters": {"conditions": []}}',
+    },
+    # 14. get_supplier_performance — single supplier name filter
+    {
+        'action': NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        'user': 'Show performance for supplier Evans, Tucker and Adams',
+        'output': '{"action": "get_supplier_performance", "filters": {"conditions": [{"field": "supplier_name", "op": "eq", "value": "Evans, Tucker and Adams"}]}}',
+    },
+    # 15. get_supplier_performance — this month / date range
+    {
+        'action': NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        'user': 'Show me supplier performance this month',
+        'output': '{"action": "get_supplier_performance", "filters": {"conditions": [{"field": "date_from", "op": "gte", "value": "2026-06-01"}, {"field": "date_to", "op": "lte", "value": "2026-06-30"}]}}',
+    },
 ]
 
 

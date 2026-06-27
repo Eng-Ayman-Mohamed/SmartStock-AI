@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 class NLQueryToolSchema(BaseModel):
     action: str = Field(
-        description='Action enum value (get_inventory, get_sales_report, get_low_stock, forecast_demand, get_supplier_info, get_total_value, get_top_products)'
+        description='Action enum value (get_inventory, get_sales_report, get_low_stock, forecast_demand, get_supplier_info, get_total_value, get_top_products, get_supplier_performance, help)'
     )
     filters: Optional[dict] = Field(
         default=None, description='Filter conditions, sort, limit, offset'
@@ -131,7 +131,31 @@ _parser = NLQueryOutputParser()
 
 def _keyword_fallback(query: str) -> NLQueryResult:
     """Simple keyword-based fallback when the LLM fails completely."""
-    q = query.lower()
+    q = query.lower().strip()
+
+    # Vague / greeting / help queries — return HELP guidance
+    vague_patterns = [
+        'hello',
+        'hi',
+        'hey',
+        'help',
+        'what can you do',
+        'what do you do',
+        'how do you work',
+        'how does this work',
+        'what are your capabilities',
+        'what can i ask',
+        'what can i do',
+        'tell me about yourself',
+        'who are you',
+        'what is this',
+        'guide me',
+        'commands',
+        'features',
+    ]
+    if any(w == q for w in vague_patterns) or len(q) < 3:
+        return NLQueryResult(action=NLQueryAction.HELP, filters=NLQueryFilters())
+
     if any(w in q for w in ['top', 'best', 'most sold', 'highest', 'best selling', 'top selling']):
         return NLQueryResult(action=NLQueryAction.GET_TOP_PRODUCTS, filters=NLQueryFilters())
     if any(
@@ -146,6 +170,19 @@ def _keyword_fallback(query: str) -> NLQueryResult:
         ]
     ):
         return NLQueryResult(action=NLQueryAction.GET_LOW_STOCK, filters=NLQueryFilters())
+    if any(
+        w in q
+        for w in [
+            'supplier performance',
+            'supplier metric',
+            'supplier rate',
+            'how are suppliers',
+            'supplier scorecard',
+        ]
+    ):
+        return NLQueryResult(
+            action=NLQueryAction.GET_SUPPLIER_PERFORMANCE, filters=NLQueryFilters()
+        )
     if any(w in q for w in ['forecast', 'predict', 'demand', 'future', 'next 30', 'next 7']):
         return NLQueryResult(action=NLQueryAction.FORECAST_DEMAND, filters=NLQueryFilters())
     if any(w in q for w in ['supplier', 'vendor']):
@@ -154,7 +191,8 @@ def _keyword_fallback(query: str) -> NLQueryResult:
         return NLQueryResult(action=NLQueryAction.GET_TOTAL_VALUE, filters=NLQueryFilters())
     if any(w in q for w in ['sales', 'sold', 'revenue', 'sell', 'sold last', 'sales report']):
         return NLQueryResult(action=NLQueryAction.GET_SALES_REPORT, filters=NLQueryFilters())
-    return NLQueryResult(action=NLQueryAction.GET_INVENTORY, filters=NLQueryFilters())
+    # Default to HELP for unrecognized queries instead of silently dumping inventory
+    return NLQueryResult(action=NLQueryAction.HELP, filters=NLQueryFilters())
 
 
 class NLQueryChain:
@@ -225,7 +263,7 @@ class NLQueryChain:
             except NLQueryParseError as exc:
                 logger.warning('NLQueryParseError for query %r: %s', query, exc)
                 return NLQueryResult(
-                    action=NLQueryAction.GET_INVENTORY,
+                    action=NLQueryAction.HELP,
                     filters=NLQueryFilters(),
                 )
             except Exception as exc:
@@ -630,7 +668,8 @@ def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
     except Exception as exc:
         logger.warning('GPT-4o formatter stream failed: %s', exc)
         fallback = f'Here is the requested information: {raw_data}'
-        if validate_response_safety(fallback):
-            yield fallback
-        else:
+        if not validate_response_safety(fallback):
+            logger.warning('GPT-4o formatter fallback blocked by response safety validator')
             yield "I'm sorry, I cannot provide that information."
+        else:
+            yield fallback

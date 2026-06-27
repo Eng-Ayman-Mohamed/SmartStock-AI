@@ -37,7 +37,7 @@ export default function ToastContainer() {
             <p className="text-body flex-1">{toast.message}</p>
             <button
               onClick={() => removeToast(toast.id)}
-              className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              className="shrink-0 flex items-center justify-center w-11 h-11 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               aria-label="Dismiss notification"
             >
               <X className="w-3 h-3" />

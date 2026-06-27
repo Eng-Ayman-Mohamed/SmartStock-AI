@@ -54,7 +54,7 @@ export default function ForecastingPage() {
             {alerts.length > 0 && (
               <button
                 onClick={() => setIsAlertModalOpen(true)}
-                className="xl:hidden relative flex items-center justify-center w-9 h-9 rounded-md border border-hairline bg-canvas text-ink-muted hover:bg-canvas-soft hover:text-ink transition-colors"
+                className="xl:hidden relative flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md border border-hairline bg-canvas text-ink-muted hover:bg-canvas-soft hover:text-ink transition-colors"
                 aria-label="Open alerts"
               >
                 <Bell className="w-4 h-4" />

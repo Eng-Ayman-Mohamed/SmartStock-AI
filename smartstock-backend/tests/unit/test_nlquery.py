@@ -33,8 +33,8 @@ from ai.llm.schemas import (
 
 
 class TestNLQueryAction:
-    def test_all_seven_actions_exist(self):
-        """schemas.py must declare all 7 action values."""
+    def test_all_nine_actions_exist(self):
+        """schemas.py must declare all 9 action values."""
         values = {a.value for a in NLQueryAction}
         assert values == {
             'get_inventory',
@@ -44,6 +44,8 @@ class TestNLQueryAction:
             'get_supplier_info',
             'get_total_value',
             'get_top_products',
+            'get_supplier_performance',
+            'help',
         }
 
     def test_action_is_string_enum(self):
@@ -70,6 +72,9 @@ class TestNLQueryAction:
 
     def test_action_allowed_fields_are_non_empty(self):
         for action_val, fields in ACTION_ALLOWED_FIELDS.items():
+            # help action has no filter fields — skip it
+            if action_val == 'help':
+                continue
             assert len(fields) > 0, f"Empty field list for action '{action_val}'"
 
     def test_valid_operators_non_empty(self):
@@ -290,6 +295,8 @@ class TestFewShotExamples:
         The 5 examples must cover the 5 action types tested end-to-end.
         get_total_value and get_top_products are valid enum members but are
         not required in the MQ3 few-shot set.
+        get_supplier_performance is an additional action type with a few-shot example.
+        help is handled by system prompt + keyword fallback, not few-shot examples.
         """
         required = {
             NLQueryAction.GET_INVENTORY,
@@ -297,6 +304,7 @@ class TestFewShotExamples:
             NLQueryAction.GET_LOW_STOCK,
             NLQueryAction.FORECAST_DEMAND,
             NLQueryAction.GET_SUPPLIER_INFO,
+            NLQueryAction.GET_SUPPLIER_PERFORMANCE,
         }
         actions = {ex['action'] for ex in FEW_SHOT_EXAMPLES}
         assert actions == required, f'Few-shot examples cover {actions}, expected {required}'
@@ -487,6 +495,20 @@ END_TO_END_CASES = [
         ),
         "supplier starts_with 'Tech' AND is_active=True",
     ),
+    # 6. get_supplier_performance — basic query with no filters
+    (
+        'get_supplier_performance',
+        'How are my suppliers performing?',
+        json.dumps(
+            {
+                'action': 'get_supplier_performance',
+                'filters': {'conditions': []},
+            }
+        ),
+        NLQueryAction.GET_SUPPLIER_PERFORMANCE,
+        lambda r: len(r.filters.conditions) == 0,
+        'no conditions, empty filters',
+    ),
 ]
 
 
@@ -544,7 +566,7 @@ class TestNLQueryChainEndToEnd:
         )
 
     def test_chain_falls_back_on_parse_error(self):
-        """If the LLM returns garbage, run() should fall back to get_inventory."""
+        """If the LLM returns garbage, run() should fall back to help."""
         from ai.llm.chain import NLQueryChain
 
         chain = NLQueryChain.__new__(NLQueryChain)
@@ -556,7 +578,7 @@ class TestNLQueryChainEndToEnd:
         chain._chain = mock_lcel_chain
 
         result = chain.run('some query')
-        assert result.action == NLQueryAction.GET_INVENTORY
+        assert result.action == NLQueryAction.HELP
         assert result.filters.to_dict() == {}
 
     def test_chain_falls_back_on_unknown_action(self):
@@ -579,7 +601,7 @@ class TestNLQueryChainEndToEnd:
         chain._chain = mock_lcel_chain
 
         result = chain.run('some query')
-        assert result.action == NLQueryAction.GET_INVENTORY
+        assert result.action == NLQueryAction.HELP
 
     def test_chain_falls_back_on_disallowed_field(self):
         """If the LLM returns a field that is not allowed for the action, run() falls back.
@@ -607,7 +629,7 @@ class TestNLQueryChainEndToEnd:
         chain._chain = mock_lcel_chain
 
         result = chain.run('find supplier contact')
-        assert result.action == NLQueryAction.GET_INVENTORY
+        assert result.action == NLQueryAction.HELP
         assert result.filters.to_dict() == {}
 
     def test_multi_condition_result_round_trips_to_dict(self):
@@ -655,8 +677,8 @@ class TestOutOfScope:
 
     def test_system_prompt_includes_out_of_scope_instruction(self):
         """System prompt must tell GPT-4o how to signal out-of-scope queries."""
-        assert 'Out of scope request' in SYSTEM_PROMPT
-        assert '"error"' in SYSTEM_PROMPT
+        assert '"action" set to "help"' in SYSTEM_PROMPT
+        assert '"filters"' in SYSTEM_PROMPT
 
     def test_system_prompt_restricts_to_inventory_scope(self):
         """System prompt must mention the domain boundary."""

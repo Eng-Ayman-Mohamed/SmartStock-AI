@@ -12,9 +12,12 @@ class ChatPipeline:
     """Shared pipeline for chat validation, classification, and conversation loading."""
 
     @staticmethod
-    def validate_and_classify(query: str, mode: str, user) -> tuple[str, None]:
+    def validate_and_classify(
+        query: str, mode: str, user, conversation_id=None
+    ) -> tuple[str, None]:
         """
         Validate query (prompt injection) and classify intent.
+        Optionally loads conversation history for follow-up context.
         Returns (engine, error_response_dict_or_None).
         """
         from ai.llm.chain import prompt_injection_filter
@@ -49,11 +52,20 @@ class ChatPipeline:
                 if fast_result:
                     engine = fast_result.intent
                 else:
-                    classification = classify_intent(query)
+                    # Load conversation history for follow-up context
+                    history = []
+                    if conversation_id:
+                        try:
+                            conv_svc = ConversationService()
+                            history = conv_svc.get_history_for_llm(conversation_id)
+                        except Exception:
+                            pass
+
+                    classification = classify_intent(query, history=history)
                     if classification.confidence < 0.7:
-                        engine = 'nl_query'
+                        engine = 'rag'  # Default to RAG for ambiguous queries
                     elif classification.intent == 'out_of_scope':
-                        engine = 'nl_query'
+                        engine = 'rag'  # Try RAG before giving up
                     else:
                         engine = classification.intent
             except Exception:

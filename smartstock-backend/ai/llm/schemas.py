@@ -10,6 +10,8 @@ class NLQueryAction(str, Enum):
     GET_SUPPLIER_INFO = 'get_supplier_info'
     GET_TOTAL_VALUE = 'get_total_value'
     GET_TOP_PRODUCTS = 'get_top_products'
+    GET_SUPPLIER_PERFORMANCE = 'get_supplier_performance'
+    HELP = 'help'
 
 
 # ── Allowed fields per action (for validation) ────────────────────────────────
@@ -59,6 +61,13 @@ ACTION_ALLOWED_FIELDS: Dict[str, List[str]] = {
         'date_to',
         'limit',
     ],
+    'get_supplier_performance': [
+        'supplier_name',
+        'is_active',
+        'date_from',
+        'date_to',
+    ],
+    'help': [],
 }
 
 VALID_OPERATORS = [
