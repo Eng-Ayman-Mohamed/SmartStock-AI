@@ -134,14 +134,20 @@ export default function PurchasingPage() {
 
   const createPOMutation = useCreatePO();
 
+  const token = useAuthStore((s) => s.token);
+
   const { data: skuOptions } = useQuery({
     queryKey: ["sku-options"],
     queryFn: () => listSKUOptions(),
+    enabled: !!token,
+    retry: false,
   });
 
   const { data: supplierOptions } = useQuery({
     queryKey: ["supplier-options"],
     queryFn: () => listSupplierOptions(),
+    enabled: !!token,
+    retry: false,
   });
 
   const {
@@ -312,6 +318,9 @@ export default function PurchasingPage() {
           createPOMutation.mutate(data, {
             onSuccess: () => {
               setIsCreateModalOpen(false);
+            },
+            onError: (err) => {
+              console.error("Failed to create PO:", err);
             },
           });
         }}
