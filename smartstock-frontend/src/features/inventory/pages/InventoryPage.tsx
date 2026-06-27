@@ -313,7 +313,7 @@ export default function InventoryPage() {
 
   function renderActions(r: Row) {
     return (
-      <div className="flex items-center justify-end gap-2 ml-1">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="ghost"
           size="sm"
