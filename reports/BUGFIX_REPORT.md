@@ -13,9 +13,9 @@ Branch: `fix/bug-sweep-20260627`
 | 3 | Tables "suspense" not complete | Fixed (same root cause as Bug 7) | 8d88945 |
 | 4 | Invoice scan with PDF not working | Fixed | 01e5715 |
 | 5 | Registration email in production | Fixed (NEEDS-VERIFICATION) | 8fa5560 |
-| 6 | Inventory actions | Fixed | 1829da2 |
+| 6 | Inventory actions | Fixed | 1829da2 (+004e20d test) |
 | 7 | PO history table | Fixed | 8d88945 |
-| 8 | "Create new order" button | Fixed | cfcb635 |
+| 8 | "Create new order" button | Fixed | 6604735 |
 
 ---
 
@@ -101,8 +101,8 @@ Branch: `fix/bug-sweep-20260627`
 - **Fix:** Renamed `validate_quantity` → `validate_quantity_on_hand` so DRF invokes it on the actual writable field.
 - **Files changed:** `smartstock-backend/apps/inventory/serializers.py`
 - **Verification:** `manage.py check` → ok; `ruff` → passed. Live: `PATCH /api/inventory/stock-levels/62/` with `quantity_on_hand=-5` now returns **422** (validation error; was silently 200), and `quantity_on_hand=42` returns **200** with the updated record — both in ~30 ms against the local DB.
-- **Notes / follow-ups:** Separate latent issue (not blocking, not fixed here to keep the diff minimal): `StockLevelRepository.get_by_product_id` uses `.get(sku__product_id=...)`, which raises `MultipleObjectsReturned` for a product with more than one SKU on the legacy `/api/inventory/stock/{product_id}/` endpoint. The frontend does not call that endpoint; recommend `.filter(...).first()` as a follow-up.
-- **Commit:** `fix(inventory): enforce non-negative stock on the writable field`
+- **Notes / follow-ups:** Separate latent issue (not blocking, not fixed here to keep the diff minimal): `StockLevelRepository.get_by_product_id` uses `.get(sku__product_id=...)`, which raises `MultipleObjectsReturned` for a product with more than one SKU on the legacy `/api/inventory/stock/{product_id}/` endpoint. The frontend does not call that endpoint; recommend `.filter(...).first()` as a follow-up. The pre-existing `test_negative_quantity_allowed` test codified the bug (asserted negatives are accepted); it was renamed to `test_negative_quantity_rejected` and updated to assert rejection.
+- **Commit:** `fix(inventory): enforce non-negative stock on the writable field` (+ `test(inventory): assert negative stock is rejected`, `004e20d`)
 
 ## Bug 8 — "Create New Order" button
 
@@ -114,3 +114,12 @@ Branch: `fix/bug-sweep-20260627`
 - **Verification:** `manage.py check` → ok; `ruff` → passed; `tsc`/`eslint` → exit 0. Live: `POST /api/purchasing/orders/` returns 201 with `status='draft'` (id 502); `GET /purchasing/orders/?status_in=draft,pending_approval` now includes that id. `pytest tests/integration/test_purchasing_endpoints.py` → **46 passed** (the draft-on-create tests remain valid).
 - **Notes / follow-ups (assumption):** Chose the frontend fix over forcing `status='pending_approval'` in `perform_create`, because draft-on-create is a deliberate, tested backend contract and overriding it would break three intentional tests. API-created POs still have `requested_by=None` (only the AI `draft_po` service sets a requester) — populating it on manual create is a reasonable, separate follow-up.
 - **Commit:** `fix(purchasing): show draft orders in the approval queue`
+
+---
+
+## Verification — full backend test suite & frontend build
+
+- **Backend:** `pytest tests/` under `config.settings.test` → **1730 passed, 0 failed** (3m15s). `manage.py check` → no issues; `ruff check` → passed on every touched file.
+- **Frontend:** `npm run build` (`tsc -b && vite build`) → success; `npx tsc --noEmit` and `npx eslint` → clean on all changed files.
+- **Important test-runner caveat (cost real time to find):** `pytest.ini` sets `DJANGO_SETTINGS_MODULE=config.settings.test`, but the dev container exports `DJANGO_SETTINGS_MODULE=config.settings.development`, and that **env var overrides `pytest.ini`**. Running tests without forcing the module makes them execute under *development* settings (real Redis cache + real 5/min login throttle + no eager Celery), which produces spurious failures: `Too Many Requests` on auth tests, and `CELERY_TASK_ALWAYS_EAGER`/`delete_pattern` errors in `test_external_mocks`. Always run with `-e DJANGO_SETTINGS_MODULE=config.settings.test` (or `--ds=config.settings.test`). Under the correct settings the suite is green.
+- **Behavior-change test updates (tests that encoded the old/buggy behavior):** Bug 6 — `test_negative_quantity_allowed` → `test_negative_quantity_rejected` (negative stock is now correctly rejected). Bug 8 — no test changes were needed: the fix deliberately preserved the draft-on-create contract that the existing PO tests assert.
