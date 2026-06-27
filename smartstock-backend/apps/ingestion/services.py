@@ -614,6 +614,7 @@ class RAGQueryService:
                     {
                         'document': doc,
                         'page': page,
+                        'document_id': chunk.get('document_id'),
                         'chunk_text': chunk.get('chunk_text', chunk.get('content', '')),
                     }
                 )
