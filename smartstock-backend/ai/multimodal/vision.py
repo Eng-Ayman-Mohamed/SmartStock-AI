@@ -93,9 +93,35 @@ class VisionExtractor:
         content = response.text or ''
         return self._parse_json(content)
 
+    def _pdf_data_url_to_image_data_url(self, file_data_url: str) -> str:
+        """Rasterize the first page of a base64 PDF data URL to a PNG data URL.
+
+        Groq/OpenAI vision endpoints reject PDFs sent via image_url (HTTP 400);
+        they only accept raster images. We render page 1 with Poppler (pdf2image)
+        and hand the model an image instead.
+        """
+        import base64
+        from io import BytesIO
+
+        from pdf2image import convert_from_bytes
+
+        _, b64data = file_data_url.split(',', 1)
+        pdf_bytes = base64.b64decode(b64data)
+        pages = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=200)
+        if not pages:
+            raise ValueError('PDF invoice contained no readable pages.')
+
+        buffer = BytesIO()
+        pages[0].convert('RGB').save(buffer, format='PNG')
+        encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
+        return f'data:image/png;base64,{encoded}'
+
     def _extract_openai_compatible(self, file_data_url: str) -> dict:
         """Extract invoice data using OpenAI-compatible vision API (OpenAI/Groq)."""
         from ai.llm.provider_config import get_vision_client
+
+        if file_data_url.startswith('data:application/pdf'):
+            file_data_url = self._pdf_data_url_to_image_data_url(file_data_url)
 
         client = self.client or get_vision_client()
         response = client.chat.completions.create(

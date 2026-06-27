@@ -11,7 +11,7 @@ Branch: `fix/bug-sweep-20260627`
 | 1 | Remove the "Ask AI" button | Fixed | 1b0f0c5 |
 | 2 | Source badge opens a blank object | Fixed (NEEDS-VERIFICATION) | see log |
 | 3 | Tables "suspense" not complete | Fixed (same root cause as Bug 7) | see log |
-| 4 | Invoice scan with PDF not working | _pending_ | — |
+| 4 | Invoice scan with PDF not working | Fixed | see log |
 | 5 | Registration email in production | _pending_ | — |
 | 6 | Inventory actions | _pending_ | — |
 | 7 | PO history table | Fixed | see log |
@@ -66,3 +66,14 @@ Branch: `fix/bug-sweep-20260627`
 - **Verification:** `manage.py check` → no issues; `ruff check --no-cache` → passed; `tsc --noEmit` / `eslint` → exit 0. Live API: `GET /purchasing/orders/?status_exclude=draft,pending_approval` returns only history statuses (no draft/pending) with `meta.total = 402` (vs 500 unfiltered) — the count now matches the filtered rows, so pagination is correct on every page.
 - **Notes / follow-ups:** The `status_exclude` param is additive and backward-compatible; existing `?status=` exact filtering is unchanged.
 - **Commit:** `fix(purchasing): exclude draft/pending from PO history server-side`
+
+## Bug 4 — Invoice scan with PDF not working
+
+- **Status:** Fixed
+- **Symptom:** Scanning a PDF invoice fails (HTTP 400 from the vision API); image invoices (JPEG/PNG) work.
+- **Root cause:** `VisionExtractor._extract_openai_compatible` passed the raw `data:application/pdf;base64,…` URL straight into the `image_url` content field. The Groq/OpenAI vision APIs only accept raster images there and return 400 for PDFs. No rasterization existed; `pdf2image`/Poppler were absent from the deps. (The Gemini path was unaffected — it uses `Part.from_bytes`, which handles PDFs natively.)
+- **Fix:** Added `VisionExtractor._pdf_data_url_to_image_data_url`, which decodes the base64 PDF, renders page 1 with `pdf2image`/Poppler at 200 DPI, and returns a PNG data URL. `_extract_openai_compatible` now detects a `data:application/pdf` prefix and rasterizes before the vision call (image/JPEG/PNG uploads are untouched). Added `pdf2image` + `Pillow` to `requirements.txt` and `poppler-utils` to the `Dockerfile` apt layer.
+- **Files changed:** `smartstock-backend/ai/multimodal/vision.py`, `smartstock-backend/requirements.txt`, `smartstock-backend/Dockerfile`
+- **Verification:** `manage.py check` → ok; `ruff check --no-cache vision.py` → passed. Reproduced with the repo's `rag_pdf_test.pdf` inside the backend container: `_pdf_data_url_to_image_data_url` returns a valid `data:image/png;base64,…` URL, and the full `VisionExtractor().extract(pdf_url)` via the live Groq vision model now returns a parsed `{header, line_items}` dict (previously 400).
+- **Notes / follow-ups:** Rasterizes the **first page** only (covers single-page invoices, which is the norm); multi-page line items would need rendering subsequent pages — noted as a follow-up. The running dev container had `poppler-utils`/`pdf2image` installed ad-hoc for verification; a `docker compose build backend` is required to bake them in from the committed Dockerfile/requirements.
+- **Commit:** `fix(ingestion): rasterize PDF invoices before the vision API call`
