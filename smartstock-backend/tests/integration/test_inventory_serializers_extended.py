@@ -124,7 +124,7 @@ class StockLevelSerializerTests(TestCase):
         s = StockLevelSerializer(data=data)
         self.assertTrue(s.is_valid(), s.errors)
 
-    def test_negative_quantity_allowed(self):
+    def test_negative_quantity_rejected(self):
         data = {
             'sku': self.sku.id,
             'quantity_on_hand': -5,
@@ -132,7 +132,8 @@ class StockLevelSerializerTests(TestCase):
             'reorder_quantity': 25,
         }
         s = StockLevelSerializer(data=data)
-        self.assertTrue(s.is_valid(), s.errors)
+        self.assertFalse(s.is_valid())
+        self.assertIn('quantity_on_hand', s.errors)
 
     def test_negative_reorder_point(self):
         data = {
