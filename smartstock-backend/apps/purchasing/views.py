@@ -272,6 +272,9 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             return [IsManagerOrAbove()]
         return [IsManagerOrAbove()]
 
+    def perform_create(self, serializer):
+        serializer.save(requested_by=self.request.user)
+
     @extend_schema(
         request=None,
         responses={

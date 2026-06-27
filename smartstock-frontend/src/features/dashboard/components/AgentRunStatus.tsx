@@ -72,7 +72,7 @@ export default function AgentRunStatus() {
           <p className="text-body text-ink-muted">No agent runs recorded yet.</p>
         </div>
       ) : (
-        <div className="space-y-0 max-h-[360px] overflow-y-auto overscroll-contain">
+        <div className="space-y-0 max-h-[360px] overflow-y-auto overscroll-contain pb-2">
           {runs.slice(0, 8).map((run) => (
             <AgentRunIndicator key={run.id} run={run} />
           ))}

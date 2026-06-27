@@ -80,7 +80,7 @@ def seed_users(scale: int) -> list[CustomUser]:
         {
             'username': 'admin',
             'email': 'admin@smartstock.ai',
-            'password': 'Admin123!',
+            'password': 'SmartStock2026!',
             'first_name': 'Dev',
             'last_name': 'Admin',
             'role': CustomUser.Role.ADMIN,
@@ -118,6 +118,7 @@ def seed_users(scale: int) -> list[CustomUser]:
             last_name=dev['last_name'],
             role=dev['role'],
             is_active=True,
+            email_verified=True,
             is_staff=dev['is_staff'],
             is_superuser=dev['is_superuser'],
             date_joined=aware_dt(start_date='-2y', end_date='-1d'),

@@ -6,6 +6,7 @@ import {
   PencilLine,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
@@ -51,6 +52,7 @@ export default function InventoryPage() {
   const [page, setPage] = useState(Number(searchParams.get("page") ?? 1));
   const [sortField, setSortField] = useState(searchParams.get("sort") ?? "");
   const [sortOrder, setSortOrder] = useState(searchParams.get("order") ?? "");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -311,7 +313,7 @@ export default function InventoryPage() {
 
   function renderActions(r: Row) {
     return (
-      <div className="flex items-center justify-end gap-2 ml-1">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="ghost"
           size="sm"
@@ -368,14 +370,25 @@ export default function InventoryPage() {
             top-up.
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="md"
-          onClick={() => setEditingProduct("new")}
-          disabled={!canManage}
-        >
-          <Plus className="w-4 h-4" /> Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setFiltersOpen((o) => !o)}
+            className="lg:hidden"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            {filtersOpen ? 'Hide Filters' : 'Show Filters'}
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setEditingProduct("new")}
+            disabled={!canManage}
+          >
+            <Plus className="w-4 h-4" /> Add Product
+          </Button>
+        </div>
       </div>
 
       {inventoryQuery.lowStock.length ? (
@@ -415,6 +428,44 @@ export default function InventoryPage() {
             aria-label="Search products"
           />
         </div>
+      </div>
+
+      {filtersOpen && (
+        <div className="flex flex-wrap gap-3 lg:hidden">
+          <Select
+            className="sm:w-auto rounded-full"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Status filter"
+          >
+            <option value="">All statuses</option>
+            <option value="In Stock">In Stock</option>
+            <option value="Low Stock">Low Stock</option>
+            <option value="Out of Stock">Out of Stock</option>
+          </Select>
+          <Select
+            className="sm:w-auto rounded-full"
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Category filter"
+          >
+            <option value="">All categories</option>
+            {categoriesQuery.data?.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
+
+      <div className="hidden lg:flex flex-wrap gap-3">
         <Select
           className="sm:w-auto rounded-full"
           value={statusFilter}
@@ -444,7 +495,7 @@ export default function InventoryPage() {
               {cat.name}
             </option>
           ))}
-          </Select>
+        </Select>
       </div>
 
       {inventoryQuery.isError && (

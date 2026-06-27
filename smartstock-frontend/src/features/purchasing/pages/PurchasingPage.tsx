@@ -51,7 +51,7 @@ export default function PurchasingPage() {
       {
         key: "id",
         label: "PO #",
-        width: "100px",
+        width: "80px",
         sortable: true,
         sortOrder: sortField === "id" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <span className="text-mono text-ink-muted">{r.id}</span>,
@@ -59,6 +59,8 @@ export default function PurchasingPage() {
       {
         key: "product_name",
         label: "Product",
+        width: "30%",
+        className: "hidden sm:table-cell",
         sortable: true,
         sortOrder: sortField === "product_name" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <span className="truncate block">{r.product_name}</span>,
@@ -66,7 +68,7 @@ export default function PurchasingPage() {
       {
         key: "supplier",
         label: "Supplier",
-        width: "150px",
+        width: "120px",
         sortable: true,
         sortOrder: sortField === "supplier" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => (
@@ -85,6 +87,7 @@ export default function PurchasingPage() {
         key: "total",
         label: "Total",
         width: "100px",
+        className: "hidden md:table-cell",
         sortable: true,
         sortOrder: sortField === "total" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <span className="tabular-nums">{r.total}</span>,
@@ -92,7 +95,8 @@ export default function PurchasingPage() {
       {
         key: "status",
         label: "Status",
-        width: "120px",
+        width: "100px",
+        className: "hidden md:table-cell",
         sortable: true,
         sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <Badge>{r.status}</Badge>,
@@ -101,6 +105,7 @@ export default function PurchasingPage() {
         key: "created_at",
         label: "Created",
         width: "110px",
+        className: "hidden lg:table-cell",
         sortable: true,
         sortOrder: sortField === "created_at" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => (
@@ -113,6 +118,7 @@ export default function PurchasingPage() {
         key: "approved_by",
         label: "Approved By",
         width: "120px",
+        className: "hidden lg:table-cell",
         sortable: true,
         sortOrder: sortField === "approved_by" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => (
@@ -128,14 +134,20 @@ export default function PurchasingPage() {
 
   const createPOMutation = useCreatePO();
 
+  const token = useAuthStore((s) => s.token);
+
   const { data: skuOptions } = useQuery({
     queryKey: ["sku-options"],
     queryFn: () => listSKUOptions(),
+    enabled: !!token,
+    retry: false,
   });
 
   const { data: supplierOptions } = useQuery({
     queryKey: ["supplier-options"],
     queryFn: () => listSupplierOptions(),
+    enabled: !!token,
+    retry: false,
   });
 
   const {
@@ -294,6 +306,7 @@ export default function PurchasingPage() {
             caption="Purchase order history"
             pagination={poPaginationConfig}
             onSort={handleSort}
+            fillHeight={false}
           />
         )}
       </Card>
@@ -305,6 +318,9 @@ export default function PurchasingPage() {
           createPOMutation.mutate(data, {
             onSuccess: () => {
               setIsCreateModalOpen(false);
+            },
+            onError: (err) => {
+              console.error("Failed to create PO:", err);
             },
           });
         }}
