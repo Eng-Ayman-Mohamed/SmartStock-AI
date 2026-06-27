@@ -93,12 +93,16 @@ class VisionExtractor:
         content = response.text or ''
         return self._parse_json(content)
 
-    def _pdf_data_url_to_image_data_url(self, file_data_url: str) -> str:
-        """Rasterize the first page of a base64 PDF data URL to a PNG data URL.
+    # Cap how many PDF pages we rasterize/send, to bound token usage on large files.
+    MAX_PDF_PAGES = 5
+
+    def _pdf_data_url_to_image_data_urls(self, file_data_url: str) -> list[str]:
+        """Rasterize each page of a base64 PDF data URL to a list of PNG data URLs.
 
         Groq/OpenAI vision endpoints reject PDFs sent via image_url (HTTP 400);
-        they only accept raster images. We render page 1 with Poppler (pdf2image)
-        and hand the model an image instead.
+        they only accept raster images. We render the pages with Poppler
+        (pdf2image), one image per page (capped at MAX_PDF_PAGES), so multi-page
+        invoices keep every line item instead of losing rows past page 1.
         """
         import base64
         from io import BytesIO
@@ -107,21 +111,37 @@ class VisionExtractor:
 
         _, b64data = file_data_url.split(',', 1)
         pdf_bytes = base64.b64decode(b64data)
-        pages = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=200)
+        pages = convert_from_bytes(pdf_bytes, last_page=self.MAX_PDF_PAGES, dpi=200)
         if not pages:
             raise ValueError('PDF invoice contained no readable pages.')
 
-        buffer = BytesIO()
-        pages[0].convert('RGB').save(buffer, format='PNG')
-        encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
-        return f'data:image/png;base64,{encoded}'
+        data_urls = []
+        for page in pages:
+            buffer = BytesIO()
+            page.convert('RGB').save(buffer, format='PNG')
+            encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
+            data_urls.append(f'data:image/png;base64,{encoded}')
+        return data_urls
 
     def _extract_openai_compatible(self, file_data_url: str) -> dict:
         """Extract invoice data using OpenAI-compatible vision API (OpenAI/Groq)."""
         from ai.llm.provider_config import get_vision_client
 
         if file_data_url.startswith('data:application/pdf'):
-            file_data_url = self._pdf_data_url_to_image_data_url(file_data_url)
+            image_urls = self._pdf_data_url_to_image_data_urls(file_data_url)
+        else:
+            image_urls = [file_data_url]
+
+        user_content = [
+            {
+                'type': 'text',
+                'text': (
+                    'Extract the invoice header fields and every line-item row. '
+                    'The invoice may span multiple page images; combine them into one result.'
+                ),
+            },
+        ]
+        user_content.extend({'type': 'image_url', 'image_url': {'url': url}} for url in image_urls)
 
         client = self.client or get_vision_client()
         response = client.chat.completions.create(
@@ -134,13 +154,7 @@ class VisionExtractor:
                 },
                 {
                     'role': 'user',
-                    'content': [
-                        {
-                            'type': 'text',
-                            'text': 'Extract the invoice header fields and every line-item row.',
-                        },
-                        {'type': 'image_url', 'image_url': {'url': file_data_url}},
-                    ],
+                    'content': user_content,
                 },
             ],
         )
