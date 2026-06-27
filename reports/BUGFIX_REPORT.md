@@ -12,7 +12,7 @@ Branch: `fix/bug-sweep-20260627`
 | 2 | Source badge opens a blank object | Fixed (NEEDS-VERIFICATION) | see log |
 | 3 | Tables "suspense" not complete | Fixed (same root cause as Bug 7) | see log |
 | 4 | Invoice scan with PDF not working | Fixed | see log |
-| 5 | Registration email in production | _pending_ | — |
+| 5 | Registration email in production | Fixed (NEEDS-VERIFICATION) | see log |
 | 6 | Inventory actions | _pending_ | — |
 | 7 | PO history table | Fixed | see log |
 | 8 | "Create new order" button | _pending_ | — |
@@ -77,3 +77,18 @@ Branch: `fix/bug-sweep-20260627`
 - **Verification:** `manage.py check` → ok; `ruff check --no-cache vision.py` → passed. Reproduced with the repo's `rag_pdf_test.pdf` inside the backend container: `_pdf_data_url_to_image_data_url` returns a valid `data:image/png;base64,…` URL, and the full `VisionExtractor().extract(pdf_url)` via the live Groq vision model now returns a parsed `{header, line_items}` dict (previously 400).
 - **Notes / follow-ups:** Rasterizes the **first page** only (covers single-page invoices, which is the norm); multi-page line items would need rendering subsequent pages — noted as a follow-up. The running dev container had `poppler-utils`/`pdf2image` installed ad-hoc for verification; a `docker compose build backend` is required to bake them in from the committed Dockerfile/requirements.
 - **Commit:** `fix(ingestion): rasterize PDF invoices before the vision API call`
+
+## Bug 5 — Registration email in production
+
+- **Status:** Fixed (NEEDS-VERIFICATION)
+- **Symptom:** Registration verification email never arrives in production despite Brevo SMTP env vars being set; in some cases registration returns 500.
+- **Root cause:** Two compounding defects in `config/settings/production.py`: (1) `EMAIL_USE_TLS = True` was hardcoded and `EMAIL_USE_SSL` was never set — so a port-465 (implicit-SSL) deployment does STARTTLS on an SSL socket and raises `ssl WRONG_VERSION_NUMBER`, which (with no try/except in the register view) 500s the request and orphans the new user; (2) `FRONTEND_URL` was **absent** from production settings, so `send_verification_email` fell back to `http://localhost:5173`, making every verification link dead even when the send succeeded.
+- **Fix:** (a) `production.py` now reads `EMAIL_USE_SSL`/`EMAIL_USE_TLS` from env (SSL on → TLS auto-off) and defines `FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://smart-stock-dev.vercel.app')`. (b) `RegisterView.post` wraps the send in try/except, logs with context, and still returns 201 (account exists; user can re-request) instead of 500. (c) `send_verification_email`'s failure log now includes `host/port/tls/ssl/from/email` so the real production cause is visible.
+- **Files changed:** `smartstock-backend/config/settings/production.py`, `smartstock-backend/apps/authentication/views.py`, `smartstock-backend/apps/authentication/services.py`
+- **Verification:** `manage.py check` → ok; `ruff` → passed; the TLS/SSL env logic resolves correctly (SSL=False→TLS=True for 587; SSL=True→TLS=False for 465); a **live Brevo SMTP connect+auth on 587/TLS succeeded** with the configured credentials (no message sent). Full end-to-end confirmation requires production.
+- **Notes / follow-ups (what to check in prod once logs are available):**
+  1. Confirm `EMAIL_HOST/PORT/USER/PASSWORD` and `DEFAULT_FROM_EMAIL` are set in the prod environment and that `DEFAULT_FROM_EMAIL` is a **Brevo-verified sender** (Brevo rejects unverified senders).
+  2. Set `FRONTEND_URL` to the real frontend origin (e.g. the Vercel URL) and verify the received link points there, not localhost.
+  3. If using port 465, set `EMAIL_USE_SSL=True`; if 587, leave defaults (TLS).
+  4. Register a test user and grep prod logs for `verification email` — a success log or the new structured failure log will pinpoint the state.
+- **Commit:** `fix(auth): make prod email TLS/SSL and FRONTEND_URL configurable; harden send`
