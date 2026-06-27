@@ -157,12 +157,14 @@ class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
 
 
 class PurchaseOrderFilter(django_filters.FilterSet):
-    """Adds `status_exclude` so the PO-history view can drop draft/pending rows
-    server-side (keeping pagination counts consistent with the visible rows),
+    """Adds `status_exclude` (drop statuses) and `status_in` (keep statuses)
+    so the PO-history and approval-queue views can filter by a set of statuses
+    server-side, keeping pagination counts consistent with the visible rows,
     while preserving the existing exact `status` filter."""
 
     status = django_filters.CharFilter(field_name='status')
     status_exclude = CharInFilter(field_name='status', exclude=True)
+    status_in = CharInFilter(field_name='status')
 
     class Meta:
         model = PurchaseOrder

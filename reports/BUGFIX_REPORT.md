@@ -9,13 +9,13 @@ Branch: `fix/bug-sweep-20260627`
 | Setup A | Drop AI attribution (.claude/settings.json) | Done | c0b88d7 |
 | Setup C | Local Postgres + Redis for dev | Done | c5596e7 |
 | 1 | Remove the "Ask AI" button | Fixed | 1b0f0c5 |
-| 2 | Source badge opens a blank object | Fixed (NEEDS-VERIFICATION) | see log |
-| 3 | Tables "suspense" not complete | Fixed (same root cause as Bug 7) | see log |
-| 4 | Invoice scan with PDF not working | Fixed | see log |
-| 5 | Registration email in production | Fixed (NEEDS-VERIFICATION) | see log |
-| 6 | Inventory actions | Fixed | see log |
-| 7 | PO history table | Fixed | see log |
-| 8 | "Create new order" button | _pending_ | — |
+| 2 | Source badge opens a blank object | Fixed (NEEDS-VERIFICATION) | b62af00 |
+| 3 | Tables "suspense" not complete | Fixed (same root cause as Bug 7) | 8d88945 |
+| 4 | Invoice scan with PDF not working | Fixed | 01e5715 |
+| 5 | Registration email in production | Fixed (NEEDS-VERIFICATION) | 8fa5560 |
+| 6 | Inventory actions | Fixed | 1829da2 |
+| 7 | PO history table | Fixed | 8d88945 |
+| 8 | "Create new order" button | Fixed | cfcb635 |
 
 ---
 
@@ -103,3 +103,14 @@ Branch: `fix/bug-sweep-20260627`
 - **Verification:** `manage.py check` → ok; `ruff` → passed. Live: `PATCH /api/inventory/stock-levels/62/` with `quantity_on_hand=-5` now returns **422** (validation error; was silently 200), and `quantity_on_hand=42` returns **200** with the updated record — both in ~30 ms against the local DB.
 - **Notes / follow-ups:** Separate latent issue (not blocking, not fixed here to keep the diff minimal): `StockLevelRepository.get_by_product_id` uses `.get(sku__product_id=...)`, which raises `MultipleObjectsReturned` for a product with more than one SKU on the legacy `/api/inventory/stock/{product_id}/` endpoint. The frontend does not call that endpoint; recommend `.filter(...).first()` as a follow-up.
 - **Commit:** `fix(inventory): enforce non-negative stock on the writable field`
+
+## Bug 8 — "Create New Order" button
+
+- **Status:** Fixed
+- **Symptom:** Filling the New Order modal and clicking Create Order closes the modal with no error, but the new PO never appears anywhere.
+- **Root cause:** A PO is created with the model default `status='draft'` (this is intentional — the backend has a `draft → pending_approval` transition map, the `approve`/`reject` endpoints accept `draft`, and three existing tests assert draft-on-create). The defect is on the **frontend**: the Pending Approval queue (`listPendingPOs`) queried `status='pending_approval'` only, and PO History excludes `draft`, so a freshly created `draft` order appeared in neither list. The POST returned 201 and the modal closed, hiding the order.
+- **Fix:** Surface drafts in the approval queue instead of changing the (intentional) create contract. Backend: added an additive `status_in` filter to `PurchaseOrderFilter`. Frontend: `listPendingPOs` now queries `status_in=draft,pending_approval`. Both draft and pending orders await an approval decision and the approve/reject endpoints already accept either, so this is the correct queue. No backend create-contract change, so the existing PO tests stay green.
+- **Files changed:** `smartstock-backend/apps/purchasing/views.py`, `smartstock-frontend/src/features/purchasing/api.ts`
+- **Verification:** `manage.py check` → ok; `ruff` → passed; `tsc`/`eslint` → exit 0. Live: `POST /api/purchasing/orders/` returns 201 with `status='draft'` (id 502); `GET /purchasing/orders/?status_in=draft,pending_approval` now includes that id. `pytest tests/integration/test_purchasing_endpoints.py` → **46 passed** (the draft-on-create tests remain valid).
+- **Notes / follow-ups (assumption):** Chose the frontend fix over forcing `status='pending_approval'` in `perform_create`, because draft-on-create is a deliberate, tested backend contract and overriding it would break three intentional tests. API-created POs still have `requested_by=None` (only the AI `draft_po` service sets a requester) — populating it on manual create is a reasonable, separate follow-up.
+- **Commit:** `fix(purchasing): show draft orders in the approval queue`

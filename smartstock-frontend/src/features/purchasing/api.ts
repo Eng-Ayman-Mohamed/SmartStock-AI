@@ -77,7 +77,10 @@ interface RawPO {
 
 export async function listPendingPOs(page = 1, pageSize = 20): Promise<PaginatedResponse<PendingPO>> {
   const res = await api.get<RawPO[]>('/purchasing/orders/', {
-    params: { status: 'pending_approval', page, page_size: pageSize },
+    // Orders are created as `draft`; both draft and pending_approval await an
+    // approval decision (the approve/reject endpoints accept either), so the
+    // queue must include drafts — otherwise newly created orders never appear.
+    params: { status_in: 'draft,pending_approval', page, page_size: pageSize },
   });
   return {
     results: (res.data ?? []).map((item) => {
