@@ -66,7 +66,7 @@ export default function useChat(conversationId?: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<ChatMode>('nl_query');
+  const [mode, setMode] = useState<ChatMode>('rag');
   const abortRef = useRef<AbortController | null>(null);
   const lastFailedText = useRef<string | null>(null);
   const idCounter = useRef(0);
@@ -267,7 +267,7 @@ export default function useChat(conversationId?: string | null) {
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
-    setMode('nl_query');
+    setMode('rag');
     lastFailedText.current = null;
   }, []);
 
