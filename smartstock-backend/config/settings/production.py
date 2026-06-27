@@ -54,9 +54,11 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 # TLS/SSL must be configurable: Brevo uses STARTTLS on 587 (default) and
 # implicit SSL on 465. Hardcoding TLS breaks 465 (ssl WRONG_VERSION_NUMBER).
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False').lower() in ('true', '1', 'yes')
-EMAIL_USE_TLS = os.environ.get(
-    'EMAIL_USE_TLS', 'False' if EMAIL_USE_SSL else 'True'
-).lower() in ('true', '1', 'yes')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False' if EMAIL_USE_SSL else 'True').lower() in (
+    'true',
+    '1',
+    'yes',
+)
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@smartstock.ai')
 # Without this, verification links fall back to http://localhost:5173 (dead in prod).
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://smart-stock-dev.vercel.app')
