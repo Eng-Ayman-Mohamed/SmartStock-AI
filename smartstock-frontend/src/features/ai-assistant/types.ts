@@ -3,6 +3,7 @@ export type ChatMode = 'nl_query' | 'rag';
 export interface Citation {
   document: string;
   page: number;
+  document_id?: number | null;
   chunk_text?: string;
 }
 

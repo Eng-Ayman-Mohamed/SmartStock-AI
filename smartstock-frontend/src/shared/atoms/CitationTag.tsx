@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
+import DocumentDetailModal from '../../features/documents/components/DocumentDetailModal';
 
 interface CitationTagProps {
   sourceDocument: string;
   page: number;
+  documentId?: number | null;
   chunkText?: string;
 }
 
-export default function CitationTag({ sourceDocument, page, chunkText }: CitationTagProps) {
+export default function CitationTag({ sourceDocument, page, documentId, chunkText }: CitationTagProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -46,15 +48,25 @@ export default function CitationTag({ sourceDocument, page, chunkText }: Citatio
       >
         <span className="font-medium">Source:</span> {sourceDocument}, Page: {page}
       </button>
-      {open && chunkText && (
-        <div
-          ref={tooltipRef}
-          role="tooltip"
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 max-w-[calc(100vw-2rem)] p-3 bg-ink text-white text-caption leading-relaxed rounded-lg shadow-elevated"
-        >
-          {chunkText}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-ink rotate-45 -mt-1" />
-        </div>
+      {open && (
+        <>
+          {chunkText && (
+            <div
+              ref={tooltipRef}
+              role="tooltip"
+              className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 max-w-[calc(100vw-2rem)] p-3 bg-ink text-white text-caption leading-relaxed rounded-lg shadow-elevated"
+            >
+              {chunkText}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-ink rotate-45 -mt-1" />
+            </div>
+          )}
+          {documentId && (
+            <DocumentDetailModal
+              documentId={documentId}
+              onClose={() => setOpen(false)}
+            />
+          )}
+        </>
       )}
     </span>
   );
