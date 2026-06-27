@@ -13,7 +13,7 @@ Branch: `fix/bug-sweep-20260627`
 | 3 | Tables "suspense" not complete | Fixed (same root cause as Bug 7) | see log |
 | 4 | Invoice scan with PDF not working | Fixed | see log |
 | 5 | Registration email in production | Fixed (NEEDS-VERIFICATION) | see log |
-| 6 | Inventory actions | _pending_ | — |
+| 6 | Inventory actions | Fixed | see log |
 | 7 | PO history table | Fixed | see log |
 | 8 | "Create new order" button | _pending_ | — |
 
@@ -92,3 +92,14 @@ Branch: `fix/bug-sweep-20260627`
   3. If using port 465, set `EMAIL_USE_SSL=True`; if 587, leave defaults (TLS).
   4. Register a test user and grep prod logs for `verification email` — a success log or the new structured failure log will pinpoint the state.
 - **Commit:** `fix(auth): make prod email TLS/SSL and FRONTEND_URL configurable; harden send`
+
+## Bug 6 — Inventory actions
+
+- **Status:** Fixed
+- **Symptom:** Inventory actions were sluggish, and stock-level writes accepted invalid data (negative quantities) without error.
+- **Root cause:** The sluggishness was the remote Neon DB (addressed in Setup C — now ~30 ms against the local DB). The functional defect: `StockLevelSerializer` declared `quantity = IntegerField(source='quantity_on_hand', read_only=True)` and a `validate_quantity` method — but field-level validators are matched by the **writable field name**, which (via `fields = '__all__'`) is `quantity_on_hand`, not the read-only alias `quantity`. So `validate_quantity` was unreachable dead code and negative stock writes passed through.
+- **Fix:** Renamed `validate_quantity` → `validate_quantity_on_hand` so DRF invokes it on the actual writable field.
+- **Files changed:** `smartstock-backend/apps/inventory/serializers.py`
+- **Verification:** `manage.py check` → ok; `ruff` → passed. Live: `PATCH /api/inventory/stock-levels/62/` with `quantity_on_hand=-5` now returns **422** (validation error; was silently 200), and `quantity_on_hand=42` returns **200** with the updated record — both in ~30 ms against the local DB.
+- **Notes / follow-ups:** Separate latent issue (not blocking, not fixed here to keep the diff minimal): `StockLevelRepository.get_by_product_id` uses `.get(sku__product_id=...)`, which raises `MultipleObjectsReturned` for a product with more than one SKU on the legacy `/api/inventory/stock/{product_id}/` endpoint. The frontend does not call that endpoint; recommend `.filter(...).first()` as a follow-up.
+- **Commit:** `fix(inventory): enforce non-negative stock on the writable field`
