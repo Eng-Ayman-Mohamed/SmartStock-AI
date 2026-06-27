@@ -4,7 +4,9 @@ from django.db import migrations
 
 def verify_dev_users(apps, schema_editor):
     User = apps.get_model('authentication', 'CustomUser')
-    for u in User.objects.filter(email__in=['admin@smartstock.ai', 'manager@smartstock.ai', 'viewer@smartstock.ai']):
+    for u in User.objects.filter(
+        email__in=['admin@smartstock.ai', 'manager@smartstock.ai', 'viewer@smartstock.ai']
+    ):
         changed = False
         if not u.email_verified:
             u.email_verified = True
