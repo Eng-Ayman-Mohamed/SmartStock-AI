@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import DocumentDetailModal from '../../features/documents/components/DocumentDetailModal';
 
 interface CitationTagProps {
@@ -10,63 +10,25 @@ interface CitationTagProps {
 
 export default function CitationTag({ sourceDocument, page, documentId, chunkText }: CitationTagProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLButtonElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (
-        ref.current && !ref.current.contains(e.target as Node) &&
-        tooltipRef.current && !tooltipRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    window.document.addEventListener('mousedown', handleClick);
-    window.document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.document.removeEventListener('mousedown', handleClick);
-      window.document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [open]);
 
   return (
     <span className="relative inline-block">
       <button
-        ref={ref}
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((prev) => !prev); } }}
+        onClick={() => documentId && setOpen(true)}
         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-purple-50 text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/50 transition-colors cursor-pointer align-middle min-h-[44px]"
         style={{ fontSize: '11px', lineHeight: '16px' }}
-        aria-expanded={open}
         aria-label={`Source: ${sourceDocument}, Page: ${page}`}
       >
         <span className="font-medium">Source:</span> {sourceDocument}, Page: {page}
       </button>
-      {open && (
-        <>
-          {chunkText && (
-            <div
-              ref={tooltipRef}
-              role="tooltip"
-              className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 max-w-[calc(100vw-2rem)] p-3 bg-ink text-white text-caption leading-relaxed rounded-lg shadow-elevated"
-            >
-              {chunkText}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-ink rotate-45 -mt-1" />
-            </div>
-          )}
-          {documentId && (
-            <DocumentDetailModal
-              documentId={documentId}
-              onClose={() => setOpen(false)}
-            />
-          )}
-        </>
+      {open && documentId && (
+        <DocumentDetailModal
+          documentId={documentId}
+          citedPage={page}
+          chunkText={chunkText}
+          onClose={() => setOpen(false)}
+        />
       )}
     </span>
   );
