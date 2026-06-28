@@ -52,9 +52,13 @@ function Header() {
         className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink min-h-[44px]"
         aria-label="SmartStock AI"
       >
-        <span className="grid place-items-center w-[26px] h-[26px] rounded-[7px] bg-brand-600 text-white font-bold text-sm leading-none shrink-0">
-          S
-        </span>
+        <img
+          src="/smart-32.png"
+          alt=""
+          className="w-[26px] h-[26px] shrink-0"
+          width={26}
+          height={26}
+        />
         <span className="text-card-title font-bold text-ink tracking-tight truncate">SmartStock AI</span>
       </button>
 
