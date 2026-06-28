@@ -1,18 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, MessageSquare, FileCheck2, ScanText, Mic } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
-import { getAvatarColor } from '../../../shared/utils/avatar';
 import ThemeToggle from '../../../shared/components/ThemeToggle';
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import Button from '../../../shared/components/Button';
 
 const FEATURES = [
   {
@@ -46,49 +37,88 @@ function Header() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
-  return (
-    <header className="flex items-center justify-between max-w-[920px] mx-auto w-full px-4 sm:px-6 pt-6 pb-1">
-      <button
-        onClick={() => navigate('/')}
-        className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink min-h-[44px]"
-        aria-label="SmartStock AI"
-      >
-        <img
-          src="/smart-32.png"
-          alt=""
-          className="w-[26px] h-[26px] shrink-0"
-          width={26}
-          height={26}
-        />
-        <span className="text-card-title font-bold text-ink tracking-tight truncate">SmartStock AI</span>
-      </button>
+  const [isScrolled, setIsScrolled] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <ThemeToggle />
-        {user ? (
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsScrolled(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <>
+      <div ref={sentinelRef} className="h-0" aria-hidden="true" />
+      <header
+        className={`flex items-center justify-between max-w-[1120px] mx-auto w-full px-4 sm:px-6 pt-6 pb-1 transition-all duration-200 ${
+          isScrolled
+            ? 'sticky top-0 z-50 bg-canvas/80 backdrop-blur-md border-b border-hairline py-4'
+            : ''
+        }`}
+      >
+        <div className="flex items-center gap-6 min-w-0">
           <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-canvas transition-colors min-h-[44px]"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink min-h-[44px]"
+            aria-label="SmartStock AI"
           >
-            <span className="text-caption font-medium text-ink-secondary hover:text-ink transition-colors">
-              Dashboard
+            <img
+              src="/smart-32.png"
+              alt=""
+              className="w-[26px] h-[26px] shrink-0"
+              width={26}
+              height={26}
+            />
+            <span className="text-card-title font-bold text-ink tracking-tight truncate">
+              SmartStock AI
             </span>
-            <span
-              className={`w-6 h-6 rounded-full ${getAvatarColor(user.name)} flex items-center justify-center text-white text-[10px] font-medium`}
+          </button>
+          <nav className="hidden sm:flex items-center gap-6">
+            <a
+              href="#features"
+              className="text-caption font-medium text-ink-muted hover:text-ink transition-colors"
             >
-              {getInitials(user.name)}
-            </span>
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate('/login')}
-            className="text-caption font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] px-2"
-          >
-            Log in
-          </button>
-        )}
-      </div>
-    </header>
+              Features
+            </a>
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <ThemeToggle />
+          {user ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+            >
+              Dashboard
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/login')}
+              >
+                Log in
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => navigate('/register')}
+              >
+                Start for free
+              </Button>
+            </>
+          )}
+        </div>
+      </header>
+    </>
   );
 }
 
@@ -174,7 +204,7 @@ export default function LandingPage() {
         </section>
 
         {/* Features */}
-        <section className="mt-[clamp(48px,8vw,76px)] pt-[clamp(36px,5vw,44px)] border-t border-hairline">
+        <section id="features" className="mt-[clamp(48px,8vw,76px)] pt-[clamp(36px,5vw,44px)] border-t border-hairline">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-7 gap-y-8">
             {FEATURES.map(({ Icon, title, body }) => (
               <article key={title}>
