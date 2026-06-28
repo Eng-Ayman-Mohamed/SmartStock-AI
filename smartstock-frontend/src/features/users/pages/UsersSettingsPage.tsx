@@ -93,6 +93,9 @@ export default function UsersSettingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-page-heading text-ink">Team & permissions</h1>
+          <p className="text-body text-ink-muted mt-1 hidden sm:block">
+            Manage who can access SmartStock AI and what they can do.
+          </p>
         </div>
         <Button variant="primary" size="md" onClick={() => setInviteOpen(true)}>
           <UserPlus className="w-4 h-4" aria-hidden="true" />
