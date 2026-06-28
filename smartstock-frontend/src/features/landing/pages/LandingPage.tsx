@@ -312,9 +312,9 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="w-full px-4 sm:px-6 mt-[clamp(40px,6vw,60px)] pt-8 pb-11 border-t border-hairline">
+      <footer className="w-full px-4 sm:px-6 mt-[clamp(40px,6vw,60px)] pt-8 pb-8 border-t border-hairline">
         <div className="max-w-[1120px] mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
             {/* Product column */}
           <nav aria-label="Product">
             <h4 className="text-card-title font-semibold text-ink mb-3">Product</h4>
@@ -356,9 +356,12 @@ export default function LandingPage() {
             </ul>
           </nav>
         </div>
+        </div>
+      </footer>
 
-        {/* Bottom row */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-hairline">
+      {/* Footer bottom bar - full width, sticks to bottom */}
+      <div className="w-full px-4 sm:px-6 py-4 border-t border-hairline bg-canvas-soft">
+        <div className="max-w-[1120px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-caption text-ink-muted">© {new Date().getFullYear()} SmartStock AI</p>
           <div className="flex items-center gap-4">
             <a href="#" className="text-ink-muted hover:text-brand-600 transition-colors" aria-label="LinkedIn">
@@ -369,8 +372,7 @@ export default function LandingPage() {
             </a>
           </div>
         </div>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }
