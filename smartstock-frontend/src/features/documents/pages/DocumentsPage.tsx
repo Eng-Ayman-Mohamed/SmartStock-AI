@@ -77,7 +77,7 @@ export default function DocumentsPage() {
   const columns: Column<Document>[] = [
     {
       key: 'original_filename',
-      label: 'Filename',
+      label: 'Document',
       sortable: true,
       sortOrder: sortField === 'original_filename' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => (
@@ -90,6 +90,7 @@ export default function DocumentsPage() {
     {
       key: 'doc_type',
       label: 'Type',
+      className: 'hidden sm:table-cell',
       sortable: true,
       sortOrder: sortField === 'doc_type' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => (
@@ -101,6 +102,7 @@ export default function DocumentsPage() {
     {
       key: 'file_size',
       label: 'Size',
+      className: 'hidden sm:table-cell',
       sortable: true,
       sortOrder: sortField === 'file_size' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="tabular-nums text-ink-secondary">{formatBytes(row.file_size)}</span>,
@@ -108,6 +110,7 @@ export default function DocumentsPage() {
     {
       key: 'total_chunks',
       label: 'Chunks',
+      className: 'hidden sm:table-cell',
       sortable: true,
       sortOrder: sortField === 'total_chunks' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => (
@@ -119,6 +122,7 @@ export default function DocumentsPage() {
     {
       key: 'uploaded_by_username',
       label: 'Uploaded By',
+      className: 'hidden sm:table-cell',
       sortable: true,
       sortOrder: sortField === 'uploaded_by_username' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="text-ink-secondary">{row.uploaded_by_username || '—'}</span>,
@@ -126,6 +130,7 @@ export default function DocumentsPage() {
     {
       key: 'ingested_at',
       label: 'Ingested',
+      className: 'hidden sm:table-cell',
       sortable: true,
       sortOrder: sortField === 'ingested_at' ? (sortOrder as 'asc' | 'desc') : undefined,
       render: (row) => <span className="text-ink-secondary">{formatDate(row.ingested_at)}</span>,
@@ -135,7 +140,7 @@ export default function DocumentsPage() {
   function renderActions(row: Document) {
     if (!isAdmin) return null;
     return (
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center justify-center gap-1">
         <button
           onClick={() => setDetailId(row.id)}
           className="flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
@@ -186,7 +191,7 @@ export default function DocumentsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-page-heading text-ink">Documents</h1>
-          <p className="text-body text-ink-muted mt-1">
+          <p className="text-body text-ink-muted mt-1 hidden sm:block">
             Manage PDF documents used by the AI assistant for RAG queries.
           </p>
         </div>

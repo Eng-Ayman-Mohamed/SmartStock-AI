@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, RefreshCw, TrendingUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Bell, RefreshCw, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForecastDashboard } from '../hooks/useForecastDashboard';
 import SkuChart from '../components/SkuChart';
@@ -45,7 +45,7 @@ export default function ForecastingPage() {
   return (
     <div className="flex flex-col xl:flex-row gap-6 animate-fadeIn flex-1 min-h-0">
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 shrink-0 mb-4">
           <div>
             <h1 className="text-page-heading text-ink">Demand Forecasting</h1>
             <p className="text-body text-ink-muted mt-1">Peek 30 days ahead — AI predicts what you'll need before you need it</p>
@@ -103,88 +103,38 @@ export default function ForecastingPage() {
         </div>
 
         {totalSkus > PAGE_SIZE && (
-          <div className="flex flex-col gap-3 border-t border-hairline px-4 py-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
+          <div className="flex items-center justify-between border-t border-hairline px-4 py-3 shrink-0">
             <p className="text-caption text-ink-muted">
-              Showing{" "}
-              <span className="tabular-nums text-ink-secondary">
-                {paginationControls.startItem}
-              </span>
-              {" - "}
-              <span className="tabular-nums text-ink-secondary">
-                {paginationControls.endItem}
-              </span>
-              {" of "}
-              <span className="tabular-nums text-ink-secondary">
-                {totalSkus}
-              </span>
-              {" SKUs"}
+              <span className="tabular-nums text-ink-secondary">{paginationControls.startItem}</span>
+              –
+              <span className="tabular-nums text-ink-secondary">{paginationControls.endItem}</span>
+              {' of '}
+              <span className="tabular-nums text-ink-secondary">{totalSkus}</span>
+              {' SKUs'}
             </p>
-            <div className="flex items-center gap-1 overflow-x-auto" aria-label="Forecast pagination">
+            <div className="flex items-center gap-1" aria-label="Forecast pagination">
               <Button
                 variant="utility"
                 size="sm"
-                className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
-                onClick={() => setPage(1)}
-                disabled={!paginationControls.hasPrev}
-                aria-label="First page"
-                title="First page"
-              >
-                <ChevronsLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-              <Button
-                variant="utility"
-                size="sm"
-                className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
+                className="h-9 w-9 px-0 shrink-0"
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
                 disabled={!paginationControls.hasPrev}
                 aria-label="Previous page"
-                title="Previous page"
               >
-                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                <ChevronLeft className="h-4 w-4" />
               </Button>
-              {paginationControls.pages.map((pageNumber, index) =>
-                pageNumber === -1 ? (
-                  <span
-                    key={`gap-${index}`}
-                    className="flex h-9 w-9 items-center justify-center text-caption text-ink-faint sm:h-11 sm:w-11"
-                  >
-                    ...
-                  </span>
-                ) : (
-                  <Button
-                    key={pageNumber}
-                    variant={pageNumber === page ? 'primary' : 'utility'}
-                    size="sm"
-                    className="h-9 w-9 px-0 tabular-nums shrink-0 sm:h-11 sm:w-11"
-                    onClick={() => setPage(pageNumber)}
-                    aria-label={`Page ${pageNumber}`}
-                    title={`Page ${pageNumber}`}
-                  >
-                    {pageNumber}
-                  </Button>
-                )
-              )}
+              <span className="tabular-nums text-body text-ink-secondary px-2 select-none">
+                {page}/{paginationControls.totalPages}
+              </span>
               <Button
                 variant="utility"
                 size="sm"
-                className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
+                className="h-9 w-9 px-0 shrink-0"
                 onClick={() => setPage((value) => Math.min(paginationControls.totalPages, value + 1))}
                 disabled={!paginationControls.hasNext}
                 aria-label="Next page"
-                title="Next page"
               >
-                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-              <Button
-                variant="utility"
-                size="sm"
-                className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
-                onClick={() => setPage(paginationControls.totalPages)}
-                disabled={!paginationControls.hasNext}
-                aria-label="Last page"
-                title="Last page"
-              >
-                <ChevronsRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>

@@ -10,6 +10,24 @@
 
 ---
 
+## Table of Contents
+
+- [Problem](#problem)
+- [Solution](#solution)
+- [Key Features](#key-features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Production Deployment](#production-deployment)
+- [Available Commands](#available-commands)
+- [Testing](#testing)
+- [CI/CD](#cicd)
+- [Post-Deployment Verification](#post-deployment-verification)
+- [Security](#security)
+- [Further Reading](#further-reading)
+- [License](#license)
+
 ## Problem
 
 E-commerce and logistics enterprises lose revenue to two inventory failure modes: **overstocking** (immobilised working capital) and **stockouts** (lost sales). Incumbent systems are reactive — relying on manual audits that miss seasonal demand curves, macroeconomic signals, and supplier lead-time variability.
@@ -59,8 +77,6 @@ Each Django app (`authentication`, `inventory`, `forecasting`, `purchasing`, `au
 
 The AI layer (`ai/`) is fully isolated — swapping GPT-4o for another model only touches `ai/llm/chain.py`.
 
-See [`Systemarchitecture.md`](Systemarchitecture.md) for the full architectural reference.
-
 ---
 
 ## Project Structure
@@ -89,6 +105,7 @@ smartstock-backend/           # Django REST API (Clean Architecture)
 ├── infrastructure/           # Redis, email, file storage wrappers
 ├── tests/                    # Unit, integration, golden dataset
 ├── Dockerfile
+├── Dockerfile.prod           # Production image (non-root, collectstatic)
 ├── entrypoint.sh
 ├── railway.toml              # Railway web service config
 ├── railway.worker.toml       # Railway Celery worker config
@@ -155,7 +172,7 @@ npm run dev
 
 Dev server starts on `http://localhost:5173`. API requests to `/api` are proxied to `http://localhost:8000`.
 
-### Docker (Full Stack)
+### Docker (Full Stack — Development)
 
 ```bash
 docker compose up --build
@@ -175,16 +192,106 @@ This starts all services:
 | **Alertmanager** | `smartstock_alertmanager` | http://localhost:9093 |
 | **Grafana** | `smartstock_grafana` | http://localhost:3001 |
 
+> **Note:** This uses `manage.py runserver` and volume mounts for live reload. For production, see the [Production Deployment](#production-deployment) section.
+
 > **Note:** The root `.env` file is shared by all Docker services. Copy `smartstock-backend/.env.example` or `smartstock-frontend/.env.example` for each service.
 
-### Environment Variables
+### Monitoring & Observability
 
-| Service | Required Vars | See |
-|---------|---------------|-----|
-| Backend | `DJANGO_SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY`, `COHERE_API_KEY` | [`smartstock-backend/.env.example`](smartstock-backend/.env.example) |
-| Frontend | `VITE_API_URL` (has default) | [`smartstock-frontend/.env.example`](smartstock-frontend/.env.example) |
+The Docker Compose stack includes a full observability suite (enabled via the `monitoring` profile):
 
-Each service's `.env.example` is annotated with purpose, defaults, and required/optional markers.
+```bash
+docker compose --profile monitoring up -d
+```
+
+- **Prometheus** — scrapes backend metrics, 30-day retention. Config at `monitoring/prometheus/`.
+- **Grafana** — pre-built dashboards at http://localhost:3001 (admin/password). Datasources and dashboards provisioned from `monitoring/grafana/`.
+- **Alertmanager** — routes alerts for latency p95 >3s, error rate >1%, and LLM budget caps. Config at `monitoring/alertmanager/`.
+- **Langfuse** — traces every LLM call, RAG retrieval, and agent tool invocation. Requires `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` env vars.
+
+Monitoring stack configuration lives in the `monitoring/` directory.
+
+### Production Deployment
+
+#### Quick Start
+
+1. **Generate secrets:**
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(50))"
+   ```
+
+2. **Set environment variables** (minimum required):
+   ```bash
+   DJANGO_SECRET_KEY=<generated-secret>
+   DJANGO_DEBUG=False
+   ALLOWED_HOSTS=.up.railway.app
+   REDIS_URL=redis://default:...@your-redis-host:port
+   OPENAI_API_KEY=sk-...
+   COHERE_API_KEY=...
+   CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app
+   ```
+
+3. **Deploy to Railway** — create a project from the GitHub repo, add the PostgreSQL and Redis plugins, and configure the two services (`smartstock-api` and `smartstock-worker`).
+
+4. **Run the smoke test:**
+   ```bash
+   BACKEND_URL=https://your-api.up.railway.app \
+   FRONTEND_URL=https://your-frontend.vercel.app \
+     ./scripts/smoke-test.sh
+   ```
+
+For the full deployment checklist, see [`smartstock-backend/DEPLOY.md`](smartstock-backend/DEPLOY.md).
+
+#### Railway Services
+
+Both services use the same Docker image (`Dockerfile.prod`) — only the start command differs:
+
+| Service | Config File | Start Command |
+|---|---|---|
+| `smartstock-api` | `railway.toml` | `migrate` + `gunicorn` |
+| `smartstock-worker` | `railway.worker.toml` | `celery worker` |
+
+#### Dockerfiles
+
+The backend has two Dockerfiles:
+
+- **`Dockerfile`** — used by `docker compose up --build` for local development. Includes dev dependencies, volume-compatible, uses `config.settings.development`.
+- **`Dockerfile.prod`** — used by Railway and production deployments. No volume mounts (fully self-contained), runs as non-root user (`appuser`), runs `collectstatic` on startup, uses `config.settings.production`.
+
+#### Minimum Required Environment Variables
+
+| Variable | Purpose |
+|---|---|
+| `DJANGO_SECRET_KEY` | Cryptographic signing key |
+| `DJANGO_DEBUG` | Must be `False` in production |
+| `ALLOWED_HOSTS` | Must include your production domain |
+| `REDIS_URL` | Redis for Celery broker + result backend |
+| `OPENAI_API_KEY` | GPT-4o, embeddings, Whisper |
+| `COHERE_API_KEY` | RAG reranking |
+| `CORS_ALLOWED_ORIGINS` | Must include your frontend URL |
+
+> **Cost estimate:** ~$18–25/month on Railway (web service + worker + Postgres plugin + Redis plugin). See [`DEPLOY.md`](smartstock-backend/DEPLOY.md#8-costs-rough-estimate) for details.
+
+### Frontend Deployment
+
+- **Vercel:** Deploy `dist/` to Vercel. Set `VITE_API_URL` or `VITE_API_BASE_URL` for absolute backend URL.
+- **Docker:** `docker compose up --build` runs the full stack with Nginx serving the SPA and proxying API calls.
+
+### Environment Variables — Full Reference
+
+For the complete annotated list of all environment variables, see each service's `.env.example`:
+
+| Service | See |
+|---------|-----|
+| Backend | [`smartstock-backend/.env.example`](smartstock-backend/.env.example) |
+| Frontend | [`smartstock-frontend/.env.example`](smartstock-frontend/.env.example) |
+
+**Production-specific notes:**
+
+- `DATABASE_URL` is auto-injected by Railway's Postgres plugin — no need to set it manually
+- `DJANGO_DEBUG` must be `False` in production
+- `ALLOWED_HOSTS` must include your production domain (e.g. `.up.railway.app`)
+- `CSRF_TRUSTED_ORIGINS` must include your frontend URL if serving from a different domain
 
 ---
 
@@ -263,38 +370,34 @@ GitHub Actions workflows on push to `main`/`develop` and PRs to `main`:
 | `frontend-lint` | `npm run lint` + `tsc --noEmit` |
 | `frontend-build` | `npm run build` |
 
-See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the full workflow.
 
 ---
 
-## Deployment
+## Post-Deployment Verification
 
-### Backend — Railway
+After deploying, run the smoke test to verify all endpoints are reachable:
 
-Deploys via two Railway services from the same Docker image:
+```bash
+BACKEND_URL=https://your-api.up.railway.app \
+FRONTEND_URL=https://your-frontend.vercel.app \
+  ./scripts/smoke-test.sh
+```
 
-| Service | Config | Start Command |
-|---|---|---|
-| `smartstock-api` | `railway.toml` | `migrate` + `gunicorn` |
-| `smartstock-worker` | `railway.worker.toml` | `celery worker` |
+Optional: set `HEALTH_SECRET` to match the `HEALTH_SECRET_HEADER` env var configured on the backend.
 
-See [`smartstock-backend/DEPLOY.md`](smartstock-backend/DEPLOY.md) for the full deployment checklist.
+The smoke test performs the following checks:
 
-### Frontend — Vercel / Docker
+| Check | Endpoint | Expected |
+|-------|----------|----------|
+| Backend liveness | `GET /api/health/live/` | 200 |
+| Backend readiness | `GET /api/health/ready/` | 200 |
+| API root | `GET /api/` | 200 or 404 |
+| Frontend homepage | `GET /` | 200 |
+| SPA shell | HTML body check | Contains `SmartStock` or `<div id="root">` |
+| API proxy | `GET /api/health/live/` via frontend | 200 (or 404/502 for external backends) |
 
-- **Vercel:** Deploy `dist/` to Vercel. Set `VITE_API_BASE_URL` to your backend URL.
-- **Docker:** `docker compose up --build` runs the full stack with Nginx serving the SPA and proxying API calls.
-
----
-
-## Monitoring
-
-The Docker Compose stack includes a full observability suite:
-
-- **Prometheus** — scrapes backend metrics, 30-day retention
-- **Grafana** — pre-built dashboards at http://localhost:3001 (admin/smartstock)
-- **Alertmanager** — routes alerts for latency p95 >3s, error rate >1%, budget caps
-- **Langfuse** — traces every LLM call, RAG retrieval, and agent tool invocation (requires `LANGFUSE_*` env vars)
+> **Health endpoint details:** `GET /api/health/live/` is unauthenticated and always returns 200 when the process is running. `GET /api/health/ready/` checks database and Redis connectivity — it can be protected with the `HEALTH_SECRET_HEADER` env var (sends `X-Health-Secret` header). `GET /api/health/full/` requires JWT authentication and checks all subsystems.
 
 ---
 

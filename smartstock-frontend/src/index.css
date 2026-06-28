@@ -157,7 +157,7 @@
   --shadow-elevated: 0 4px 24px rgba(0,0,0,0.12);
 
   /* ── Animations ──────────────────────────────── */
-  --animate-fadeIn: fadeIn 150ms ease-out;
+  --animate-fadeIn: fadeIn 150ms ease-out forwards;
   --animate-slideUp: slideUp 150ms ease-out;
   --animate-slideOut: slideOut 200ms ease-in forwards;
   --animate-slideLeft: slideLeft 250ms ease-out;
@@ -233,6 +233,7 @@
     background-color: var(--color-canvas-soft);
     color: var(--color-ink-secondary);
     min-height: 100vh;
+    overflow: hidden;
   }
 
   .tabular-nums, [data-type="numeric"] {

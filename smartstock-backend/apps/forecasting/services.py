@@ -1,4 +1,5 @@
 import logging
+import math
 
 from django.core.cache import cache
 
@@ -10,7 +11,7 @@ from .repositories import ForecastingRepository
 
 logger = logging.getLogger(__name__)
 
-DASHBOARD_CACHE_VERSION = '2'
+DASHBOARD_CACHE_VERSION = '3'
 MAX_DASHBOARD_SKUS = 500
 
 
@@ -134,7 +135,10 @@ class ForecastingService:
                     # If MAPE > 1, it's already a percentage; if <= 1, multiply by 100.
                     if mape is not None:
                         mape_pct = mape * 100 if mape <= 1.0 else mape
-                        confidence = max(0, min(100, round(100 - mape_pct)))
+                        if math.isfinite(mape_pct):
+                            confidence = max(0, min(100, round(100 - mape_pct)))
+                        else:
+                            confidence = None
                     else:
                         confidence = None
 
