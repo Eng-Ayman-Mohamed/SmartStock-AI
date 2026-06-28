@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, MessageSquare, FileCheck2, ScanText, Mic, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
@@ -42,88 +42,69 @@ function Header() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
-  const [isScrolled, setIsScrolled] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsScrolled(!entry.isIntersecting),
-      { threshold: 0 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <>
-      <div ref={sentinelRef} className="h-0" aria-hidden="true" />
-      <header
-        className={`flex items-center justify-between max-w-[1120px] mx-auto w-full px-4 sm:px-6 pt-6 pb-1 transition-all duration-200 ${
-          isScrolled
-            ? 'sticky top-0 z-50 bg-canvas/80 backdrop-blur-md border-b border-hairline py-4'
-            : ''
-        }`}
-      >
-        <div className="flex items-center gap-6 min-w-0">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink min-h-[44px]"
-            aria-label="SmartStock AI"
-          >
-            <img
-              src="/smart-32.png"
-              alt=""
-              className="w-[26px] h-[26px] shrink-0"
-              width={26}
-              height={26}
-            />
-            <span className="text-card-title font-bold text-ink tracking-tight truncate">
-              SmartStock AI
-            </span>
-          </button>
-          <nav className="hidden sm:flex items-center gap-6">
-            <a
-              href="#features"
-              className="text-caption font-medium text-ink-muted hover:text-ink transition-colors"
+    <header
+      className="sticky top-0 z-50 flex justify-center w-full px-4 sm:px-6 py-3 bg-canvas/80 backdrop-blur-md border-b border-hairline transition-all duration-200"
+    >
+        <div className="flex items-center justify-between w-full max-w-[1120px]">
+          <div className="flex items-center gap-6 min-w-0">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink min-h-[44px]"
+              aria-label="SmartStock AI"
             >
-              Features
-            </a>
-          </nav>
-        </div>
+              <img
+                src="/smart-32.png"
+                alt=""
+                className="w-[26px] h-[26px] shrink-0"
+                width={26}
+                height={26}
+              />
+              <span className="text-card-title font-bold text-ink tracking-tight truncate">
+                SmartStock AI
+              </span>
+            </button>
+            <nav className="hidden sm:flex items-center gap-6">
+              <a
+                href="#features"
+                className="text-caption font-medium text-ink-muted hover:text-ink transition-colors"
+              >
+                Features
+              </a>
+            </nav>
+          </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <ThemeToggle />
-          {user ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/dashboard')}
-            >
-              Dashboard
-            </Button>
-          ) : (
-            <>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <ThemeToggle />
+            {user ? (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/dashboard')}
               >
-                Log in
+                Dashboard
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => navigate('/register')}
-              >
-                Start for free
-              </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/login')}
+                >
+                  Log in
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate('/register')}
+                >
+                  Start for free
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </header>
-    </>
   );
 }
 
@@ -310,8 +291,8 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="max-w-[1120px] mx-auto w-full px-4 sm:px-6 mt-[clamp(40px,6vw,60px)] pt-8 pb-11 border-t border-hairline">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+      <footer className="sticky bottom-0 z-40 w-full px-4 sm:px-6 pt-8 pb-6 bg-canvas/80 backdrop-blur-md border-t border-hairline">
+        <div className="max-w-[1120px] mx-auto">
           {/* Product column */}
           <nav aria-label="Product">
             <h4 className="text-card-title font-semibold text-ink mb-3">Product</h4>
