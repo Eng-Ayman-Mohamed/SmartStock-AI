@@ -4,6 +4,7 @@ import { useNotificationActions } from "../hooks/useNotificationActions";
 import NotificationItem from "../components/NotificationItem";
 import NotificationFilters from "../components/NotificationFilters";
 import NotificationEmpty from "../components/NotificationEmpty";
+import NotificationSkeleton from "../components/NotificationSkeleton";
 import Button from "../../../shared/components/Button";
 import type { NotificationType, NotificationSeverity } from "../types";
 
@@ -61,7 +62,9 @@ export default function NotificationsPage() {
         <main className="flex-1 min-w-0 flex flex-col min-h-0">
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading ? (
-              <div className="text-center py-8 text-body text-ink-muted">Loading...</div>
+              <div className="bg-canvas rounded-xl border border-hairline divide-y divide-hairline">
+                <NotificationSkeleton count={5} />
+              </div>
             ) : notifications.length === 0 ? (
               <NotificationEmpty />
             ) : (
