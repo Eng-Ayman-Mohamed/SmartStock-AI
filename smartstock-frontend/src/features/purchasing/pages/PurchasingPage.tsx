@@ -196,7 +196,7 @@ export default function PurchasingPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn pb-20 md:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-page-heading text-ink">Purchase Orders</h1>

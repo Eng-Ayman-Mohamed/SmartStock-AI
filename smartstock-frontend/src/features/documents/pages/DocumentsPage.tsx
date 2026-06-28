@@ -191,7 +191,7 @@ export default function DocumentsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-page-heading text-ink">Documents</h1>
-          <p className="text-body text-ink-muted mt-1">
+          <p className="text-body text-ink-muted mt-1 hidden sm:block">
             Manage PDF documents used by the AI assistant for RAG queries.
           </p>
         </div>

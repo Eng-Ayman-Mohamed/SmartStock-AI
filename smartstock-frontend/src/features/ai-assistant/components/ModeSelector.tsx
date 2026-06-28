@@ -1,7 +1,7 @@
 import type { ChatMode } from '../types';
 
 const modes: { key: ChatMode; label: string }[] = [
-  { key: 'nl_query', label: 'NL Query' },
+  { key: 'nl_query', label: 'Search Stock' },
   { key: 'rag', label: 'Search Documents' },
 ];
 
@@ -20,7 +20,7 @@ export default function ModeSelector({ active, onChange }: ModeSelectorProps) {
           role="radio"
           aria-checked={active === m.key}
           onClick={() => onChange(m.key)}
-          className={`px-3 py-2.5 min-h-[44px] rounded-md text-caption font-medium transition-all ${
+          className={`px-2.5 py-1.5 min-h-[36px] rounded-md text-caption font-medium transition-all ${
             active === m.key
               ? 'bg-brand-600 text-white shadow-sm'
               : 'text-ink-muted hover:text-ink hover:bg-canvas'

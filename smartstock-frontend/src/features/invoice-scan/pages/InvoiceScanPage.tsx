@@ -250,7 +250,7 @@ export default function InvoiceScanPage() {
   const inventoryResult = confirmedResult?.inventory_result;
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn pb-20 md:pb-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-page-heading text-ink">Invoice Scan</h1>

@@ -156,6 +156,9 @@ export default function ChatPanel() {
               {activeConversation.title}
             </h2>
           )}
+          <div className="ml-auto">
+            <ModeSelector active={mode} onChange={setMode} />
+          </div>
         </div>
 
         {visibleError && (
@@ -194,9 +197,6 @@ export default function ChatPanel() {
         </div>
 
         <div className="px-3 sm:px-6 py-3 border-t border-hairline">
-          <div className="mb-2">
-            <ModeSelector active={mode} onChange={setMode} />
-          </div>
           <div className="flex items-end gap-2">
             <VoiceButton
               onTranscript={(text) => {
