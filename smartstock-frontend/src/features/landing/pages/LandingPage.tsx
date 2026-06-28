@@ -138,44 +138,66 @@ export default function LandingPage() {
 
       <main className="flex-1 max-w-[920px] mx-auto w-full px-4 sm:px-6">
         {/* Hero */}
-        <section className="pt-[clamp(48px,9vh,92px)] text-center animate-fadeIn">
+        <section className="relative pt-[clamp(48px,9vh,92px)] text-center">
+          {/* Gradient background */}
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-brand-50/50 to-transparent pointer-events-none -z-10 dark:from-brand-950/20"
+            aria-hidden="true"
+          />
+
           <div className="max-w-[680px] mx-auto">
-            <p className="text-eyebrow font-semibold text-ink-muted uppercase tracking-widest mb-4">
+            {/* Eyebrow with purple dot */}
+            <p
+              className="text-eyebrow font-semibold text-ink-muted tracking-widest mb-4 flex items-center justify-center gap-2 animate-fadeIn"
+              style={{ animationDelay: '0ms' }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-600" aria-hidden="true" />
               AI inventory planning
             </p>
+
+            {/* Larger headline */}
             <h1
-              className="font-bold text-ink tracking-tight leading-[1.07] text-[clamp(32px,5.2vw,52px)]"
-              style={{ textWrap: 'balance' }}
+              className="font-bold text-ink tracking-tight leading-[1.07] text-[clamp(36px,6vw,56px)] animate-fadeIn"
+              style={{ textWrap: 'balance', animationDelay: '150ms' }}
             >
               Know what you need before you run out.
             </h1>
-            <p className="text-body text-ink-secondary leading-relaxed max-w-[52ch] mx-auto mt-5">
+
+            {/* Enhanced subtitle */}
+            <p
+              className="text-body text-ink-secondary leading-relaxed max-w-[52ch] mx-auto mt-5 animate-fadeIn"
+              style={{ animationDelay: '300ms' }}
+            >
               Forecast demand, ask questions in plain English, and approve purchase orders from one
               simple workspace.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-5 mt-8">
-              <button
-                onClick={() => navigate('/register')}
-                className="font-semibold text-white bg-brand-600 hover:bg-brand-500 rounded-full px-6 py-2.5 text-body transition-colors"
-              >
+
+            {/* CTAs */}
+            <div
+              className="flex flex-wrap items-center justify-center gap-5 mt-8 animate-fadeIn"
+              style={{ animationDelay: '450ms' }}
+            >
+              <Button variant="primary" size="lg" onClick={() => navigate('/register')}>
                 Start for free
-              </button>
+              </Button>
               {user ? (
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] px-3"
-                >
+                <Button variant="ghost" size="lg" onClick={() => navigate('/dashboard')}>
                   Go to dashboard
-                </button>
+                </Button>
               ) : (
-                <button
-                  onClick={() => navigate('/login')}
-                  className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] px-3"
-                >
+                <Button variant="ghost" size="lg" onClick={() => navigate('/login')}>
                   Log in
-                </button>
+                </Button>
               )}
             </div>
+
+            {/* Trust badge */}
+            <p
+              className="text-caption text-ink-muted mt-5 animate-fadeIn"
+              style={{ animationDelay: '600ms' }}
+            >
+              Free plan available · No credit card required
+            </p>
           </div>
         </section>
 
