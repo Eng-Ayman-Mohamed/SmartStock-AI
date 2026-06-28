@@ -5,9 +5,10 @@ from rest_framework.views import exception_handler as drf_exception_handler
 
 from core.exceptions import (
     DuplicatePOError,
-    ForecastingModelError,
     IllegalPOTransitionError,
     InsufficientStockError,
+    LLMQuotaExhaustedError,
+    SKUNotFoundException,
     StockNotFoundException,
     SupplierNotFoundException,
 )
@@ -142,12 +143,16 @@ def custom_exception_handler(exc, context):
 
     STATUS_MAP = {
         StockNotFoundException: 404,
+        SKUNotFoundException: 404,
         InsufficientStockError: 409,
         DuplicatePOError: 409,
         IllegalPOTransitionError: 409,
-        ForecastingModelError: 500,
+        LLMQuotaExhaustedError: 429,
         SupplierNotFoundException: 404,
     }
+    # NOTE: ForecastingModelError exists in core/exceptions.py but is intentionally
+    # omitted here — no production code currently raises it.
+    # Add to STATUS_MAP when a raise point is introduced.
     status_code = STATUS_MAP.get(type(exc), 500)
     return Response(
         _error_response(str(exc), type(exc).__name__, status_code),

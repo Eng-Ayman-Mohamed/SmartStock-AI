@@ -98,13 +98,13 @@ class InvoiceScanService:
             self._mark_failed(scan, user, 'malformed_json', str(exc))
             raise InvoiceExtractionMalformed(str(exc))
         except Exception as exc:
-            from core.exceptions import is_llm_quota_error
+            from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error
 
             if is_llm_quota_error(exc):
                 self._mark_failed(scan, user, 'quota_exhausted', str(exc))
-                raise InvoiceExtractionMalformed(
+                raise LLMQuotaExhaustedError(
                     'AI service quota has been reached. Please try again shortly or contact your admin.'
-                )
+                ) from exc
             raise
 
         if not isinstance(extracted, dict):

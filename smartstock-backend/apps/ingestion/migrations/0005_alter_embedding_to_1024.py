@@ -12,12 +12,16 @@ def clear_chunks(apps, schema_editor):
 
 def drop_hnsw_index(apps, schema_editor):
     """Drop any HNSW index on the embedding column."""
+    if schema_editor.connection.vendor != 'postgresql':
+        return
     schema_editor.execute('DROP INDEX IF EXISTS ingestion_documentchunk_embedding_hnsw_idx')
     schema_editor.execute('DROP INDEX IF EXISTS documentchunk_embedding_idx')
 
 
 def recreate_hnsw_index(apps, schema_editor):
     """Recreate HNSW index for 1024-dimension embeddings."""
+    if schema_editor.connection.vendor != 'postgresql':
+        return
     schema_editor.execute(
         'CREATE INDEX IF NOT EXISTS ingestion_documentchunk_embedding_hnsw_idx '
         'ON ingestion_documentchunk USING hnsw (embedding vector_cosine_ops) '

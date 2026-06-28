@@ -1,11 +1,18 @@
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.dispatch import Signal
 from django.utils import timezone
 
 from apps.audit.models import AuditLog
-from core.exceptions import IllegalPOTransitionError
+from core.exceptions import (
+    DuplicatePOError,
+    IllegalPOTransitionError,
+    SKUNotFoundException,
+    SupplierNotFoundException,
+)
 from infrastructure.email import EmailService
 
+from .po_number import generate_po_number
 from .repositories import PurchasingRepository
 
 po_approved = Signal()
@@ -37,18 +44,39 @@ class PurchasingService:
         po_number: str = None,
         total_cost=None,
     ):
-        data = {
-            'sku_id': sku_id,
-            'quantity': quantity,
-            'supplier_id': supplier_id,
-            'requested_by': user,
-            'status': 'draft',
-        }
-        if po_number:
-            data['po_number'] = po_number
-        if total_cost is not None:
-            data['total_cost'] = total_cost
-        return self.repo.create(data)
+        if not po_number:
+            prefix = f'PO-{timezone.now().year}-'
+            last = self.repo.get_last_po_number(prefix)
+            po_number = generate_po_number(last)
+
+        try:
+            with transaction.atomic():
+                if not self.repo.supplier_exists(supplier_id):
+                    raise SupplierNotFoundException(f'Supplier {supplier_id} not found.')
+
+                if not self.repo.sku_exists(sku_id):
+                    raise SKUNotFoundException(f'SKU {sku_id} not found.')
+
+                if self.repo.exists_by_po_number(po_number):
+                    raise DuplicatePOError(f'Purchase Order {po_number} already exists.')
+
+                data = {
+                    'sku_id': sku_id,
+                    'quantity': quantity,
+                    'supplier_id': supplier_id,
+                    'requested_by': user,
+                    'status': 'draft',
+                    'po_number': po_number,
+                }
+                if total_cost is not None:
+                    data['total_cost'] = total_cost
+
+                return self.repo.create(data)
+        except IntegrityError as exc:
+            msg = str(exc)
+            if 'UNIQUE constraint' in msg or 'duplicate key' in msg.lower():
+                raise DuplicatePOError(f'Purchase Order {po_number} already exists.')
+            raise
 
     def approve_po(self, po_id: int, user):
         po = self.repo.get_by_id(po_id)
@@ -169,7 +197,7 @@ class PurchasingService:
                 overdue[sid]['overdue_pos'].append(
                     {
                         'po_id': po.id,
-                        'po_number': f'PO-{po.id}',
+                        'po_number': po.po_number,
                         'sent_at': po.sent_at.isoformat(),
                         'deadline': deadline.isoformat(),
                     }

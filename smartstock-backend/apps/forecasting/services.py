@@ -40,10 +40,17 @@ class ForecastingService:
 
     def get_dashboard_data(self, page: int = 1, page_size: int = 6):
         cache_key = f'forecast_dashboard_data_v{DASHBOARD_CACHE_VERSION}'
-        full_data = cache.get(cache_key)
+        full_data = None
+        try:
+            full_data = cache.get(cache_key)
+        except Exception:
+            logger.exception('Dashboard cache read failed')
         if full_data is None:
             full_data = self._compute_dashboard()
-            cache.set(cache_key, full_data, timeout=3600)
+            try:
+                cache.set(cache_key, full_data, timeout=3600)
+            except Exception:
+                logger.exception('Dashboard cache write failed')
 
         all_skus = full_data['skus']
         total = len(all_skus)
@@ -74,96 +81,101 @@ class ForecastingService:
 
         from .models import ForecastResult
 
-        today = datetime.date.today()
-        horizon = today + datetime.timedelta(days=30)
+        try:
+            today = datetime.date.today()
+            horizon = today + datetime.timedelta(days=30)
 
-        rows = (
-            ForecastResult.objects.filter(forecast_date__gte=today, forecast_date__lte=horizon)
-            .select_related('sku__product', 'sku__stock_level')
-            .order_by('sku', 'forecast_date')
-        )
-
-        # Single pass builds forecasts_by_sku + sku_ids — eliminates duplicate query
-        forecasts_by_sku = defaultdict(list)
-        sku_ids = set()
-        for row in rows:
-            forecasts_by_sku[row.sku.id].append(row)
-            sku_ids.add(row.sku.id)
-
-        stock_map = {
-            sl.sku_id: sl
-            for sl in StockLevel.objects.select_related('sku__product__supplier').filter(
-                sku_id__in=sku_ids
+            rows = (
+                ForecastResult.objects.filter(forecast_date__gte=today, forecast_date__lte=horizon)
+                .select_related('sku__product', 'sku__stock_level')
+                .order_by('sku', 'forecast_date')
             )
-        }
 
-        skus_map = {}
-        for row in rows:
-            sku_id = row.sku.id
-            if sku_id not in skus_map:
-                if len(skus_map) >= MAX_DASHBOARD_SKUS:
-                    continue  # Prevent unbounded cache entries
-                stock = stock_map.get(sku_id)
-                if stock:
-                    supplier = stock.sku.product.supplier
-                    lead_time = getattr(supplier, 'default_lead_time_days', None) or 7
-                    sku_forecasts = forecasts_by_sku.get(sku_id, [])[:lead_time]
-                    total_predicted = sum(f.predicted_quantity for f in sku_forecasts)
-                    safety_stock = stock.sku.product.safety_stock or 0
-                    stockout_risk = stock.quantity_available < total_predicted + safety_stock
-                else:
-                    stockout_risk = False
+            # Single pass builds forecasts_by_sku + sku_ids — eliminates duplicate query
+            forecasts_by_sku = defaultdict(list)
+            sku_ids = set()
+            for row in rows:
+                forecasts_by_sku[row.sku.id].append(row)
+                sku_ids.add(row.sku.id)
 
-                mape = row.mape
-                # Prefer MAPE from Prophet rows over fallback rows
-                if mape is None and forecasts_by_sku.get(sku_id):
-                    for f in forecasts_by_sku[sku_id]:
-                        if f.mape is not None:
-                            mape = f.mape
-                            break
-                # Normalize MAPE: Prophet returns raw ratio (0.0-1.0), seed data returns percentage (2-25).
-                # If MAPE > 1, it's already a percentage; if <= 1, multiply by 100.
-                if mape is not None:
-                    mape_pct = mape * 100 if mape <= 1.0 else mape
-                    confidence = max(0, min(100, round(100 - mape_pct)))
-                else:
-                    confidence = None
+            stock_map = {
+                sl.sku_id: sl
+                for sl in StockLevel.objects.select_related('sku__product__supplier').filter(
+                    sku_id__in=sku_ids
+                )
+            }
 
-                supplier_name = '—'
-                lead_time_days = 7
-                if stock:
-                    supplier = stock.sku.product.supplier
-                    if supplier:
-                        supplier_name = supplier.name
-                        lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
+            skus_map = {}
+            for row in rows:
+                sku_id = row.sku.id
+                if sku_id not in skus_map:
+                    if len(skus_map) >= MAX_DASHBOARD_SKUS:
+                        continue  # Prevent unbounded cache entries
+                    stock = stock_map.get(sku_id)
+                    if stock:
+                        supplier = stock.sku.product.supplier
+                        lead_time = getattr(supplier, 'default_lead_time_days', None) or 7
+                        sku_forecasts = forecasts_by_sku.get(sku_id, [])[:lead_time]
+                        total_predicted = sum(f.predicted_quantity for f in sku_forecasts)
+                        safety_stock = stock.sku.product.safety_stock or 0
+                        stockout_risk = stock.quantity_available < total_predicted + safety_stock
+                    else:
+                        stockout_risk = False
 
-                skus_map[sku_id] = {
-                    'id': row.sku.code,
-                    'sku_code': row.sku.code,
-                    'product_name': row.sku.product.name,
-                    'reorder_point': stock.reorder_point if stock else 0,
-                    'current_stock': stock.quantity_on_hand if stock else 0,
-                    'stockout_risk': stockout_risk,
-                    'supplier': supplier_name,
-                    'lead_time_days': lead_time_days,
-                    'mae': row.mae,
-                    'mape': mape,
-                    'model_version': row.model_version,
-                    'confidence_score': confidence,
-                    'predicted_demand_30d': 0,
-                    'forecast': [],
-                }
-            skus_map[sku_id]['forecast'].append(
-                {
-                    'date': row.forecast_date.isoformat(),
-                    'demand': round(row.predicted_quantity, 2),
-                    'upper_bound': round(row.upper_bound, 2) if row.upper_bound else None,
-                    'lower_bound': round(row.lower_bound, 2) if row.lower_bound else None,
-                }
-            )
-            skus_map[sku_id]['predicted_demand_30d'] += round(row.predicted_quantity, 2)
+                    mape = row.mape
+                    # Prefer MAPE from Prophet rows over fallback rows
+                    if mape is None and forecasts_by_sku.get(sku_id):
+                        for f in forecasts_by_sku[sku_id]:
+                            if f.mape is not None:
+                                mape = f.mape
+                                break
+                    # Normalize MAPE: Prophet returns raw ratio (0.0-1.0),
+                    # seed data returns percentage (2-25).
+                    # If MAPE > 1, it's already a percentage; if <= 1, multiply by 100.
+                    if mape is not None:
+                        mape_pct = mape * 100 if mape <= 1.0 else mape
+                        confidence = max(0, min(100, round(100 - mape_pct)))
+                    else:
+                        confidence = None
 
-        return {'skus': list(skus_map.values())}
+                    supplier_name = '—'
+                    lead_time_days = 7
+                    if stock:
+                        supplier = stock.sku.product.supplier
+                        if supplier:
+                            supplier_name = supplier.name
+                            lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
+
+                    skus_map[sku_id] = {
+                        'id': row.sku.code,
+                        'sku_code': row.sku.code,
+                        'product_name': row.sku.product.name,
+                        'reorder_point': stock.reorder_point if stock else 0,
+                        'current_stock': stock.quantity_on_hand if stock else 0,
+                        'stockout_risk': stockout_risk,
+                        'supplier': supplier_name,
+                        'lead_time_days': lead_time_days,
+                        'mae': row.mae,
+                        'mape': mape,
+                        'model_version': row.model_version,
+                        'confidence_score': confidence,
+                        'predicted_demand_30d': 0,
+                        'forecast': [],
+                    }
+                skus_map[sku_id]['forecast'].append(
+                    {
+                        'date': row.forecast_date.isoformat(),
+                        'demand': round(row.predicted_quantity, 2),
+                        'upper_bound': round(row.upper_bound, 2) if row.upper_bound else None,
+                        'lower_bound': round(row.lower_bound, 2) if row.lower_bound else None,
+                    }
+                )
+                skus_map[sku_id]['predicted_demand_30d'] += round(row.predicted_quantity, 2)
+
+            return {'skus': list(skus_map.values())}
+        except Exception:
+            logger.exception('Failed to compute forecast dashboard')
+            return {'skus': []}
 
     def get_forecast(self, sku_id: int):
         return self.repo.get_by_sku(sku_id)

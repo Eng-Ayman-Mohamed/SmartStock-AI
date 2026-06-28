@@ -225,6 +225,7 @@ export default function InventoryPage() {
     {
       key: "product",
       label: "Product",
+      width: "15%",
       sortable: true,
       sortOrder: sortField === "product" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <span className="truncate block">{r.product.name}</span>,
@@ -304,7 +305,6 @@ export default function InventoryPage() {
     {
       key: "status",
       label: "Status",
-      width: "15%",
       sortable: true,
       sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <Badge variant={r.status}>{r.status}</Badge>,

@@ -1,6 +1,6 @@
-import re
-
 from rest_framework import serializers
+
+from core.validators import validate_sku_code
 
 from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 
@@ -122,13 +122,14 @@ class SKUSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_code(self, value):
+        value = value.upper()
         if len(value) > 100:
             raise serializers.ValidationError('SKU code must not exceed 100 characters.')
-        if not re.match(r'^[A-Za-z0-9-]+$', value):
+        if not validate_sku_code(value):
             raise serializers.ValidationError(
-                'SKU code may only contain letters, digits, and hyphens.'
+                'SKU code may only contain uppercase letters, digits, and hyphens.'
             )
-        return value.upper()
+        return value
 
 
 class StockLevelSerializer(serializers.ModelSerializer):

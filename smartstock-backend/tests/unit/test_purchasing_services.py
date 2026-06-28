@@ -12,21 +12,22 @@ from core.exceptions import IllegalPOTransitionError
 class PurchasingServiceDraftPoTest(TestCase):
     def setUp(self):
         self.repo = MagicMock()
+        self.repo.get_last_po_number.return_value = None
+        self.repo.supplier_exists.return_value = True
+        self.repo.sku_exists.return_value = True
+        self.repo.exists_by_po_number.return_value = False
         self.service = PurchasingService(repo=self.repo)
         self.user = MagicMock(id=1)
 
     def test_draft_po_creates_with_draft_status(self):
         self.repo.create.return_value = MagicMock(id=10, status='draft')
         result = self.service.draft_po(sku_id=5, quantity=100, supplier_id=3, user=self.user)
-        self.repo.create.assert_called_once_with(
-            {
-                'sku_id': 5,
-                'quantity': 100,
-                'supplier_id': 3,
-                'requested_by': self.user,
-                'status': 'draft',
-            }
-        )
+        call_args = self.repo.create.call_args[0][0]
+        self.assertEqual(call_args['sku_id'], 5)
+        self.assertEqual(call_args['quantity'], 100)
+        self.assertEqual(call_args['supplier_id'], 3)
+        self.assertIs(call_args['requested_by'], self.user)
+        self.assertEqual(call_args['status'], 'draft')
         self.assertEqual(result.status, 'draft')
 
     def test_draft_po_passes_correct_args(self):
@@ -236,7 +237,7 @@ class PurchasingServiceGetOverdueSuppliersTest(TestCase):
 
         sent_at = now - timezone.timedelta(days=20)
         supplier = types.SimpleNamespace(id=1, name='Acme Corp', default_lead_time_days=7)
-        po = MagicMock(id=10, sent_at=sent_at, supplier=supplier)
+        po = MagicMock(id=10, sent_at=sent_at, supplier=supplier, po_number='PO-10')
 
         mock_qs = MagicMock()
         mock_qs.filter.return_value.select_related.return_value = [po]
@@ -421,6 +422,10 @@ class PurchasingServiceSendPoEmailTest(TestCase):
 class PurchasingServiceDraftPoOptionalParamsTest(TestCase):
     def setUp(self):
         self.repo = MagicMock()
+        self.repo.get_last_po_number.return_value = None
+        self.repo.supplier_exists.return_value = True
+        self.repo.sku_exists.return_value = True
+        self.repo.exists_by_po_number.return_value = False
         self.service = PurchasingService(repo=self.repo)
         self.user = MagicMock(id=1)
 
