@@ -487,7 +487,7 @@ class InventoryRepositoryTests(TestCase):
 
         self.stock.quantity_reserved = 100
         self.stock.save()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(InsufficientStockError):
             InventoryRepository().adjust_stock(self.stock.id, -10)
 
     def test_soft_delete_product(self):
