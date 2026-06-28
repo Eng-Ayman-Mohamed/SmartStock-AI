@@ -162,7 +162,9 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
         self.assertEqual(result['page'], 1)
         self.assertEqual(result['per_page'], 6)
         self.assertIn('alerts', result)
-        mock_cache.get.assert_called_once_with(f'forecast_dashboard_data_v{DASHBOARD_CACHE_VERSION}')
+        mock_cache.get.assert_called_once_with(
+            f'forecast_dashboard_data_v{DASHBOARD_CACHE_VERSION}'
+        )
 
     @patch('apps.forecasting.services.cache')
     def test_computes_when_not_cached(self, mock_cache):
