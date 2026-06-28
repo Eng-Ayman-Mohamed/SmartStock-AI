@@ -206,8 +206,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-hairline bg-canvas border border-hairline rounded-2xl overflow-hidden">
             <article className="p-6 sm:p-7">
               <div className="flex items-center gap-2 mb-3">
-                <AlertCircle size={16} strokeWidth={1.7} className="text-red-600" />
-                <span className="block text-eyebrow font-semibold uppercase tracking-widest text-red-600">
+                <AlertCircle size={16} strokeWidth={1.7} className="text-red-600 dark:text-red-400" aria-hidden="true" />
+                <span className="text-eyebrow font-semibold uppercase tracking-widest text-red-600 dark:text-red-400">
                   The problem
                 </span>
               </div>
@@ -218,8 +218,8 @@ export default function LandingPage() {
             </article>
             <article className="p-6 sm:p-7 sm:border-l-2 sm:border-brand-200">
               <div className="flex items-center gap-2 mb-3">
-                <CheckCircle size={16} strokeWidth={1.7} className="text-green-600" />
-                <span className="block text-eyebrow font-semibold uppercase tracking-widest text-green-600">
+                <CheckCircle size={16} strokeWidth={1.7} className="text-green-600 dark:text-green-400" aria-hidden="true" />
+                <span className="text-eyebrow font-semibold uppercase tracking-widest text-green-600 dark:text-green-400">
                   The solution
                 </span>
               </div>
