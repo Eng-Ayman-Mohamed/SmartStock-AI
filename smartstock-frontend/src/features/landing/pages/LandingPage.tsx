@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, MessageSquare, FileCheck2, ScanText, Mic } from 'lucide-react';
+import { BarChart3, MessageSquare, FileCheck2, ScanText, Mic, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import ThemeToggle from '../../../shared/components/ThemeToggle';
 import Button from '../../../shared/components/Button';
@@ -205,18 +205,24 @@ export default function LandingPage() {
         <section className="max-w-[800px] mx-auto mt-[clamp(44px,7vw,68px)]">
           <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-hairline bg-canvas border border-hairline rounded-2xl overflow-hidden">
             <article className="p-6 sm:p-7">
-              <span className="block text-eyebrow font-semibold uppercase tracking-widest text-ink-muted mb-3">
-                The problem
-              </span>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle size={16} strokeWidth={1.7} className="text-red-600" />
+                <span className="block text-eyebrow font-semibold uppercase tracking-widest text-red-600">
+                  The problem
+                </span>
+              </div>
               <p className="text-caption text-ink-muted leading-relaxed">
                 Warehouse teams react too late when stock is low, invoices pile up, and purchase
                 orders take manual work.
               </p>
             </article>
-            <article className="p-6 sm:p-7">
-              <span className="block text-eyebrow font-semibold uppercase tracking-widest text-brand-600 mb-3">
-                The solution
-              </span>
+            <article className="p-6 sm:p-7 sm:border-l-2 sm:border-brand-200">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle size={16} strokeWidth={1.7} className="text-green-600" />
+                <span className="block text-eyebrow font-semibold uppercase tracking-widest text-green-600">
+                  The solution
+                </span>
+              </div>
               <p className="text-caption font-medium text-ink leading-relaxed">
                 SmartStock AI predicts demand, answers inventory questions, and prepares purchase
                 orders for approval.
