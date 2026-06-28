@@ -157,8 +157,9 @@ export default function LandingPage() {
       { threshold: 0.1 }
     );
 
-    cards.forEach((card) => {
+    cards.forEach((card, i) => {
       card.classList.add('opacity-0');
+      (card as HTMLElement).style.transitionDelay = `${i * 80}ms`;
       observer.observe(card);
     });
 
@@ -273,12 +274,12 @@ export default function LandingPage() {
             {FEATURES.map(({ Icon, title, body, isAI }) => (
               <article
                 key={title}
-                className="rounded-xl p-4 transition-all duration-200 hover:bg-canvas hover:shadow-soft hover:-translate-y-0.5 dark:hover:bg-gray-900"
+                className="rounded-xl p-4 transition-all duration-200 hover:bg-canvas hover:shadow-soft hover:-translate-y-0.5 dark:hover:bg-canvas"
               >
                 <Icon
                   size={22}
                   strokeWidth={1.7}
-                  className={`mb-3.5 ${isAI ? 'text-purple-600' : 'text-ink-muted'}`}
+                  className={`mb-3.5 ${isAI ? 'text-purple-600 dark:text-purple-400' : 'text-ink-muted'}`}
                 />
                 <h3 className="text-card-title font-semibold text-ink mb-1.5 leading-snug">
                   {title}
