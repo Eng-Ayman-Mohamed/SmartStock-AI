@@ -2,7 +2,12 @@ from datetime import timedelta
 
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import viewsets
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -22,6 +27,19 @@ class AuditLogView(ListAPIView):
     filterset_fields = ['event', 'user', 'entity_type']
 
     @extend_schema(
+        parameters=[
+            OpenApiParameter(name='user_id', description='Filter by user ID', type=int),
+            OpenApiParameter(
+                name='created_after',
+                description='Filter logs created after this ISO datetime',
+                type=str,
+            ),
+            OpenApiParameter(
+                name='created_before',
+                description='Filter logs created before this ISO datetime',
+                type=str,
+            ),
+        ],
         responses={
             200: AuditLogSerializer(many=True),
             401: OpenApiResponse(
@@ -51,6 +69,13 @@ class AuditLogView(ListAPIView):
 
 @extend_schema_view(
     list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='days',
+                description='Number of days of history to include (1-365, default 7)',
+                type=int,
+            ),
+        ],
         responses={
             200: AgentRunSerializer(many=True),
             401: OpenApiResponse(
