@@ -149,6 +149,7 @@ export default function LandingPage() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
+            entry.target.classList.remove('opacity-0');
             entry.target.classList.add('animate-fadeIn');
             observer.unobserve(entry.target);
           }
