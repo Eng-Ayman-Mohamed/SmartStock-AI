@@ -148,7 +148,7 @@ export default function LandingPage() {
           <div className="max-w-[680px] mx-auto">
             {/* Eyebrow with purple dot */}
             <p
-              className="text-eyebrow font-semibold text-ink-muted tracking-widest mb-4 flex items-center justify-center gap-2 animate-fadeIn"
+              className="text-eyebrow font-semibold text-ink-muted uppercase mb-4 flex items-center justify-center gap-2 animate-fadeIn"
               style={{ animationDelay: '0ms' }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-purple-600" aria-hidden="true" />
