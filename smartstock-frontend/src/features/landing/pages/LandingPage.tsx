@@ -291,60 +291,62 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="sticky bottom-0 z-40 w-full px-4 sm:px-6 pt-8 pb-6 bg-canvas/80 backdrop-blur-md border-t border-hairline">
+      <footer className="w-full px-4 sm:px-6 mt-[clamp(40px,6vw,60px)] pt-8 border-t border-hairline">
         <div className="max-w-[1120px] mx-auto">
-          {/* Product column */}
-          <nav aria-label="Product">
-            <h4 className="text-card-title font-semibold text-ink mb-3">Product</h4>
-            <ul className="space-y-2">
-              <li><a href="#features" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Features</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Pricing</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Changelog</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">API</a></li>
-            </ul>
-          </nav>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+            {/* Product column */}
+            <nav aria-label="Product">
+              <h4 className="text-card-title font-semibold text-ink mb-3">Product</h4>
+              <ul className="space-y-2">
+                <li><a href="#features" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Features</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Pricing</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Changelog</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">API</a></li>
+              </ul>
+            </nav>
 
-          {/* Company column */}
-          <nav aria-label="Company">
-            <h4 className="text-card-title font-semibold text-ink mb-3">Company</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">About</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Blog</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Careers</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Contact</a></li>
-            </ul>
-          </nav>
+            {/* Company column */}
+            <nav aria-label="Company">
+              <h4 className="text-card-title font-semibold text-ink mb-3">Company</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">About</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Blog</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Careers</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Contact</a></li>
+              </ul>
+            </nav>
 
-          {/* Resources column */}
-          <nav aria-label="Resources">
-            <h4 className="text-card-title font-semibold text-ink mb-3">Resources</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Documentation</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Help center</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Status</a></li>
-            </ul>
-          </nav>
+            {/* Resources column */}
+            <nav aria-label="Resources">
+              <h4 className="text-card-title font-semibold text-ink mb-3">Resources</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Documentation</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Help center</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Status</a></li>
+              </ul>
+            </nav>
 
-          {/* Legal column */}
-          <nav aria-label="Legal">
-            <h4 className="text-card-title font-semibold text-ink mb-3">Legal</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Privacy policy</a></li>
-              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Terms of service</a></li>
-            </ul>
-          </nav>
-        </div>
+            {/* Legal column */}
+            <nav aria-label="Legal">
+              <h4 className="text-card-title font-semibold text-ink mb-3">Legal</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Privacy policy</a></li>
+                <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Terms of service</a></li>
+              </ul>
+            </nav>
+          </div>
 
-        {/* Bottom row */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-hairline">
-          <p className="text-caption text-ink-muted">© {new Date().getFullYear()} SmartStock AI</p>
-          <div className="flex items-center gap-4">
-            <a href="#" className="text-ink-muted hover:text-brand-600 transition-colors" aria-label="LinkedIn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-            </a>
-            <a href="#" className="text-ink-muted hover:text-brand-600 transition-colors" aria-label="GitHub">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-            </a>
+          {/* Bottom row - sticky */}
+          <div className="sticky bottom-0 z-40 flex flex-col sm:flex-row items-center justify-between gap-4 py-4 bg-canvas/80 backdrop-blur-md border-t border-hairline -mx-4 sm:-mx-6 px-4 sm:px-6">
+            <p className="text-caption text-ink-muted">© {new Date().getFullYear()} SmartStock AI</p>
+            <div className="flex items-center gap-4">
+              <a href="#" className="text-ink-muted hover:text-brand-600 transition-colors" aria-label="LinkedIn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+              </a>
+              <a href="#" className="text-ink-muted hover:text-brand-600 transition-colors" aria-label="GitHub">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+              </a>
+            </div>
           </div>
         </div>
       </footer>
