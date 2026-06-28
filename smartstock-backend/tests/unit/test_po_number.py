@@ -1,29 +1,22 @@
-from unittest.mock import MagicMock, patch
-
 from django.test import TestCase
 
 from apps.purchasing.po_number import generate_po_number
 
 
 class GeneratePoNumberTest(TestCase):
-    @patch('apps.purchasing.po_number.PurchaseOrder')
-    def test_first_po_of_year_returns_PO_YYYY_001(self, mock_po):
-        mock_po.objects.filter.return_value.order_by.return_value.first.return_value = None
-        result = generate_po_number()
-        self.assertEqual(result, 'PO-2026-001')
+    def test_no_last_returns_first_of_year(self):
+        result = generate_po_number(last_seq=None)
+        self.assertRegex(result, r'^PO-\d{4}-001$')
 
-    @patch('apps.purchasing.po_number.PurchaseOrder')
-    def test_sequential_number_increments(self, mock_po):
-        mock_po.objects.filter.return_value.order_by.return_value.first.return_value = MagicMock(
-            po_number='PO-2026-005'
-        )
-        result = generate_po_number()
+    def test_with_last_increments_sequence(self):
+        result = generate_po_number(last_seq=5)
         self.assertEqual(result, 'PO-2026-006')
 
-    @patch('apps.purchasing.po_number.PurchaseOrder')
-    @patch('apps.purchasing.po_number.timezone')
-    def test_resets_yearly(self, mock_tz, mock_po):
-        mock_tz.now.return_value.year = 2027
-        mock_po.objects.filter.return_value.order_by.return_value.first.return_value = None
-        result = generate_po_number()
-        self.assertEqual(result, 'PO-2027-001')
+    def test_increments_across_boundary(self):
+        result = generate_po_number(last_seq=999)
+        self.assertEqual(result, 'PO-2026-1000')
+
+    def test_first_of_year(self):
+        result = generate_po_number(last_seq=None)
+        parts = result.split('-')
+        self.assertEqual(parts[2], '001')

@@ -44,16 +44,4 @@ export interface PurchaseOrder {
   updated_at: string;
 }
 
-export interface OverduePO {
-  po_id: number;
-  po_number: string;
-  sent_at: string;
-  deadline: string;
-}
 
-export interface OverdueSupplier {
-  supplier_id: number;
-  supplier_name: string;
-  overdue_pos: OverduePO[];
-  days_overdue: number;
-}

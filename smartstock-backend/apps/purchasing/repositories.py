@@ -43,6 +43,30 @@ class PurchasingRepository(BaseRepository):
     def get_by_po_number(self, po_number: str):
         return PurchaseOrder.objects.get(po_number=po_number)
 
+    def exists_by_po_number(self, po_number: str) -> bool:
+        return PurchaseOrder.objects.filter(po_number=po_number).exists()
+
+    def get_last_po_number(self, prefix: str) -> int | None:
+        last = (
+            PurchaseOrder.objects.filter(po_number__startswith=prefix)
+            .order_by('-pk')
+            .values_list('po_number', flat=True)
+            .first()
+        )
+        if last:
+            return int(last.split('-')[-1])
+        return None
+
+    def supplier_exists(self, supplier_id: int) -> bool:
+        from apps.inventory.models import Supplier
+
+        return Supplier.objects.filter(pk=supplier_id).exists()
+
+    def sku_exists(self, sku_id: int) -> bool:
+        from apps.inventory.models import SKU
+
+        return SKU.objects.filter(pk=sku_id).exists()
+
 
 class PurchaseOrderWorkflowRepository(BaseRepository):
     def get_by_id(self, id: int):

@@ -287,8 +287,6 @@ CACHES = {
     }
 }
 
-CACHE_MIDDLEWARE_SECONDS = 300
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

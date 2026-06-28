@@ -3,23 +3,10 @@ import { getApiBaseUrl } from '../../lib/config';
 import { useAuthStore } from '../../store/authStore';
 import type { ChatResponse, Conversation, ConversationDetail } from './types';
 
-export { type ChatMode, type ChatResponse, type Conversation, type ConversationDetail } from './types';
-
 export interface ChatRequest {
   query: string;
   mode?: 'auto' | 'nl_query' | 'rag';
   conversation_id?: string;
-}
-
-export async function sendChatMessage(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
-  const { data } = await api.post<{ status: string; data: ChatResponse } | ChatResponse>(
-    '/ai/chat/',
-    request,
-    { signal },
-  );
-  // The backend wraps payloads in a { status, data } envelope. Unwrap it so callers
-  // read `.answer`/`.sources` directly (matches sendNLQuery/getConversation).
-  return (data as { data?: ChatResponse }).data ?? (data as ChatResponse);
 }
 
 export interface StreamEvent {

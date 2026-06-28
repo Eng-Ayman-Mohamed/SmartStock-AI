@@ -1,6 +1,6 @@
 import axios from 'axios';
 import api from '../../lib/axios';
-import type { LoginPayload, LoginResponse, RegisterPayload, User } from './types';
+import type { LoginPayload, LoginResponse, RegisterPayload } from './types';
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const { data } = await api.post<LoginResponse>('/auth/login/', payload);
@@ -25,11 +25,6 @@ export async function logout(): Promise<void> {
     }
     throw err;
   }
-}
-
-export async function me(): Promise<User> {
-  const { data } = await api.get<User>('/auth/me/');
-  return data;
 }
 
 export async function verifyEmail(token: string): Promise<{ detail: string }> {

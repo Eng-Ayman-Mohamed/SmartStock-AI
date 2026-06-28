@@ -1,6 +1,6 @@
 import type { Role, User } from '../../store/authStore';
 
-export type { Role, User };
+export type { Role };
 
 export interface LoginPayload {
   email: string;

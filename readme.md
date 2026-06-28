@@ -1,7 +1,6 @@
 # SmartStock AI
 
 [![CI](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/ci.yml)
-[![Docker Build](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/docker-build.yml/badge.svg)](https://github.com/Eng-Ayman-Mohamed/SmartStock-AI/actions/workflows/docker-build.yml)
 
 > AI-powered Inventory Management Platform — proactive demand planning, LLM-powered analytics, and autonomous purchasing agents.
 
@@ -166,7 +165,7 @@ This starts all services:
 
 | Service | Container | URL |
 |---------|-----------|-----|
-| **Frontend** | `smartstock_frontend` | http://localhost:3000 |
+| **Frontend** | `smartstock_frontend` | http://localhost:5173 |
 | **Backend API** | `smartstock_backend` | http://localhost:8000/api/ |
 | **Celery Worker** | `smartstock_celery` | — |
 | **Celery Beat** | `smartstock_celery_beat` | — |
@@ -176,7 +175,7 @@ This starts all services:
 | **Alertmanager** | `smartstock_alertmanager` | http://localhost:9093 |
 | **Grafana** | `smartstock_grafana` | http://localhost:3001 |
 
-> **Note:** The root `.env` file is shared by all Docker services. Copy `.env.example` at the repo root if one doesn't exist.
+> **Note:** The root `.env` file is shared by all Docker services. Copy `smartstock-backend/.env.example` or `smartstock-frontend/.env.example` for each service.
 
 ### Environment Variables
 
@@ -264,7 +263,7 @@ GitHub Actions workflows on push to `main`/`develop` and PRs to `main`:
 | `frontend-lint` | `npm run lint` + `tsc --noEmit` |
 | `frontend-build` | `npm run build` |
 
-See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and [`.github/workflows/docker-build.yml`](.github/workflows/docker-build.yml).
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ---
 
@@ -308,21 +307,13 @@ The Docker Compose stack includes a full observability suite:
 - **Rate limiting** — 100 req/min/user, daily LLM token quotas
 - All secrets managed via `.env`, never hardcoded
 
-See [`Systemarchitecture.md`](Systemarchitecture.md) §9 for the full security model.
-
 ---
 
 ## Further Reading
 
 | Document | Description |
 |----------|-------------|
-| [`Systemarchitecture.md`](Systemarchitecture.md) | Full architectural reference (688 lines) |
-| [`DESIGN.md`](DESIGN.md) | Design system and UI guidelines |
-| [`design-system-prompt.md`](design-system-prompt.md) | Tailwind token reference (brand colors) |
-| [`Project-blueprint.md`](Project-blueprint.md) | Project blueprint and planning |
-| [`Future-Work.md`](Future-Work.md) | Planned features and improvements |
-| [`reports/security-audit-report.md`](reports/security-audit-report.md) | Security audit findings |
-| [`reports/performance-report.md`](reports/performance-report.md) | Performance analysis |
+| [`design-system-prompt.md`](design-system-prompt.md) | Design system reference (brand colors, tokens) |
 | [`smartstock-backend/DEPLOY.md`](smartstock-backend/DEPLOY.md) | Railway deployment guide |
 
 ---

@@ -11,7 +11,7 @@
 set -euo pipefail
 
 BACKEND_URL="${BACKEND_URL:-http://localhost:8000}"
-FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
+FRONTEND_URL="${FRONTEND_URL:-http://localhost:5173}"
 HEALTH_SECRET="${HEALTH_SECRET:-}"
 
 PASS=0
