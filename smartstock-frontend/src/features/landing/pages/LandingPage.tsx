@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, MessageSquare, FileCheck2, ScanText, Mic } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
@@ -94,6 +95,12 @@ function Header() {
 export default function LandingPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+
+  // Landing page doesn't use Layout, so body overflow:hidden blocks scroll
+  useEffect(() => {
+    document.body.style.overflow = 'auto';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-canvas-soft text-ink-secondary">

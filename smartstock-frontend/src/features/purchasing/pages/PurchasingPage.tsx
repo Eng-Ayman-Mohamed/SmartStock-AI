@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ShoppingCart, Plus } from "lucide-react";
 import Card from "../../../shared/components/Card";
@@ -30,7 +30,6 @@ const EMPTY_ARRAY: [] = [];
 export default function PurchasingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPoId = searchParams.get("po");
-  const rootRef = useRef<HTMLDivElement>(null);
 
   const [selectedPoId, setSelectedPoId] = useState<string | null>(initialPoId);
   const [poPage, setPoPage] = useState(1);
@@ -41,12 +40,7 @@ export default function PurchasingPage() {
   // Clear the query param after initial selection to avoid stale state on refresh
   useEffect(() => {
     if (initialPoId) {
-      // Find the scrollable parent of this page and scroll it to top
-      let el = rootRef.current?.parentElement;
-      while (el && el.scrollHeight <= el.clientHeight) {
-        el = el.parentElement;
-      }
-      el?.scrollTo({ top: 0 });
+      document.querySelector('[data-scroll-container]')?.scrollTo({ top: 0 });
       setSearchParams({}, { replace: true });
     }
   }, [initialPoId, setSearchParams]);
