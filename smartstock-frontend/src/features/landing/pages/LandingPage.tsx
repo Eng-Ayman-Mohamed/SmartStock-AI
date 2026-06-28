@@ -291,16 +291,24 @@ export default function LandingPage() {
         </section>
 
         {/* Final CTA */}
-        <section className="max-w-[760px] mx-auto mt-[clamp(48px,8vw,76px)] text-center bg-brand-50 dark:bg-brand-950/30 border border-hairline rounded-[18px] px-6 sm:px-10 py-[clamp(34px,6vw,48px)]">
-          <h2 className="font-bold text-ink tracking-tight leading-tight text-[clamp(22px,3.4vw,28px)] mb-5">
+        <section className="max-w-[760px] mx-auto mt-[clamp(48px,8vw,76px)] text-center bg-gradient-to-br from-brand-50 to-purple-50/50 dark:from-brand-950/30 dark:to-purple-950/20 border border-hairline rounded-[18px] px-6 sm:px-10 py-[clamp(34px,6vw,48px)]">
+          <h2 className="font-bold text-ink tracking-tight leading-tight text-[clamp(22px,3.4vw,28px)] mb-3">
             Ready to optimize your stock?
           </h2>
-          <button
-            onClick={() => navigate('/register')}
-            className="font-semibold text-white bg-brand-600 hover:bg-brand-500 rounded-full px-6 py-2.5 text-body transition-colors"
-          >
-            Start for free
-          </button>
+          <p className="text-caption text-ink-muted mb-6">
+            Join teams already saving hours every week
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button variant="primary" size="lg" onClick={() => navigate('/register')}>
+              Start for free
+            </Button>
+            <a
+              href="#"
+              className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] flex items-center"
+            >
+              Schedule a demo
+            </a>
+          </div>
         </section>
       </main>
 
