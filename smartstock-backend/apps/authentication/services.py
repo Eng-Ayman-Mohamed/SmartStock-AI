@@ -46,7 +46,17 @@ def send_verification_email(user: CustomUser, token: EmailVerificationToken) -> 
         )
         logger.info('Verification email sent to %s', user.email)
     except Exception:
-        logger.exception('Failed to send verification email to %s', user.email)
+        logger.exception(
+            'Failed to send verification email user_id=%s email=%s from=%s host=%s '
+            'port=%s tls=%s ssl=%s',
+            user.pk,
+            user.email,
+            from_email,
+            getattr(settings, 'EMAIL_HOST', None),
+            getattr(settings, 'EMAIL_PORT', None),
+            getattr(settings, 'EMAIL_USE_TLS', None),
+            getattr(settings, 'EMAIL_USE_SSL', None),
+        )
         raise
 
 

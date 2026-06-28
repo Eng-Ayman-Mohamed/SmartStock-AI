@@ -3,6 +3,44 @@ networks:
     driver: bridge
 
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: smartstock_db
+    environment:
+      POSTGRES_USER: smartstock
+      POSTGRES_PASSWORD: smartstock
+      POSTGRES_DB: smartstock
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5433:5432"  # host 5432 is taken by a local Postgres; app uses the internal network (db:5432)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartstock -d smartstock"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - smartstock_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartstock_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - smartstock_net
+
   backend:
     build:
       context: ./smartstock-backend
@@ -13,9 +51,13 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./smartstock-backend:/app
       - /app/staticfiles
@@ -39,6 +81,13 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping --timeout 5 || exit 1"]
       interval: 30s
@@ -58,6 +107,13 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "test -f /proc/1/status"]
       interval: 30s
@@ -161,3 +217,5 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  postgres_data:
+  redis_data:
