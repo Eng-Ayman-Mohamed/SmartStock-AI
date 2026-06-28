@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, MessageSquare, FileCheck2, ScanText, Mic, AlertCircle, CheckCircle } from 'lucide-react';
+import { BarChart3, MessageSquare, FileCheck2, ScanText, Mic, AlertCircle, CheckCircle, Linkedin, Github } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import ThemeToggle from '../../../shared/components/ThemeToggle';
 import Button from '../../../shared/components/Button';
@@ -312,8 +312,62 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="max-w-[920px] mx-auto w-full px-4 sm:px-6 mt-[clamp(40px,6vw,60px)] pt-6 pb-11">
-        <p className="text-caption text-ink-muted">© {new Date().getFullYear()} SmartStock AI</p>
+      <footer className="max-w-[1120px] mx-auto w-full px-4 sm:px-6 mt-[clamp(40px,6vw,60px)] pt-8 pb-11 border-t border-hairline">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+          {/* Product column */}
+          <div>
+            <h4 className="text-card-title font-semibold text-ink mb-3">Product</h4>
+            <ul className="space-y-2">
+              <li><a href="#features" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Features</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Pricing</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Changelog</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">API</a></li>
+            </ul>
+          </div>
+
+          {/* Company column */}
+          <div>
+            <h4 className="text-card-title font-semibold text-ink mb-3">Company</h4>
+            <ul className="space-y-2">
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">About</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Blog</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Careers</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Contact</a></li>
+            </ul>
+          </div>
+
+          {/* Resources column */}
+          <div>
+            <h4 className="text-card-title font-semibold text-ink mb-3">Resources</h4>
+            <ul className="space-y-2">
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Documentation</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Help center</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Status</a></li>
+            </ul>
+          </div>
+
+          {/* Legal column */}
+          <div>
+            <h4 className="text-card-title font-semibold text-ink mb-3">Legal</h4>
+            <ul className="space-y-2">
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Privacy policy</a></li>
+              <li><a href="#" className="text-caption text-ink-muted hover:text-brand-600 transition-colors">Terms of service</a></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom row */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-hairline dark:border-gray-800">
+          <p className="text-caption text-ink-muted">© {new Date().getFullYear()} SmartStock AI</p>
+          <div className="flex items-center gap-4">
+            <a href="#" className="text-ink-muted hover:text-brand-600 transition-colors" aria-label="LinkedIn">
+              <Linkedin size={18} strokeWidth={1.7} />
+            </a>
+            <a href="#" className="text-ink-muted hover:text-brand-600 transition-colors" aria-label="GitHub">
+              <Github size={18} strokeWidth={1.7} />
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   );
