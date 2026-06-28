@@ -79,7 +79,7 @@ className={`h-12 px-3 text-body font-semibold text-ink-secondary select-none tex
                 </th>
               ))}
               {actionsLabel && (
-                <th className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text-center border-l border-hairline" style={{ width: '25%' }} scope="col">
+                <th className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text-center" scope="col">
                   {actionsLabel}
                 </th>
               )}
@@ -108,7 +108,7 @@ className={`h-12 px-3 text-body font-semibold text-ink-secondary select-none tex
                   </td>
                 ))}
                 {renderActions && (
-                  <td className="h-12 px-3 text-body text-ink-secondary text-left border-l border-hairline">
+                  <td className="h-12 px-3 text-body text-ink-secondary text-center">
                     {renderActions(row)}
                   </td>
                 )}
