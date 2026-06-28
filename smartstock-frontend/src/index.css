@@ -207,6 +207,16 @@
     -moz-osx-font-smoothing: grayscale;
     font-size: 14px;
     line-height: 1.5;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+  }
+
+  input[type], select, textarea {
+    font-size: 16px;
+  }
+
+  button, a, [role="button"] {
+    touch-action: manipulation;
   }
 
   html.dark {
@@ -239,5 +249,13 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--color-hairline); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-faint); }
+
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  img[loading="lazy"] {
+    content-visibility: auto;
+  }
 }
 

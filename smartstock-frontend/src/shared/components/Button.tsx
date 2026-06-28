@@ -22,9 +22,9 @@ const variantClasses: Record<Variant, string> = {
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'h-7 px-3 py-1.5 text-body',
-  md: 'h-9 px-4 py-2 text-body',
-  lg: 'h-11 px-5 py-2.5 text-body',
+  sm: 'h-9 min-h-[44px] px-3 py-1.5 text-body',
+  md: 'h-11 min-h-[44px] px-4 py-2 text-body',
+  lg: 'h-12 min-h-[48px] px-5 py-2.5 text-body',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

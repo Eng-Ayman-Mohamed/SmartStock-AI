@@ -1,12 +1,20 @@
 import logging
 
-from rest_framework import status
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
+from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
 from apps.authentication.permissions import IsViewerOrAbove
+from config.schema_serializers import ErrorResponseSerializer, ValidationErrorResponseSerializer
 
 from .serializers import (
     ChatConversationCreateSerializer,
@@ -25,6 +33,146 @@ class MessagePagination(PageNumberPagination):
     ordering = 'created_at'
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: inline_serializer(
+                'ConversationListResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': ChatConversationListSerializer(many=True),
+                },
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+        },
+        tags=['ai'],
+    ),
+    create=extend_schema(
+        request=ChatConversationCreateSerializer,
+        responses={
+            201: inline_serializer(
+                'ConversationCreateResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': ChatConversationDetailSerializer(),
+                },
+            ),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                'Create Conversation',
+                value={'title': 'Inventory Questions'},
+                request_only=True,
+            ),
+        ],
+        tags=['ai'],
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: inline_serializer(
+                'ConversationDetailResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': ChatConversationDetailSerializer(),
+                },
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Conversation not found'
+            ),
+        },
+        tags=['ai'],
+    ),
+    partial_update=extend_schema(
+        request=ChatConversationRenameSerializer,
+        responses={
+            200: inline_serializer(
+                'ConversationRenameResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': ChatConversationDetailSerializer(),
+                },
+            ),
+            400: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Bad request'
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Conversation not found'
+            ),
+            422: OpenApiResponse(
+                response=ValidationErrorResponseSerializer, description='Validation error'
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                'Rename Conversation',
+                value={'title': 'Updated Title'},
+                request_only=True,
+            ),
+        ],
+        tags=['ai'],
+    ),
+    destroy=extend_schema(
+        responses={
+            204: None,
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Conversation not found'
+            ),
+        },
+        tags=['ai'],
+    ),
+    messages=extend_schema(
+        responses={
+            200: inline_serializer(
+                'ConversationMessagesResponse',
+                {
+                    'status': serializers.CharField(),
+                    'data': ChatMessageSerializer(many=True),
+                    'meta': inline_serializer(
+                        'PaginationMeta',
+                        {
+                            'page': serializers.IntegerField(),
+                            'total': serializers.IntegerField(),
+                            'per_page': serializers.IntegerField(),
+                        },
+                    ),
+                },
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Authentication required'
+            ),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Forbidden'),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer, description='Conversation not found'
+            ),
+        },
+        tags=['ai'],
+    ),
+)
 class ConversationViewSet(ViewSet):
     """
     ViewSet for managing chat conversations.

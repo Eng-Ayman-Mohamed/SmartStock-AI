@@ -1,5 +1,6 @@
 import { ConfidenceBadge } from '../confidence';
 import type { InvoiceConfidence, InvoiceHeaderFields, InvoiceHeaderKey } from '../types';
+import Input from '../../../shared/components/Input';
 
 type HeaderFieldDef = {
   key: InvoiceHeaderKey;
@@ -37,14 +38,14 @@ export default function InvoiceHeaderForm({ header, confidence, onChange }: Invo
             </label>
             <ConfidenceBadge value={confidence?.[key]} />
           </div>
-          <input
+          <Input
             id={`invoice-header-${key}`}
             type={type}
+            inputMode={type === 'number' ? 'decimal' : undefined}
             step={type === 'number' ? '0.01' : undefined}
             min={type === 'number' ? '0' : undefined}
             value={header[key] == null ? '' : String(header[key])}
             onChange={(event) => onChange(key, event.target.value)}
-            className="h-9 w-full rounded-md border border-hairline bg-canvas px-3 text-body text-ink transition-colors hover:border-ink-muted focus:border-brand-600 focus:outline-none"
           />
         </div>
       ))}

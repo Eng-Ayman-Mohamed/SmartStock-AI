@@ -143,7 +143,7 @@ export default function ConversationSidebar({
                           e.stopPropagation();
                           handleDelete(conv.id);
                         }}
-                        className="p-1 rounded text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="p-2 min-w-[44px] min-h-[44px] rounded text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

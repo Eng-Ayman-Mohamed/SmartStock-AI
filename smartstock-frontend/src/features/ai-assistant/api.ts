@@ -12,8 +12,14 @@ export interface ChatRequest {
 }
 
 export async function sendChatMessage(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
-  const { data } = await api.post<ChatResponse>('/ai/chat/', request, { signal });
-  return data;
+  const { data } = await api.post<{ status: string; data: ChatResponse } | ChatResponse>(
+    '/ai/chat/',
+    request,
+    { signal },
+  );
+  // The backend wraps payloads in a { status, data } envelope. Unwrap it so callers
+  // read `.answer`/`.sources` directly (matches sendNLQuery/getConversation).
+  return (data as { data?: ChatResponse }).data ?? (data as ChatResponse);
 }
 
 export interface StreamEvent {

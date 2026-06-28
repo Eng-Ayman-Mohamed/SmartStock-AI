@@ -3,6 +3,7 @@ import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { resendVerification } from '../api';
+import Input from '../../../shared/components/Input';
 import Button from '../../../shared/components/Button';
 import PasswordField from '../../../shared/components/PasswordField';
 
@@ -69,7 +70,7 @@ export default function LoginForm() {
         <label htmlFor="email" className="block text-caption font-medium text-ink mb-1.5">
           Email
         </label>
-        <input
+        <Input
           id="email"
           name="email"
           type="email"
@@ -82,8 +83,8 @@ export default function LoginForm() {
           }}
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? emailErrId : undefined}
-          className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 transition-colors"
           placeholder="you@company.com"
+          variant={fieldErrors.email ? 'error' : 'default'}
         />
         {fieldErrors.email && (
           <p id={emailErrId} className="mt-1 text-caption text-red-600">
@@ -129,7 +130,7 @@ export default function LoginForm() {
               type="button"
               onClick={handleResend}
               disabled={resending}
-              className="mt-2 text-brand-600 hover:text-brand-800 font-medium underline"
+              className="mt-2 text-brand-600 hover:text-brand-800 font-medium underline min-h-[44px] px-1"
             >
               {resending ? 'Sending...' : 'Resend verification email'}
             </button>
@@ -156,7 +157,7 @@ export default function LoginForm() {
         <button
           type="button"
           onClick={() => navigate('/register')}
-          className="text-brand-600 hover:text-brand-800 font-medium"
+          className="text-brand-600 hover:text-brand-800 font-medium min-h-[44px] px-2"
         >
           Create one
         </button>

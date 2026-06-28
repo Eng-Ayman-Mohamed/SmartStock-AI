@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { verifyEmail } from '../api';
+import Button from '../../../shared/components/Button';
 
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
@@ -42,7 +43,7 @@ export default function VerifyEmailPage() {
         <div className="w-full max-w-[400px]">
           <div className="flex flex-col items-center mb-8">
             <Link to="/" className="flex items-center gap-2 mb-2">
-              <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" />
+              <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" loading="lazy" />
               <span className="text-card-title font-semibold text-ink">SmartStock AI</span>
             </Link>
             <h1 className="text-section-heading font-semibold text-ink">Email Verification</h1>
@@ -51,11 +52,8 @@ export default function VerifyEmailPage() {
             <div className="flex flex-col items-center text-center gap-4">
               <XCircle className="w-10 h-10 text-red-600" />
               <p className="text-body text-ink">No verification link provided.</p>
-              <Link
-                to="/login"
-                className="mt-2 inline-flex items-center justify-center h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-700 transition-colors"
-              >
-                Go to Sign in
+              <Link to="/login" className="mt-2">
+                <Button variant="primary" size="md">Go to Sign in</Button>
               </Link>
             </div>
           </div>
@@ -69,7 +67,7 @@ export default function VerifyEmailPage() {
       <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center mb-8">
           <Link to="/" className="flex items-center gap-2 mb-2">
-            <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" />
+            <img src="/smart-48.png" alt="SmartStock AI" className="w-9 h-9 shrink-0" loading="lazy" />
             <span className="text-card-title font-semibold text-ink">SmartStock AI</span>
           </Link>
           <h1 className="text-section-heading font-semibold text-ink">Email Verification</h1>
@@ -88,11 +86,8 @@ export default function VerifyEmailPage() {
               <>
                 <CheckCircle2 className="w-10 h-10 text-green-600" />
                 <p className="text-body text-ink">{message}</p>
-                <Link
-                  to="/login"
-                  className="mt-2 inline-flex items-center justify-center h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-700 transition-colors"
-                >
-                  Go to Sign in
+                <Link to="/login" className="mt-2">
+                  <Button variant="primary" size="md">Go to Sign in</Button>
                 </Link>
               </>
             )}
@@ -104,11 +99,8 @@ export default function VerifyEmailPage() {
                 <p className="text-caption text-ink-muted">
                   Your email may already be verified. Try signing in.
                 </p>
-                <Link
-                  to="/login"
-                  className="mt-2 inline-flex items-center justify-center h-9 px-4 rounded-md bg-brand-600 text-white text-caption font-medium hover:bg-brand-700 transition-colors"
-                >
-                  Go to Sign in
+                <Link to="/login" className="mt-2">
+                  <Button variant="primary" size="md">Go to Sign in</Button>
                 </Link>
               </>
             )}

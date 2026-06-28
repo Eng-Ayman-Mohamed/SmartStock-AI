@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, AlertCircle } from "lucide-react";
+import { AlertTriangle, Info, AlertCircle, X } from "lucide-react";
 import { useNotificationActions } from "../hooks/useNotificationActions";
 import type { Notification, NotificationSeverity } from "../types";
 
@@ -68,7 +68,7 @@ export default function NotificationItem({ notification, onClose }: Props) {
         >
           {notification.title}
         </p>
-        <p className="text-caption text-ink-muted truncate">
+        <p className="text-caption text-ink-muted">
           {notification.message}
         </p>
         <div className="flex items-center gap-2 mt-1">
@@ -83,11 +83,10 @@ export default function NotificationItem({ notification, onClose }: Props) {
       </div>
       <button
         onClick={handleDismiss}
-        className="flex items-center justify-center w-7 h-7 shrink-0 text-ink-faint hover:text-ink-muted"
+        className="flex items-center justify-center w-11 h-11 shrink-0 text-ink-faint hover:text-ink-muted rounded-md hover:bg-canvas-soft transition-colors"
         aria-label="Dismiss"
       >
-        <span className="sr-only">Dismiss</span>
-        ×
+        <X className="w-4 h-4" />
       </button>
     </div>
   );

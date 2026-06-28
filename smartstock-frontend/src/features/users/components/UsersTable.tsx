@@ -145,7 +145,7 @@ export default function UsersTable({ users, emptyState, pagination, sortField, s
         }
         disabled={!u.is_active || isSelf || deactivate.isPending}
         title={isSelf ? "You can't deactivate your own account" : 'Deactivate user'}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded text-caption font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        className="inline-flex items-center gap-1 px-3 py-2 min-h-[44px] min-w-[44px] rounded text-caption font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
         <Power className="w-3.5 h-3.5" aria-hidden="true" />
         <span>Deactivate</span>

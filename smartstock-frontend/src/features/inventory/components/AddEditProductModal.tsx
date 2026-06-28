@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import Modal from "../../../shared/components/Modal";
 import Button from "../../../shared/components/Button";
+import Input from "../../../shared/components/Input";
 import type { Product } from "../hooks/useInventory";
 
 interface AddEditProductModalProps {
@@ -79,11 +80,10 @@ export default function AddEditProductModal({
           <label className="block text-caption text-ink-muted mb-1">
             Product Name
           </label>
-          <input
+          <Input
             type="text"
             value={form.name}
             onChange={(e) => update("name", e.target.value)}
-            className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
             placeholder="Wireless Mouse"
             aria-label="Product name"
           />
@@ -92,11 +92,10 @@ export default function AddEditProductModal({
           <label className="block text-caption text-ink-muted mb-1">
             Description
           </label>
-          <input
+          <Input
             type="text"
             value={form.description}
             onChange={(e) => update("description", e.target.value)}
-            className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink placeholder:text-ink-faint hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
             placeholder="Optional description"
             aria-label="Product description"
           />
@@ -106,11 +105,11 @@ export default function AddEditProductModal({
             <label className="block text-caption text-ink-muted mb-1">
               Reorder Point
             </label>
-            <input
+            <Input
               type="number"
+              inputMode="decimal"
               value={form.reorder_point}
               onChange={(e) => update("reorder_point", Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               aria-label="Reorder point"
             />
           </div>
@@ -118,11 +117,11 @@ export default function AddEditProductModal({
             <label className="block text-caption text-ink-muted mb-1">
               Safety Stock
             </label>
-            <input
+            <Input
               type="number"
+              inputMode="decimal"
               value={form.safety_stock}
               onChange={(e) => update("safety_stock", Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-full border border-hairline bg-canvas text-body text-ink tabular-nums hover:border-ink-muted focus:border-brand-600 focus:outline-none transition-colors"
               aria-label="Safety stock"
             />
           </div>

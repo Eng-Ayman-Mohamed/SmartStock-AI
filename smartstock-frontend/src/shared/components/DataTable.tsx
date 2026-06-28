@@ -6,6 +6,7 @@ export interface Column<T> {
   key: string;
   label: string;
   width?: string;
+  className?: string;
   render: (row: T) => ReactNode;
   sortable?: boolean;
   sortKey?: string;
@@ -46,7 +47,7 @@ function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagina
   return (
     <div className={fillHeight ? 'min-w-0 flex flex-col flex-1 min-h-0' : 'min-w-0'}>
       <div className={fillHeight ? 'overflow-auto flex-1 min-h-0' : 'overflow-x-auto'}>
-          <table className="w-full table-fixed border-collapse min-w-[480px]">
+          <table className="w-full table-auto border-collapse min-w-[480px]">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead className="sticky top-0 z-10">
             <tr className="bg-canvas-soft border-b border-hairline">
@@ -54,14 +55,14 @@ function DataTable<T>({ columns, data, keyExtractor, caption, emptyState, pagina
                 <th
                   key={col.key}
                   scope="col"
-className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text-left"
+className={`h-12 px-3 text-body font-semibold text-ink-secondary select-none text-left ${col.className ?? ''}`}
                   style={col.width ? { width: col.width } : undefined}
                 >
                   {col.sortable ? (
                     <button
                       type="button"
                       onClick={() => onSort?.(col.key)}
-                      className="inline-flex items-center gap-1 hover:text-ink transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 hover:text-ink transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
                     >
                       {col.label}
                       {col.sortOrder === 'asc' ? (
@@ -78,7 +79,7 @@ className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text
                 </th>
               ))}
               {actionsLabel && (
-                <th className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text-center" style={{ width: '9%' }} scope="col">
+                <th className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text-center border-l border-hairline" style={{ width: '25%' }} scope="col">
                   {actionsLabel}
                 </th>
               )}
@@ -101,13 +102,13 @@ className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className="h-12 px-3 text-body text-ink-secondary truncate text-left"
+                    className={`h-12 px-3 text-body text-ink-secondary truncate text-left ${col.className ?? ''}`}
                   >
                     {col.render(row)}
                   </td>
                 ))}
                 {renderActions && (
-                  <td className="h-12 px-3 text-body text-ink-secondary text-left">
+                  <td className="h-12 px-3 text-body text-ink-secondary text-left border-l border-hairline">
                     {renderActions(row)}
                   </td>
                 )}
@@ -137,7 +138,7 @@ className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text
             <Button
               variant="utility"
               size="sm"
-              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
+              className="h-11 w-11 px-0 shrink-0 tabular-nums"
               onClick={() => pagination.onPageChange(1)}
               disabled={!pagination.hasPrev}
               aria-label="First page"
@@ -148,7 +149,7 @@ className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text
             <Button
               variant="utility"
               size="sm"
-              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
+              className="h-11 w-11 px-0 shrink-0 tabular-nums"
               onClick={() => pagination.onPageChange(Math.max(1, pagination.currentPage - 1))}
               disabled={!pagination.hasPrev}
               aria-label="Previous page"
@@ -160,7 +161,7 @@ className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text
               pageNumber === -1 ? (
                 <span
                   key={`gap-${index}`}
-                  className="flex h-9 w-9 items-center justify-center text-caption text-ink-faint sm:h-11 sm:w-11"
+                  className="flex h-11 w-11 items-center justify-center text-caption text-ink-faint"
                 >
                   ...
                 </span>
@@ -181,7 +182,7 @@ className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text
             <Button
               variant="utility"
               size="sm"
-              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
+              className="h-11 w-11 px-0 shrink-0 tabular-nums"
               onClick={() => pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
               disabled={!pagination.hasNext}
               aria-label="Next page"
@@ -192,7 +193,7 @@ className="h-12 px-3 text-body font-semibold text-ink-secondary select-none text
             <Button
               variant="utility"
               size="sm"
-              className="h-9 w-9 px-0 shrink-0 sm:h-11 sm:w-11"
+              className="h-11 w-11 px-0 shrink-0 tabular-nums"
               onClick={() => pagination.onPageChange(pagination.totalPages)}
               disabled={!pagination.hasNext}
               aria-label="Last page"

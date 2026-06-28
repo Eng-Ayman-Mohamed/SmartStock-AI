@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowUpDown, X } from "lucide-react";
 import Modal from "../../../shared/components/Modal";
 import Button from "../../../shared/components/Button";
+import Input from "../../../shared/components/Input";
 
 interface AdjustStockModalProps {
   open: boolean;
@@ -55,12 +56,13 @@ export default function AdjustStockModal({
           <label className="block text-caption font-medium text-ink-secondary mb-1">
             Quantity Delta
           </label>
-          <input
+          <Input
             type="number"
+            inputMode="decimal"
             value={delta}
             onChange={(e) => setDelta(e.target.value)}
-            className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
             placeholder="e.g. 10 or -5"
+            aria-label="Quantity delta"
           />
           <p className="text-caption text-ink-muted mt-1">
             Positive to add stock, negative to remove.
@@ -70,12 +72,13 @@ export default function AdjustStockModal({
           <label className="block text-caption font-medium text-ink-secondary mb-1">
             Reason (optional)
           </label>
-          <input
+          <Input
             type="text"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full h-9 px-3 rounded-md border border-hairline bg-canvas text-body text-ink-secondary focus:border-brand-600 focus:outline-none"
             placeholder="e.g. Received shipment"
+            aria-label="Reason"
+            autoCapitalize="sentences"
           />
         </div>
       </div>

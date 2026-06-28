@@ -30,11 +30,17 @@ function formatDate(iso: string | null) {
 interface DocumentDetailModalProps {
   documentId: number | null;
   onClose: () => void;
+  citedPage?: number;
+  chunkText?: string;
 }
 
-export default function DocumentDetailModal({ documentId, onClose }: DocumentDetailModalProps) {
+export default function DocumentDetailModal({ documentId, onClose, citedPage, chunkText }: DocumentDetailModalProps) {
   const { data: doc, isLoading: docLoading } = useDocument(documentId);
-  const { data: chunks, isLoading: chunksLoading } = useDocumentChunks(documentId);
+  const { data: allChunks, isLoading: chunksLoading } = useDocumentChunks(documentId);
+
+  const chunks = citedPage != null
+    ? (allChunks ?? []).filter((c) => c.page_number === citedPage)
+    : allChunks;
 
   if (documentId === null) return null;
 
@@ -46,7 +52,7 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
           <h2 className="text-card-title text-ink">Document Details</h2>
           <button
             onClick={onClose}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-canvas-soft transition-colors"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -75,13 +81,24 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
                     href={doc.cloudinary_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 p-1.5 rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
+                    className="shrink-0 p-2.5 min-w-[44px] min-h-[44px] rounded-md text-ink-faint hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-brand-900/20"
                     title="Open original file"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 )}
               </div>
+
+              {citedPage != null && chunkText && (
+                <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-4">
+                  <h3 className="text-eyebrow uppercase text-purple-600 dark:text-purple-400 mb-2">
+                    Cited Content — Page {citedPage}
+                  </h3>
+                  <p className="text-caption text-ink-secondary leading-relaxed whitespace-pre-wrap">
+                    {chunkText}
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 <div className="flex items-center gap-2 text-body text-ink-secondary">
@@ -103,7 +120,9 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
               </div>
 
               <div>
-                <h3 className="text-eyebrow uppercase text-ink-muted mb-2">Chunks</h3>
+                <h3 className="text-eyebrow uppercase text-ink-muted mb-2">
+                  {citedPage != null ? `Chunks on Page ${citedPage}` : 'Chunks'}
+                </h3>
                 {chunksLoading ? (
                   <div className="flex items-center justify-center py-6">
                     <Loader2 className="w-5 h-5 text-brand-600 animate-spin" />
@@ -129,7 +148,11 @@ export default function DocumentDetailModal({ documentId, onClose }: DocumentDet
                     ))}
                   </div>
                 ) : (
-                  <p className="text-caption text-ink-muted py-4 text-center">No chunks found.</p>
+                  <p className="text-caption text-ink-muted py-4 text-center">
+                    {citedPage != null
+                      ? `No chunks found for page ${citedPage}.`
+                      : 'No chunks found.'}
+                  </p>
                 )}
               </div>
             </>

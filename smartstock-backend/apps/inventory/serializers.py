@@ -142,7 +142,7 @@ class StockLevelSerializer(serializers.ModelSerializer):
         model = StockLevel
         fields = '__all__'
 
-    def validate_quantity(self, value):
+    def validate_quantity_on_hand(self, value):
         if value < 0:
             raise serializers.ValidationError('Quantity cannot be negative.')
         return value
