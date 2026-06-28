@@ -97,6 +97,10 @@ export function useVoiceRecorder() {
       };
 
       mr.onstop = async () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
         stream.getTracks().forEach((t) => t.stop());
         cleanupAudio();
         if (cancelledRef.current) return;
@@ -118,6 +122,10 @@ export function useVoiceRecorder() {
       setState('recording');
 
       let secs = 0;
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       timerRef.current = setInterval(() => {
         secs += 1;
         setElapsed(secs);
@@ -131,6 +139,11 @@ export function useVoiceRecorder() {
   }, [startAudioAnalysis, cleanupAudio]);
 
   const stopRecording = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setElapsed(0);
     stopMediaRecorder(mediaRecorderRef.current);
   }, []);
 
