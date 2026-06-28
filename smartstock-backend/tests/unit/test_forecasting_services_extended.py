@@ -5,7 +5,7 @@ from django.test import TestCase
 
 from apps.forecasting.models import ForecastResult
 from apps.forecasting.repositories import ForecastingRepository
-from apps.forecasting.services import ForecastingService
+from apps.forecasting.services import DASHBOARD_CACHE_VERSION, ForecastingService
 from apps.inventory.models import SKU, Category, Product, StockLevel, Supplier
 
 
@@ -162,7 +162,7 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
         self.assertEqual(result['page'], 1)
         self.assertEqual(result['per_page'], 6)
         self.assertIn('alerts', result)
-        mock_cache.get.assert_called_once_with('forecast_dashboard_data_v2')
+        mock_cache.get.assert_called_once_with(f'forecast_dashboard_data_v{DASHBOARD_CACHE_VERSION}')
 
     @patch('apps.forecasting.services.cache')
     def test_computes_when_not_cached(self, mock_cache):
@@ -174,7 +174,7 @@ class ForecastingServiceGetDashboardDataTest(ForecastingServiceTestBase):
             self.assertEqual(result['total'], 0)
             self.assertEqual(result['alerts'], [])
             mock_cache.set.assert_called_once_with(
-                'forecast_dashboard_data_v2', {'skus': []}, timeout=3600
+                f'forecast_dashboard_data_v{DASHBOARD_CACHE_VERSION}', {'skus': []}, timeout=3600
             )
 
 

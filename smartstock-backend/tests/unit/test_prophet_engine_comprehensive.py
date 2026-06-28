@@ -97,7 +97,7 @@ class TestComputeAccuracyEdgeCases(unittest.TestCase):
         model.predict.return_value = pd.DataFrame({'yhat': [5.0] * 5})
         mae, mape = _compute_accuracy(df, model)
         self.assertIsNotNone(mae)
-        self.assertEqual(mape, float('inf'))
+        self.assertIsNone(mape)
 
 
 class TestProphetEngineErrorHandling(unittest.TestCase):
