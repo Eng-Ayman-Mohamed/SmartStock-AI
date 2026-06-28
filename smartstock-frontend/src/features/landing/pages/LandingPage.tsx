@@ -302,12 +302,12 @@ export default function LandingPage() {
             <Button variant="primary" size="lg" onClick={() => navigate('/register')}>
               Start for free
             </Button>
-            <a
-              href="#"
-              className="text-body font-medium text-ink-secondary hover:text-brand-600 transition-colors min-h-[44px] flex items-center"
+            <button
+              type="button"
+              className="text-body font-medium text-ink-secondary hover:text-brand-600 dark:hover:text-brand-400 transition-colors min-h-[44px] px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
             >
               Schedule a demo
-            </a>
+            </button>
           </div>
         </section>
       </main>
