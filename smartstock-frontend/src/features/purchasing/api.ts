@@ -77,7 +77,10 @@ interface RawPO {
 
 export async function listPendingPOs(page = 1, pageSize = 20): Promise<PaginatedResponse<PendingPO>> {
   const res = await api.get<RawPO[]>('/purchasing/orders/', {
-    params: { status: 'pending_approval', page, page_size: pageSize },
+    // Orders are created as `draft`; both draft and pending_approval await an
+    // approval decision (the approve/reject endpoints accept either), so the
+    // queue must include drafts — otherwise newly created orders never appear.
+    params: { status_in: 'draft,pending_approval', page, page_size: pageSize },
   });
   return {
     results: (res.data ?? []).map((item) => {
@@ -168,11 +171,12 @@ export async function listPOHistory(
     page,
     page_size: pageSize,
     ordering: ordering || undefined,
+    // Exclude draft/pending server-side so the paginated count matches the rows shown.
+    status_exclude: 'draft,pending_approval',
   };
   const res = await api.get<POHistoryRaw[]>('/purchasing/orders/', { params });
   return {
     results: (res.data ?? [])
-      .filter((item) => item.status !== 'pending_approval' && item.status !== 'draft')
       .map((item) => ({
         id: `PO-${item.id}`,
         product_name: item.product_name,

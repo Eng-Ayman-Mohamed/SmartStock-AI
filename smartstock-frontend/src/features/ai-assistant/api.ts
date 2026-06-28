@@ -3,17 +3,10 @@ import { getApiBaseUrl } from '../../lib/config';
 import { useAuthStore } from '../../store/authStore';
 import type { ChatResponse, Conversation, ConversationDetail } from './types';
 
-export { type ChatMode, type ChatResponse, type Conversation, type ConversationDetail } from './types';
-
 export interface ChatRequest {
   query: string;
   mode?: 'auto' | 'nl_query' | 'rag';
   conversation_id?: string;
-}
-
-export async function sendChatMessage(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
-  const { data } = await api.post<ChatResponse>('/ai/chat/', request, { signal });
-  return data;
 }
 
 export interface StreamEvent {

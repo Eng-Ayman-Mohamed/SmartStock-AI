@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMode, ConversationDetail, Message } from '../types';
-import { sendChatMessageStream, sendNLQuery } from '../api';
+import { sendChatMessageStream } from '../api';
 
 function mapConversationMessages(detail: ConversationDetail): Message[] {
   return detail.messages.map((m) => ({
@@ -66,7 +66,7 @@ export default function useChat(conversationId?: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<ChatMode>('rag');
+  const [mode, setMode] = useState<ChatMode>('nl_query');
   const abortRef = useRef<AbortController | null>(null);
   const lastFailedText = useRef<string | null>(null);
   const idCounter = useRef(0);
@@ -127,29 +127,14 @@ export default function useChat(conversationId?: string | null) {
       const activeConvId = conversationIdOverride ?? conversationId;
 
       try {
-        if (mode === 'nl_query' && !conversationId) {
-          const nlResult = await sendNLQuery(trimmed);
-          let aiText = nlResult.answer;
-          if (nlResult.action) {
-            const actionInfo = `\n\n[Action: ${nlResult.action.type}]`;
-            aiText = aiText + actionInfo;
-          }
-
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === aiMessageId ? { ...m, text: aiText, engine: 'nl_query' } : m,
-            ),
-          );
-        } else {
-          await executeStreamQuery(
-            trimmed,
-            activeConvId ?? undefined,
-            mode,
-            controller,
-            setMessages,
-            aiMessageId,
-          );
-        }
+        await executeStreamQuery(
+          trimmed,
+          activeConvId ?? undefined,
+          mode,
+          controller,
+          setMessages,
+          aiMessageId,
+        );
       } catch (err) {
         if (controller.signal.aborted) return;
 
@@ -267,7 +252,7 @@ export default function useChat(conversationId?: string | null) {
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
-    setMode('rag');
+    setMode('nl_query');
     lastFailedText.current = null;
   }, []);
 

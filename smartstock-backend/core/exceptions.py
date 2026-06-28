@@ -11,10 +11,15 @@ class DuplicatePOError(Exception):
 
 
 class ForecastingModelError(Exception):
+    # TODO: wire into production flow
     pass
 
 
 class SupplierNotFoundException(Exception):
+    pass
+
+
+class SKUNotFoundException(Exception):
     pass
 
 

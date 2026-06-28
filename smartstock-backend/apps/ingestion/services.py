@@ -98,13 +98,13 @@ class InvoiceScanService:
             self._mark_failed(scan, user, 'malformed_json', str(exc))
             raise InvoiceExtractionMalformed(str(exc))
         except Exception as exc:
-            from core.exceptions import is_llm_quota_error
+            from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error
 
             if is_llm_quota_error(exc):
                 self._mark_failed(scan, user, 'quota_exhausted', str(exc))
-                raise InvoiceExtractionMalformed(
+                raise LLMQuotaExhaustedError(
                     'AI service quota has been reached. Please try again shortly or contact your admin.'
-                )
+                ) from exc
             raise
 
         if not isinstance(extracted, dict):
@@ -439,16 +439,21 @@ class RAGQueryService:
     """
 
     RAG_SYSTEM_PROMPT = (
-        'You are SmartStock AI, a warehouse inventory assistant. '
-        "Your task is to answer the user's question using the context provided below.\n\n"
-        'IMPORTANT RULES:\n'
-        '1. Read the context carefully. If it contains information relevant to the question, '
-        'use that information to provide a clear, direct answer.\n'
-        '2. You MUST answer from the context — do NOT refuse if the context contains relevant data.\n'
-        '3. Never fabricate or invent information not found in the context.\n'
-        '4. If the context is completely empty or truly unrelated to the question, '
-        'then say: "I cannot find this information in the provided records."\n'
-        '5. When citing a source, use the format: [Source: <document>, Page: <page>]\n\n'
+        'You are SmartStock AI, a warehouse inventory assistant.\n\n'
+        'CRITICAL CONSTRAINT — STRICTLY CONTEXT-ONLY:\n'
+        'You MUST answer SOLELY based on the information in the Context below.\n'
+        '• If the Context contains a clear, direct answer → provide it and cite the source.\n'
+        '• If the Context mentions the topic but does NOT contain enough detail to answer '
+        'the specific question → say: "The provided documents do not contain enough '
+        'information to answer this question."\n'
+        '• If the Context does not mention the topic at all → say: "I cannot find '
+        'this information in the provided records."\n\n'
+        'WHAT YOU MUST NEVER DO:\n'
+        '• Never use your own general knowledge to answer — even if you know the answer.\n'
+        '• Never elaborate, explain, or supplement the context with external information.\n'
+        '• Never answer a question that the context does not explicitly support.\n\n'
+        'WHEN CITING:\n'
+        'Use the format: [Source: <document>, Page: <page>]\n\n'
         'Context:\n{context}'
     )
 

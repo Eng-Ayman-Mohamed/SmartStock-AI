@@ -7,11 +7,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=config.settings.production
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev \
         postgresql-client \
         build-essential \
-    && rm -rf /var/lib/apt/lists/*
+        poppler-utils
 
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \

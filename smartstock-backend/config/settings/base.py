@@ -287,8 +287,6 @@ CACHES = {
     }
 }
 
-CACHE_MIDDLEWARE_SECONDS = 300
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -348,6 +346,13 @@ CELERY_BROKER_USE_SSL = (
 CELERY_REDIS_BACKEND_USE_SSL = (
     {'ssl_cert_reqs': ssl.CERT_NONE} if _result_url.startswith('rediss://') else None
 )
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Reduce Redis request churn (Upstash free-tier: 500K/month)
+CELERY_BROKER_POOL_LIMIT = 1
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 200
 
 CELERY_BEAT_SCHEDULE = {
     'purge-audit-logs-daily': {

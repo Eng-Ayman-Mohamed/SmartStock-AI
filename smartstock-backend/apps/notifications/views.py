@@ -1,3 +1,6 @@
+from django.core.cache import cache
+from django.db.models import BooleanField, OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
@@ -145,6 +148,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
         user_notification.is_read = True
         user_notification.read_at = timezone.now()
         user_notification.save()
+        cache.delete(f'unread_count_{request.user.id}')
         return Response({'status': 'success'})
 
     @extend_schema(
@@ -167,13 +171,11 @@ class NotificationViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['post'])
     def mark_all_read(self, request):
-        unread_ids = Notification.objects.filter(
-            user_notifications__user=request.user,
-            user_notifications__is_read=False,
-        ).values_list('id', flat=True)
-        UserNotification.objects.filter(user=request.user, notification_id__in=unread_ids).update(
-            is_read=True, read_at=timezone.now()
-        )
+        UserNotification.objects.filter(
+            user=request.user,
+            is_read=False,
+        ).update(is_read=True, read_at=timezone.now())
+        cache.delete(f'unread_count_{request.user.id}')
         return Response({'status': 'success'})
 
     @extend_schema(
@@ -201,6 +203,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def dismiss(self, request, pk=None):
         notification = self.get_object()
         UserNotification.objects.filter(user=request.user, notification=notification).delete()
+        cache.delete(f'unread_count_{request.user.id}')
         return Response({'status': 'success'})
 
 
@@ -226,8 +229,12 @@ class UnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        count = Notification.objects.filter(
-            user_notifications__user=request.user,
-            user_notifications__is_read=False,
-        ).count()
+        cache_key = f'unread_count_{request.user.id}'
+        count = cache.get(cache_key)
+        if count is None:
+            count = Notification.objects.filter(
+                user_notifications__user=request.user,
+                user_notifications__is_read=False,
+            ).count()
+            cache.set(cache_key, count, 60)
         return Response({'count': count})

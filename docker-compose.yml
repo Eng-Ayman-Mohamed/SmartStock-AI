@@ -29,6 +29,7 @@ services:
     build:
       context: ./smartstock-backend
       dockerfile: Dockerfile
+      network: host
     container_name: smartstock_backend
     command: python manage.py runserver 0.0.0.0:8000
     env_file:
@@ -46,6 +47,11 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./smartstock-backend:/app
       - /app/staticfiles
@@ -63,6 +69,7 @@ services:
     build:
       context: ./smartstock-backend
       dockerfile: Dockerfile
+      network: host
     container_name: smartstock_celery
     command: celery -A config worker --loglevel=info
     env_file:
@@ -88,6 +95,7 @@ services:
     build:
       context: ./smartstock-backend
       dockerfile: Dockerfile
+      network: host
     container_name: smartstock_celery_beat
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
@@ -114,6 +122,7 @@ services:
       context: ./smartstock-frontend
       dockerfile: Dockerfile
       target: build
+      network: host
     container_name: smartstock_frontend
     command: npm run dev -- --host 0.0.0.0
     depends_on:
@@ -156,6 +165,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    profiles: ["monitoring"]
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
@@ -174,6 +184,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    profiles: ["monitoring"]
 
   grafana:
     image: grafana/grafana:11.1.0
@@ -199,6 +210,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    profiles: ["monitoring"]
 
 volumes:
   prometheus_data:

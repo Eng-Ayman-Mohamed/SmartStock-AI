@@ -12,6 +12,10 @@ from core.exceptions import IllegalPOTransitionError
 class PurchasingServiceDraftPoTest(TestCase):
     def setUp(self):
         self.repo = MagicMock()
+        self.repo.get_last_po_number.return_value = None
+        self.repo.supplier_exists.return_value = True
+        self.repo.sku_exists.return_value = True
+        self.repo.exists_by_po_number.return_value = False
         self.service = PurchasingService(repo=self.repo)
         self.user = MagicMock(id=1)
 
@@ -239,7 +243,7 @@ class PurchasingServiceGetOverdueSuppliersTest(TestCase):
 
         sent_at = now - timezone.timedelta(days=20)
         supplier = types.SimpleNamespace(id=1, name='Acme Corp', default_lead_time_days=7)
-        po = MagicMock(id=10, sent_at=sent_at, supplier=supplier)
+        po = MagicMock(id=10, sent_at=sent_at, supplier=supplier, po_number='PO-10')
 
         mock_qs = MagicMock()
         mock_qs.filter.return_value.select_related.return_value = [po]
@@ -398,6 +402,10 @@ class PurchasingServiceGetPoWithSupplierTest(TestCase):
 class PurchasingServiceDraftPoOptionalParamsTest(TestCase):
     def setUp(self):
         self.repo = MagicMock()
+        self.repo.get_last_po_number.return_value = None
+        self.repo.supplier_exists.return_value = True
+        self.repo.sku_exists.return_value = True
+        self.repo.exists_by_po_number.return_value = False
         self.service = PurchasingService(repo=self.repo)
         self.user = MagicMock(id=1)
 

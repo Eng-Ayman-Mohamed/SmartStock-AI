@@ -50,7 +50,7 @@ def _compute_accuracy(df: pd.DataFrame, model) -> tuple:
             np.mean(np.abs((y_true[nonzero_mask] - y_pred[nonzero_mask]) / y_true[nonzero_mask]))
         )
     else:
-        mape = float('inf')
+        mape = None
     return float(mae), mape
 
 

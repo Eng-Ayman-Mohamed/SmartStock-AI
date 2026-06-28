@@ -33,6 +33,7 @@ from ai.llm.output_validator import validate_response_safety
 from ai.llm.prompts import SYSTEM_PROMPT
 from ai.llm.schemas import NLQueryAction, NLQueryFilters, NLQueryResult
 from ai.observability.langfuse import invoke_with_langfuse
+from core.exceptions import LLMQuotaExhaustedError, is_llm_quota_error
 
 logger = logging.getLogger(__name__)
 
@@ -630,6 +631,8 @@ def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
         return result
     except Exception as exc:
         logger.warning('GPT-4o formatter failed: %s', exc)
+        if is_llm_quota_error(exc):
+            raise LLMQuotaExhaustedError(str(exc)) from exc
         fallback = f'Here is the requested information: {raw_data}'
         if not validate_response_safety(fallback):
             logger.warning('GPT-4o formatter fallback blocked by response safety validator')
@@ -667,6 +670,8 @@ def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
                 yield chunk
     except Exception as exc:
         logger.warning('GPT-4o formatter stream failed: %s', exc)
+        if is_llm_quota_error(exc):
+            raise LLMQuotaExhaustedError(str(exc)) from exc
         fallback = f'Here is the requested information: {raw_data}'
         if not validate_response_safety(fallback):
             logger.warning('GPT-4o formatter fallback blocked by response safety validator')

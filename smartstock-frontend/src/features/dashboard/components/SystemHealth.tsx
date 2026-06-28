@@ -28,7 +28,15 @@ export default function SystemHealth() {
   }
 
   if (error || !health) {
-    return null;
+    return (
+      <Card title="System Health" subtitle="Status: unknown">
+        <div className="border border-red-200 dark:border-red-800 rounded-lg p-3">
+          <p className="text-caption text-red-600 dark:text-red-400">
+            Unable to fetch system health status.
+          </p>
+        </div>
+      </Card>
+    );
   }
 
   const overallColor = health.status === 'healthy'

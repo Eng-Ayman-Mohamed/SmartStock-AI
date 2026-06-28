@@ -1,5 +1,5 @@
 import api from '../../lib/axios';
-import type { AgentRun, OverdueSupplier, PurchaseOrder, ReorderAlert } from './types';
+import type { AgentRun, PurchaseOrder, ReorderAlert } from './types';
 
 export async function fetchLowStockItems(): Promise<ReorderAlert[]> {
   const { data } = await api.get<ReorderAlert[]>(
@@ -30,13 +30,6 @@ export async function approvePO(poId: number): Promise<void> {
 
 export async function rejectPO(poId: number): Promise<void> {
   await api.post(`/purchasing/orders/${poId}/reject/`);
-}
-
-export async function fetchOverdueSuppliers(): Promise<OverdueSupplier[]> {
-  const { data } = await api.get<OverdueSupplier[]>(
-    '/purchasing/orders/overdue-suppliers/'
-  );
-  return data;
 }
 
 export async function fetchSKUCount(): Promise<number> {

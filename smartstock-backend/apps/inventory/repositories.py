@@ -2,6 +2,7 @@ from django.db import models, transaction
 from django.db.models import Prefetch
 
 from core.base_repository import BaseRepository
+from core.exceptions import InsufficientStockError
 
 from .models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 
@@ -81,7 +82,7 @@ class InventoryRepository(BaseRepository):
             stock = StockLevel.objects.select_for_update().get(pk=stock_level_id)
             new_quantity = stock.quantity_on_hand + quantity_delta
             if new_quantity < stock.quantity_reserved:
-                raise ValueError(
+                raise InsufficientStockError(
                     f'Cannot reduce stock to {new_quantity}: {stock.quantity_reserved} '
                     f'units are reserved (minimum allowed).'
                 )

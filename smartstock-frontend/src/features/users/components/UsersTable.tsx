@@ -48,7 +48,6 @@ export default function UsersTable({ users, emptyState, pagination, sortField, s
       {
         key: 'name',
         label: 'User',
-        width: '32%',
         sortable: true,
         sortOrder: sortField === 'name' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) => (
@@ -75,6 +74,7 @@ export default function UsersTable({ users, emptyState, pagination, sortField, s
         key: 'role',
         label: 'Role',
         width: '20%',
+        className: 'hidden sm:table-cell',
         sortable: true,
         sortOrder: sortField === 'role' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) => (
@@ -103,6 +103,7 @@ export default function UsersTable({ users, emptyState, pagination, sortField, s
         key: 'status',
         label: 'Status',
         width: '14%',
+        className: 'hidden sm:table-cell',
         sortable: true,
         sortOrder: sortField === 'status' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) =>
@@ -122,6 +123,7 @@ export default function UsersTable({ users, emptyState, pagination, sortField, s
         key: 'joined',
         label: 'Joined',
         width: '18%',
+        className: 'hidden sm:table-cell',
         sortable: true,
         sortOrder: sortField === 'joined' ? (sortOrder as 'asc' | 'desc') : undefined,
         render: (u) => (

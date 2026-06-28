@@ -250,7 +250,7 @@ class PurchasingService:
                 overdue[sid]['overdue_pos'].append(
                     {
                         'po_id': po.id,
-                        'po_number': f'PO-{po.id}',
+                        'po_number': po.po_number,
                         'sent_at': po.sent_at.isoformat(),
                         'deadline': deadline.isoformat(),
                     }

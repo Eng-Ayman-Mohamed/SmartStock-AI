@@ -161,8 +161,9 @@ class FullHealthView(APIView):
 
     @extend_schema(
         responses={
-            200: OpenApiResponse(description='All systems operational'),
-            503: OpenApiResponse(description='One or more systems degraded'),
+            200: OpenApiResponse(
+                description='System health status — body indicates whether all or some services are operational'
+            ),
         },
         tags=['health'],
         auth=[],
@@ -207,5 +208,5 @@ class FullHealthView(APIView):
                 'status': 'healthy' if all_ok else 'degraded',
                 **checks,
             },
-            status=200 if all_ok else 503,
+            status=200,
         )

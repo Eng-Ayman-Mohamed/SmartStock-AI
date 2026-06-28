@@ -22,20 +22,20 @@ route:
 receivers:
   - name: 'default-email'
     email_configs:
-      - to: '${ESCALATION_RECIPIENT_EMAILS}'
+      - to: '{{ env "ESCALATION_RECIPIENT_EMAILS" }}'
         from: 'noreply@smartstock.ai'
-        smarthost: '${EMAIL_HOST}:${EMAIL_PORT}'
-        auth_username: '${EMAIL_HOST_USER}'
-        auth_password: '${EMAIL_HOST_PASSWORD}'
+        smarthost: '{{ env "EMAIL_HOST" }}:{{ env "EMAIL_PORT" }}'
+        auth_username: '{{ env "EMAIL_HOST_USER" }}'
+        auth_password: '{{ env "EMAIL_HOST_PASSWORD" }}'
         require_tls: true
 
   - name: 'critical-email'
     email_configs:
-      - to: '${ESCALATION_RECIPIENT_EMAILS}'
+      - to: '{{ env "ESCALATION_RECIPIENT_EMAILS" }}'
         from: 'noreply@smartstock.ai'
-        smarthost: '${EMAIL_HOST}:${EMAIL_PORT}'
-        auth_username: '${EMAIL_HOST_USER}'
-        auth_password: '${EMAIL_HOST_PASSWORD}'
+        smarthost: '{{ env "EMAIL_HOST" }}:{{ env "EMAIL_PORT" }}'
+        auth_username: '{{ env "EMAIL_HOST_USER" }}'
+        auth_password: '{{ env "EMAIL_HOST_PASSWORD" }}'
         require_tls: true
 
 inhibit_rules:

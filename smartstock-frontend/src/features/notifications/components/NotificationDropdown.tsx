@@ -2,6 +2,7 @@ import { useNotifications } from "../hooks/useNotifications";
 import { useNotificationActions } from "../hooks/useNotificationActions";
 import NotificationItem from "./NotificationItem";
 import NotificationEmpty from "./NotificationEmpty";
+import NotificationSkeleton from "./NotificationSkeleton";
 import { Link } from "react-router-dom";
 
 interface Props {
@@ -28,7 +29,9 @@ export default function NotificationDropdown({ onClose }: Props) {
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
-          <div className="p-4 text-center text-body text-ink-muted">Loading...</div>
+          <div className="py-2">
+            <NotificationSkeleton count={3} />
+          </div>
         ) : notifications.length === 0 ? (
           <NotificationEmpty />
         ) : (

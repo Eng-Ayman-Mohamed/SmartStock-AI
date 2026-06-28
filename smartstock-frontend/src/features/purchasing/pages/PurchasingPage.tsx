@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ShoppingCart, Plus } from "lucide-react";
 import Card from "../../../shared/components/Card";
 import Button from "../../../shared/components/Button";
@@ -27,11 +28,22 @@ const PAGE_SIZE = 20;
 const EMPTY_ARRAY: [] = [];
 
 export default function PurchasingPage() {
-  const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialPoId = searchParams.get("po");
+
+  const [selectedPoId, setSelectedPoId] = useState<string | null>(initialPoId);
   const [poPage, setPoPage] = useState(1);
-  const [sortField, setSortField] = useState('');
-  const [sortOrder, setSortOrder] = useState('');
+  const [sortField, setSortField] = useState("");
+  const [sortOrder, setSortOrder] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Clear the query param after initial selection to avoid stale state on refresh
+  useEffect(() => {
+    if (initialPoId) {
+      document.querySelector('[data-scroll-container]')?.scrollTo({ top: 0 });
+      setSearchParams({}, { replace: true });
+    }
+  }, [initialPoId, setSearchParams]);
 
   function handleSort(key: string) {
     if (sortField === key && sortOrder === "asc") {
@@ -53,7 +65,8 @@ export default function PurchasingPage() {
         label: "PO #",
         width: "80px",
         sortable: true,
-        sortOrder: sortField === "id" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "id" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <span className="text-mono text-ink-muted">{r.id}</span>,
       },
       {
@@ -62,7 +75,10 @@ export default function PurchasingPage() {
         width: "30%",
         className: "hidden sm:table-cell",
         sortable: true,
-        sortOrder: sortField === "product_name" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "product_name"
+            ? (sortOrder as "asc" | "desc")
+            : undefined,
         render: (r) => <span className="truncate block">{r.product_name}</span>,
       },
       {
@@ -70,7 +86,8 @@ export default function PurchasingPage() {
         label: "Supplier",
         width: "120px",
         sortable: true,
-        sortOrder: sortField === "supplier" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "supplier" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => (
           <span className="truncate block text-ink-muted">{r.supplier}</span>
         ),
@@ -80,7 +97,8 @@ export default function PurchasingPage() {
         label: "Qty",
         width: "60px",
         sortable: true,
-        sortOrder: sortField === "quantity" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "quantity" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <span className="tabular-nums">{r.quantity}</span>,
       },
       {
@@ -89,7 +107,8 @@ export default function PurchasingPage() {
         width: "100px",
         className: "hidden md:table-cell",
         sortable: true,
-        sortOrder: sortField === "total" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "total" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <span className="tabular-nums">{r.total}</span>,
       },
       {
@@ -98,7 +117,8 @@ export default function PurchasingPage() {
         width: "100px",
         className: "hidden md:table-cell",
         sortable: true,
-        sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
         render: (r) => <Badge>{r.status}</Badge>,
       },
       {
@@ -107,7 +127,10 @@ export default function PurchasingPage() {
         width: "110px",
         className: "hidden lg:table-cell",
         sortable: true,
-        sortOrder: sortField === "created_at" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "created_at"
+            ? (sortOrder as "asc" | "desc")
+            : undefined,
         render: (r) => (
           <span className="text-caption text-ink-muted tabular-nums">
             {r.created_at}
@@ -120,7 +143,10 @@ export default function PurchasingPage() {
         width: "120px",
         className: "hidden lg:table-cell",
         sortable: true,
-        sortOrder: sortField === "approved_by" ? (sortOrder as "asc" | "desc") : undefined,
+        sortOrder:
+          sortField === "approved_by"
+            ? (sortOrder as "asc" | "desc")
+            : undefined,
         render: (r) => (
           <span className="text-caption text-ink-muted">{r.approved_by}</span>
         ),
@@ -196,7 +222,7 @@ export default function PurchasingPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn pb-20 md:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-page-heading text-ink">Purchase Orders</h1>
@@ -291,7 +317,7 @@ export default function PurchasingPage() {
         </div>
       )}
 
-      <Card title="PO History">
+      <Card title="PO History" fillHeight className="max-h-[90vh]">
         {isHistoryLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -306,7 +332,7 @@ export default function PurchasingPage() {
             caption="Purchase order history"
             pagination={poPaginationConfig}
             onSort={handleSort}
-            fillHeight={false}
+            fillHeight
           />
         )}
       </Card>

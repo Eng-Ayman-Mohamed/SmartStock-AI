@@ -1,3 +1,5 @@
+import logging
+
 from celery.result import AsyncResult
 from django.core.cache import cache
 from drf_spectacular.utils import (
@@ -18,6 +20,8 @@ from .models import ForecastResult
 from .serializers import ForecastResultSerializer
 from .services import ForecastingService
 from .tasks import run_forecasting_agent
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema_view(
@@ -117,7 +121,11 @@ class ForecastBySKUView(APIView):
     )
     def get(self, request, sku):
         cache_key = f'forecast_sku_{sku}'
-        cached_data = cache.get(cache_key)
+        try:
+            cached_data = cache.get(cache_key)
+        except Exception:
+            logger.exception('Cache read failed for SKU %s', sku)
+            cached_data = None
         if cached_data is not None:
             return Response(cached_data)
 
@@ -132,7 +140,11 @@ class ForecastBySKUView(APIView):
         first = rows[0]
         resolved_key = f'forecast_sku_{first.sku.code}'
         if cache_key != resolved_key:
-            cached_data = cache.get(resolved_key)
+            try:
+                cached_data = cache.get(resolved_key)
+            except Exception:
+                logger.exception('Cache read failed for resolved key %s', resolved_key)
+                cached_data = None
             if cached_data is not None:
                 return Response(cached_data)
 
@@ -153,9 +165,12 @@ class ForecastBySKUView(APIView):
                 for row in rows
             ],
         }
-        cache.set(resolved_key, data, timeout=3600)
-        if cache_key != resolved_key:
-            cache.set(cache_key, data, timeout=3600)
+        try:
+            cache.set(resolved_key, data, timeout=3600)
+            if cache_key != resolved_key:
+                cache.set(cache_key, data, timeout=3600)
+        except Exception:
+            logger.exception('Cache write failed for SKU %s', sku)
         return Response(data)
 
 
@@ -248,8 +263,20 @@ class ForecastDashboardView(APIView):
             page = 1
         if page_size < 1 or page_size > 100:
             page_size = 6
-        data = service.get_dashboard_data(page=page, page_size=page_size)
-        return Response(data)
+        try:
+            data = service.get_dashboard_data(page=page, page_size=page_size)
+            return Response(data)
+        except Exception:
+            logger.exception('Forecasting dashboard failed')
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'InternalServerError',
+                    'message': 'Dashboard data unavailable.',
+                    'code': 500,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ForecastJobStatusView(APIView):

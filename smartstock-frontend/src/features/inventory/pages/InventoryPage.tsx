@@ -304,7 +304,7 @@ export default function InventoryPage() {
     {
       key: "status",
       label: "Status",
-      width: "15%",
+      className: "hidden sm:table-cell",
       sortable: true,
       sortOrder: sortField === "status" ? (sortOrder as "asc" | "desc") : undefined,
       render: (r) => <Badge variant={r.status}>{r.status}</Badge>,

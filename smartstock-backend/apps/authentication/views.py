@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
@@ -26,6 +28,8 @@ from .serializers import (
     VerifyEmailSerializer,
 )
 from .services import generate_verification_token, send_verification_email, verify_email_token
+
+logger = logging.getLogger(__name__)
 
 
 class TokenRefreshView(BaseTokenRefreshView):
@@ -115,7 +119,18 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         token = generate_verification_token(user)
-        send_verification_email(user, token)
+        # A failed SMTP send must not 500 the request or orphan the created user —
+        # the account exists and verification can be re-requested. Log with context
+        # so the real production failure is visible.
+        try:
+            send_verification_email(user, token)
+        except Exception:
+            logger.error(
+                'Registration succeeded but verification email failed user_id=%s email=%s',
+                user.pk,
+                user.email,
+                exc_info=True,
+            )
         return Response(
             {
                 'detail': 'Account created. Please check your email to verify your address.',
