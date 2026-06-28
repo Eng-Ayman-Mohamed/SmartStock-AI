@@ -86,9 +86,7 @@ class ForecastingService:
             horizon = today + datetime.timedelta(days=30)
 
             rows = (
-                ForecastResult.objects.filter(
-                    forecast_date__gte=today, forecast_date__lte=horizon
-                )
+                ForecastResult.objects.filter(forecast_date__gte=today, forecast_date__lte=horizon)
                 .select_related('sku__product', 'sku__stock_level')
                 .order_by('sku', 'forecast_date')
             )
@@ -146,9 +144,7 @@ class ForecastingService:
                         supplier = stock.sku.product.supplier
                         if supplier:
                             supplier_name = supplier.name
-                            lead_time_days = (
-                                getattr(supplier, 'default_lead_time_days', None) or 7
-                            )
+                            lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
 
                     skus_map[sku_id] = {
                         'id': row.sku.code,
