@@ -360,7 +360,7 @@ export default function LandingPage() {
       </footer>
 
       {/* Footer bottom bar - full width, sticks to bottom */}
-      <div className="w-full px-4 sm:px-6 py-4 border-t border-hairline bg-canvas-soft">
+      <div className="sticky bottom-0 w-full px-4 sm:px-6 py-4 border-t border-hairline bg-canvas-soft/80 backdrop-blur-md z-40">
         <div className="max-w-[1120px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-caption text-ink-muted">© {new Date().getFullYear()} SmartStock AI</p>
           <div className="flex items-center gap-4">
