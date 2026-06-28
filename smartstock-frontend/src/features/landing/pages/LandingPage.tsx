@@ -9,27 +9,32 @@ const FEATURES = [
   {
     Icon: BarChart3,
     title: 'Demand forecasting',
-    body: 'Predict demand and prevent stockouts early.',
+    body: 'Predict demand patterns and prevent stockouts before they happen. Get AI-powered recommendations tailored to your business.',
+    isAI: true,
   },
   {
     Icon: MessageSquare,
     title: 'Ask in plain English',
-    body: 'Query your inventory without complex reports.',
+    body: 'Query your inventory using natural language. No complex reports or filters needed — just ask and get instant answers.',
+    isAI: true,
   },
   {
     Icon: FileCheck2,
     title: 'Auto-drafted POs',
-    body: 'Prepare purchase orders for quick approval.',
+    body: 'Automatically prepare purchase orders based on forecasted demand. Review and approve in one click.',
+    isAI: false,
   },
   {
     Icon: ScanText,
     title: 'Invoice scanning',
-    body: 'Read supplier invoices automatically.',
+    body: 'Upload supplier invoices and extract key data automatically. Eliminate manual data entry and reduce errors.',
+    isAI: false,
   },
   {
     Icon: Mic,
     title: 'Voice commands',
-    body: 'Update inventory hands-free.',
+    body: 'Update inventory hands-free using voice commands. Perfect for busy warehouse environments.',
+    isAI: false,
   },
 ];
 
@@ -126,10 +131,38 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
+  const featuresRef = useRef<HTMLDivElement>(null);
+
   // Landing page doesn't use Layout, so body overflow:hidden blocks scroll
   useEffect(() => {
     document.body.style.overflow = 'auto';
     return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  // Staggered scroll reveal for feature cards
+  useEffect(() => {
+    const container = featuresRef.current;
+    if (!container) return;
+
+    const cards = container.querySelectorAll('article');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-fadeIn');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    cards.forEach((card) => {
+      card.classList.add('opacity-0');
+      observer.observe(card);
+    });
+
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -233,13 +266,23 @@ export default function LandingPage() {
 
         {/* Features */}
         <section id="features" className="mt-[clamp(48px,8vw,76px)] pt-[clamp(36px,5vw,44px)] border-t border-hairline">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-7 gap-y-8">
-            {FEATURES.map(({ Icon, title, body }) => (
-              <article key={title}>
-                <Icon size={22} strokeWidth={1.7} className="text-ink-muted mb-3.5" />
-                <h2 className="text-card-title font-semibold text-ink mb-1.5 leading-snug">
+          <h2 className="text-section-heading font-semibold text-ink text-center mb-10">
+            Everything you need to stay ahead
+          </h2>
+          <div ref={featuresRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {FEATURES.map(({ Icon, title, body, isAI }) => (
+              <article
+                key={title}
+                className="rounded-xl p-4 transition-all duration-200 hover:bg-canvas hover:shadow-soft hover:-translate-y-0.5 dark:hover:bg-gray-900"
+              >
+                <Icon
+                  size={22}
+                  strokeWidth={1.7}
+                  className={`mb-3.5 ${isAI ? 'text-purple-600' : 'text-ink-muted'}`}
+                />
+                <h3 className="text-card-title font-semibold text-ink mb-1.5 leading-snug">
                   {title}
-                </h2>
+                </h3>
                 <p className="text-caption text-ink-muted leading-relaxed">{body}</p>
               </article>
             ))}
