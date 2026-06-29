@@ -33,6 +33,10 @@ def build_system_prompt() -> str:
         'empty object. Example: {{"action": "help", "filters": {{}}}}\n'
         '- If the request is too vague to determine a specific action (e.g. "what can you do", '
         '"tell me about the system", "help"), also respond with: {{"action": "help", "filters": {{}}}}\n'
+        '- If the request requires multiple sequential lookups (e.g. find the best supplier, '
+        'then find their worst products; or compare two different things that need different '
+        'queries), respond with: {{"action": "help", "filters": {{}}}} '
+        'since only one action can be performed per query.\n'
     )
 
     return (

@@ -598,6 +598,25 @@ def prompt_injection_filter(query: str) -> tuple[bool, str | None]:
 # -- GPT-4o natural-language formatter ----------------------------------------
 
 
+def _format_fallback(raw_data: object) -> str:
+    """Structured fallback text when GPT-4o formatter fails."""
+    if isinstance(raw_data, list):
+        if not raw_data:
+            return 'No results found.'
+        lines = []
+        for i, item in enumerate(raw_data[:5], 1):
+            if isinstance(item, dict):
+                parts = [f'{k}={v}' for k, v in item.items() if v is not None]
+                lines.append(f'{i}. {", ".join(parts)}')
+            else:
+                lines.append(f'{i}. {item}')
+        summary = '\n'.join(lines)
+        if len(raw_data) > 5:
+            summary += f'\n... and {len(raw_data) - 5} more result(s).'
+        return f'I found {len(raw_data)} result(s):\n{summary}'
+    return f'Result: {raw_data}'
+
+
 def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
     """
     Takes the raw ORM query result and asks GPT-4o to write a human-readable answer.
@@ -605,9 +624,12 @@ def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
     """
     llm = get_llm()
     system = (
-        "Given the raw database records provided, answer the user's question in plain, "
-        'natural language. Be concise, precise, and professional. '
-        'Address exactly what the user asked. Do not mention internal field names.'
+        'You are a data reporter. The database records below ARE the answer to the '
+        'user\'s question — do NOT question or hedge. Do NOT say "there is not enough '
+        'information", "it depends", "the data does not specify", or anything similar. '
+        'If records are present, summarize them directly. If no records are returned, '
+        'say so briefly. Be concise, precise, and professional. '
+        'Do not mention internal field names or database terminology.'
     )
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -633,7 +655,7 @@ def call_gpt4o_formatter(original_query: str, raw_data: object) -> str:
         logger.warning('GPT-4o formatter failed: %s', exc)
         if is_llm_quota_error(exc):
             raise LLMQuotaExhaustedError(str(exc)) from exc
-        fallback = f'Here is the requested information: {raw_data}'
+        fallback = _format_fallback(raw_data)
         if not validate_response_safety(fallback):
             logger.warning('GPT-4o formatter fallback blocked by response safety validator')
             return "I'm sorry, I cannot provide that information."
@@ -647,9 +669,12 @@ def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
     """
     llm = get_llm()
     system = (
-        "Given the raw database records provided, answer the user's question in plain, "
-        'natural language. Be concise, precise, and professional. '
-        'Address exactly what the user asked. Do not mention internal field names.'
+        'You are a data reporter. The database records below ARE the answer to the '
+        'user\'s question — do NOT question or hedge. Do NOT say "there is not enough '
+        'information", "it depends", "the data does not specify", or anything similar. '
+        'If records are present, summarize them directly. If no records are returned, '
+        'say so briefly. Be concise, precise, and professional. '
+        'Do not mention internal field names or database terminology.'
     )
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -672,9 +697,5 @@ def call_gpt4o_formatter_stream(original_query: str, raw_data: object):
         logger.warning('GPT-4o formatter stream failed: %s', exc)
         if is_llm_quota_error(exc):
             raise LLMQuotaExhaustedError(str(exc)) from exc
-        fallback = f'Here is the requested information: {raw_data}'
-        if not validate_response_safety(fallback):
-            logger.warning('GPT-4o formatter fallback blocked by response safety validator')
-            yield "I'm sorry, I cannot provide that information."
-        else:
-            yield fallback
+        yield _format_fallback(raw_data)
+        return

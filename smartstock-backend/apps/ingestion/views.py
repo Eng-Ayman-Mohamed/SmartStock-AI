@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 
 import cloudinary.uploader
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import FieldError, ObjectDoesNotExist
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import (
@@ -779,6 +779,27 @@ class InvoiceScanRejectView(APIView):
 # ---------------------------------------------------------------------------
 
 
+_MULTI_STEP_PATTERNS = [
+    (r'\b(best|top|worst|bottom).*(supplier|vendor).*(product|item|sku)', 'best-supplier->product'),
+    (r'\b(product|item|sku).*(from|by|for).*(best|top|worst).*(supplier|vendor)', 'product->best-supplier'),
+    (r'compare\b', 'compare'),
+    (r'\b(versus|vs\.?)\b', 'compare'),
+    (r'\b(and|then).*\b(best|worst|top|bottom)\b', 'multi-step'),
+    (r'\bfrom each\b', 'multi-step'),
+    (r'\bper supplier\b', 'multi-step'),
+]
+
+
+def _is_multi_step_query(query: str) -> bool:
+    """Quick keyword check for queries that require multiple sequential actions."""
+    q = query.lower().strip()
+    for pattern, _reason in _MULTI_STEP_PATTERNS:
+        import re
+        if re.search(pattern, q):
+            return True
+    return False
+
+
 class ChatEndpointView(APIView):
     """
     POST /api/ai/chat/
@@ -917,6 +938,21 @@ class ChatEndpointView(APIView):
                     {'status': 'error', 'message': 'Query contains disallowed content.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            if msg == 'MULTI_STEP_QUERY':
+                logger.info('Multi-step query detected, returning guidance')
+                return Response(
+                    {'status': 'success', 'data': {
+                        'engine': 'nl_query',
+                        'mode': 'auto',
+                        'answer': (
+                            "Your question requires multiple steps that I can't do in one go. "
+                            "Try breaking it into separate questions — for example, first ask "
+                            '"Who is our best supplier?" then "What are their worst products?"'
+                        ),
+                        'action': {'type': 'help', 'filters': {}},
+                    }},
+                    status=status.HTTP_200_OK,
+                )
             logger.exception('Chat pipeline error')
             return Response(
                 {'status': 'error', 'message': 'An unexpected error occurred.'},
@@ -1005,6 +1041,10 @@ class ChatEndpointView(APIView):
             )
             raise ValueError('PROMPT_INJECTION_DETECTED')
 
+        # Multi-step detection: catch queries needing sequential actions
+        if _is_multi_step_query(query):
+            raise ValueError('MULTI_STEP_QUERY')
+
         from ai.llm.chain import call_gpt4o_formatter, get_nl_chain
         from apps.inventory.views import (
             _handle_forecast_demand,
@@ -1045,6 +1085,12 @@ class ChatEndpointView(APIView):
 
             nl_filters = NLQueryFilters(**filters) if isinstance(filters, dict) else filters
             raw_data = handler(nl_filters)
+        except FieldError as exc:
+            logger.warning('Invalid field in NL query filters: %s', exc)
+            raise ValueError(
+                'The query contains a field or condition I don\'t understand. '
+                'Please try rephrasing with simpler terms.'
+            )
         except Exception as exc:
             raise ValueError(f'Database execution error: {exc}')
 

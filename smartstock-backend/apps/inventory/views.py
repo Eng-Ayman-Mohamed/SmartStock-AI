@@ -1176,6 +1176,15 @@ FIELD_ALIASES = {
 }
 
 
+_KNOWN_ORM_FIELDS = {
+    'id', 'name', 'description', 'sku_code', 'category__name', 'supplier__name',
+    'skus__code', 'skus__stock_level__quantity_on_hand',
+    'skus__stock_level__reorder_point',
+    'contact_email', 'contact_phone', 'address', 'is_active',
+    'date', 'quantity_sold',
+}
+
+
 def _parse_condition(condition) -> Q:
     if hasattr(condition, 'field'):
         field = condition.field
@@ -1185,7 +1194,13 @@ def _parse_condition(condition) -> Q:
         field = condition.get('field')
         operator = condition.get('op', 'eq')
         value = condition.get('value')
-    alias = FIELD_ALIASES.get(field, field)
+    if field not in FIELD_ALIASES:
+        alias = field
+        if alias not in _KNOWN_ORM_FIELDS:
+            logger.warning('Skipping unknown filter field %r (value=%r)', field, value)
+            return Q()
+    else:
+        alias = FIELD_ALIASES[field]
     lookup = OP_MAP.get(operator, '')
     q_key = f'{alias}{lookup}'
     if operator == 'neq':
