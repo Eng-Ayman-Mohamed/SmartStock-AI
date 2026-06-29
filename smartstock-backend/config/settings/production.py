@@ -64,9 +64,30 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@smartstock.ai
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://smart-stock-dev.vercel.app')
 
 # Use separate Redis (Upstash) for Django cache — keeps REDIS_URL dedicated to Celery broker
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('CACHE_REDIS_URL'),
+# Fall back to REDIS_URL if CACHE_REDIS_URL is not set; use django_redis for
+# IGNORE_EXCEPTIONS support so cache failures don't crash the worker.
+_cache_url = os.environ.get('CACHE_REDIS_URL') or os.environ.get('REDIS_URL', '')
+if _cache_url:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': _cache_url,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': True,
+            },
+            'KEY_PREFIX': 'smartstock',
+            'TIMEOUT': 300,
+        }
     }
-}
+else:
+    import logging as _logging
+
+    _logging.getLogger('config.settings.production').warning(
+        'CACHE_REDIS_URL and REDIS_URL not set — using local memory cache'
+    )
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }

@@ -1,7 +1,7 @@
-import axios from 'axios';
-import { useAuthStore } from '../store/authStore';
+import axios from "axios";
+import { useAuthStore } from "../store/authStore";
 
-declare module 'axios' {
+declare module "axios" {
   interface AxiosResponse {
     _meta?: Record<string, unknown> | null;
   }
@@ -14,26 +14,32 @@ export class ApiResponseError extends Error {
 
   constructor(
     envelope: { message?: string; error?: string; code?: number },
-    response: { status: number; headers: Record<string, string>; data: unknown },
+    response: {
+      status: number;
+      headers: Record<string, string>;
+      data: unknown;
+    },
   ) {
-    super(envelope.message ?? 'API error');
-    this.name = 'ApiResponseError';
-    this.type = envelope.error ?? 'UnknownError';
+    super(envelope.message ?? "API error");
+    this.name = "ApiResponseError";
+    this.type = envelope.error ?? "UnknownError";
     this.code = envelope.code ?? 500;
     this.response = response;
   }
 }
 
-const envConfig = (window as unknown as Record<string, unknown>).__ENV__ as Record<string, string> | undefined;
+const envConfig = (window as unknown as Record<string, unknown>).__ENV__ as
+  | Record<string, string>
+  | undefined;
 const api = axios.create({
   baseURL:
     envConfig?.VITE_API_BASE_URL ||
     import.meta.env.VITE_API_BASE_URL ||
     envConfig?.VITE_API_URL ||
     import.meta.env.VITE_API_URL ||
-    '/api',
+    "/api",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   withCredentials: true,
 });
@@ -56,10 +62,10 @@ function processQueue(error: unknown, token: string | null) {
   pendingQueue = [];
 }
 
-const AUTH_EXEMPT_PATHS = ['/auth/login/', '/auth/register/', '/auth/refresh/'];
+const AUTH_EXEMPT_PATHS = ["/auth/login/", "/auth/register/", "/auth/refresh/"];
 
 api.interceptors.request.use((config) => {
-  const url = config.url || '';
+  const url = config.url || "";
   if (AUTH_EXEMPT_PATHS.some((p) => url.includes(p))) {
     return config;
   }
@@ -79,8 +85,11 @@ api.interceptors.response.use(
     if (response.status === 204 || !response.data) {
       return response;
     }
-    if (typeof response.data === 'object' && ('data' in response.data || response.data.status === 'error')) {
-      if (response.data.status === 'error') {
+    if (
+      typeof response.data === "object" &&
+      ("data" in response.data || response.data.status === "error")
+    ) {
+      if (response.data.status === "error") {
         return Promise.reject(
           new ApiResponseError(response.data, {
             status: response.status,
@@ -89,7 +98,7 @@ api.interceptors.response.use(
           }),
         );
       }
-      if (response.data.status === 'success') {
+      if (response.data.status === "success") {
         const envelope = response.data;
         response.data = envelope.data;
         response._meta = envelope.meta ?? null;
@@ -105,7 +114,11 @@ api.interceptors.response.use(
       return error.response;
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry && !AUTH_EXEMPT_PATHS.some((p) => originalRequest.url?.includes(p))) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !AUTH_EXEMPT_PATHS.some((p) => originalRequest.url?.includes(p))
+    ) {
       const currentToken = useAuthStore.getState().token;
 
       if (currentToken && currentToken === lastRefreshedToken) {
@@ -130,9 +143,9 @@ api.interceptors.response.use(
       try {
         const refreshToken = useAuthStore.getState().refreshToken;
         const { data } = await api.post<{ access: string; refresh?: string }>(
-          '/auth/refresh/',
+          "/auth/refresh/",
           refreshToken ? { refresh: refreshToken } : {},
-          { withCredentials: true }
+          { withCredentials: true },
         );
         const newToken = data.access;
         lastRefreshedToken = newToken;
@@ -146,7 +159,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         useAuthStore.getState().clearAuth();
-        console.warn('Session expired. Please log in again.');
+        console.warn("Session expired. Please log in again.");
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -154,7 +167,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
