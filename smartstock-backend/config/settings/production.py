@@ -82,6 +82,7 @@ if _cache_url:
     }
 else:
     import logging as _logging
+
     _logging.getLogger('config.settings.production').warning(
         'CACHE_REDIS_URL and REDIS_URL not set — using local memory cache'
     )
