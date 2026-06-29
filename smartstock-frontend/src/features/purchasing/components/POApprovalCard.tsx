@@ -209,7 +209,8 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
             </div>
           )}
 
-          <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 px-6 pt-4 pb-6 ${!showRejectReason ? 'border-t border-hairline' : ''}`}>
+          {!showRejectReason && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 px-6 pt-4 pb-6 border-t border-hairline">
             <Button
               variant="ghost"
               size="md"
@@ -248,6 +249,7 @@ export default function POApprovalCard({ po, readOnly = false, onApproved, onRej
               {approveMutation.isPending ? 'Approving...' : pendingConfirm ? 'Confirm approve?' : 'Approve'}
             </Button>
           </div>
+          )}
         </div>
       )}
     </div>
