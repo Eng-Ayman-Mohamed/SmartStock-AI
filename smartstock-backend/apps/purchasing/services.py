@@ -146,9 +146,7 @@ class PurchasingService:
                 message_id=message_id,
             )
         except Exception:
-            logger.warning(
-                'PO-%s: Celery unavailable, skipping email dispatch', po.id
-            )
+            logger.warning('PO-%s: Celery unavailable, skipping email dispatch', po.id)
             return
         logger.info(
             'PO-%s supplier email dispatched to %s (message_id=%s)',

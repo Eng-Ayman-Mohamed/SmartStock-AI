@@ -1,13 +1,10 @@
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock
 
 from django.test import RequestFactory, TestCase
-from rest_framework.exceptions import ValidationError
 
 from apps.inventory.models import (
-    Category,
-    Product,
     SKU,
-    SalesRecord,
+    Category,
     StockLevel,
     Supplier,
 )
@@ -17,16 +14,16 @@ from apps.inventory.serializers import (
     ProductSerializer,
     ProductWriteSerializer,
     SalesRecordSerializer,
-    SKUSerializer,
     SKUCompactSerializer,
+    SKUSerializer,
     StockLevelSerializer,
     SupplierSerializer,
 )
 
-
 # ---------------------------------------------------------------------------
 # CategorySerializer
 # ---------------------------------------------------------------------------
+
 
 class CategorySerializerTest(TestCase):
     def test_valid_category(self):
@@ -54,6 +51,7 @@ class CategorySerializerTest(TestCase):
 # ---------------------------------------------------------------------------
 # SKUCompactSerializer
 # ---------------------------------------------------------------------------
+
 
 class SKUCompactSerializerTest(TestCase):
     def test_basic_fields(self):
@@ -85,9 +83,7 @@ class SKUCompactSerializerTest(TestCase):
         sku = MagicMock(spec=SKU)
         sku.id = 2
         sku.code = 'SKU-002'
-        type(sku).stock_level = PropertyMock(
-            side_effect=StockLevel.DoesNotExist
-        )
+        type(sku).stock_level = PropertyMock(side_effect=StockLevel.DoesNotExist)
 
         s = SKUCompactSerializer(sku)
         data = s.data
@@ -100,6 +96,7 @@ class SKUCompactSerializerTest(TestCase):
 # ---------------------------------------------------------------------------
 # ProductSerializer / ProductListSerializer
 # ---------------------------------------------------------------------------
+
 
 class ProductSerializerTest(TestCase):
     def test_fields_include_skus(self):
@@ -127,6 +124,7 @@ class ProductListSerializerTest(TestCase):
 # ---------------------------------------------------------------------------
 # ProductWriteSerializer
 # ---------------------------------------------------------------------------
+
 
 class ProductWriteSerializerTest(TestCase):
     def test_valid_product(self):
@@ -193,6 +191,7 @@ class ProductWriteSerializerTest(TestCase):
 # SKUSerializer
 # ---------------------------------------------------------------------------
 
+
 class SKUSerializerTest(TestCase):
     def test_valid_sku(self):
         s = SKUSerializer(data={'code': 'SKU-123', 'product': 1})
@@ -230,6 +229,7 @@ class SKUSerializerTest(TestCase):
 # StockLevelSerializer
 # ---------------------------------------------------------------------------
 
+
 class StockLevelSerializerTest(TestCase):
     def test_valid_stock_level(self):
         s = StockLevelSerializer(
@@ -252,16 +252,12 @@ class StockLevelSerializerTest(TestCase):
         self.assertIn('reorder_point', s.errors)
 
     def test_reorder_quantity_below_one(self):
-        s = StockLevelSerializer(
-            data={'sku': 1, 'quantity_on_hand': 0, 'reorder_quantity': 0}
-        )
+        s = StockLevelSerializer(data={'sku': 1, 'quantity_on_hand': 0, 'reorder_quantity': 0})
         self.assertFalse(s.is_valid())
         self.assertIn('reorder_quantity', s.errors)
 
     def test_reorder_quantity_exactly_one(self):
-        s = StockLevelSerializer(
-            data={'sku': 1, 'quantity_on_hand': 0, 'reorder_quantity': 1}
-        )
+        s = StockLevelSerializer(data={'sku': 1, 'quantity_on_hand': 0, 'reorder_quantity': 1})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_quantity_available_property(self):
@@ -299,7 +295,9 @@ class StockLevelSerializerTest(TestCase):
         instance = MagicMock(spec=StockLevel)
         instance.sku = mock_sku
 
-        s = StockLevelSerializer(instance=instance, data={'reorder_point': 50, 'quantity_on_hand': 0})
+        s = StockLevelSerializer(
+            instance=instance, data={'reorder_point': 50, 'quantity_on_hand': 0}
+        )
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_reorder_point_no_instance(self):
@@ -311,24 +309,19 @@ class StockLevelSerializerTest(TestCase):
 # SalesRecordSerializer
 # ---------------------------------------------------------------------------
 
+
 class SalesRecordSerializerTest(TestCase):
     def test_valid_record(self):
-        s = SalesRecordSerializer(
-            data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 10}
-        )
+        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 10})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_quantity_sold_negative(self):
-        s = SalesRecordSerializer(
-            data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': -5}
-        )
+        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': -5})
         self.assertFalse(s.is_valid())
         self.assertIn('quantity_sold', s.errors)
 
     def test_quantity_sold_zero(self):
-        s = SalesRecordSerializer(
-            data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 0}
-        )
+        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 0})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_date_to_before_date_from(self):
@@ -357,9 +350,7 @@ class SalesRecordSerializerTest(TestCase):
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_dates_not_required(self):
-        s = SalesRecordSerializer(
-            data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 10}
-        )
+        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 10})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_only_date_from_no_error(self):
@@ -395,6 +386,7 @@ class SalesRecordSerializerTest(TestCase):
 # ---------------------------------------------------------------------------
 # SupplierSerializer
 # ---------------------------------------------------------------------------
+
 
 class SupplierSerializerTest(TestCase):
     def test_valid_supplier(self):
@@ -528,9 +520,7 @@ class SupplierSerializerTest(TestCase):
         self.assertEqual(data['contact_phone'], '555-1234')
 
     def test_masking_with_none_phone(self):
-        supplier = Supplier(
-            id=1, name='Test', contact_email='test@example.com', contact_phone=None
-        )
+        supplier = Supplier(id=1, name='Test', contact_email='test@example.com', contact_phone=None)
         ctx = {'request': self._make_request('viewer')}
         s = SupplierSerializer(supplier, context=ctx)
         data = s.data
@@ -538,9 +528,7 @@ class SupplierSerializerTest(TestCase):
         self.assertIsNone(data['contact_phone'])
 
     def test_masking_with_none_email(self):
-        supplier = Supplier(
-            id=1, name='Test', contact_email=None, contact_phone='555-1234'
-        )
+        supplier = Supplier(id=1, name='Test', contact_email=None, contact_phone='555-1234')
         ctx = {'request': self._make_request('viewer')}
         s = SupplierSerializer(supplier, context=ctx)
         data = s.data

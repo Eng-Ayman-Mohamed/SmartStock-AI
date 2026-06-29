@@ -2,18 +2,16 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from apps.inventory.services import (
-    SKUService,
-    SalesRecordService,
     InventoryService,
+    SalesRecordService,
+    SKUService,
     _invalidate_product_cache,
     get_product_cache_version,
-    stock_adjusted,
 )
 from core.exceptions import StockNotFoundException
-
 
 # ---------------------------------------------------------------------------
 # Module-level helpers
@@ -61,8 +59,11 @@ class InventoryServiceInitTest(TestCase):
         sku_repo = MagicMock()
         supplier_repo = MagicMock()
         svc = InventoryService(
-            repo=repo, stock_repo=stock_repo, cat_repo=cat_repo,
-            sku_repo=sku_repo, supplier_repo=supplier_repo,
+            repo=repo,
+            stock_repo=stock_repo,
+            cat_repo=cat_repo,
+            sku_repo=sku_repo,
+            supplier_repo=supplier_repo,
         )
         self.assertIs(svc.repo, repo)
         self.assertIs(svc.stock_repo, stock_repo)
@@ -333,7 +334,7 @@ class FilterByStockStatusTest(TestCase):
     def test_unknown_value_returns_unfiltered(self):
         qs = MagicMock()
         qs.annotate.return_value = qs
-        result = InventoryService.filter_by_stock_status(qs, 'unknown')
+        InventoryService.filter_by_stock_status(qs, 'unknown')
         qs.annotate.assert_called_once()
         qs.filter.assert_not_called()
 
@@ -356,7 +357,11 @@ class AdjustStockTest(TestCase):
         repo.adjust_stock.assert_called_once_with(7, 5)
         mock_inv.assert_called_once()
         mock_signal.send.assert_called_once_with(
-            sender=svc, stock_level=stock, delta=5, user=user, reason='restock',
+            sender=svc,
+            stock_level=stock,
+            delta=5,
+            user=user,
+            reason='restock',
         )
         self.assertEqual(result, stock)
 
@@ -367,9 +372,13 @@ class AdjustStockTest(TestCase):
         svc = InventoryService(repo=repo)
         stock = MagicMock()
         repo.adjust_stock.return_value = stock
-        result = svc.adjust_stock(1, -3)
+        svc.adjust_stock(1, -3)
         mock_signal.send.assert_called_once_with(
-            sender=svc, stock_level=stock, delta=-3, user=None, reason='',
+            sender=svc,
+            stock_level=stock,
+            delta=-3,
+            user=None,
+            reason='',
         )
 
 
@@ -385,8 +394,10 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.sku_repo = MagicMock()
         self.supplier_repo = MagicMock()
         self.svc = InventoryService(
-            repo=self.repo, stock_repo=self.stock_repo,
-            sku_repo=self.sku_repo, supplier_repo=self.supplier_repo,
+            repo=self.repo,
+            stock_repo=self.stock_repo,
+            sku_repo=self.sku_repo,
+            supplier_repo=self.supplier_repo,
         )
 
     @patch('apps.inventory.services._invalidate_product_cache')
@@ -398,13 +409,15 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.stock_repo.update.return_value = MagicMock(quantity_on_hand=15, id=30)
         self.supplier_repo.get_by_name.return_value = MagicMock()
 
-        result = self.svc.apply_confirmed_invoice({
-            'sku_code': 'sku-a',
-            'product_name': 'Widget',
-            'quantity_received': '5',
-            'unit_price': '9.99',
-            'supplier_name': 'Acme',
-        })
+        result = self.svc.apply_confirmed_invoice(
+            {
+                'sku_code': 'sku-a',
+                'product_name': 'Widget',
+                'quantity_received': '5',
+                'unit_price': '9.99',
+                'supplier_name': 'Acme',
+            }
+        )
 
         self.assertEqual(result['quantity_added'], 5)
         self.stock_repo.update.assert_called_once()
@@ -417,11 +430,13 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.stock_repo.create.return_value = MagicMock(id=40, quantity_on_hand=5)
         self.supplier_repo.get_by_name.return_value = MagicMock()
 
-        result = self.svc.apply_confirmed_invoice({
-            'sku_code': 'SKU-A',
-            'product_name': 'Widget',
-            'quantity_received': '5',
-        })
+        result = self.svc.apply_confirmed_invoice(
+            {
+                'sku_code': 'SKU-A',
+                'product_name': 'Widget',
+                'quantity_received': '5',
+            }
+        )
         self.stock_repo.create.assert_called_once()
         self.assertEqual(result['quantity_added'], 5)
 
@@ -434,13 +449,15 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.stock_repo.create.return_value = MagicMock(id=70, quantity_on_hand=10)
         self.supplier_repo.get_by_name.return_value = MagicMock()
 
-        result = self.svc.apply_confirmed_invoice({
-            'sku_code': 'NEW-SKU',
-            'product_name': 'New Product',
-            'quantity_received': '10',
-            'unit_price': '5.00',
-            'supplier_name': 'Acme',
-        })
+        self.svc.apply_confirmed_invoice(
+            {
+                'sku_code': 'NEW-SKU',
+                'product_name': 'New Product',
+                'quantity_received': '10',
+                'unit_price': '5.00',
+                'supplier_name': 'Acme',
+            }
+        )
         self.repo.create.assert_called_once()
         self.sku_repo.create.assert_called_once()
         self.stock_repo.create.assert_called_once()
@@ -455,13 +472,15 @@ class ApplyConfirmedInvoiceTest(TestCase):
         supplier = MagicMock()
         self.supplier_repo.get_by_name.return_value = supplier
 
-        self.svc.apply_confirmed_invoice({
-            'sku_code': 'SKU-A',
-            'product_name': 'Widget',
-            'quantity_received': '5',
-            'unit_price': '12.50',
-            'supplier_name': 'Acme',
-        })
+        self.svc.apply_confirmed_invoice(
+            {
+                'sku_code': 'SKU-A',
+                'product_name': 'Widget',
+                'quantity_received': '5',
+                'unit_price': '12.50',
+                'supplier_name': 'Acme',
+            }
+        )
         self.repo.update.assert_called_once_with(
             20, {'unit_price': Decimal('12.50'), 'supplier': supplier}
         )
@@ -474,12 +493,14 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.stock_repo.get_by_sku_id.return_value = stock
         self.stock_repo.update.return_value = MagicMock(quantity_on_hand=15, id=30)
 
-        self.svc.apply_confirmed_invoice({
-            'sku_code': 'SKU-A',
-            'product_name': 'Widget',
-            'quantity_received': '5',
-            'supplier_name': '',
-        })
+        self.svc.apply_confirmed_invoice(
+            {
+                'sku_code': 'SKU-A',
+                'product_name': 'Widget',
+                'quantity_received': '5',
+                'supplier_name': '',
+            }
+        )
         self.supplier_repo.get_by_name.assert_not_called()
         self.repo.update.assert_not_called()
 
@@ -491,12 +512,14 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.stock_repo.get_by_sku_id.return_value = stock
         self.stock_repo.update.return_value = MagicMock(quantity_on_hand=15, id=30)
 
-        self.svc.apply_confirmed_invoice({
-            'sku_code': 'SKU-A',
-            'product_name': 'Widget',
-            'quantity_received': '5',
-            'supplier_name': '  ',
-        })
+        self.svc.apply_confirmed_invoice(
+            {
+                'sku_code': 'SKU-A',
+                'product_name': 'Widget',
+                'quantity_received': '5',
+                'supplier_name': '  ',
+            }
+        )
         self.supplier_repo.get_by_name.assert_not_called()
 
     @patch('apps.inventory.services._invalidate_product_cache')
@@ -508,12 +531,14 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.stock_repo.update.return_value = MagicMock(quantity_on_hand=15, id=30)
         self.supplier_repo.get_by_name.return_value = MagicMock()
 
-        self.svc.apply_confirmed_invoice({
-            'sku_code': 'SKU-A',
-            'product_name': 'Widget',
-            'quantity_received': '5',
-            'supplier_name': 'Acme',
-        })
+        self.svc.apply_confirmed_invoice(
+            {
+                'sku_code': 'SKU-A',
+                'product_name': 'Widget',
+                'quantity_received': '5',
+                'supplier_name': 'Acme',
+            }
+        )
         self.repo.update.assert_not_called()
 
 
@@ -529,8 +554,10 @@ class ApplyConfirmedInvoiceLinesTest(TestCase):
         self.sku_repo = MagicMock()
         self.supplier_repo = MagicMock()
         self.svc = InventoryService(
-            repo=self.repo, stock_repo=self.stock_repo,
-            sku_repo=self.sku_repo, supplier_repo=self.supplier_repo,
+            repo=self.repo,
+            stock_repo=self.stock_repo,
+            sku_repo=self.sku_repo,
+            supplier_repo=self.supplier_repo,
         )
 
     @patch('apps.inventory.services._invalidate_product_cache')
@@ -565,8 +592,11 @@ class ApplyConfirmedInvoiceLinesTest(TestCase):
             if data.get('sku_code') == 'BAD-SKU':
                 raise ValidationError('Invalid SKU')
             return {
-                'product_id': 20, 'sku_id': 10, 'stock_level_id': 30,
-                'quantity_added': 5, 'quantity_on_hand': 15,
+                'product_id': 20,
+                'sku_id': 10,
+                'stock_level_id': 30,
+                'quantity_added': 5,
+                'quantity_on_hand': 15,
             }
 
         self.svc.apply_confirmed_invoice = fake_apply
@@ -837,7 +867,7 @@ class SKUServiceTest(TestCase):
         svc = SKUService()
         svc.repo = MagicMock()
         data = {'code': 'SKU-X'}
-        result = svc.create_sku(data)
+        svc.create_sku(data)
         svc.repo.create.assert_called_once_with(data)
         mock_inv.assert_called_once()
 
@@ -847,7 +877,7 @@ class SKUServiceTest(TestCase):
         svc = SKUService()
         svc.repo = MagicMock()
         data = {'code': 'SKU-Y'}
-        result = svc.update_sku(3, data)
+        svc.update_sku(3, data)
         svc.repo.update.assert_called_once_with(3, data)
         mock_inv.assert_called_once()
 

@@ -1,8 +1,5 @@
-from unittest.mock import MagicMock, patch
-
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
-from rest_framework.exceptions import ValidationError
 
 from apps.authentication.serializers import (
     CookieTokenRefreshSerializer,
@@ -39,18 +36,22 @@ class _BaseAuthSerializerTest(TestCase):
 class FullNameHelperTest(TestCase):
     def test_full_name_with_both(self):
         from apps.authentication.serializers import _full_name
+
         self.assertEqual(_full_name('John', 'Doe'), 'John Doe')
 
     def test_full_name_first_only(self):
         from apps.authentication.serializers import _full_name
+
         self.assertEqual(_full_name('John', ''), 'John')
 
     def test_full_name_last_only(self):
         from apps.authentication.serializers import _full_name
+
         self.assertEqual(_full_name('', 'Doe'), 'Doe')
 
     def test_full_name_neither(self):
         from apps.authentication.serializers import _full_name
+
         self.assertEqual(_full_name('', ''), '')
 
 
@@ -113,6 +114,7 @@ class CustomTokenObtainPairSerializerTest(_BaseAuthSerializerTest):
 class CookieTokenRefreshSerializerTest(_BaseAuthSerializerTest):
     def _get_refresh_token(self):
         from rest_framework_simplejwt.tokens import RefreshToken
+
         return str(RefreshToken.for_user(self.user))
 
     def test_validate_with_body_token(self):
@@ -592,6 +594,7 @@ class RoleUpdateSerializerTest(_BaseAuthSerializerTest):
 class VerifyEmailSerializerTest(TestCase):
     def test_valid_uuid_token(self):
         import uuid
+
         data = {'token': str(uuid.uuid4())}
         s = VerifyEmailSerializer(data=data)
         self.assertTrue(s.is_valid(), s.errors)

@@ -1,4 +1,3 @@
-import math
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +7,6 @@ from apps.forecasting.models import ForecastResult
 from apps.forecasting.repositories import ForecastingRepository
 from apps.forecasting.services import (
     DASHBOARD_CACHE_VERSION,
-    MAX_DASHBOARD_SKUS,
     ForecastingService,
 )
 from apps.inventory.models import SKU, Category, Product, StockLevel, Supplier
@@ -152,9 +150,7 @@ class ForecastingServiceGetDecisionForecastDataBySkuTest(ForecastingServiceTestB
     def test_with_forecasts(self):
         forecast = MagicMock(sku=MagicMock(code='SKU-1'), predicted_quantity=15.0)
         self.repo.get_next_for_sku.return_value = [forecast]
-        result = self.service.get_decision_forecast_data_by_sku(
-            sku_id=self.sku.id, forecast_days=7
-        )
+        result = self.service.get_decision_forecast_data_by_sku(sku_id=self.sku.id, forecast_days=7)
         self.assertEqual(result['sku_id'], self.sku.id)
         self.assertEqual(result['sku_code'], 'SKU-1')
         self.assertEqual(result['total_predicted_demand'], 15.0)
@@ -190,9 +186,7 @@ class ForecastingServiceGetDecisionForecastDataBySkuTest(ForecastingServiceTestB
         f1 = MagicMock(sku=MagicMock(code='SKU-1'), predicted_quantity=12.0)
         f2 = MagicMock(sku=MagicMock(code='SKU-1'), predicted_quantity=18.0)
         self.repo.get_next_for_sku.return_value = [f1, f2]
-        result = self.service.get_decision_forecast_data_by_sku(
-            sku_id=self.sku.id, forecast_days=7
-        )
+        result = self.service.get_decision_forecast_data_by_sku(sku_id=self.sku.id, forecast_days=7)
         self.assertEqual(result['total_predicted_demand'], 30.0)
 
 
@@ -235,7 +229,7 @@ class ForecastingServicePersistReorderFlagTest(ForecastingServiceTestBase):
             'open_po_id': 7,
             'reasoning': 'Reorder needed',
         }
-        result = self.service.persist_reorder_flag(decision)
+        self.service.persist_reorder_flag(decision)
         self.repo.get_sku.assert_called_once_with(42)
         self.repo.get_sku_by_code.assert_not_called()
         call_kwargs = self.repo.upsert_open_reorder_flag.call_args
@@ -256,7 +250,7 @@ class ForecastingServicePersistReorderFlagTest(ForecastingServiceTestBase):
             'has_open_po': False,
             'reasoning': 'Stock OK',
         }
-        result = self.service.persist_reorder_flag(decision)
+        self.service.persist_reorder_flag(decision)
         call_kwargs = self.repo.upsert_open_reorder_flag.call_args
         self.assertIsNone(call_kwargs[1]['data']['open_po_id'])
 
@@ -570,9 +564,7 @@ class ForecastingServiceComputeDashboardTest(ForecastingServiceTestBase):
         self.assertEqual(sku_data['lead_time_days'], 7)
 
     def test_compute_dashboard_empty_when_exception(self):
-        with patch(
-            'apps.forecasting.services.ForecastResult'
-        ) as mock_fr:
+        with patch('apps.forecasting.services.ForecastResult') as mock_fr:
             mock_fr.objects.filter.side_effect = Exception('DB crash')
             result = self.service._compute_dashboard()
             self.assertEqual(result['skus'], [])
@@ -647,8 +639,6 @@ class ForecastingServiceRunForecastTest(ForecastingServiceTestBase):
 
     @patch('apps.forecasting.services.prepare_forecast_dataframe')
     def test_run_forecast_exception_per_sku(self, mock_prepare):
-        import pandas as pd
-
         mock_prepare.side_effect = [Exception('fail'), None]
         sku2 = MagicMock(id=2, code='SKU-2')
         self.repo.get_all_skus.return_value = [self.sku, sku2]
