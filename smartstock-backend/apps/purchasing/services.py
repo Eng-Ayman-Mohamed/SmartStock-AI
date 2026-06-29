@@ -53,6 +53,8 @@ class PurchasingService:
         total_cost=None,
         agent_reasoning: str = '',
         notes: str = '',
+        created_by_agent: bool = False,
+        agent_name: str = '',
     ):
         active_statuses = ['draft', 'pending_approval', 'approved']
         existing = (
@@ -83,6 +85,8 @@ class PurchasingService:
             'status': 'draft',
             'agent_reasoning': agent_reasoning,
             'notes': notes,
+            'created_by_agent': created_by_agent,
+            'agent_name': agent_name,
         }
         if po_number:
             data['po_number'] = po_number
@@ -228,6 +232,13 @@ class PurchasingService:
 
     def get_open_po_status(self, product_id: int) -> dict:
         open_po = self.repo.get_open_for_product(product_id)
+        return {
+            'has_open_po': open_po is not None,
+            'open_po_id': open_po.id if open_po else None,
+        }
+
+    def get_open_po_status_by_sku(self, sku_id: int) -> dict:
+        open_po = self.repo.get_open_for_sku(sku_id)
         return {
             'has_open_po': open_po is not None,
             'open_po_id': open_po.id if open_po else None,
