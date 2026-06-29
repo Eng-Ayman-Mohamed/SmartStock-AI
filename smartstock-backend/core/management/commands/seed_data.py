@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+import uuid
 from datetime import date, datetime, timedelta
 
 from django.contrib.auth.hashers import make_password
@@ -146,6 +147,7 @@ def seed_users(scale: int) -> list[CustomUser]:
             last_name=last_name,
             role=role,
             is_active=True,
+            email_verified=random.random() < 0.85,
             date_joined=aware_dt(start_date='-2y', end_date='-1d'),
         )
         users.append(user)
@@ -325,7 +327,7 @@ def seed_stock_levels(scale: int, skus: list[SKU]) -> list[StockLevel]:
 
     for sku in skus[:count]:
         on_hand = random.randint(0, 1000)
-        reserved = random.randint(0, min(on_hand, 100))
+        reserved = int(on_hand * random.uniform(0, 0.15))
         levels.append(
             StockLevel(
                 sku=sku,
@@ -427,10 +429,13 @@ def seed_purchase_orders(
     count = BASE_COUNTS[PurchasingPurchaseOrder] * scale
     orders = []
     po_counter = 0
+    CONSTRAINTED_STATUSES = {'draft', 'pending_approval', 'approved'}
+    used_constrained_combos: set[tuple[int, int, int, str]] = set()
 
     for _ in range(count):
         po_counter += 1
         chosen_sku = random.choice(skus)
+        supplier = random.choice(suppliers) if suppliers else None
         quantity = random.choice([10, 25, 50, 100, 200, 500, 1000])
         unit_cost = round(random.uniform(1, 500), 2)
         total_cost = round(quantity * unit_cost, 2)
@@ -438,6 +443,13 @@ def seed_purchase_orders(
             list(PO_STATUS_WEIGHTS.keys()),
             weights=list(PO_STATUS_WEIGHTS.values()),
         )[0]
+        if status in CONSTRAINTED_STATUSES and supplier:
+            key = (chosen_sku.id, supplier.id, quantity, status)
+            while key in used_constrained_combos:
+                quantity = random.randint(5, 1000)
+                total_cost = round(quantity * unit_cost, 2)
+                key = (chosen_sku.id, supplier.id, quantity, status)
+            used_constrained_combos.add(key)
 
         requested_by = random.choice(users) if users else None
         approved_by = None
@@ -458,14 +470,14 @@ def seed_purchase_orders(
         orders.append(
             PurchasingPurchaseOrder(
                 sku=chosen_sku,
-                supplier=random.choice(suppliers) if suppliers else None,
+                supplier=supplier,
                 quantity=quantity,
                 total_cost=total_cost,
                 status=status,
                 requested_by=requested_by,
                 approved_by=approved_by,
                 agent_reasoning=reasoning,
-                po_number=f'PO-{date.today().year}-{po_counter:05d}',
+                po_number=f'PO-{date.today().year}-{po_counter:05d}-{uuid.uuid4().hex[:4]}',
                 notes=fake.paragraph(nb_sentences=2) if random.random() < 0.3 else '',
                 created_at=created,
             )
@@ -536,7 +548,7 @@ def seed_reorder_flags(
     sku_stock = {sl.sku.id: sl for sl in stock_levels}
     sku_open_pos: dict[int, list] = {}
     for po in purchase_orders:
-        if po.status not in ('rejected', 'cancelled', 'failed'):
+        if po.status not in ('rejected', 'cancelled', 'failed', 'timeout'):
             sku_open_pos.setdefault(po.sku_id, []).append(po)
 
     flags = []
@@ -639,21 +651,33 @@ AUDIT_EVENTS_POOL = [
     'INVOICE_CONFIRMED',
     'INVOICE_REJECTED',
     'AI_RAG_QUERY',
+    'AI_NL_QUERY',
+    'AI_CHAT_QUERY',
     'AGENT_RUN_COMPLETED',
+    'PROMPT_INJECTION_ATTEMPT',
+    'VISION_EXTRACTION_FAILED',
+    'EMAIL_DELIVERY_FAILED',
+    'SUPPLIER_TIMEOUT',
 ]
 AUDIT_EVENT_WEIGHTS = [
-    0.25,
-    0.08,
-    0.06,
-    0.04,
-    0.04,
-    0.1,
-    0.08,
-    0.08,
+    0.21,
+    0.07,
     0.05,
     0.03,
-    0.12,
+    0.03,
+    0.09,
     0.07,
+    0.07,
+    0.04,
+    0.02,
+    0.10,
+    0.06,
+    0.04,
+    0.06,
+    0.01,
+    0.01,
+    0.02,
+    0.02,
 ]
 
 ENTITY_TYPES = [
@@ -702,7 +726,12 @@ class Command(BaseCommand):
             '--truncate',
             action=argparse.BooleanOptionalAction,
             default=True,
-            help='Truncate all tables before seeding (default: True). Use --no-truncate to skip.',
+            help=(
+                'Truncate all tables before seeding (default: True). '
+                'Use --no-truncate to skip. '
+                'WARNING: --no-truncate may cause IntegrityError on unique fields '
+                '(po_number, SKU code, category name, etc.) if run more than once.'
+            ),
         )
         parser.add_argument(
             '--validate',
@@ -824,7 +853,10 @@ class Command(BaseCommand):
         for model in all_models:
             count = model.objects.count()
             expected = BASE_COUNTS.get(model, 0)
-            status_msg = '✓' if count > 0 else '✗'
+            if model is ReorderFlag:
+                status_msg = '✓' if count > 0 else '✗'
+            else:
+                status_msg = '✓' if count >= expected else '~' if count > 0 else '✗'
             checks.append((model.__name__, count, expected, status_msg))
 
         header = f'{"Model":<25} {"Count":>8} {"Expected":>10}  Status'

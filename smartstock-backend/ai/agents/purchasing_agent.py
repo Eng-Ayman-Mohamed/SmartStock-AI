@@ -14,6 +14,7 @@ from apps.monitoring.tasks import record_agent_run_task
 from apps.purchasing.services import PurchasingService
 from apps.purchasing.workflow_models import PurchaseOrderWorkflow
 from apps.purchasing.workflow_services import PurchaseOrderWorkflowService
+from core.exceptions import IllegalPOTransitionError
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,8 @@ class PurchasingAgent:
                 'user_id': context.get('user_id'),
                 'agent_reasoning': context.get('agent_reasoning', ''),
                 'total_cost': context.get('total_cost', '0.00'),
+                'created_by_agent': True,
+                'agent_name': 'purchasing_agent',
             },
             trace_spans,
         )
@@ -146,6 +149,17 @@ class PurchasingAgent:
 
         # Create workflow record
         workflow = self.workflow_service.create_workflow(po_id)
+
+        # Transition from draft → pending_approval for newly created POs.
+        # Skip when draft_po returned existing (dedup) — it may already be past draft.
+        if draft_result.get('status') == 'draft':
+            try:
+                self.purchasing_service.transition_po_status(po_id, 'pending_approval')
+            except IllegalPOTransitionError:
+                logger.warning(
+                    'Transition draft→pending_approval failed for PO-%s (already pending or beyond)',
+                    po_id,
+                )
 
         # Step 2: HITL Approval Gate
         approval_result = self._handle_approval_gate(po_id, workflow.id, context, trace_spans)
@@ -208,6 +222,7 @@ class PurchasingAgent:
             return None
 
         # No auto_approve and no callback: return pending status for caller to handle
+        # (transition from draft → pending_approval already happened in _execute_workflow)
         return {
             'agent': 'purchasing_agent',
             'status': 'pending_approval',

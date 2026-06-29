@@ -151,7 +151,11 @@ class StockLevelRepository(BaseRepository):
         )
 
     def get_by_sku_id(self, sku_id: int):
-        return StockLevel.objects.filter(sku_id=sku_id).first()
+        return (
+            StockLevel.objects.select_related('sku__product__supplier')
+            .filter(sku_id=sku_id)
+            .first()
+        )
 
 
 class SalesRecordRepository(BaseRepository):

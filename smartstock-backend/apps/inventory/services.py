@@ -84,6 +84,27 @@ class InventoryService:
             'safety_stock': product.safety_stock,
         }
 
+    def get_decision_stock_data_by_sku(self, sku_id: int) -> dict:
+        stock = self.stock_repo.get_by_sku_id(sku_id)
+        if stock is None:
+            from core.exceptions import StockNotFoundException
+
+            raise StockNotFoundException(f'No stock level found for SKU {sku_id}.')
+
+        product = stock.sku.product
+        supplier = product.supplier
+        lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
+        reorder_point = stock.reorder_point or product.reorder_point
+        return {
+            'sku_id': stock.sku_id,
+            'sku_code': stock.sku.code,
+            'product_id': product.id,
+            'quantity_available': stock.quantity_available,
+            'reorder_point': reorder_point,
+            'lead_time_days': lead_time_days,
+            'safety_stock': product.safety_stock,
+        }
+
     def get_low_stock_items(self):
         """Get low stock items (cached 5 min).
 

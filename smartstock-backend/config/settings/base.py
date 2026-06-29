@@ -383,8 +383,8 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.monitoring.tasks.evaluate_all_alerts_task',
         'schedule': 300,  # every 5 minutes
     },
-    'run-forecast-daily': {
-        'task': 'apps.forecasting.tasks.run_forecasting_agent',
+    'run-pipeline-daily': {
+        'task': 'apps.forecasting.tasks.run_agent_pipeline',
         'schedule': crontab(hour=2, minute=0),  # 02:00 UTC daily
     },
     'daily-evaluation-metrics': {

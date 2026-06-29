@@ -186,8 +186,28 @@ class ForecastingService:
             'total_predicted_demand': total_predicted,
         }
 
+    def get_decision_forecast_data_by_sku(self, sku_id: int, forecast_days: int = 7) -> dict:
+        forecast_days = max(1, int(forecast_days or 7))
+        forecasts = list(self.repo.get_next_for_sku(sku_id, forecast_days))
+        sku_code = forecasts[0].sku.code if forecasts else ''
+        if not sku_code:
+            sku = self.repo.get_sku(sku_id)
+            sku_code = sku.code if sku else ''
+
+        total_predicted = sum(float(f.predicted_quantity or 0) for f in forecasts)
+        return {
+            'sku_id': sku_id,
+            'sku_code': sku_code,
+            'forecast_days': forecast_days,
+            'total_predicted_demand': total_predicted,
+        }
+
     def persist_reorder_flag(self, decision: dict):
-        sku = self.repo.get_sku_by_code(decision['sku_code'])
+        sku_id = decision.get('sku_id')
+        if sku_id:
+            sku = self.repo.get_sku(sku_id)
+        else:
+            sku = self.repo.get_sku_by_code(decision['sku_code'])
         flag = self.repo.upsert_open_reorder_flag(
             sku_id=sku.id,
             data={
