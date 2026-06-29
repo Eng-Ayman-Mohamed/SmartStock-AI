@@ -80,3 +80,23 @@ def run_forecast_single_sku(self, sku_id: int):
         return {'sku_id': sku_id, 'status': 'failed', 'error': error}
 
     return {'sku_id': sku_id, 'status': 'success', 'result': result}
+
+
+@shared_task(bind=True, max_retries=1, acks_late=True)
+def run_agent_pipeline(self):
+    """Orchestrate Forecast -> Decide -> Purchase Order in a single task.
+
+    Replaces the old run_forecasting_agent in the daily beat schedule.
+    """
+    from apps.authentication.models import CustomUser
+
+    try:
+        system_user = CustomUser.objects.get(email='system@smartstock.ai')
+    except CustomUser.DoesNotExist:
+        logger.error('System bot user (system@smartstock.ai) not found — pipeline aborted')
+        return {'status': 'failed', 'error': 'system user not found'}
+
+    from .pipeline_orchestrator import AgentPipelineOrchestrator
+
+    orchestrator = AgentPipelineOrchestrator(system_user_id=system_user.id)
+    return orchestrator.run()

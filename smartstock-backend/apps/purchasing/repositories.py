@@ -33,6 +33,21 @@ class PurchasingRepository(BaseRepository):
             .first()
         )
 
+    def get_open_for_sku(self, sku_id: int):
+        open_statuses = [
+            PurchaseOrder.Status.DRAFT,
+            PurchaseOrder.Status.PENDING_APPROVAL,
+            PurchaseOrder.Status.APPROVED,
+            PurchaseOrder.Status.SENT,
+            PurchaseOrder.Status.EMAIL_SENT,
+            PurchaseOrder.Status.WAITING_CONFIRMATION,
+        ]
+        return (
+            PurchaseOrder.objects.filter(sku_id=sku_id, status__in=open_statuses)
+            .order_by('-created_at', '-id')
+            .first()
+        )
+
     def create(self, data: dict):
         return PurchaseOrder.objects.create(**data)
 

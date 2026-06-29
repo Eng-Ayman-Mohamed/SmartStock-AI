@@ -27,6 +27,9 @@ class PODraftTool(BaseTool):
             from apps.authentication.models import CustomUser
 
             user = None
+            created_by_agent = input.get('created_by_agent', False)
+            agent_name = input.get('agent_name', '')
+
             if user_id is not None:
                 try:
                     user = CustomUser.objects.get(id=int(user_id))
@@ -40,6 +43,8 @@ class PODraftTool(BaseTool):
                 user=user,
                 total_cost=total_cost,
                 agent_reasoning=agent_reasoning,
+                created_by_agent=created_by_agent,
+                agent_name=agent_name,
             )
             logger.info('Draft PO created: PO-%s for SKU %s', po.id, sku_id)
             return {

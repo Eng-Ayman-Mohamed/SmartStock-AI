@@ -41,6 +41,17 @@ class ForecastingRepository(BaseRepository):
             .order_by('forecast_date')[:forecast_days]
         )
 
+    def get_next_for_sku(self, sku_id: int, forecast_days: int = 7):
+        today = timezone.localdate()
+        return (
+            ForecastResult.objects.filter(
+                sku_id=sku_id,
+                forecast_date__gte=today,
+            )
+            .select_related('sku')
+            .order_by('forecast_date')[:forecast_days]
+        )
+
     def create(self, data: dict):
         return ForecastResult.objects.create(**data)
 
