@@ -129,7 +129,9 @@ class ProviderConfigGetEmbeddingsTest(TestCase):
         from ai.llm import provider_config
 
         with patch.object(provider_config, 'PROVIDER', 'groq'):
-            with patch.dict(os.environ, {'GOOGLE_API_KEY': 'ai-test', 'COHERE_API_KEY': ''}, clear=False):
+            with patch.dict(
+                os.environ, {'GOOGLE_API_KEY': 'ai-test', 'COHERE_API_KEY': ''}, clear=False
+            ):
                 original = os.environ.get('COHERE_API_KEY')
                 os.environ.pop('COHERE_API_KEY', None)
                 try:

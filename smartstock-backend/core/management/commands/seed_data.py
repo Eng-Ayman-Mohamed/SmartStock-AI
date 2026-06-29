@@ -412,11 +412,17 @@ def seed_purchase_orders(
             weights=list(PO_STATUS_WEIGHTS.values()),
         )[0]
 
-        active_statuses = {'draft', 'pending_approval', 'approved', 'email_sent',
-                           'sent', 'waiting_confirmation', 'confirmed'}
+        active_statuses = {
+            'draft',
+            'pending_approval',
+            'approved',
+            'email_sent',
+            'sent',
+            'waiting_confirmation',
+            'confirmed',
+        }
         if status in active_statuses:
-            key = (chosen_sku.id, chosen_supplier.id if chosen_supplier else None,
-                   quantity, status)
+            key = (chosen_sku.id, chosen_supplier.id if chosen_supplier else None, quantity, status)
             while key in existing_active:
                 chosen_sku = random.choice(skus)
                 chosen_supplier = random.choice(suppliers) if suppliers else None
@@ -427,8 +433,12 @@ def seed_purchase_orders(
                     list(PO_STATUS_WEIGHTS.keys()),
                     weights=list(PO_STATUS_WEIGHTS.values()),
                 )[0]
-                key = (chosen_sku.id, chosen_supplier.id if chosen_supplier else None,
-                       quantity, status)
+                key = (
+                    chosen_sku.id,
+                    chosen_supplier.id if chosen_supplier else None,
+                    quantity,
+                    status,
+                )
             existing_active.add(key)
 
         requested_by = random.choice(users) if users else None

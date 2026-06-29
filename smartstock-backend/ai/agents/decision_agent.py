@@ -213,8 +213,12 @@ class DecisionAgent:
         observations, agent_result = self._observe_sku(sku_id, trace_spans)
         stock = observations[self._tool_name(self.stock_sku_tool, 'stock_level_read_by_sku_tool')]
         lead_time_days = stock.get('lead_time_days') or 7
-        forecast = observations[self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool')]
-        po_status = observations[self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool')]
+        forecast = observations[
+            self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool')
+        ]
+        po_status = observations[
+            self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool')
+        ]
 
         total_predicted = float(forecast.get('total_predicted_demand') or 0)
         safety_stock = int(stock.get('safety_stock') or 0)
@@ -305,7 +309,9 @@ class DecisionAgent:
 
         def stock_level_read_by_sku_tool(sku_id: int) -> dict:
             output = self._run_tool(self.stock_sku_tool, {'sku_id': _target_sku_id}, trace_spans)
-            observations[self._tool_name(self.stock_sku_tool, 'stock_level_read_by_sku_tool')] = output
+            observations[self._tool_name(self.stock_sku_tool, 'stock_level_read_by_sku_tool')] = (
+                output
+            )
             return output
 
         def forecast_read_by_sku_tool(sku_id: int, forecast_days: int = 7) -> dict:
@@ -314,7 +320,9 @@ class DecisionAgent:
                 {'sku_id': _target_sku_id, 'forecast_days': forecast_days},
                 trace_spans,
             )
-            observations[self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool')] = output
+            observations[self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool')] = (
+                output
+            )
             return output
 
         def po_status_check_by_sku_tool(sku_id: int) -> dict:
@@ -323,7 +331,9 @@ class DecisionAgent:
                 {'sku_id': _target_sku_id},
                 trace_spans,
             )
-            observations[self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool')] = output
+            observations[
+                self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool')
+            ] = output
             return output
 
         return [
