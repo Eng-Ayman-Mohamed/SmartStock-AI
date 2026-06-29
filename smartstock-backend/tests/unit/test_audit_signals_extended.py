@@ -27,6 +27,7 @@ class LogEventTest(TestCase):
         mock_audit.objects.create.assert_called_once_with(
             event='TEST_EVENT',
             user=self.user,
+            entity_type='',
             entity_id=1,
             data_snapshot={'key': 'value'},
         )
@@ -37,6 +38,7 @@ class LogEventTest(TestCase):
         mock_audit.objects.create.assert_called_once_with(
             event='TEST_EVENT',
             user=self.user,
+            entity_type='',
             entity_id=None,
             data_snapshot={},
         )

@@ -92,19 +92,71 @@ class ForecastingService:
                 .order_by('sku', 'forecast_date')
             )
 
-            # Single pass builds forecasts_by_sku + sku_ids — eliminates duplicate query
-            forecasts_by_sku = defaultdict(list)
-            sku_ids = set()
-            for row in rows:
-                forecasts_by_sku[row.sku.id].append(row)
-                sku_ids.add(row.sku.id)
+        skus_map = {}
+        for row in rows:
+            sku_id = row.sku.id
+            if sku_id not in skus_map:
+                if len(skus_map) >= MAX_DASHBOARD_SKUS:
+                    continue  # Prevent unbounded cache entries
+                stock = stock_map.get(sku_id)
+                if stock:
+                    supplier = stock.sku.product.supplier
+                    lead_time = getattr(supplier, 'default_lead_time_days', None) or 7
+                    sku_forecasts = forecasts_by_sku.get(sku_id, [])[:lead_time]
+                    total_predicted = sum(f.predicted_quantity for f in sku_forecasts)
+                    safety_stock = stock.sku.product.safety_stock or 0
+                    stockout_risk = stock.quantity_available < total_predicted + safety_stock
+                else:
+                    stockout_risk = False
 
-            stock_map = {
-                sl.sku_id: sl
-                for sl in StockLevel.objects.select_related('sku__product__supplier').filter(
-                    sku_id__in=sku_ids
-                )
-            }
+                mape = row.mape
+                # Prefer MAPE from Prophet rows over fallback rows
+                if mape is None and forecasts_by_sku.get(sku_id):
+                    for f in forecasts_by_sku[sku_id]:
+                        if f.mape is not None:
+                            mape = f.mape
+                            break
+                # Normalize MAPE: Prophet returns raw ratio (0.0-1.0), seed data returns percentage (2-25).
+                # If MAPE > 1, it's already a percentage; if <= 1, multiply by 100.
+                if mape is not None and math.isfinite(mape):
+                    mape_pct = mape * 100 if mape <= 1.0 else mape
+                    confidence = max(0, min(100, round(100 - mape_pct)))
+                else:
+                    confidence = None
+
+                supplier_name = '—'
+                lead_time_days = 7
+                if stock:
+                    supplier = stock.sku.product.supplier
+                    if supplier:
+                        supplier_name = supplier.name
+                        lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
+
+                skus_map[sku_id] = {
+                    'id': row.sku.code,
+                    'sku_code': row.sku.code,
+                    'product_name': row.sku.product.name,
+                    'reorder_point': stock.reorder_point if stock else 0,
+                    'current_stock': stock.quantity_on_hand if stock else 0,
+                    'stockout_risk': stockout_risk,
+                    'supplier': supplier_name,
+                    'lead_time_days': lead_time_days,
+                    'mae': row.mae if row.mae is not None and math.isfinite(row.mae) else None,
+                    'mape': mape if mape is not None and math.isfinite(mape) else None,
+                    'model_version': row.model_version,
+                    'confidence_score': confidence,
+                    'predicted_demand_30d': 0,
+                    'forecast': [],
+                }
+            skus_map[sku_id]['forecast'].append(
+                {
+                    'date': row.forecast_date.isoformat(),
+                    'demand': round(row.predicted_quantity, 2),
+                    'upper_bound': round(row.upper_bound, 2) if row.upper_bound else None,
+                    'lower_bound': round(row.lower_bound, 2) if row.lower_bound else None,
+                }
+            )
+            skus_map[sku_id]['predicted_demand_30d'] += round(row.predicted_quantity, 2)
 
             skus_map = {}
             for row in rows:
@@ -254,6 +306,12 @@ class ForecastingService:
         result = self.engine.predict(df, periods=30)
 
         created = 0
+        mae = result['mae']
+        mape = result['mape']
+        if mae is not None and not math.isfinite(mae):
+            mae = None
+        if mape is not None and not math.isfinite(mape):
+            mape = None
         for pred in result['results']:
             self.repo.upsert(
                 sku_id=sku.id,
@@ -261,8 +319,8 @@ class ForecastingService:
                 predicted_quantity=pred['predicted_quantity'],
                 lower_bound=pred['lower_bound'],
                 upper_bound=pred['upper_bound'],
-                mae=result['mae'],
-                mape=result['mape'],
+                mae=mae,
+                mape=mape,
                 model_version=result['model_version'],
             )
             created += 1
@@ -273,6 +331,6 @@ class ForecastingService:
             'forecast_days': created,
             'model_version': result['model_version'],
             'forecast_method': result.get('forecast_method', 'unknown'),
-            'mae': result['mae'],
-            'mape': result['mape'],
+            'mae': mae,
+            'mape': mape,
         }

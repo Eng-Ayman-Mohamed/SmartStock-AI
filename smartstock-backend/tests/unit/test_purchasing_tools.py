@@ -13,27 +13,27 @@ class PODraftToolTest(TestCase):
     def test_creates_po_and_returns_id_and_number(self):
         mock_service = MagicMock()
         mock_po = MagicMock(id=10, status='draft', sku_id=5, supplier_id=3, quantity=100)
-        mock_service.repo.create.return_value = mock_po
+        mock_service.draft_po.return_value = mock_po
 
         tool = PODraftTool(service=mock_service)
         result = tool.run({'sku_id': '5', 'quantity': '100', 'supplier_id': '3'})
 
         self.assertEqual(result['po_id'], 10)
         self.assertEqual(result['status'], 'draft')
-        mock_service.repo.create.assert_called_once()
-        call_data = mock_service.repo.create.call_args[0][0]
-        self.assertEqual(call_data['sku_id'], 5)
-        self.assertEqual(call_data['quantity'], 100)
+        mock_service.draft_po.assert_called_once()
+        call_kwargs = mock_service.draft_po.call_args[1]
+        self.assertEqual(call_kwargs['sku_id'], 5)
+        self.assertEqual(call_kwargs['quantity'], 100)
 
     def test_computes_total_cost_from_quantity_times_unit_price(self):
         mock_service = MagicMock()
-        mock_service.repo.create.return_value = MagicMock(id=1)
+        mock_service.draft_po.return_value = MagicMock(id=1)
 
         tool = PODraftTool(service=mock_service)
         tool.run({'sku_id': '7', 'quantity': '25', 'supplier_id': '4', 'total_cost': '175.00'})
 
-        call_data = mock_service.repo.create.call_args[0][0]
-        self.assertEqual(call_data['total_cost'], '175.00')
+        call_kwargs = mock_service.draft_po.call_args[1]
+        self.assertEqual(call_kwargs['total_cost'], '175.00')
 
 
 class EmailSendToolTest(TestCase):

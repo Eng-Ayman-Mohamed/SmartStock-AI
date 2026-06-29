@@ -547,9 +547,9 @@ class TranscribeView(APIView):
             transcriber = SpeechTranscriber()
             text = transcriber.transcribe(audio_data, filename=audio_file.name)
             return Response({'status': 'success', 'data': {'text': text}})
-        except ValueError as e:
+        except ValueError:
             return Response(
-                {'status': 'error', 'message': str(e)},
+                {'status': 'error', 'message': 'Transcription failed. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         except Exception:

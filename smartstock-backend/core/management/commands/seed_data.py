@@ -1,3 +1,4 @@
+import argparse
 import os
 import random
 from datetime import date, datetime, timedelta
@@ -699,15 +700,15 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--truncate',
-            action='store_true',
+            action=argparse.BooleanOptionalAction,
             default=True,
-            help='Truncate all tables before seeding (default: True).',
+            help='Truncate all tables before seeding (default: True). Use --no-truncate to skip.',
         )
         parser.add_argument(
             '--validate',
-            action='store_true',
+            action=argparse.BooleanOptionalAction,
             default=True,
-            help='Run validation queries after seeding (default: True).',
+            help='Run validation queries after seeding (default: True). Use --no-validate to skip.',
         )
         parser.add_argument(
             '--skip-agent-runs',

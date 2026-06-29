@@ -97,7 +97,25 @@ class ChatSerializer(serializers.Serializer):
 class TranscriptionSerializer(serializers.Serializer):
     audio = serializers.FileField()
 
+    ALLOWED_AUDIO_TYPES = {
+        'audio/mpeg',
+        'audio/mp3',
+        'audio/wav',
+        'audio/x-wav',
+        'audio/ogg',
+        'audio/flac',
+        'audio/mp4',
+        'audio/m4a',
+        'audio/webm',
+        'audio/aac',
+    }
+
     def validate_audio(self, file):
+        content_type = getattr(file, 'content_type', None)
+        if content_type and content_type not in self.ALLOWED_AUDIO_TYPES:
+            raise serializers.ValidationError(
+                'Audio format not supported. Allowed: MP3, WAV, OGG, FLAC, M4A, WebM, AAC.'
+            )
         if file.size > 25 * 1024 * 1024:
             raise serializers.ValidationError('Audio file must be less than 25 MB.')
         return file

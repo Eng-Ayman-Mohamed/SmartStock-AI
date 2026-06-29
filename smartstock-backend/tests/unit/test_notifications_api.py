@@ -6,13 +6,15 @@ from apps.notifications.models import Notification, UserNotification
 
 
 @pytest.fixture
-def notification(db):
-    return Notification.objects.create(
+def notification(db, user):
+    notif = Notification.objects.create(
         type='monitoring',
         severity='warning',
         title='Test Alert',
         message='Test message',
     )
+    UserNotification.objects.create(user=user, notification=notif)
+    return notif
 
 
 @pytest.mark.django_db
@@ -63,7 +65,7 @@ class TestNotificationViewSet:
         ).exists()
 
     def test_mark_read_idempotent(self, api_client, auth_headers, notification, user):
-        UserNotification.objects.create(user=user, notification=notification, is_read=True)
+        UserNotification.objects.filter(user=user, notification=notification).update(is_read=True)
         url = reverse('notification-mark-read', args=[notification.id])
         response = api_client.post(url, **auth_headers)
         assert response.status_code == status.HTTP_200_OK
@@ -74,7 +76,7 @@ class TestNotificationViewSet:
         assert response.status_code == status.HTTP_200_OK
 
     def test_mark_all_read_updates_unread(self, api_client, auth_headers, notification, user):
-        UserNotification.objects.create(user=user, notification=notification, is_read=False)
+        UserNotification.objects.filter(user=user, notification=notification).update(is_read=False)
         url = reverse('notification-mark-all-read')
         response = api_client.post(url, **auth_headers)
         assert response.status_code == status.HTTP_200_OK
@@ -82,7 +84,6 @@ class TestNotificationViewSet:
         assert user_notif.is_read is True
 
     def test_dismiss(self, api_client, auth_headers, notification, user):
-        UserNotification.objects.create(user=user, notification=notification)
         url = reverse('notification-dismiss', args=[notification.id])
         response = api_client.post(url, **auth_headers)
         assert response.status_code == status.HTTP_200_OK
@@ -97,7 +98,7 @@ class TestNotificationViewSet:
 @pytest.mark.django_db
 class TestUnreadCountView:
     def test_unread_count(self, api_client, auth_headers, notification, user):
-        UserNotification.objects.create(user=user, notification=notification, is_read=False)
+        UserNotification.objects.filter(user=user, notification=notification).update(is_read=False)
         url = reverse('unread-count')
         response = api_client.get(url, **auth_headers)
         assert response.status_code == status.HTTP_200_OK
@@ -110,7 +111,7 @@ class TestUnreadCountView:
         assert response.data['count'] == 0
 
     def test_unread_count_excludes_read(self, api_client, auth_headers, notification, user):
-        UserNotification.objects.create(user=user, notification=notification, is_read=True)
+        UserNotification.objects.filter(user=user, notification=notification).update(is_read=True)
         url = reverse('unread-count')
         response = api_client.get(url, **auth_headers)
         assert response.status_code == status.HTTP_200_OK

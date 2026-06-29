@@ -45,6 +45,9 @@ class PurchaseOrder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     po_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    created_by_agent = models.BooleanField(default=False)
+    agent_name = models.CharField(max_length=100, blank=True, default='')
+    agent_run_id = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         label = self.po_number or f'PO-{self.id}'
@@ -54,6 +57,13 @@ class PurchaseOrder(models.Model):
         verbose_name = 'purchase order'
         verbose_name_plural = 'purchase orders'
         ordering = ['-created_at', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['sku', 'supplier', 'quantity', 'status'],
+                condition=models.Q(status__in=['draft', 'pending_approval', 'approved']),
+                name='uq_active_po_per_sku_supplier_qty',
+            ),
+        ]
         indexes = [
             models.Index(fields=['status', '-created_at'], name='idx_po_status_created'),
             models.Index(fields=['sku']),

@@ -51,7 +51,7 @@ function mapSku(raw: Record<string, unknown>): SkuForecast {
     ),
     predicted_demand_30d: (raw.days as ForecastDay[] | undefined)
       ?.reduce((sum: number, d: ForecastDay) => sum + d.demand, 0) ?? 0,
-    confidence_score: (raw.confidence_score as number) ?? 85,
+    confidence_score: (raw.confidence_score as number) ?? 0,
   };
 }
 

@@ -3,41 +3,25 @@ networks:
     driver: bridge
 
 services:
-  db:
-    image: pgvector/pgvector:pg16
-    container_name: smartstock_db
-    environment:
-      POSTGRES_USER: smartstock
-      POSTGRES_PASSWORD: smartstock
-      POSTGRES_DB: smartstock
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "5433:5432"  # host 5432 is taken by a local Postgres; app uses the internal network (db:5432)
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U smartstock -d smartstock"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-    networks:
-      - smartstock_net
-
   redis:
     image: redis:7-alpine
     container_name: smartstock_redis
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
     ports:
       - "6379:6379"
+    networks:
+      - smartstock_net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: smartstock_mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
     networks:
       - smartstock_net
 
@@ -52,6 +36,15 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      mailpit:
+        condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
     depends_on:
@@ -83,12 +76,11 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
     depends_on:
-      db:
-        condition: service_healthy
       redis:
-        condition: service_healthy
-      backend:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping --timeout 5 || exit 1"]
@@ -110,12 +102,11 @@ services:
       - smartstock-backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
     depends_on:
-      db:
-        condition: service_healthy
       redis:
-        condition: service_healthy
-      backend:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "test -f /proc/1/status"]
@@ -224,5 +215,3 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
-  postgres_data:
-  redis_data:

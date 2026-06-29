@@ -24,13 +24,14 @@ class SendAlertEmailTest(TestCase):
         event.resolved_at = None
         return event
 
-    @patch('django.core.mail.send_mail', return_value=True)
-    def test_send_email_success(self, mock_mail):
+    @patch('infrastructure.email.send_alert_email_task')
+    def test_send_email_success(self, mock_task):
+        mock_task.delay.return_value = MagicMock(id='task-123')
         event = self._make_alert_event()
         with self.settings(ESCALATION_RECIPIENT_EMAILS=['admin@example.com']):
             result = send_alert_email(event)
         self.assertTrue(result)
-        mock_mail.assert_called_once()
+        mock_task.delay.assert_called_once()
 
     def test_no_recipients_skips(self):
         event = self._make_alert_event()
@@ -38,32 +39,35 @@ class SendAlertEmailTest(TestCase):
             result = send_alert_email(event)
         self.assertFalse(result)
 
-    @patch('django.core.mail.send_mail', side_effect=Exception('SMTP fail'))
-    def test_send_email_failure(self, mock_mail):
+    @patch('infrastructure.email.send_alert_email_task')
+    def test_send_email_failure(self, mock_task):
+        mock_task.delay.side_effect = Exception('Celery fail')
         event = self._make_alert_event()
         with self.settings(ESCALATION_RECIPIENT_EMAILS=['admin@example.com']):
             result = send_alert_email(event)
         self.assertFalse(result)
 
-    @patch('django.core.mail.send_mail', return_value=True)
-    def test_resolved_status_changes_subject(self, mock_mail):
+    @patch('infrastructure.email.send_alert_email_task')
+    def test_resolved_status_changes_subject(self, mock_task):
+        mock_task.delay.return_value = MagicMock(id='task-123')
         event = self._make_alert_event(status='resolved')
         event.resolved_at = MagicMock()
         event.resolved_at.isoformat.return_value = '2026-01-01T00:00:00'
         with self.settings(ESCALATION_RECIPIENT_EMAILS=['admin@example.com']):
             result = send_alert_email(event)
         self.assertTrue(result)
-        call_kwargs = mock_mail.call_args
+        call_kwargs = mock_task.delay.call_args
         subject = call_kwargs.kwargs.get('subject', call_kwargs[1].get('subject', ''))
         self.assertIn('[RESOLVED]', subject)
 
-    @patch('django.core.mail.send_mail', return_value=True)
-    def test_critical_severity(self, mock_mail):
+    @patch('infrastructure.email.send_alert_email_task')
+    def test_critical_severity(self, mock_task):
+        mock_task.delay.return_value = MagicMock(id='task-123')
         event = self._make_alert_event(severity='critical')
         with self.settings(ESCALATION_RECIPIENT_EMAILS=['admin@example.com']):
             result = send_alert_email(event)
         self.assertTrue(result)
-        call_kwargs = mock_mail.call_args
+        call_kwargs = mock_task.delay.call_args
         subject = call_kwargs.kwargs.get('subject', call_kwargs[1].get('subject', ''))
         self.assertIn('[CRITICAL]', subject)
 

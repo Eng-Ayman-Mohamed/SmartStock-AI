@@ -11,7 +11,7 @@ def clear_chunks(apps, schema_editor):
 
 
 def drop_hnsw_index(apps, schema_editor):
-    """Drop any HNSW index on the embedding column."""
+    """Drop any HNSW index on the embedding column (PostgreSQL only)."""
     if schema_editor.connection.vendor != 'postgresql':
         return
     schema_editor.execute('DROP INDEX IF EXISTS ingestion_documentchunk_embedding_hnsw_idx')
@@ -19,7 +19,7 @@ def drop_hnsw_index(apps, schema_editor):
 
 
 def recreate_hnsw_index(apps, schema_editor):
-    """Recreate HNSW index for 1024-dimension embeddings."""
+    """Recreate HNSW index for 1024-dimension embeddings (PostgreSQL only)."""
     if schema_editor.connection.vendor != 'postgresql':
         return
     schema_editor.execute(

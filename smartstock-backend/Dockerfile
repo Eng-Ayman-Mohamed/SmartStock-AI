@@ -23,7 +23,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-RUN useradd -m -r appuser
+RUN useradd -m -r appuser && \
+    mkdir -p /app/staticfiles /app/media && \
+    chown appuser:appuser /app/staticfiles /app/media
 
 COPY --chown=appuser:appuser . .
 

@@ -9,6 +9,7 @@ from langchain_core.tools import StructuredTool
 from ai.agents.tools.forecast_read import ForecastReadTool
 from ai.agents.tools.po_status_check import POStatusCheckTool
 from ai.agents.tools.stock_level_read import StockLevelReadTool
+from ai.llm.chain import prompt_injection_filter
 from ai.observability.langfuse import (
     get_langchain_callbacks,
     invoke_with_langfuse,
@@ -73,9 +74,9 @@ class DecisionReasoner:
         except Exception:
             logger.exception('Decision reasoning generation failed')
             return (
-                f'Current stock of {payload["quantity_available"]} units was compared with '
-                f'predicted demand of {payload["total_predicted_demand"]} units over '
-                f'{payload["lead_time_days"]} days plus safety stock of {payload["safety_stock"]} units.'
+                f'Current stock of {payload.get("quantity_available", "N/A")} units was compared with '
+                f'predicted demand of {payload.get("total_predicted_demand", "N/A")} units over '
+                f'{payload.get("lead_time_days", "N/A")} days plus safety stock of {payload.get("safety_stock", "N/A")} units.'
             )
 
 
@@ -105,6 +106,16 @@ class DecisionAgent:
     def run(self, context: dict) -> dict:
         _started_at = time.time()
         trace_spans = []
+        # Prompt injection guard — reject malicious context before execution
+        for _key, _val in context.items():
+            if isinstance(_val, str):
+                _is_safe, _ = prompt_injection_filter(_val)
+                if not _is_safe:
+                    return {
+                        'agent': 'decision_agent',
+                        'error': 'Request blocked: prompt injection detected in input payload',
+                        'results': [],
+                    }
         try:
             product_ids = self._extract_product_ids(context)
             results = [

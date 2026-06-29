@@ -47,26 +47,32 @@ class ChatPipeline:
         if mode == 'auto':
             from ai.llm.intent_classifier import classify_intent, classify_intent_fast
 
-            fast_result = classify_intent_fast(query)
-            if fast_result:
-                engine = fast_result.intent
-            else:
-                # Load conversation history for follow-up context
-                history = []
-                if conversation_id:
-                    try:
-                        conv_svc = ConversationService()
-                        history = conv_svc.get_history_for_llm(conversation_id)
-                    except Exception:
-                        pass
-
-                classification = classify_intent(query, history=history)
-                if classification.confidence < 0.7:
-                    engine = 'rag'  # Default to RAG for ambiguous queries
-                elif classification.intent == 'out_of_scope':
-                    engine = 'rag'  # Try RAG before giving up
+            try:
+                fast_result = classify_intent_fast(query)
+                if fast_result:
+                    engine = fast_result.intent
                 else:
-                    engine = classification.intent
+                    # Load conversation history for follow-up context
+                    history = []
+                    if conversation_id:
+                        try:
+                            conv_svc = ConversationService()
+                            history = conv_svc.get_history_for_llm(conversation_id)
+                        except Exception:
+                            pass
+
+                    classification = classify_intent(query, history=history)
+                    if classification.confidence < 0.7:
+                        engine = 'rag'  # Default to RAG for ambiguous queries
+                    elif classification.intent == 'out_of_scope':
+                        engine = 'rag'  # Try RAG before giving up
+                    else:
+                        engine = classification.intent
+            except Exception:
+                logger.warning(
+                    'Intent classification failed; defaulting to nl_query', exc_info=True
+                )
+                engine = 'nl_query'
         else:
             engine = mode
 

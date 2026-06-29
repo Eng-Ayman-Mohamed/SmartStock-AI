@@ -20,10 +20,12 @@ def log_po_approval(sender, po, user, **kwargs):
         AuditLog.objects.create(
             event='PO_APPROVED',
             user=user,
+            entity_type='PurchaseOrder',
             entity_id=po.id,
             data_snapshot={
                 'supplier': po.supplier.name,
                 'amount': str(po.total_cost),
+                'sku': po.sku.code,
             },
         )
     except Exception as e:
@@ -36,10 +38,12 @@ def log_po_rejection(sender, po, user, **kwargs):
         AuditLog.objects.create(
             event='PO_REJECTED',
             user=user,
+            entity_type='PurchaseOrder',
             entity_id=po.id,
             data_snapshot={
                 'supplier': po.supplier.name,
                 'amount': str(po.total_cost),
+                'sku': po.sku.code,
             },
         )
     except Exception as e:
@@ -51,6 +55,7 @@ def log_po_sent(sender, po, **kwargs):
     try:
         AuditLog.objects.create(
             event='PO_SENT',
+            entity_type='PurchaseOrder',
             entity_id=po.id,
             data_snapshot={
                 'supplier': po.supplier.name,
@@ -67,6 +72,7 @@ def log_po_confirmed(sender, po, **kwargs):
     try:
         AuditLog.objects.create(
             event='INVOICE_CONFIRMED',
+            entity_type='PurchaseOrder',
             entity_id=po.id,
             data_snapshot={
                 'supplier': po.supplier.name,
@@ -100,12 +106,13 @@ def log_stock_adjustment(sender, stock_level, delta, user, reason, **kwargs):
         logger.exception('Failed to log stock adjustment audit entry: %s', e)
 
 
-def log_event(event, user, entity_id=None, data_snapshot=None):
+def log_event(event, user, entity_type=None, entity_id=None, data_snapshot=None):
     """Utility function to create audit log entries from any signal or view."""
     try:
         AuditLog.objects.create(
             event=event,
             user=user,
+            entity_type=entity_type or '',
             entity_id=entity_id,
             data_snapshot=data_snapshot or {},
         )

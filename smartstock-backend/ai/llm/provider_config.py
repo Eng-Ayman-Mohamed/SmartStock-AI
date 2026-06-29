@@ -1,8 +1,9 @@
 """
 provider_config.py — Multi-provider LLM configuration.
 
-Supports OpenAI, Groq, and Google Gemini as LLM/embedding providers.
-Controlled by LLM_PROVIDER env var (default: openai).
+Supports OpenAI, Groq, Google Gemini, and xAI as LLM/embedding providers.
+get_chat_llm() creates LLM instances directly for the configured provider.
+For failover/circuit-breaker, use LLMProviderManager.get_llm().
 
 Groq uses OpenAI-compatible API, so ChatOpenAI works with a base_url override.
 Gemini uses langchain-google-genai for embeddings.
@@ -34,7 +35,7 @@ _PROVIDERS = {
     'groq': {
         'chat_model': 'llama-3.3-70b-versatile',
         'chat_model_mini': 'llama-3.1-8b-instant',
-        'embedding_model': None,  # Groq has no embedding API
+        'embedding_model': None,
         'embedding_dimensions': None,
         'whisper_model': 'whisper-large-v3',
         'vision_model': 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -47,7 +48,7 @@ _PROVIDERS = {
         'chat_model_mini': 'gemini-2.0-flash',
         'embedding_model': 'gemini-embedding-001',
         'embedding_dimensions': 768,
-        'whisper_model': None,  # Gemini has no Whisper equivalent
+        'whisper_model': None,
         'vision_model': 'gemini-2.0-flash',
         'supports_vision': True,
         'base_url': None,
@@ -56,7 +57,7 @@ _PROVIDERS = {
     'xai': {
         'chat_model': 'grok-2-1212',
         'chat_model_mini': 'grok-2-1212',
-        'embedding_model': None,  # xAI has no embedding API
+        'embedding_model': None,
         'embedding_dimensions': None,
         'whisper_model': None,
         'vision_model': 'grok-2-1212',
@@ -90,7 +91,12 @@ def get_api_key_for_provider(provider_name: str) -> str:
 
 
 def get_chat_llm(temperature=0, model_override=None):
-    """Get a chat LLM instance for the active provider."""
+    """
+    Get a chat LLM instance for the active provider.
+
+    Creates the LLM directly based on the configured provider (PROVIDER).
+    For failover/circuit-breaker, use LLMProviderManager.get_llm() instead.
+    """
     config = get_provider_config()
     model = model_override or config['chat_model']
     api_key = get_api_key()
@@ -114,7 +120,6 @@ def get_chat_llm(temperature=0, model_override=None):
     }
     if config['base_url']:
         kwargs['base_url'] = config['base_url']
-
     return ChatOpenAI(**kwargs)
 
 

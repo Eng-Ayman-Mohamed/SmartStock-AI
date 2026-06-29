@@ -347,11 +347,8 @@ class StubToolTests(TestCase):
         """PODraftTool must return status 'draft' for valid input."""
 
         class _FakeService:
-            repo = SimpleNamespace(
-                create=lambda data: SimpleNamespace(
-                    id=42, status='draft', sku_id=1, supplier_id=5, quantity=100
-                )
-            )
+            def draft_po(self, **kwargs):
+                return SimpleNamespace(id=42, status='draft', sku_id=1, supplier_id=5, quantity=100)
 
         tool = PODraftTool(service=_FakeService())
         result = tool.run(

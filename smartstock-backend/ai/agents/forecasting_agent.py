@@ -9,6 +9,7 @@ from ai.agents.tools.forecast_db_read import ForecastDBReadTool
 from ai.agents.tools.forecast_db_write import ForecastDBWriteTool
 from ai.agents.tools.prophet_run import ProphetRunTool
 from ai.agents.tracking import complete_agent_run, create_agent_run
+from ai.llm.chain import prompt_injection_filter
 from ai.observability.langfuse import (
     get_langchain_callbacks,
     trace_agent_run,
@@ -20,7 +21,10 @@ from apps.monitoring.tasks import record_agent_run_task
 try:
     from langchain.agents import create_react_agent as create_agent
 except ImportError:
-    create_agent = None
+    try:
+        from langchain.agents import create_agent
+    except ImportError:
+        create_agent = None
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +73,12 @@ class ForecastingAgent:
 
     def run(self, context: dict | None = None) -> dict:
         payload = context or {}
+        # Prompt injection guard — reject malicious context before execution
+        for _key, _val in payload.items():
+            if isinstance(_val, str):
+                _is_safe, _ = prompt_injection_filter(_val)
+                if not _is_safe:
+                    raise ValueError('Request blocked: prompt injection detected in input payload')
         agent_run = create_agent_run('forecasting_agent')
         _started_at = time.time()
         trace_spans = []

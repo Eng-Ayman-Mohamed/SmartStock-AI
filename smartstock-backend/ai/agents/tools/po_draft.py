@@ -24,19 +24,23 @@ class PODraftTool(BaseTool):
             agent_reasoning = input.get('agent_reasoning', '')
             total_cost = input.get('total_cost', '0.00')
 
-            data = {
-                'sku_id': sku_id,
-                'quantity': quantity,
-                'supplier_id': supplier_id,
-                'total_cost': total_cost,
-                'status': 'draft',
-            }
-            if user_id is not None:
-                data['requested_by_id'] = int(user_id)
-            if agent_reasoning:
-                data['agent_reasoning'] = agent_reasoning
+            from apps.authentication.models import CustomUser
 
-            po = self.service.repo.create(data)
+            user = None
+            if user_id is not None:
+                try:
+                    user = CustomUser.objects.get(id=int(user_id))
+                except CustomUser.DoesNotExist:
+                    pass
+
+            po = self.service.draft_po(
+                sku_id=sku_id,
+                quantity=quantity,
+                supplier_id=supplier_id,
+                user=user,
+                total_cost=total_cost,
+                agent_reasoning=agent_reasoning,
+            )
             logger.info('Draft PO created: PO-%s for SKU %s', po.id, sku_id)
             return {
                 'po_id': po.id,

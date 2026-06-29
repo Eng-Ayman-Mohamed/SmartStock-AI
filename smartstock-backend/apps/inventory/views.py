@@ -1725,7 +1725,7 @@ class NLQueryEndpointView(APIView):
                 msg = (
                     sanitize_llm_error(chain_err)
                     if is_llm_quota_error(chain_err)
-                    else f'LLM Chain failure: {chain_err}'
+                    else 'An unexpected error occurred while processing your request.'
                 )
                 return Response(
                     {'status': 'error', 'message': msg},
@@ -1760,10 +1760,13 @@ class NLQueryEndpointView(APIView):
                     {'status': 'error', 'message': f'Unknown action type: {action_type}'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-        except Exception as db_err:
+        except Exception:
             logger.exception('Database execution error for action %s', action_type)
             return Response(
-                {'status': 'error', 'message': f'Database execution error: {db_err}'},
+                {
+                    'status': 'error',
+                    'message': 'An unexpected error occurred while processing your request.',
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

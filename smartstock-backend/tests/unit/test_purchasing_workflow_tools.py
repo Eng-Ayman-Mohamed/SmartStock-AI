@@ -29,6 +29,9 @@ class FakePurchasingServiceForTools:
             id=po_id, status='draft', sku_id=1, supplier_id=1, quantity=100
         )
 
+    def draft_po(self, **kwargs):
+        return self.repo.create(kwargs)
+
 
 class PODraftToolTest(TestCase):
     def setUp(self):

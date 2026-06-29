@@ -13,6 +13,41 @@ from core.exceptions import (
     SupplierNotFoundException,
 )
 
+# Map internal DRF/Python exception types to safe, user-facing error type strings.
+# This prevents leaking raw Python class names to API consumers.
+# Domain exceptions (from core.exceptions) are preserved intentionally — the frontend
+# relies on these for error handling.
+_ERROR_TYPE_MAP = {
+    'PermissionDenied': 'Forbidden',
+    'NotFound': 'NotFound',
+    'NotAuthenticated': 'AuthenticationRequired',
+    'AuthenticationFailed': 'AuthenticationFailed',
+    'Throttled': 'RateLimited',
+}
+
+# Domain exception types that are intentionally kept in API responses
+_DOMAIN_EXCEPTION_TYPES = {
+    'StockNotFoundException',
+    'InsufficientStockError',
+    'DuplicatePOError',
+    'IllegalPOTransitionError',
+    'ForecastingModelError',
+    'SupplierNotFoundException',
+}
+
+
+def _sanitize_error_type(exc) -> str:
+    """Return a safe, user-facing error type string.
+
+    Domain exceptions (from core.exceptions) are preserved as-is because the
+    frontend depends on them. Standard Django/DRF exceptions are mapped to
+    generic strings to avoid leaking internal class names.
+    """
+    exc_name = type(exc).__name__
+    if exc_name in _DOMAIN_EXCEPTION_TYPES:
+        return exc_name
+    return _ERROR_TYPE_MAP.get(exc_name, 'ServerError')
+
 
 def _error_response(msg, exc_type, code):
     return {
@@ -71,7 +106,7 @@ def custom_exception_handler(exc, context):
             elif isinstance(detail, str):
                 msg = detail
             return Response(
-                _error_response(msg, type(exc).__name__, status_code),
+                _error_response(msg, _sanitize_error_type(exc), status_code),
                 status=status_code,
             )
 
@@ -90,7 +125,7 @@ def custom_exception_handler(exc, context):
             if is_duplicate or status_code == 409:
                 msg = str(detail) if isinstance(detail, str) else detail.get('detail', '')
                 return Response(
-                    _error_response(msg, type(exc).__name__, 409),
+                    _error_response(msg, 'DuplicateEntry', 409),
                     status=409,
                 )
 
@@ -155,6 +190,6 @@ def custom_exception_handler(exc, context):
     # Add to STATUS_MAP when a raise point is introduced.
     status_code = STATUS_MAP.get(type(exc), 500)
     return Response(
-        _error_response(str(exc), type(exc).__name__, status_code),
+        _error_response(str(exc), _sanitize_error_type(exc), status_code),
         status=status_code,
     )
