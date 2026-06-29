@@ -23,16 +23,17 @@ if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
 if 'backend' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('backend')
 
-_extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
-_default_csrf = 'https://smart-stock-dev.vercel.app'
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in (_extra_csrf or _default_csrf).split(',') if o.strip()]
+_extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS')
+if not _extra_csrf:
+    raise ImproperlyConfigured('CSRF_TRUSTED_ORIGINS environment variable is required in production.')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _extra_csrf.split(',') if o.strip()]
 
-if not os.environ.get('CORS_ALLOWED_ORIGINS'):
-    CORS_ALLOWED_ORIGINS = ['https://smart-stock-dev.vercel.app']
-else:
-    CORS_ALLOWED_ORIGINS = [
-        o.strip() for o in os.environ['CORS_ALLOWED_ORIGINS'].split(',') if o.strip()
-    ]
+_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS')
+if not _cors_origins:
+    raise ImproperlyConfigured('CORS_ALLOWED_ORIGINS environment variable is required in production.')
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in _cors_origins.split(',') if o.strip()
+]
 
 if not DEBUG:
     _cors_insecure = [
@@ -55,8 +56,9 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() in ('true', '1', 'yes')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@smartstock.ai')
-# Without this, verification links fall back to http://localhost:5173 (dead in prod).
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://smart-stock-dev.vercel.app')
+FRONTEND_URL = os.environ.get('FRONTEND_URL')
+if not FRONTEND_URL:
+    raise ImproperlyConfigured('FRONTEND_URL environment variable is required in production.')
 
 # Use separate Redis (Upstash) for Django cache — keeps REDIS_URL dedicated to Celery broker
 # Fall back to REDIS_URL if CACHE_REDIS_URL is not set; use django_redis for

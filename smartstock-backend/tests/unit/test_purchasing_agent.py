@@ -88,7 +88,7 @@ class FakePurchasingService:
         self.waiting = []
         self.repo = MagicMock()
 
-    def approve_po(self, po_id, user):
+    def approve_po(self, po_id, user, skip_email=False):
         self.approved.append(po_id)
         return SimpleNamespace(id=po_id, status='approved')
 

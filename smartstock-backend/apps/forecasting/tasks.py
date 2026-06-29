@@ -40,7 +40,7 @@ def run_forecasting_agent(self, sku_ids: list[int] | None = None):
     try:
         cache.delete_pattern('forecast_dashboard_*')
     except Exception:
-        logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
+        logger.warning('Failed to invalidate forecast dashboard cache — stale data may be served until TTL expiry', exc_info=True)
 
     return {'dispatched': len(sku_ids), 'group_id': str(result.id)}
 

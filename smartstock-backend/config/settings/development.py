@@ -20,7 +20,7 @@ if os.environ.get('EMAIL_HOST'):
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://smart-stock-dev.vercel.app')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
 # Log slow or problematic DB queries to the console
 LOGGING['loggers']['django.db.backends'] = {  # noqa: F405

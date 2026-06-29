@@ -60,6 +60,8 @@ class ForecastingAgent:
         agent_factory=None,
         max_iterations: int = 8,
         tool_retries: int = 1,
+        tool_timeout: int = 120,
+        executor=None,
     ):
         self.read_tool = read_tool or ForecastDBReadTool()
         self.prophet_tool = prophet_tool or ProphetRunTool()
@@ -69,7 +71,8 @@ class ForecastingAgent:
         self.agent_factory = agent_factory
         self.max_iterations = max_iterations
         self.tool_retries = tool_retries
-        self.tool_timeout = 120
+        self.tool_timeout = tool_timeout
+        self.executor = executor or concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
     def run(self, context: dict | None = None) -> dict:
         payload = context or {}
@@ -366,9 +369,8 @@ class ForecastingAgent:
             started_at = time.time()
             try:
                 fn = tool.invoke if hasattr(tool, 'invoke') else tool.run
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(fn, tool_input)
-                    output = future.result(timeout=self.tool_timeout)
+                future = self.executor.submit(fn, tool_input)
+                output = future.result(timeout=self.tool_timeout)
                 if trace_spans is not None:
                     trace_spans.append(
                         {
