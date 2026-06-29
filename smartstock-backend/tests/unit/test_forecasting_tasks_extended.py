@@ -27,9 +27,8 @@ class RunForecastingAgentTaskTest(TestCase):
 
 
 class RunForecastSingleSkuTest(TestCase):
-    @patch('apps.forecasting.tasks.cache')
     @patch('apps.forecasting.services.ForecastingService')
-    def test_success(self, MockService, mock_cache):
+    def test_success(self, MockService):
         mock_service = MockService.return_value
         mock_service.run_forecast.return_value = [{'sku': 'SKU001'}]
 
@@ -38,9 +37,8 @@ class RunForecastSingleSkuTest(TestCase):
         result = run_forecast_single_sku(sku_id=1)
         self.assertEqual(result['status'], 'success')
 
-    @patch('apps.forecasting.tasks.cache')
     @patch('apps.forecasting.services.ForecastingService')
-    def test_failure(self, MockService, mock_cache):
+    def test_failure(self, MockService):
         mock_service = MockService.return_value
         mock_service.run_forecast.side_effect = Exception('prophet fail')
 
@@ -49,14 +47,18 @@ class RunForecastSingleSkuTest(TestCase):
         result = run_forecast_single_sku(sku_id=1)
         self.assertEqual(result['status'], 'failed')
 
-    @patch('apps.forecasting.tasks.cache')
-    @patch('apps.forecasting.services.ForecastingService')
-    def test_cache_invalidation(self, MockService, mock_cache):
-        mock_service = MockService.return_value
-        mock_service.run_forecast.return_value = [{'sku': 'SKU001', 'other': 'data'}]
-        mock_cache.delete_pattern.side_effect = Exception('cache fail')
+    @patch('django_redis.get_redis_connection')
+    def test_cache_invalidation_does_not_crash(self, mock_get_redis):
+        """Cache invalidation failure should not crash the task."""
+        mock_conn = mock_get_redis.return_value
+        mock_conn.delete_pattern.side_effect = Exception('redis fail')
 
-        from apps.forecasting.tasks import run_forecast_single_sku
+        from apps.forecasting.tasks import run_forecasting_agent
 
-        result = run_forecast_single_sku(sku_id=1)
-        self.assertEqual(result['status'], 'success')
+        with patch('apps.forecasting.tasks.run_forecast_single_sku.s') as mock_single:
+            mock_single.return_value = None
+            with patch('celery.group') as MockGroup:
+                mock_result = MockGroup.return_value.apply_async.return_value
+                mock_result.id = 'g-1'
+                result = run_forecasting_agent(sku_ids=[1])
+                self.assertEqual(result['dispatched'], 1)

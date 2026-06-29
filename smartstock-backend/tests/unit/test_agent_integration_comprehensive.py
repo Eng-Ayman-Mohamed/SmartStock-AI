@@ -122,7 +122,7 @@ class FakePurchasingService:
         self.failed = []
         self.timeout = []
 
-    def approve_po(self, po_id, user):
+    def approve_po(self, po_id, user, skip_email=False):
         self.approved.append(po_id)
 
     def reject_po(self, po_id, user):

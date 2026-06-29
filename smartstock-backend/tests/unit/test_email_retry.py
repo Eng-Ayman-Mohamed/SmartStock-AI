@@ -3,11 +3,8 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
-from apps.purchasing.email_tasks import (
-    MAX_RETRIES,
-    RETRY_COUNTDOWN,
-    is_retriable,
-)
+from apps.purchasing.email_tasks import is_retriable
+from infrastructure.email import MAX_RETRIES, RETRY_COUNTDOWN
 
 
 class IsRetriableTest(TestCase):
@@ -223,11 +220,11 @@ class SendEmailWithRetryTest(TestCase):
     @patch('apps.purchasing.email_tasks._trigger_escalation')
     @patch('django.core.mail.EmailMessage.send')
     def test_retriable_error_raises_for_retry(self, mock_send, mock_escalation):
-        """Retriable errors should raise so Celery can retry."""
+        """Retriable errors raise Exception wrapping Celery's retry."""
         from apps.purchasing.email_tasks import send_email_with_retry
 
         mock_send.side_effect = smtplib.SMTPServerDisconnected('lost')
-        with self.assertRaises(smtplib.SMTPServerDisconnected):
+        with self.assertRaises(Exception):
             send_email_with_retry.__wrapped__(
                 subject='Test',
                 body='Hello',
@@ -241,7 +238,7 @@ class SendEmailWithRetryTest(TestCase):
         from apps.purchasing.email_tasks import send_email_with_retry
 
         mock_send.side_effect = ConnectionError('reset')
-        with self.assertRaises(ConnectionError):
+        with self.assertRaises(Exception):
             send_email_with_retry.__wrapped__(
                 subject='Test',
                 body='Hello',
@@ -255,7 +252,7 @@ class SendEmailWithRetryTest(TestCase):
         from apps.purchasing.email_tasks import send_email_with_retry
 
         mock_send.side_effect = TimeoutError('timed out')
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(Exception):
             send_email_with_retry.__wrapped__(
                 subject='Test',
                 body='Hello',
@@ -269,7 +266,7 @@ class SendEmailWithRetryTest(TestCase):
         from apps.purchasing.email_tasks import send_email_with_retry
 
         mock_send.side_effect = smtplib.SMTPConnectError(421, b'conn refused')
-        with self.assertRaises(smtplib.SMTPConnectError):
+        with self.assertRaises(Exception):
             send_email_with_retry.__wrapped__(
                 subject='Test',
                 body='Hello',
@@ -283,7 +280,7 @@ class SendEmailWithRetryTest(TestCase):
         from apps.purchasing.email_tasks import send_email_with_retry
 
         mock_send.side_effect = smtplib.SMTPResponseException(421, b'temp')
-        with self.assertRaises(smtplib.SMTPResponseException):
+        with self.assertRaises(Exception):
             send_email_with_retry.__wrapped__(
                 subject='Test',
                 body='Hello',

@@ -4,8 +4,6 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 REQUIRED_ENV_VARS = [
-    'OPENAI_API_KEY',
-    'COHERE_API_KEY',
     'DJANGO_SECRET_KEY',
     'DATABASE_URL',
     'REDIS_URL',
@@ -28,7 +26,9 @@ OPTIONAL_ENV_VARS = {
     'DEFAULT_FROM_EMAIL': 'noreply@smartstock.ai',
     'ESCALATION_RECIPIENT_EMAILS': '',
     'HEALTH_SECRET_HEADER': '',
-    # LLM provider failover keys (at least one is needed for LLM to work)
+    # LLM provider keys (at least one is required for LLM features to work)
+    'OPENAI_API_KEY': '',
+    'COHERE_API_KEY': '',
     'GROQ_API_KEY': '',
     'GOOGLE_API_KEY': '',
     'XAI_API_KEY': '',
@@ -43,12 +43,22 @@ def _mask_value(value):
     return value[:2] + '***' + value[-2:]
 
 
+LLM_API_KEYS = ['OPENAI_API_KEY', 'GROQ_API_KEY', 'GOOGLE_API_KEY', 'XAI_API_KEY']
+
+
 def validate_required_env_vars():
     missing = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
 
     if missing:
         raise ImproperlyConfigured(
             'Missing required environment variables: ' + ', '.join(sorted(missing))
+        )
+
+    if not any(os.getenv(k) for k in LLM_API_KEYS):
+        raise ImproperlyConfigured(
+            'At least one LLM provider API key is required (OPENAI_API_KEY, GROQ_API_KEY, '
+            'GOOGLE_API_KEY, or XAI_API_KEY). '
+            'COHERE_API_KEY is optional (embeddings fallback only) and is not a substitute.'
         )
 
     for var in REQUIRED_ENV_VARS:

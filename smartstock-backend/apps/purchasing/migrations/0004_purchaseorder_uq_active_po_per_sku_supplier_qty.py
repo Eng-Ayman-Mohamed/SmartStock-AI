@@ -15,6 +15,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL(
+            'DROP INDEX IF EXISTS "uq_active_po_per_sku_supplier_qty";',
+            reverse_sql=migrations.RunSQL.noop,
+        ),
         migrations.AddConstraint(
             model_name='purchaseorder',
             constraint=models.UniqueConstraint(

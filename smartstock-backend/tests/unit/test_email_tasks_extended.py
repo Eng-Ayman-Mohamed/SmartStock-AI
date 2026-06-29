@@ -49,20 +49,23 @@ class TriggerEscalationTest(TestCase):
 
 
 class SendEmailWithRetryTest(TestCase):
-    @patch('apps.purchasing.email_tasks.EmailMessage')
+    @patch('infrastructure.email.EmailMessage')
     def test_send_success(self, MockEmail):
-        result = send_email_with_retry.run(
+        result = send_email_with_retry.__wrapped__(
             subject='Test',
             body='body',
             recipient='a@b.com',
             po_id=1,
+            message_id='msg-001',
         )
         self.assertEqual(result['status'], 'sent')
+        self.assertEqual(result['attempts'], 1)
+        self.assertEqual(result['recipient'], 'a@b.com')
         MockEmail.return_value.send.assert_called_once()
 
-    @patch('apps.purchasing.email_tasks.EmailMessage')
+    @patch('infrastructure.email.EmailMessage')
     def test_send_generates_message_id(self, MockEmail):
-        result = send_email_with_retry.run(
+        result = send_email_with_retry.__wrapped__(
             subject='Test',
             body='body',
             recipient='a@b.com',
@@ -70,24 +73,28 @@ class SendEmailWithRetryTest(TestCase):
         self.assertIn('email-', result['message_id'])
 
     @patch(
-        'apps.purchasing.email_tasks.EmailMessage',
+        'infrastructure.email.EmailMessage',
         side_effect=smtplib.SMTPAuthenticationError(500, b'bad'),
     )
     def test_non_retriable_failure(self, MockEmail):
-        result = send_email_with_retry.run(
+        result = send_email_with_retry.__wrapped__(
             subject='Test',
             body='body',
             recipient='a@b.com',
             po_id=1,
+            message_id='msg-auth',
         )
         self.assertEqual(result['status'], 'permanently_failed')
+        self.assertEqual(result['attempts'], 1)
 
-    @patch('apps.purchasing.email_tasks.EmailMessage')
+    @patch('infrastructure.email.EmailMessage')
     def test_no_po_id_skips_escalation(self, MockEmail):
-        result = send_email_with_retry.run(
+        result = send_email_with_retry.__wrapped__(
             subject='Test',
             body='body',
             recipient='a@b.com',
             po_id=None,
+            message_id='msg-002',
         )
         self.assertEqual(result['status'], 'sent')
+        self.assertEqual(result['attempts'], 1)

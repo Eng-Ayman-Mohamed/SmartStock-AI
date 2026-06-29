@@ -6,13 +6,12 @@ monitoring tasks, health FullHealthView, and authentication services.
 
 from datetime import timedelta
 from io import StringIO
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
-from rest_framework.test import APITestCase
 from django.utils import timezone
+from rest_framework.test import APITestCase
 
 User = get_user_model()
 

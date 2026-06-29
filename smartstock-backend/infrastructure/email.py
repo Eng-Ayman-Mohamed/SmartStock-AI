@@ -8,6 +8,15 @@ from django.core.mail import EmailMessage
 
 logger = logging.getLogger(__name__)
 
+
+class EmailRetryError(Exception):
+    """Wraps original exception type for Celery retry observability."""
+
+    def __init__(self, original_type: str, message: str):
+        self.original_type = original_type
+        super().__init__(f'{original_type}: {message}')
+
+
 RETRIABLE_EXCEPTIONS: tuple[type[Exception], ...] = (
     smtplib.SMTPServerDisconnected,
     smtplib.SMTPConnectError,
@@ -66,25 +75,12 @@ def _send_email_sync(subject: str, body: str, recipient: str) -> dict:
         }
 
 
-@shared_task(
-    bind=True,
-    max_retries=MAX_RETRIES,
-    default_retry_delay=30,
-    acks_late=True,
-)
-def send_email_task(self, subject: str, body: str, recipient: str) -> dict:
-    """Celery task for email delivery with retry and exponential backoff."""
-    message_id = f'email-{uuid.uuid4().hex[:12]}'
-    retry_number = self.request.retries
-
+def send_email_core(subject: str, body: str, recipient: str, message_id: str | None = None) -> dict:
+    """Synchronous single attempt — send one email, return result with message_id."""
+    if message_id is None:
+        message_id = f'email-{uuid.uuid4().hex[:12]}'
     try:
-        logger.info(
-            'Sending email %s to %s (attempt %d/%d)',
-            message_id,
-            recipient,
-            retry_number + 1,
-            MAX_RETRIES + 1,
-        )
+        logger.info('Sending email %s to %s', message_id, recipient)
         msg = EmailMessage(
             subject=subject,
             body=body,
@@ -93,56 +89,61 @@ def send_email_task(self, subject: str, body: str, recipient: str) -> dict:
         )
         msg.send(fail_silently=False)
         logger.info('Email sent: %s to %s', message_id, recipient)
-        return {
-            'status': 'sent',
-            'message_id': message_id,
-            'recipient': recipient,
-            'attempts': retry_number + 1,
-        }
-
+        return {'status': 'sent', 'message_id': message_id, 'recipient': recipient}
     except NON_RETRIABLE_EXCEPTIONS as exc:
+        exc_type = type(exc).__name__
         logger.error('Email %s to %s permanently failed: %s', message_id, recipient, exc)
         return {
             'status': 'permanently_failed',
             'message_id': message_id,
             'recipient': recipient,
-            'error': str(exc),
+            'error': f'{exc_type}: {exc}',
+            'exc_type': exc_type,
         }
-
-    except RETRIABLE_EXCEPTIONS as exc:
-        next_retry = retry_number + 1
-        if next_retry < MAX_RETRIES:
-            countdown = RETRY_COUNTDOWN[min(retry_number, len(RETRY_COUNTDOWN) - 1)]
-            logger.warning(
-                'Email %s to %s failed (attempt %d/%d). Retrying in %ds',
-                message_id,
-                recipient,
-                next_retry,
-                MAX_RETRIES + 1,
-                countdown,
-            )
-            raise self.retry(exc=exc, countdown=countdown)
+    except RETRIABLE_EXCEPTIONS:
+        raise  # preserve original exception type for Celery retry
+    except Exception as exc:
+        exc_type = type(exc).__name__
         logger.error(
-            'Email %s to %s permanently failed after %d retries', message_id, recipient, MAX_RETRIES
+            'Email %s to %s unexpectedly failed: %s (%s)', message_id, recipient, exc_type, exc
         )
         return {
             'status': 'permanently_failed',
             'message_id': message_id,
             'recipient': recipient,
-            'error': str(exc),
+            'error': f'{exc_type}: {exc}',
+            'exc_type': exc_type,
         }
 
-    except Exception as exc:
-        logger.error('Email %s to %s unexpected error: %s', message_id, recipient, exc)
+
+@shared_task(
+    bind=True,
+    max_retries=MAX_RETRIES,
+    default_retry_delay=30,
+    acks_late=True,
+)
+def send_email_task(self, subject: str, body: str, recipient: str) -> dict:
+    """Celery task for email delivery with retry and exponential backoff."""
+    retry_number = self.request.retries
+    try:
+        result = send_email_core(subject, body, recipient)
+    except RETRIABLE_EXCEPTIONS as exc:
         if retry_number < MAX_RETRIES:
             countdown = RETRY_COUNTDOWN[min(retry_number, len(RETRY_COUNTDOWN) - 1)]
             raise self.retry(exc=exc, countdown=countdown)
         return {
             'status': 'permanently_failed',
-            'message_id': message_id,
+            'message_id': None,
             'recipient': recipient,
-            'error': str(exc),
+            'error': f'{type(exc).__name__}: {exc}',
+            'attempts': retry_number + 1,
         }
+
+    if result['status'] == 'sent':
+        result['attempts'] = retry_number + 1
+        return result
+
+    return {**result, 'attempts': retry_number + 1}
 
 
 @shared_task(bind=True, max_retries=MAX_RETRIES, default_retry_delay=30, acks_late=True)

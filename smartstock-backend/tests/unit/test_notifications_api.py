@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 
@@ -105,12 +106,14 @@ class TestUnreadCountView:
         assert response.data['count'] == 1
 
     def test_unread_count_zero(self, api_client, auth_headers):
+        cache.clear()
         url = reverse('unread-count')
         response = api_client.get(url, **auth_headers)
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 0
 
     def test_unread_count_excludes_read(self, api_client, auth_headers, notification, user):
+        cache.clear()
         UserNotification.objects.filter(user=user, notification=notification).update(is_read=True)
         url = reverse('unread-count')
         response = api_client.get(url, **auth_headers)
@@ -118,6 +121,7 @@ class TestUnreadCountView:
         assert response.data['count'] == 0
 
     def test_unread_count_multiple_notifications(self, api_client, auth_headers, user):
+        cache.clear()
         n1 = Notification.objects.create(type='monitoring', severity='info', title='N1')
         n2 = Notification.objects.create(type='forecast', severity='critical', title='N2')
         UserNotification.objects.create(user=user, notification=n1, is_read=False)

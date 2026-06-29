@@ -10,6 +10,7 @@ from config.validators import REQUIRED_ENV_VARS as SOURCE_REQUIRED
 REQUIRED_VARS = list(SOURCE_REQUIRED)
 
 ALL_ENV = {var: f'test-{var.lower()}' for var in REQUIRED_VARS}
+ALL_ENV['OPENAI_API_KEY'] = 'test-openai-key'
 
 
 class TestValidateRequiredEnvVars(unittest.TestCase):

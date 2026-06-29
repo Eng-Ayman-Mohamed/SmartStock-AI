@@ -78,8 +78,6 @@ class ForecastingService:
         import datetime
         from collections import defaultdict
 
-        from apps.inventory.models import StockLevel
-
         from .models import ForecastResult
 
         try:
@@ -92,12 +90,19 @@ class ForecastingService:
                 .order_by('sku', 'forecast_date')
             )
 
+            stock_map = {
+                sl.sku.id: sl
+                for sl in StockLevel.objects.select_related('sku__product__supplier').all()
+            }
+            forecasts_by_sku = defaultdict(list)
+            for f in rows:
+                forecasts_by_sku[f.sku.id].append(f)
             skus_map = {}
             for row in rows:
                 sku_id = row.sku.id
                 if sku_id not in skus_map:
                     if len(skus_map) >= MAX_DASHBOARD_SKUS:
-                        continue  # Prevent unbounded cache entries
+                        continue
                     stock = stock_map.get(sku_id)
                     if stock:
                         supplier = stock.sku.product.supplier
@@ -110,21 +115,14 @@ class ForecastingService:
                         stockout_risk = False
 
                     mape = row.mape
-                    # Prefer MAPE from Prophet rows over fallback rows
                     if mape is None and forecasts_by_sku.get(sku_id):
                         for f in forecasts_by_sku[sku_id]:
                             if f.mape is not None:
                                 mape = f.mape
                                 break
-                    # Normalize MAPE: Prophet returns raw ratio (0.0-1.0),
-                    # seed data returns percentage (2-25).
-                    # If MAPE > 1, it's already a percentage; if <= 1, multiply by 100.
-                    if mape is not None:
+                    if mape is not None and math.isfinite(mape):
                         mape_pct = mape * 100 if mape <= 1.0 else mape
-                        if math.isfinite(mape_pct):
-                            confidence = max(0, min(100, round(100 - mape_pct)))
-                        else:
-                            confidence = None
+                        confidence = max(0, min(100, round(100 - mape_pct)))
                     else:
                         confidence = None
 
@@ -145,8 +143,8 @@ class ForecastingService:
                         'stockout_risk': stockout_risk,
                         'supplier': supplier_name,
                         'lead_time_days': lead_time_days,
-                        'mae': row.mae,
-                        'mape': mape,
+                        'mae': row.mae if row.mae is not None and math.isfinite(row.mae) else None,
+                        'mape': mape if mape is not None and math.isfinite(mape) else None,
                         'model_version': row.model_version,
                         'confidence_score': confidence,
                         'predicted_demand_30d': 0,
