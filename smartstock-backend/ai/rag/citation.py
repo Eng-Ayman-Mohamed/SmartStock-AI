@@ -11,9 +11,14 @@ def inject_citations(response: str, sources: list[dict]) -> str:
     if existing:
         return response
 
-    source = sources[0]
-    doc = source.get('document')
-    page = source.get('page')
-    if not doc or page is None:
+    citations = []
+    for source in sources:
+        doc = source.get('document')
+        page = source.get('page')
+        if doc and page is not None:
+            citations.append(f'[Source: {doc}, Page: {page}]')
+
+    if not citations:
         return response
-    return f'{response}\n\n[Source: {doc}, Page: {page}]'
+
+    return f'{response}\n\n' + '\n'.join(citations)
