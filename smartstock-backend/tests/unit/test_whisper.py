@@ -20,7 +20,9 @@ class SpeechTranscriberTest(TestCase):
         mock_client.audio.transcriptions.create.assert_called_once()
 
     @patch.dict('os.environ', {}, clear=True)
-    def test_missing_api_key_raises_value_error(self):
+    @patch('ai.llm.provider_config.get_whisper_client')
+    def test_missing_api_key_raises_value_error(self, mock_get_client):
+        mock_get_client.side_effect = ValueError('GROQ_API_KEY not set')
         transcriber = SpeechTranscriber()
         with self.assertRaises(ValueError) as ctx:
             transcriber.transcribe(b'audio-data')

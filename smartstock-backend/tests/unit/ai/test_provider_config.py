@@ -129,7 +129,7 @@ class ProviderConfigGetEmbeddingsTest(TestCase):
         from ai.llm import provider_config
 
         with patch.object(provider_config, 'PROVIDER', 'groq'):
-            with patch.dict(os.environ, {'GOOGLE_API_KEY': 'ai-test'}):
+            with patch.dict(os.environ, {'GOOGLE_API_KEY': 'ai-test', 'COHERE_API_KEY': ''}):
                 provider_config.get_embeddings()
                 mock_cls.assert_called_once()
 
