@@ -157,9 +157,12 @@ class DecisionAgent:
             if any(r.get('error') for r in results if isinstance(r, dict)) or 'error' in output
             else 'success'
         )
-        record_agent_run_task.delay(
-            agent_name='decision_agent', outcome=_outcome, duration_ms=_duration
-        )
+        try:
+            record_agent_run_task.delay(
+                agent_name='decision_agent', outcome=_outcome, duration_ms=_duration
+            )
+        except Exception:
+            logger.debug('Could not dispatch record_agent_run_task (Celery/Redis unavailable)')
         return output
 
     def evaluate_product(self, product_id: int, trace_spans: list | None = None) -> dict:

@@ -153,6 +153,9 @@ class _FakePurchasingService:
     def mark_timeout(self, po_id):
         self.timeout.append(po_id)
 
+    def transition_po_status(self, po_id, new_status):
+        return SimpleNamespace(id=po_id, status=new_status)
+
 
 class _FakeWorkflowService:
     def __init__(self):
