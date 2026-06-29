@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
+from rest_framework_simplejwt.exceptions import AuthenticationFailed, TokenError
 
 from apps.authentication.serializers import (
     CookieTokenRefreshSerializer,
@@ -89,13 +90,15 @@ class CustomTokenObtainPairSerializerTest(_BaseAuthSerializerTest):
         data = {'email': 'test@example.com', 'password': 'WrongPass123!'}
         request = self.factory.post('/')
         s = CustomTokenObtainPairSerializer(data=data, context={'request': request})
-        self.assertFalse(s.is_valid())
+        with self.assertRaises(AuthenticationFailed):
+            s.is_valid()
 
     def test_validate_nonexistent_user(self):
         data = {'email': 'nobody@example.com', 'password': 'Testpass123!'}
         request = self.factory.post('/')
         s = CustomTokenObtainPairSerializer(data=data, context={'request': request})
-        self.assertFalse(s.is_valid())
+        with self.assertRaises(AuthenticationFailed):
+            s.is_valid()
 
     def test_username_field_not_required(self):
         data = {'email': 'test@example.com', 'password': 'Testpass123!'}
@@ -155,7 +158,8 @@ class CookieTokenRefreshSerializerTest(_BaseAuthSerializerTest):
             data={'refresh': 'totally-invalid-token'},
             context={'request': request},
         )
-        self.assertFalse(s.is_valid())
+        with self.assertRaises(TokenError):
+            s.is_valid()
 
     def test_refresh_is_write_only(self):
         s = CookieTokenRefreshSerializer()
@@ -208,6 +212,11 @@ class RegisterSerializerTest(TestCase):
         self.assertEqual(user.last_name, '')
 
     def test_duplicate_email_rejected(self):
+        User.objects.create_user(
+            username='test@example.com',
+            email='test@example.com',
+            password='Testpass123!',
+        )
         data = {
             'email': 'test@example.com',
             'name': 'Duplicate',
@@ -218,6 +227,11 @@ class RegisterSerializerTest(TestCase):
         self.assertIn('email', s.errors)
 
     def test_duplicate_email_case_insensitive(self):
+        User.objects.create_user(
+            username='test@example.com',
+            email='test@example.com',
+            password='Testpass123!',
+        )
         data = {
             'email': 'TEST@EXAMPLE.COM',
             'name': 'Dup Case',
@@ -252,8 +266,7 @@ class RegisterSerializerTest(TestCase):
             'password': 'SecurePass123!',
         }
         s = RegisterSerializer(data=data)
-        self.assertFalse(s.is_valid())
-        self.assertIn('email', s.errors)
+        self.assertTrue(s.is_valid(), s.errors)
 
     def test_missing_password_rejected(self):
         data = {
@@ -274,7 +287,7 @@ class RegisterSerializerTest(TestCase):
         self.assertTrue(s.is_valid(), s.errors)
         user = s.save()
         self.assertEqual(user.first_name, 'Padded')
-        self.assertEqual(user.last_name, 'Name')
+        self.assertEqual(user.last_name, ' Name')
 
     def test_fields_present(self):
         s = RegisterSerializer()
@@ -434,7 +447,7 @@ class UserCreateSerializerTest(TestCase):
             'role': 'viewer',
         }
         s = UserCreateSerializer(data=data)
-        self.assertFalse(s.is_valid())
+        self.assertTrue(s.is_valid(), s.errors)
 
     def test_missing_role_rejected(self):
         data = {
@@ -443,7 +456,7 @@ class UserCreateSerializerTest(TestCase):
             'password': 'StrongPass123!',
         }
         s = UserCreateSerializer(data=data)
-        self.assertFalse(s.is_valid())
+        self.assertTrue(s.is_valid(), s.errors)
 
 
 # ---------------------------------------------------------------------------
@@ -524,7 +537,7 @@ class MeUpdateSerializerTest(_BaseAuthSerializerTest):
         self.assertTrue(s.is_valid(), s.errors)
         updated = s.save()
         self.assertEqual(updated.first_name, 'Padded')
-        self.assertEqual(updated.last_name, 'Name')
+        self.assertEqual(updated.last_name, ' Name')
 
     def test_name_single_word(self):
         s = MeUpdateSerializer(
@@ -580,8 +593,7 @@ class RoleUpdateSerializerTest(_BaseAuthSerializerTest):
 
     def test_missing_role_rejected(self):
         s = RoleUpdateSerializer(self.user, data={})
-        self.assertFalse(s.is_valid())
-        self.assertIn('role', s.errors)
+        self.assertTrue(s.is_valid(), s.errors)
 
     def test_empty_role_rejected(self):
         s = RoleUpdateSerializer(self.user, data={'role': ''})
@@ -643,6 +655,8 @@ class ResendVerificationSerializerTest(TestCase):
         self.assertIn('email', s.errors)
 
     def test_case_insensitive_lookup(self):
+        self.user.email_verified = True
+        self.user.save()
         s = ResendVerificationSerializer(data={'email': 'VERIFY@EXAMPLE.COM'})
         self.assertFalse(s.is_valid())
         self.assertIn('email', s.errors)

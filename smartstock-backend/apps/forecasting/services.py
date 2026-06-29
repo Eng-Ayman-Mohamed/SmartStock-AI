@@ -132,7 +132,7 @@ class ForecastingService:
                     if stock:
                         supplier = stock.sku.product.supplier
                         if supplier:
-                            supplier_name = supplier.name
+                            supplier_name = supplier.name or '—'
                             lead_time_days = getattr(supplier, 'default_lead_time_days', None) or 7
 
                     skus_map[sku_id] = {

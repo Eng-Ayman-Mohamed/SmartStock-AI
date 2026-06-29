@@ -5,6 +5,7 @@ from django.test import RequestFactory, TestCase
 from apps.inventory.models import (
     SKU,
     Category,
+    Product,
     StockLevel,
     Supplier,
 )
@@ -161,29 +162,29 @@ class ProductWriteSerializerTest(TestCase):
 
     # -- validate_unit_price -------------------------------------------------
     def test_unit_price_negative(self):
-        s = ProductWriteSerializer(data={'name': 'X', 'unit_price': '-1'})
+        s = ProductWriteSerializer(data={'name': 'Test', 'unit_price': '-1'})
         self.assertFalse(s.is_valid())
         self.assertIn('unit_price', s.errors)
 
     def test_unit_price_zero(self):
-        s = ProductWriteSerializer(data={'name': 'X', 'unit_price': '0'})
+        s = ProductWriteSerializer(data={'name': 'Test', 'unit_price': '0'})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_unit_price_too_many_decimals(self):
-        s = ProductWriteSerializer(data={'name': 'X', 'unit_price': '1.999'})
+        s = ProductWriteSerializer(data={'name': 'Test', 'unit_price': '1.999'})
         self.assertFalse(s.is_valid())
         self.assertIn('unit_price', s.errors)
 
     def test_unit_price_exactly_2_decimals(self):
-        s = ProductWriteSerializer(data={'name': 'X', 'unit_price': '1.99'})
+        s = ProductWriteSerializer(data={'name': 'Test', 'unit_price': '1.99'})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_unit_price_none_allowed(self):
-        s = ProductWriteSerializer(data={'name': 'X', 'unit_price': None})
+        s = ProductWriteSerializer(data={'name': 'Test', 'unit_price': None})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_unit_price_integer(self):
-        s = ProductWriteSerializer(data={'name': 'X', 'unit_price': '10'})
+        s = ProductWriteSerializer(data={'name': 'Test', 'unit_price': '10'})
         self.assertTrue(s.is_valid(), s.errors)
 
 
@@ -193,31 +194,35 @@ class ProductWriteSerializerTest(TestCase):
 
 
 class SKUSerializerTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.product = Product.objects.create(name='Test Product', unit_price='10.00')
+
     def test_valid_sku(self):
-        s = SKUSerializer(data={'code': 'SKU-123', 'product': 1})
+        s = SKUSerializer(data={'code': 'SKU-123', 'product': self.product.id})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_code_uppercased(self):
-        s = SKUSerializer(data={'code': 'abc-001', 'product': 1})
+        s = SKUSerializer(data={'code': 'abc-001', 'product': self.product.id})
         self.assertTrue(s.is_valid(), s.errors)
         self.assertEqual(s.validated_data['code'], 'ABC-001')
 
     def test_code_too_long(self):
-        s = SKUSerializer(data={'code': 'X' * 101, 'product': 1})
+        s = SKUSerializer(data={'code': 'X' * 51, 'product': self.product.id})
         self.assertFalse(s.is_valid())
         self.assertIn('code', s.errors)
 
     def test_code_invalid_chars(self):
-        s = SKUSerializer(data={'code': 'SKU_ABC!', 'product': 1})
+        s = SKUSerializer(data={'code': 'SKU_ABC!', 'product': self.product.id})
         self.assertFalse(s.is_valid())
         self.assertIn('code', s.errors)
 
     def test_code_with_hyphens_and_digits(self):
-        s = SKUSerializer(data={'code': 'SKU-001-ABC', 'product': 1})
+        s = SKUSerializer(data={'code': 'SKU-001-ABC', 'product': self.product.id})
         self.assertTrue(s.is_valid(), s.errors)
 
-    def test_code_exactly_100_chars(self):
-        s = SKUSerializer(data={'code': 'A' * 100, 'product': 1})
+    def test_code_exactly_50_chars(self):
+        s = SKUSerializer(data={'code': 'A' * 50, 'product': self.product.id})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_product_name_read_only(self):
@@ -231,33 +236,49 @@ class SKUSerializerTest(TestCase):
 
 
 class StockLevelSerializerTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.product = Product.objects.create(name='Test Product', unit_price='10.00')
+        cls.sku = SKU.objects.create(product=cls.product, code='SKU-TEST')
+
     def test_valid_stock_level(self):
         s = StockLevelSerializer(
-            data={'sku': 1, 'quantity_on_hand': 50, 'reorder_point': 10, 'reorder_quantity': 25}
+            data={
+                'sku': self.sku.id,
+                'quantity_on_hand': 50,
+                'reorder_point': 10,
+                'reorder_quantity': 25,
+            }
         )
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_quantity_on_hand_negative(self):
-        s = StockLevelSerializer(data={'sku': 1, 'quantity_on_hand': -1})
+        s = StockLevelSerializer(data={'sku': self.sku.id, 'quantity_on_hand': -1})
         self.assertFalse(s.is_valid())
         self.assertIn('quantity_on_hand', s.errors)
 
     def test_quantity_on_hand_zero(self):
-        s = StockLevelSerializer(data={'sku': 1, 'quantity_on_hand': 0})
+        s = StockLevelSerializer(data={'sku': self.sku.id, 'quantity_on_hand': 0})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_reorder_point_negative(self):
-        s = StockLevelSerializer(data={'sku': 1, 'quantity_on_hand': 0, 'reorder_point': -1})
+        s = StockLevelSerializer(
+            data={'sku': self.sku.id, 'quantity_on_hand': 0, 'reorder_point': -1}
+        )
         self.assertFalse(s.is_valid())
         self.assertIn('reorder_point', s.errors)
 
     def test_reorder_quantity_below_one(self):
-        s = StockLevelSerializer(data={'sku': 1, 'quantity_on_hand': 0, 'reorder_quantity': 0})
+        s = StockLevelSerializer(
+            data={'sku': self.sku.id, 'quantity_on_hand': 0, 'reorder_quantity': 0}
+        )
         self.assertFalse(s.is_valid())
         self.assertIn('reorder_quantity', s.errors)
 
     def test_reorder_quantity_exactly_one(self):
-        s = StockLevelSerializer(data={'sku': 1, 'quantity_on_hand': 0, 'reorder_quantity': 1})
+        s = StockLevelSerializer(
+            data={'sku': self.sku.id, 'quantity_on_hand': 0, 'reorder_quantity': 1}
+        )
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_quantity_available_property(self):
@@ -280,8 +301,9 @@ class StockLevelSerializerTest(TestCase):
 
         instance = MagicMock(spec=StockLevel)
         instance.sku = mock_sku
+        instance.pk = 999
 
-        s = StockLevelSerializer(instance=instance, data={'reorder_point': 100})
+        s = StockLevelSerializer(instance=instance, data={'sku': self.sku.id, 'reorder_point': 100})
         self.assertFalse(s.is_valid())
         self.assertIn('reorder_point', s.errors)
 
@@ -294,14 +316,18 @@ class StockLevelSerializerTest(TestCase):
 
         instance = MagicMock(spec=StockLevel)
         instance.sku = mock_sku
+        instance.pk = 999
 
         s = StockLevelSerializer(
-            instance=instance, data={'reorder_point': 50, 'quantity_on_hand': 0}
+            instance=instance,
+            data={'sku': self.sku.id, 'reorder_point': 50, 'quantity_on_hand': 0},
         )
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_reorder_point_no_instance(self):
-        s = StockLevelSerializer(data={'reorder_point': 50, 'quantity_on_hand': 0})
+        s = StockLevelSerializer(
+            data={'sku': self.sku.id, 'reorder_point': 50, 'quantity_on_hand': 0}
+        )
         self.assertTrue(s.is_valid(), s.errors)
 
 
@@ -311,23 +337,34 @@ class StockLevelSerializerTest(TestCase):
 
 
 class SalesRecordSerializerTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.product = Product.objects.create(name='Test Product', unit_price='10.00')
+        cls.sku = SKU.objects.create(product=cls.product, code='SKU-TEST')
+
     def test_valid_record(self):
-        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 10})
+        s = SalesRecordSerializer(
+            data={'sku': self.sku.id, 'date': '2025-01-15', 'quantity_sold': 10}
+        )
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_quantity_sold_negative(self):
-        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': -5})
+        s = SalesRecordSerializer(
+            data={'sku': self.sku.id, 'date': '2025-01-15', 'quantity_sold': -5}
+        )
         self.assertFalse(s.is_valid())
         self.assertIn('quantity_sold', s.errors)
 
     def test_quantity_sold_zero(self):
-        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 0})
+        s = SalesRecordSerializer(
+            data={'sku': self.sku.id, 'date': '2025-01-15', 'quantity_sold': 0}
+        )
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_date_to_before_date_from(self):
         s = SalesRecordSerializer(
             data={
-                'sku': 1,
+                'sku': self.sku.id,
                 'date': '2025-01-15',
                 'quantity_sold': 10,
                 'date_from': '2025-06-01',
@@ -340,7 +377,7 @@ class SalesRecordSerializerTest(TestCase):
     def test_date_to_after_date_from(self):
         s = SalesRecordSerializer(
             data={
-                'sku': 1,
+                'sku': self.sku.id,
                 'date': '2025-01-15',
                 'quantity_sold': 10,
                 'date_from': '2025-05-01',
@@ -350,13 +387,15 @@ class SalesRecordSerializerTest(TestCase):
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_dates_not_required(self):
-        s = SalesRecordSerializer(data={'sku': 1, 'date': '2025-01-15', 'quantity_sold': 10})
+        s = SalesRecordSerializer(
+            data={'sku': self.sku.id, 'date': '2025-01-15', 'quantity_sold': 10}
+        )
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_only_date_from_no_error(self):
         s = SalesRecordSerializer(
             data={
-                'sku': 1,
+                'sku': self.sku.id,
                 'date': '2025-01-15',
                 'quantity_sold': 10,
                 'date_from': '2025-06-01',
@@ -371,7 +410,7 @@ class SalesRecordSerializerTest(TestCase):
     def test_date_from_and_date_to_popped_from_validated(self):
         s = SalesRecordSerializer(
             data={
-                'sku': 1,
+                'sku': self.sku.id,
                 'date': '2025-01-15',
                 'quantity_sold': 10,
                 'date_from': '2025-06-01',

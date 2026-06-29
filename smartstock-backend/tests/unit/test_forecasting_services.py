@@ -311,14 +311,20 @@ class ForecastingServiceCalculateStockoutRiskTest(ForecastingServiceTestBase):
         self.assertFalse(result)
 
     def test_stockout_risk_safety_stock_none(self):
-        self.product.safety_stock = None
-        self.product.save()
-        forecast = MagicMock(predicted_quantity=1.0)
-        self.repo.get_all.return_value.filter.return_value.order_by.return_value.__getitem__ = (
-            lambda self_inner, x: [forecast]
-        )
-        result = self.service.calculate_stockout_risk(self.sku.code)
-        self.assertFalse(result)
+        mock_stock = MagicMock()
+        mock_stock.sku.product.safety_stock = None
+        mock_stock.quantity_available = 50
+        mock_stock.sku.id = self.sku.id
+        mock_get = MagicMock(return_value=mock_stock)
+        mock_select_related = MagicMock(get=mock_get)
+        with patch.object(StockLevel, 'objects') as mock_objects:
+            mock_objects.select_related.return_value = mock_select_related
+            forecast = MagicMock(predicted_quantity=1.0)
+            self.repo.get_all.return_value.filter.return_value.order_by.return_value.__getitem__ = (
+                lambda self_inner, x: [forecast]
+            )
+            result = self.service.calculate_stockout_risk(self.sku.code)
+            self.assertFalse(result)
 
     def test_stockout_risk_empty_forecasts(self):
         self.repo.get_all.return_value.filter.return_value.order_by.return_value.__getitem__ = (
@@ -549,11 +555,26 @@ class ForecastingServiceComputeDashboardTest(ForecastingServiceTestBase):
         self.assertEqual(sku_data['lead_time_days'], 7)
 
     def test_compute_dashboard_supplier_no_name(self):
-        self.supplier.name = None
-        self.supplier.save()
-        result = self.service._compute_dashboard()
-        sku_data = result['skus'][0]
-        self.assertEqual(sku_data['supplier'], '—')
+        mock_supplier = MagicMock()
+        mock_supplier.name = None
+        mock_supplier.default_lead_time_days = 7
+        mock_product = MagicMock()
+        mock_product.supplier = mock_supplier
+        mock_sku = MagicMock()
+        mock_sku.id = self.sku.id
+        mock_sku.code = self.sku.code
+        mock_sku.product = mock_product
+        mock_stock = MagicMock()
+        mock_stock.sku = mock_sku
+        mock_stock.reorder_point = 10
+        mock_stock.quantity_on_hand = 50
+        mock_stock.quantity_available = 50
+        mock_stock.sku.product.safety_stock = 5
+        with patch.object(StockLevel.objects, 'select_related') as mock_select:
+            mock_select.return_value.all.return_value = [mock_stock]
+            result = self.service._compute_dashboard()
+            sku_data = result['skus'][0]
+            self.assertEqual(sku_data['supplier'], '—')
 
     def test_compute_dashboard_no_supplier(self):
         self.product.supplier = None
@@ -564,7 +585,7 @@ class ForecastingServiceComputeDashboardTest(ForecastingServiceTestBase):
         self.assertEqual(sku_data['lead_time_days'], 7)
 
     def test_compute_dashboard_empty_when_exception(self):
-        with patch('apps.forecasting.services.ForecastResult') as mock_fr:
+        with patch('apps.forecasting.models.ForecastResult') as mock_fr:
             mock_fr.objects.filter.side_effect = Exception('DB crash')
             result = self.service._compute_dashboard()
             self.assertEqual(result['skus'], [])

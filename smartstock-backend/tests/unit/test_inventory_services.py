@@ -193,7 +193,7 @@ class GetDecisionStockDataBySkuTest(TestCase):
         supplier = MagicMock(default_lead_time_days=lead_time_days)
         product = MagicMock(id=1, reorder_point=10, safety_stock=3, supplier=supplier)
         sku = MagicMock(id=42, code='SKU-042', product=product)
-        stock = MagicMock(sku=sku, quantity_available=15, reorder_point=reorder_point)
+        stock = MagicMock(sku=sku, sku_id=42, quantity_available=15, reorder_point=reorder_point)
         return stock
 
     def test_returns_correct_dict(self):
@@ -241,7 +241,9 @@ class GetLowStockItemsTest(TestCase):
         supplier = MagicMock(name='Acme Corp')
         product = MagicMock(id=100 + sku_id, name=f'Product {sku_id}', supplier=supplier)
         sku = MagicMock(id=sku_id, code=f'SKU-{sku_id}', product=product)
-        return MagicMock(id=sku_id, sku=sku, quantity_on_hand=qty, reorder_point=reorder_point)
+        return MagicMock(
+            id=sku_id, sku=sku, sku_id=sku_id, quantity_on_hand=qty, reorder_point=reorder_point
+        )
 
     @patch('apps.inventory.services.cache')
     def test_returns_cached_result_when_available(self, mock_cache):
@@ -253,7 +255,7 @@ class GetLowStockItemsTest(TestCase):
 
     @patch('apps.inventory.models.SalesRecord')
     @patch('apps.inventory.services.cache')
-    @patch('apps.inventory.services.timezone')
+    @patch('django.utils.timezone')
     def test_returns_empty_when_no_low_stock(self, mock_tz, mock_cache, mock_sr):
         mock_cache.get.return_value = None
         self.stock_repo.get_low_stock.return_value = []
@@ -263,7 +265,7 @@ class GetLowStockItemsTest(TestCase):
 
     @patch('apps.inventory.models.SalesRecord')
     @patch('apps.inventory.services.cache')
-    @patch('apps.inventory.services.timezone')
+    @patch('django.utils.timezone')
     def test_no_demand_leaves_predicted_stockout_none(self, mock_tz, mock_cache, mock_sr):
         mock_cache.get.return_value = None
         sl = self._make_stock_level(1, 5)
@@ -283,7 +285,7 @@ class GetLowStockItemsTest(TestCase):
 
     @patch('apps.inventory.models.SalesRecord')
     @patch('apps.inventory.services.cache')
-    @patch('apps.inventory.services.timezone')
+    @patch('django.utils.timezone')
     def test_with_demand_calculates_stockout(self, mock_tz, mock_cache, mock_sr):
         mock_cache.get.return_value = None
         sl = self._make_stock_level(1, 30)
@@ -529,14 +531,12 @@ class ApplyConfirmedInvoiceTest(TestCase):
         self.sku_repo.get_by_code.return_value = sku
         self.stock_repo.get_by_sku_id.return_value = stock
         self.stock_repo.update.return_value = MagicMock(quantity_on_hand=15, id=30)
-        self.supplier_repo.get_by_name.return_value = MagicMock()
 
         self.svc.apply_confirmed_invoice(
             {
                 'sku_code': 'SKU-A',
                 'product_name': 'Widget',
                 'quantity_received': '5',
-                'supplier_name': 'Acme',
             }
         )
         self.repo.update.assert_not_called()
@@ -728,7 +728,7 @@ class SupplierServiceMethodsTest(TestCase):
         self.svc.update_supplier(4, data)
         self.supplier_repo.update.assert_called_once_with(4, data)
 
-    @patch('apps.inventory.services.PurchaseOrder')
+    @patch('apps.purchasing.models.PurchaseOrder')
     def test_delete_supplier_no_open_pos(self, mock_po):
         mock_po.Status.DRAFT = 'draft'
         mock_po.Status.PENDING_APPROVAL = 'pending_approval'
@@ -738,7 +738,7 @@ class SupplierServiceMethodsTest(TestCase):
         self.svc.delete_supplier(4)
         self.supplier_repo.soft_delete.assert_called_once_with(4)
 
-    @patch('apps.inventory.services.PurchaseOrder')
+    @patch('apps.purchasing.models.PurchaseOrder')
     def test_delete_supplier_with_open_pos_raises(self, mock_po):
         mock_po.Status.DRAFT = 'draft'
         mock_po.Status.PENDING_APPROVAL = 'pending_approval'
@@ -832,7 +832,7 @@ class ParseInvoicePriceTest(TestCase):
 
     def test_quantized_to_two_decimals(self):
         result = self.svc._parse_invoice_price('9.999')
-        self.assertEqual(result, Decimal('9.99') or Decimal('10.00'))
+        self.assertEqual(result, Decimal('10.00'))
 
     def test_integer_input(self):
         result = self.svc._parse_invoice_price(25)
