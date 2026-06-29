@@ -1,0 +1,66 @@
+================================================================================
+  SmartStock AI — Assistant Test Questions
+================================================================================
+
+Use these questions to test the two search modes in the AI Chat page.
+Set the mode dropdown to the appropriate mode before asking.
+
+────────────────────────────────────────────────────────────────────────────────
+  MODE: Search Stock (NL Query)  —  Queries the inventory database
+────────────────────────────────────────────────────────────────────────────────
+
+1.  How many units do we have in stock for all products?
+
+2.  Which items are currently below their reorder point and need restocking?
+
+3.  Show me the top 5 products with the highest quantity on hand.
+
+4.  What is the total inventory value across all active products?
+
+5.  List all suppliers and their default lead time in days.
+
+6.  Which SKUs have zero units on hand (completely out of stock)?
+
+7.  Show me all products in the "Electronics" category (if seeded) or
+    show me the first 10 products alphabetically.
+
+8.  What are the sales numbers for the most recently sold product?
+
+9.  Forecast demand for the product with the lowest stock level.
+
+10. Show me all purchase orders that are currently in "approved" status
+    and their total cost.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  MODE: Search Documents (RAG)  —  Searches the uploaded PDF documents
+────────────────────────────────────────────────────────────────────────────────
+
+1.  What was SmartStock's total revenue in Q2 2026?
+
+2.  Which warehouse has the highest utilization rate and what is it?
+
+3.  What is the return rate for clothing items and what is the
+    most common reason for returns?
+
+4.  Who is the contact person for the AI & Data Science department
+    and what is their email?
+
+5.  Which supplier has been flagged for declining reliability and
+    why?
+
+6.  What is the overall MAPE (Mean Absolute Percentage Error) for
+    the AI forecasting models in Q2 2026?
+
+7.  What are the automated reorder rules for the top 20% fastest
+    moving products?
+
+8.  What is the shrinkage target and what triggers an auto-audit?
+
+9.  What is SmartStock's CapEx plan for Q3 2026 and how much is
+    budgeted in total?
+
+10. What are the safety stock levels (in days) for groceries and
+    electronics categories?
+
+================================================================================
