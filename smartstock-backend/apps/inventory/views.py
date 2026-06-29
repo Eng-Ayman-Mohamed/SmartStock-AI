@@ -1192,6 +1192,12 @@ _KNOWN_ORM_FIELDS = {
     'is_active',
     'date',
     'quantity_sold',
+    'unit_price',
+    'unit_of_measure',
+    'safety_stock',
+    'max_warehouse_capacity',
+    'created_at',
+    'updated_at',
 }
 
 
