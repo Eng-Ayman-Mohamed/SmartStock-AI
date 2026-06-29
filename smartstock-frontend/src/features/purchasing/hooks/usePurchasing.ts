@@ -18,9 +18,9 @@ export function useApprovePO() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string }) => purchasingApi.approvePO(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: purchasingQueryKey });
-      void qc.invalidateQueries({ queryKey: poHistoryQueryKey });
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: purchasingQueryKey });
+      await qc.refetchQueries({ queryKey: poHistoryQueryKey });
     },
   });
 }
@@ -29,9 +29,9 @@ export function useRejectPO() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string }) => purchasingApi.rejectPO(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: purchasingQueryKey });
-      void qc.invalidateQueries({ queryKey: poHistoryQueryKey });
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: purchasingQueryKey });
+      await qc.refetchQueries({ queryKey: poHistoryQueryKey });
     },
   });
 }

@@ -137,13 +137,19 @@ class PurchasingService:
         body = render_to_string('purchasing/po_email.txt', po_data)
         message_id = f'po-{po.id}-approved'
 
-        send_email_with_retry.delay(
-            subject=subject,
-            body=body,
-            recipient=supplier.contact_email,
-            po_id=po.id,
-            message_id=message_id,
-        )
+        try:
+            send_email_with_retry.delay(
+                subject=subject,
+                body=body,
+                recipient=supplier.contact_email,
+                po_id=po.id,
+                message_id=message_id,
+            )
+        except Exception:
+            logger.warning(
+                'PO-%s: Celery unavailable, skipping email dispatch', po.id
+            )
+            return
         logger.info(
             'PO-%s supplier email dispatched to %s (message_id=%s)',
             po.id,
