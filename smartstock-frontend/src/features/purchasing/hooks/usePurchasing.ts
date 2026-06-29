@@ -65,6 +65,7 @@ export function usePOHistory(
   pageSize = 20,
   sortField?: string,
   sortOrder?: string,
+  searchQuery?: string,
 ) {
   const token = useAuthStore((s) => s.token);
   const ordering = sortField
@@ -73,8 +74,8 @@ export function usePOHistory(
       : (poHistoryOrderingMap[sortField] ?? sortField)
     : '';
   return useQuery({
-    queryKey: [...poHistoryQueryKey, page, pageSize, sortField, sortOrder],
-    queryFn: () => purchasingApi.listPOHistory(page, pageSize, ordering),
+    queryKey: [...poHistoryQueryKey, page, pageSize, sortField, sortOrder, searchQuery],
+    queryFn: () => purchasingApi.listPOHistory(page, pageSize, ordering, searchQuery),
     enabled: !!token,
     retry: false,
   });

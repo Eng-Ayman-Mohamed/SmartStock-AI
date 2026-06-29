@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ShoppingCart, Plus } from "lucide-react";
+import { ShoppingCart, Plus, Search } from "lucide-react";
 import Card from "../../../shared/components/Card";
 import Button from "../../../shared/components/Button";
 import Badge from "../../../shared/components/Badge";
 import EmptyState from "../../../shared/components/EmptyState";
 import Skeleton from "../../../shared/components/Skeleton";
 import DataTable from "../../../shared/components/DataTable";
+import Input from "../../../shared/components/Input";
 import type {
   Column,
   PaginationConfig,
@@ -23,6 +24,7 @@ import type { POHistoryItem } from "../api";
 import { usePagination } from "../../../shared/hooks/usePagination";
 import { useAuthStore } from "../../../store/authStore";
 import { useQuery } from "@tanstack/react-query";
+import { useDebounce } from "../../../shared/hooks/useDebounce";
 
 const PAGE_SIZE = 20;
 const EMPTY_ARRAY: [] = [];
@@ -36,6 +38,8 @@ export default function PurchasingPage() {
   const [sortField, setSortField] = useState("");
   const [sortOrder, setSortOrder] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [poSearchInput, setPoSearchInput] = useState("");
+  const debouncedPoSearch = useDebounce(poSearchInput, 300);
 
   // Clear the query param after initial selection to avoid stale state on refresh
   useEffect(() => {
@@ -185,7 +189,7 @@ export default function PurchasingPage() {
     data: poHistoryData,
     isLoading: isHistoryLoading,
     isError: isHistoryError,
-  } = usePOHistory(poPage, PAGE_SIZE, sortField, sortOrder);
+  } = usePOHistory(poPage, PAGE_SIZE, sortField, sortOrder, debouncedPoSearch || undefined);
   const pendingPOs = pendingPOsData?.results ?? EMPTY_ARRAY;
   const poHistory = poHistoryData?.results ?? EMPTY_ARRAY;
 
@@ -318,6 +322,18 @@ export default function PurchasingPage() {
       )}
 
       <Card title="PO History" fillHeight className="max-h-[90vh]">
+        <div className="mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
+          <Input
+            placeholder="Search by PO #, product, or supplier..."
+            value={poSearchInput}
+            onChange={(e) => {
+              setPoSearchInput(e.target.value);
+              setPoPage(1);
+            }}
+            className="pl-9"
+          />
+        </div>
         {isHistoryLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (

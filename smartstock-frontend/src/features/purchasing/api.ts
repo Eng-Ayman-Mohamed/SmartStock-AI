@@ -166,6 +166,7 @@ export async function listPOHistory(
   page = 1,
   pageSize = 20,
   ordering?: string,
+  searchQuery?: string,
 ): Promise<PaginatedResponse<POHistoryItem>> {
   const params: Record<string, string | number | undefined> = {
     page,
@@ -173,6 +174,7 @@ export async function listPOHistory(
     ordering: ordering || undefined,
     // Exclude draft/pending server-side so the paginated count matches the rows shown.
     status_exclude: 'draft,pending_approval',
+    search: searchQuery || undefined,
   };
   const res = await api.get<POHistoryRaw[]>('/purchasing/orders/', { params });
   return {
