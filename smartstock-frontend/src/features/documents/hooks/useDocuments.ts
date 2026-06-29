@@ -27,6 +27,7 @@ export function useDocuments(
   pageSize: number = 20,
   sortField?: string,
   sortOrder?: string,
+  searchQuery?: string,
 ) {
   const ordering = sortField
     ? sortOrder === 'desc'
@@ -34,8 +35,8 @@ export function useDocuments(
       : (orderingMap[sortField] ?? sortField)
     : '';
   return useQuery({
-    queryKey: ['documents', page, pageSize, sortField, sortOrder],
-    queryFn: () => documentsApi.listDocuments(page, pageSize, ordering || undefined),
+    queryKey: ['documents', page, pageSize, sortField, sortOrder, searchQuery],
+    queryFn: () => documentsApi.listDocuments(page, pageSize, ordering || undefined, searchQuery),
   });
 }
 
