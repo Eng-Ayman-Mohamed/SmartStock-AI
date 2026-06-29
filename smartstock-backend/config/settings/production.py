@@ -25,15 +25,17 @@ if 'backend' not in ALLOWED_HOSTS:
 
 _extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS')
 if not _extra_csrf:
-    raise ImproperlyConfigured('CSRF_TRUSTED_ORIGINS environment variable is required in production.')
+    raise ImproperlyConfigured(
+        'CSRF_TRUSTED_ORIGINS environment variable is required in production.'
+    )
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _extra_csrf.split(',') if o.strip()]
 
 _cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS')
 if not _cors_origins:
-    raise ImproperlyConfigured('CORS_ALLOWED_ORIGINS environment variable is required in production.')
-CORS_ALLOWED_ORIGINS = [
-    o.strip() for o in _cors_origins.split(',') if o.strip()
-]
+    raise ImproperlyConfigured(
+        'CORS_ALLOWED_ORIGINS environment variable is required in production.'
+    )
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
 
 if not DEBUG:
     _cors_insecure = [

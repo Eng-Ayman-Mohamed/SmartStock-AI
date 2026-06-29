@@ -45,7 +45,9 @@ def send_email_with_retry(
     attempts = retry_number + 1
 
     try:
-        result = send_email_core(subject=subject, body=body, recipient=recipient, message_id=message_id)
+        result = send_email_core(
+            subject=subject, body=body, recipient=recipient, message_id=message_id
+        )
     except RETRIABLE_EXCEPTIONS as exc:
         if retry_number < MAX_RETRIES:
             countdown = RETRY_COUNTDOWN[min(retry_number, len(RETRY_COUNTDOWN) - 1)]

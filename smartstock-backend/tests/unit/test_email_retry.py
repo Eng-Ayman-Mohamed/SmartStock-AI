@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
-from infrastructure.email import MAX_RETRIES, RETRY_COUNTDOWN
 from apps.purchasing.email_tasks import is_retriable
+from infrastructure.email import MAX_RETRIES, RETRY_COUNTDOWN
 
 
 class IsRetriableTest(TestCase):

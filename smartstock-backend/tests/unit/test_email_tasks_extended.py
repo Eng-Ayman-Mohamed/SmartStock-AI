@@ -8,7 +8,6 @@ from apps.purchasing.email_tasks import (
     is_retriable,
     send_email_with_retry,
 )
-from infrastructure.email import MAX_RETRIES
 
 
 class IsRetriableTest(TestCase):

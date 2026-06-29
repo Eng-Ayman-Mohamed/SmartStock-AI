@@ -105,7 +105,9 @@ class PurchasingService:
             try:
                 self._dispatch_supplier_email(po)
             except Exception:
-                logger.exception('Failed to dispatch supplier email for PO-%s after approval', po_id)
+                logger.exception(
+                    'Failed to dispatch supplier email for PO-%s after approval', po_id
+                )
 
         return po
 
@@ -277,7 +279,9 @@ class PurchasingService:
         if new_status == 'confirmed':
             update_data['confirmed_at'] = timezone.now()
         updated = self.repo.update(po_id, update_data)
-        po_transitioned.send(sender=self.__class__, po=updated, from_status=current, to_status=new_status)
+        po_transitioned.send(
+            sender=self.__class__, po=updated, from_status=current, to_status=new_status
+        )
         return updated
 
     def get_po_with_supplier(self, po_id: int) -> dict:

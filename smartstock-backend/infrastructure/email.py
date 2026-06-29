@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class EmailRetryError(Exception):
     """Wraps original exception type for Celery retry observability."""
+
     def __init__(self, original_type: str, message: str):
         self.original_type = original_type
         super().__init__(f'{original_type}: {message}')
@@ -103,7 +104,9 @@ def send_email_core(subject: str, body: str, recipient: str, message_id: str | N
         raise  # preserve original exception type for Celery retry
     except Exception as exc:
         exc_type = type(exc).__name__
-        logger.error('Email %s to %s unexpectedly failed: %s (%s)', message_id, recipient, exc_type, exc)
+        logger.error(
+            'Email %s to %s unexpectedly failed: %s (%s)', message_id, recipient, exc_type, exc
+        )
         return {
             'status': 'permanently_failed',
             'message_id': message_id,
