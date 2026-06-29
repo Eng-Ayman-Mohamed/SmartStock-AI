@@ -45,7 +45,7 @@ export default function DocumentDetailModal({ documentId, onClose, citedPage, ch
   if (documentId === null) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
       <div className="relative z-10 mx-4 w-full max-w-2xl max-h-[85vh] rounded-lg border border-hairline bg-canvas shadow-lg flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-hairline">
