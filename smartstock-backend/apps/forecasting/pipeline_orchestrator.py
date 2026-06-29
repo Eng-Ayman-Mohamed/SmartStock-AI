@@ -42,7 +42,12 @@ class AgentPipelineOrchestrator:
                 return {
                     'forecast': forecast_result,
                     'decision': {'skus_processed': 0, 'reorder_flags_created': 0, 'errors': []},
-                    'po_creation': {'created': 0, 'skipped_no_supplier': 0, 'failed': 0, 'errors': []},
+                    'po_creation': {
+                        'created': 0,
+                        'skipped_no_supplier': 0,
+                        'failed': 0,
+                        'errors': [],
+                    },
                 }
 
             # Step 3: Run DecisionAgent per SKU (parallelized)
@@ -91,13 +96,9 @@ class AgentPipelineOrchestrator:
         try:
             forecast_results = result.get(timeout=600, propagate=False)
             completed = sum(
-                1
-                for r in forecast_results
-                if r is not None and not isinstance(r, Exception)
+                1 for r in forecast_results if r is not None and not isinstance(r, Exception)
             )
-            logger.info(
-                'Forecast tasks: %d/%d completed', completed, len(sku_ids)
-            )
+            logger.info('Forecast tasks: %d/%d completed', completed, len(sku_ids))
         except Exception:
             logger.warning('Some forecast tasks timed out; continuing with partial results')
 
@@ -106,9 +107,7 @@ class AgentPipelineOrchestrator:
         try:
             cache.delete_pattern('forecast_dashboard_*')
         except Exception:
-            logger.warning(
-                'Failed to invalidate forecast dashboard cache', exc_info=True
-            )
+            logger.warning('Failed to invalidate forecast dashboard cache', exc_info=True)
 
         return {'dispatched': len(sku_ids), 'group_id': str(result.id), 'sku_ids': sku_ids}
 
@@ -120,9 +119,7 @@ class AgentPipelineOrchestrator:
             return agent.evaluate_sku(sku_id)
 
         with ThreadPoolExecutor(max_workers=min(5, len(sku_ids) or 1)) as executor:
-            futures = {
-                executor.submit(_evaluate, sku_id): sku_id for sku_id in sku_ids
-            }
+            futures = {executor.submit(_evaluate, sku_id): sku_id for sku_id in sku_ids}
             for future in as_completed(futures):
                 sku_id = futures[future]
                 try:
