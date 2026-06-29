@@ -5,7 +5,6 @@ from django.db import transaction
 from django.dispatch import Signal
 from django.utils import timezone
 
-from apps.audit.models import AuditLog
 from apps.purchasing.email_tasks import send_email_with_retry
 from core.exceptions import IllegalPOTransitionError
 
@@ -18,9 +17,14 @@ po_approved = Signal()
 po_rejected = Signal()
 po_sent = Signal()
 po_confirmed = Signal()
+po_email_sent = Signal()
+po_waiting_confirmation = Signal()
+po_failed = Signal()
+po_timeout = Signal()
+po_transitioned = Signal()
 
 LEGAL_TRANSITIONS = {
-    'draft': ['pending_approval', 'rejected', 'cancelled'],
+    'draft': ['pending_approval', 'approved', 'rejected', 'cancelled'],
     'pending_approval': ['approved', 'rejected', 'cancelled'],
     'approved': ['sent', 'email_sent', 'cancelled'],
     'email_sent': ['waiting_confirmation', 'cancelled'],
@@ -87,7 +91,7 @@ class PurchasingService:
         return self.repo.create(data)
 
     @transaction.atomic
-    def approve_po(self, po_id: int, user):
+    def approve_po(self, po_id: int, user, skip_email: bool = False):
         po = self.repo.get_by_id_for_update(po_id)
         if po.status not in ('draft', 'pending_approval'):
             raise IllegalPOTransitionError(
@@ -97,10 +101,13 @@ class PurchasingService:
         po.refresh_from_db()
         po_approved.send(sender=self.__class__, po=po, user=user)
 
-        try:
-            self._dispatch_supplier_email(po)
-        except Exception:
-            logger.exception('Failed to dispatch supplier email for PO-%s after approval', po_id)
+        if not skip_email:
+            try:
+                self._dispatch_supplier_email(po)
+            except Exception:
+                logger.exception(
+                    'Failed to dispatch supplier email for PO-%s after approval', po_id
+                )
 
         return po
 
@@ -176,7 +183,7 @@ class PurchasingService:
         if message_id:
             update_data['message_id'] = message_id
         po = self.repo.update(po_id, update_data)
-        po_sent.send(sender=self.__class__, po=po)
+        po_email_sent.send(sender=self.__class__, po=po)
         return po
 
     def mark_waiting_confirmation(self, po_id: int):
@@ -184,6 +191,7 @@ class PurchasingService:
         if po.status != 'email_sent':
             raise ValidationError('Only email_sent orders can be moved to waiting confirmation.')
         po = self.repo.update(po_id, {'status': 'waiting_confirmation'})
+        po_waiting_confirmation.send(sender=self.__class__, po=po)
         return po
 
     def mark_confirmed(self, po_id: int):
@@ -209,11 +217,13 @@ class PurchasingService:
                 'notes': error_message or po.notes,
             },
         )
+        po_failed.send(sender=self.__class__, po=po)
         return po
 
     def mark_timeout(self, po_id: int):
         po = self.repo.get_by_id(po_id)
         po = self.repo.update(po_id, {'status': 'timeout'})
+        po_timeout.send(sender=self.__class__, po=po)
         return po
 
     def get_open_po_status(self, product_id: int) -> dict:
@@ -269,11 +279,8 @@ class PurchasingService:
         if new_status == 'confirmed':
             update_data['confirmed_at'] = timezone.now()
         updated = self.repo.update(po_id, update_data)
-        AuditLog.objects.create(
-            event=f'PO_{new_status.upper()}',
-            entity_type='PurchaseOrder',
-            entity_id=po_id,
-            data_snapshot={'from': current, 'to': new_status},
+        po_transitioned.send(
+            sender=self.__class__, po=updated, from_status=current, to_status=new_status
         )
         return updated
 

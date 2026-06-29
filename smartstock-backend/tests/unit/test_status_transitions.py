@@ -46,9 +46,9 @@ class StatusTransitionValidationTest(TestCase):
             update_call = self.repo.update.call_args[0][1]
             self.assertIn('confirmed_at', update_call)
 
-    def test_transition_creates_audit_log(self):
+    def test_transition_updates_status(self):
         self.repo.get_by_id.return_value = MagicMock(status='draft')
-        self.repo.update.return_value = MagicMock(status='pending_approval')
-        with patch('apps.purchasing.services.AuditLog') as mock_audit:
-            self.service.transition_po_status(po_id=1, new_status='pending_approval')
-            mock_audit.objects.create.assert_called_once()
+        self.repo.update.return_value = MagicMock(status='pending_approval', id=1)
+        result = self.service.transition_po_status(po_id=1, new_status='pending_approval')
+        self.assertEqual(result.status, 'pending_approval')
+        self.repo.update.assert_called_once()

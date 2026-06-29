@@ -25,3 +25,5 @@ media/
 *.swp
 Thumbs.db
 .codebase-memory/
+reports/dump.rdb
+*.rdb

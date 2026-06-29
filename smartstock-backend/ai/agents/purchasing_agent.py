@@ -178,7 +178,7 @@ class PurchasingAgent:
         # Auto-approve is disabled in production to prevent unintended PO approvals
         if context.get('auto_approve') and not settings.IS_PRODUCTION:
             if user is not None:
-                self.purchasing_service.approve_po(po_id, user)
+                self.purchasing_service.approve_po(po_id, user, skip_email=True)
             self.workflow_service.update_status(workflow_id, PurchaseOrderWorkflow.Status.APPROVED)
             return None
 
@@ -203,7 +203,7 @@ class PurchasingAgent:
                     'message': 'Human approval rejected. PO not sent.',
                 }
             if user is not None:
-                self.purchasing_service.approve_po(po_id, user)
+                self.purchasing_service.approve_po(po_id, user, skip_email=True)
             self.workflow_service.update_status(workflow_id, PurchaseOrderWorkflow.Status.APPROVED)
             return None
 

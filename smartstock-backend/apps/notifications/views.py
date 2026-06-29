@@ -1,6 +1,4 @@
 from django.core.cache import cache
-from django.db.models import BooleanField, OuterRef, Subquery
-from django.db.models.functions import Coalesce
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
