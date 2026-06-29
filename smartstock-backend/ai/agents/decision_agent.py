@@ -7,8 +7,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import StructuredTool
 
 from ai.agents.tools.forecast_read import ForecastReadTool
+from ai.agents.tools.forecast_read_by_sku import ForecastReadBySKUTool
 from ai.agents.tools.po_status_check import POStatusCheckTool
+from ai.agents.tools.po_status_check_by_sku import POStatusCheckBySKUTool
 from ai.agents.tools.stock_level_read import StockLevelReadTool
+from ai.agents.tools.stock_level_read_by_sku import StockLevelReadBySKUTool
 from ai.llm.chain import prompt_injection_filter
 from ai.observability.langfuse import (
     get_langchain_callbacks,
@@ -32,6 +35,16 @@ Process:
 1. Read stock for the product with stock_level_read_tool.
 2. Use the observed lead_time_days as forecast_days when calling forecast_read_tool.
 3. Check open purchase orders with po_status_check_tool.
+4. Stop after the required observations are gathered. Do not invent tool data.
+"""
+
+SKU_DECISION_AGENT_SYSTEM_PROMPT = """You are SmartStock AI's reorder decision agent.
+Evaluate a single SKU for reorder need using the available tools.
+
+Process:
+1. Read stock for the SKU with stock_level_read_by_sku_tool.
+2. Use the observed lead_time_days as forecast_days when calling forecast_read_by_sku_tool.
+3. Check open purchase orders with po_status_check_by_sku_tool.
 4. Stop after the required observations are gathered. Do not invent tool data.
 """
 
@@ -86,6 +99,9 @@ class DecisionAgent:
         stock_tool=None,
         forecast_tool=None,
         po_status_tool=None,
+        stock_sku_tool=None,
+        forecast_sku_tool=None,
+        po_status_sku_tool=None,
         forecasting_service=None,
         reasoner=None,
         llm=None,
@@ -96,6 +112,9 @@ class DecisionAgent:
         self.stock_tool = stock_tool or StockLevelReadTool()
         self.forecast_tool = forecast_tool or ForecastReadTool()
         self.po_status_tool = po_status_tool or POStatusCheckTool()
+        self.stock_sku_tool = stock_sku_tool or StockLevelReadBySKUTool()
+        self.forecast_sku_tool = forecast_sku_tool or ForecastReadBySKUTool()
+        self.po_status_sku_tool = po_status_sku_tool or POStatusCheckBySKUTool()
         self.forecasting_service = forecasting_service or ForecastingService()
         self.reasoner = reasoner or DecisionReasoner()
         self.llm = llm
@@ -185,12 +204,186 @@ class DecisionAgent:
             flag = self.forecasting_service.persist_reorder_flag(decision)
             decision['reorder_flag_id'] = flag.id
 
-        return {
-            'sku_code': decision['sku_code'],
+        return decision
+
+    def evaluate_sku(self, sku_id: int, trace_spans: list | None = None) -> dict:
+        observations, agent_result = self._observe_sku(sku_id, trace_spans)
+        stock = observations[self._tool_name(self.stock_sku_tool, 'stock_level_read_by_sku_tool')]
+        lead_time_days = stock.get('lead_time_days') or 7
+        forecast = observations[
+            self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool')
+        ]
+        po_status = observations[
+            self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool')
+        ]
+
+        total_predicted = float(forecast.get('total_predicted_demand') or 0)
+        safety_stock = int(stock.get('safety_stock') or 0)
+        threshold = total_predicted + safety_stock
+        formula_requires_reorder = stock['quantity_available'] < threshold
+        has_open_po = bool(po_status['has_open_po'])
+        reorder_required = formula_requires_reorder and not has_open_po
+
+        decision = {
+            'sku_id': sku_id,
+            'sku_code': stock['sku_code'] or forecast.get('sku_code', ''),
+            'product_id': stock.get('product_id'),
+            'quantity_available': stock['quantity_available'],
+            'reorder_point': stock['reorder_point'],
+            'lead_time_days': lead_time_days,
+            'forecast_days': forecast.get('forecast_days') or lead_time_days,
+            'total_predicted_demand': total_predicted,
+            'safety_stock': safety_stock,
+            'threshold': threshold,
+            'has_open_po': has_open_po,
+            'open_po_id': po_status.get('open_po_id'),
+            'formula_requires_reorder': formula_requires_reorder,
             'reorder_required': reorder_required,
-            'reasoning': decision['reasoning'],
-            **decision,
+            'steps': {
+                'plan': f'LangChain agent observed SKU {sku_id} with inventory tools.',
+                'execute': 'Agent selected stock, forecast, and purchase-order tools.',
+                'verify': 'Tool observations were validated before computing the decision.',
+                'decide': 'Applied quantity_available < total_predicted_demand + safety_stock.',
+            },
+            'agent_result': self._summarize_agent_result(agent_result),
         }
+        decision['reasoning'] = self.reasoner.generate(decision)
+
+        if reorder_required:
+            flag = self.forecasting_service.persist_reorder_flag(decision)
+            decision['reorder_flag_id'] = flag.id
+
+        return decision
+
+    def _observe_sku(self, sku_id: int, trace_spans: list | None):
+        observations = {}
+        tools = self._build_sku_tools(sku_id, trace_spans, observations)
+        agent = self._create_sku_agent(tools)
+        agent_input = {
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': (
+                        f'Evaluate sku_id={sku_id}. Gather stock, demand forecast, '
+                        'and open purchase order status using the available tools.'
+                    ),
+                }
+            ]
+        }
+        config = {'recursion_limit': max(2, self.max_iterations * 2)}
+        callbacks = get_langchain_callbacks()
+        if callbacks:
+            config['callbacks'] = callbacks
+
+        started_at = time.time()
+        try:
+            result = agent.invoke(agent_input, config=config)
+        except Exception as exc:
+            raise DecisionAgentExecutionError(
+                f'Decision agent failed for SKU {sku_id}: {exc}'
+            ) from exc
+        finally:
+            if trace_spans is not None:
+                trace_spans.append(
+                    {
+                        'name': 'decision_agent_sku_loop',
+                        'input': agent_input,
+                        'output': {'observed_tools': sorted(observations.keys())},
+                        'duration_ms': round((time.time() - started_at) * 1000),
+                    }
+                )
+
+        self._require_sku_observations(observations)
+        return observations, result
+
+    def _build_sku_tools(
+        self,
+        sku_id: int,
+        trace_spans: list | None,
+        observations: dict,
+    ):
+        _target_sku_id = sku_id
+
+        def stock_level_read_by_sku_tool(sku_id: int) -> dict:
+            output = self._run_tool(self.stock_sku_tool, {'sku_id': _target_sku_id}, trace_spans)
+            observations[self._tool_name(self.stock_sku_tool, 'stock_level_read_by_sku_tool')] = (
+                output
+            )
+            return output
+
+        def forecast_read_by_sku_tool(sku_id: int, forecast_days: int = 7) -> dict:
+            output = self._run_tool(
+                self.forecast_sku_tool,
+                {'sku_id': _target_sku_id, 'forecast_days': forecast_days},
+                trace_spans,
+            )
+            observations[self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool')] = (
+                output
+            )
+            return output
+
+        def po_status_check_by_sku_tool(sku_id: int) -> dict:
+            output = self._run_tool(
+                self.po_status_sku_tool,
+                {'sku_id': _target_sku_id},
+                trace_spans,
+            )
+            observations[
+                self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool')
+            ] = output
+            return output
+
+        return [
+            StructuredTool.from_function(
+                func=stock_level_read_by_sku_tool,
+                name=self._tool_name(self.stock_sku_tool, 'stock_level_read_by_sku_tool'),
+                description=getattr(self.stock_sku_tool, 'description', ''),
+                args_schema=getattr(self.stock_sku_tool, 'args_schema', None),
+            ),
+            StructuredTool.from_function(
+                func=forecast_read_by_sku_tool,
+                name=self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool'),
+                description=getattr(self.forecast_sku_tool, 'description', ''),
+                args_schema=getattr(self.forecast_sku_tool, 'args_schema', None),
+            ),
+            StructuredTool.from_function(
+                func=po_status_check_by_sku_tool,
+                name=self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool'),
+                description=getattr(self.po_status_sku_tool, 'description', ''),
+                args_schema=getattr(self.po_status_sku_tool, 'args_schema', None),
+            ),
+        ]
+
+    def _create_sku_agent(self, tools):
+        if self.agent_factory is not None:
+            return self.agent_factory(
+                model=self._get_agent_model(),
+                tools=tools,
+                system_prompt=SKU_DECISION_AGENT_SYSTEM_PROMPT,
+            )
+        if create_agent is None:
+            raise DecisionAgentExecutionError('langchain.agents.create_agent is unavailable.')
+        return create_agent(
+            model=self._get_agent_model(),
+            tools=tools,
+            system_prompt=SKU_DECISION_AGENT_SYSTEM_PROMPT,
+            name='decision_agent_sku',
+        )
+
+    def _require_sku_observations(self, observations: dict):
+        missing = [
+            name
+            for name in (
+                self._tool_name(self.stock_sku_tool, 'stock_level_read_by_sku_tool'),
+                self._tool_name(self.forecast_sku_tool, 'forecast_read_by_sku_tool'),
+                self._tool_name(self.po_status_sku_tool, 'po_status_check_by_sku_tool'),
+            )
+            if name not in observations
+        ]
+        if missing:
+            raise DecisionAgentExecutionError(
+                f'Decision agent did not collect required SKU observations: {", ".join(missing)}'
+            )
 
     def _extract_product_ids(self, context: dict) -> list[int]:
         if 'product_id' in context:
