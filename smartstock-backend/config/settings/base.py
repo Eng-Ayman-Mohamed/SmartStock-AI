@@ -29,7 +29,13 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 # Security: Determine if we're in a production environment
 # In production, only set to False if explicitly configured
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development').lower()
-IS_PRODUCTION = ENVIRONMENT == 'production'
+# Detect production: explicit ENVIRONMENT var, or Railway's own env vars,
+# or DEBUG being False (set in production.py which loads after this).
+IS_PRODUCTION = (
+    ENVIRONMENT == 'production'
+    or bool(os.environ.get('RAILWAY_STATIC_URL'))
+    or bool(os.environ.get('RAILWAY_PUBLIC_DOMAIN'))
+)
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -338,19 +344,29 @@ _result_url = os.environ.get('REDIS_URL') or os.environ.get(
 CELERY_BROKER_URL = _broker_url
 CELERY_RESULT_BACKEND = _result_url
 
-# Required for Upstash TLS (rediss://)
+# SSL cert verification for rediss:// (Upstash, etc.)
+# Accepts: 'none' (CERT_NONE), 'optional' (CERT_OPTIONAL), 'required' (CERT_REQUIRED)
+# Default 'required' validates standard CA certs; set REDIS_SSL_CERT_REQS=none for self-signed.
+_ssl_mode = os.environ.get('REDIS_SSL_CERT_REQS', 'required').lower()
+_ssl_map = {
+    'none': ssl.CERT_NONE,
+    'optional': ssl.CERT_OPTIONAL,
+    'required': ssl.CERT_REQUIRED,
+}
+_ssl_cert_reqs = _ssl_map.get(_ssl_mode, ssl.CERT_REQUIRED)
+
 CELERY_BROKER_USE_SSL = (
-    {'ssl_cert_reqs': ssl.CERT_NONE} if _broker_url.startswith('rediss://') else None
+    {'ssl_cert_reqs': _ssl_cert_reqs} if _broker_url.startswith('rediss://') else None
 )
 
 CELERY_REDIS_BACKEND_USE_SSL = (
-    {'ssl_cert_reqs': ssl.CERT_NONE} if _result_url.startswith('rediss://') else None
+    {'ssl_cert_reqs': _ssl_cert_reqs} if _result_url.startswith('rediss://') else None
 )
 
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Reduce Redis request churn (Upstash free-tier: 500K/month)
-CELERY_BROKER_POOL_LIMIT = 1
+CELERY_BROKER_POOL_LIMIT = 10
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 200
 

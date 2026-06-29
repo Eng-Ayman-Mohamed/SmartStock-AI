@@ -3,8 +3,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.prod"
 
 [deploy]
-preDeployCommand = "python manage.py migrate --noinput"
-startCommand = "/bin/sh -c 'gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120'"
+# Migrations already run in entrypoint.sh — no need for preDeployCommand
+startCommand = "/bin/sh -c 'gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120 --graceful-timeout 30 --keep-alive 5'"
 healthcheckPath = "/api/health/live/"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
