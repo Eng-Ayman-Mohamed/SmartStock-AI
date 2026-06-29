@@ -1177,11 +1177,21 @@ FIELD_ALIASES = {
 
 
 _KNOWN_ORM_FIELDS = {
-    'id', 'name', 'description', 'sku_code', 'category__name', 'supplier__name',
-    'skus__code', 'skus__stock_level__quantity_on_hand',
+    'id',
+    'name',
+    'description',
+    'sku_code',
+    'category__name',
+    'supplier__name',
+    'skus__code',
+    'skus__stock_level__quantity_on_hand',
     'skus__stock_level__reorder_point',
-    'contact_email', 'contact_phone', 'address', 'is_active',
-    'date', 'quantity_sold',
+    'contact_email',
+    'contact_phone',
+    'address',
+    'is_active',
+    'date',
+    'quantity_sold',
 }
 
 

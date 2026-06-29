@@ -781,7 +781,10 @@ class InvoiceScanRejectView(APIView):
 
 _MULTI_STEP_PATTERNS = [
     (r'\b(best|top|worst|bottom).*(supplier|vendor).*(product|item|sku)', 'best-supplier->product'),
-    (r'\b(product|item|sku).*(from|by|for).*(best|top|worst).*(supplier|vendor)', 'product->best-supplier'),
+    (
+        r'\b(product|item|sku).*(from|by|for).*(best|top|worst).*(supplier|vendor)',
+        'product->best-supplier',
+    ),
     (r'compare\b', 'compare'),
     (r'\b(versus|vs\.?)\b', 'compare'),
     (r'\b(and|then).*\b(best|worst|top|bottom)\b', 'multi-step'),
@@ -795,6 +798,7 @@ def _is_multi_step_query(query: str) -> bool:
     q = query.lower().strip()
     for pattern, _reason in _MULTI_STEP_PATTERNS:
         import re
+
         if re.search(pattern, q):
             return True
     return False
@@ -941,16 +945,19 @@ class ChatEndpointView(APIView):
             if msg == 'MULTI_STEP_QUERY':
                 logger.info('Multi-step query detected, returning guidance')
                 return Response(
-                    {'status': 'success', 'data': {
-                        'engine': 'nl_query',
-                        'mode': 'auto',
-                        'answer': (
-                            "Your question requires multiple steps that I can't do in one go. "
-                            "Try breaking it into separate questions — for example, first ask "
-                            '"Who is our best supplier?" then "What are their worst products?"'
-                        ),
-                        'action': {'type': 'help', 'filters': {}},
-                    }},
+                    {
+                        'status': 'success',
+                        'data': {
+                            'engine': 'nl_query',
+                            'mode': 'auto',
+                            'answer': (
+                                "Your question requires multiple steps that I can't do in one go. "
+                                'Try breaking it into separate questions — for example, first ask '
+                                '"Who is our best supplier?" then "What are their worst products?"'
+                            ),
+                            'action': {'type': 'help', 'filters': {}},
+                        },
+                    },
                     status=status.HTTP_200_OK,
                 )
             logger.exception('Chat pipeline error')
@@ -1088,7 +1095,7 @@ class ChatEndpointView(APIView):
         except FieldError as exc:
             logger.warning('Invalid field in NL query filters: %s', exc)
             raise ValueError(
-                'The query contains a field or condition I don\'t understand. '
+                "The query contains a field or condition I don't understand. "
                 'Please try rephrasing with simpler terms.'
             )
         except Exception as exc:
