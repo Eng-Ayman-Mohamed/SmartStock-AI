@@ -64,3 +64,76 @@ Set the mode dropdown to the appropriate mode before asking.
     electronics categories?
 
 ================================================================================
+  MODE: Search Documents (RAG) — Policy Questions
+  Upload the "smartstock_policies.pdf" document first, then ask:
+────────────────────────────────────────────────────────────────────────────────
+
+--- Stock Management Policy (Section 1) ---
+
+1.  What is the safety stock requirement for groceries and perishables
+    in terms of days of supply?
+
+2.  What are the four stock status levels and what action is required
+    for each?
+
+3.  What is the shrinkage target and what triggers an automatic audit?
+
+4.  How often are A-class items (top 20% by value) cycle counted?
+
+--- Purchase Order Policy (Section 2) ---
+
+5.  What is the auto-approval limit for AI-generated purchase orders
+    under Rule Set A?
+
+6.  How many approval steps does a purchase order go through before
+    being sent to the supplier?
+
+7.  What is the reorder trigger threshold for Rule Set B (medium
+    velocity items)?
+
+--- Supplier Management Policy (Section 3) ---
+
+8.  What score must a supplier achieve to be classified as "Preferred"
+    and what benefits do they receive?
+
+9.  What is the maximum percentage of total procurement spend that
+    a single supplier can represent?
+
+--- Invoice Processing Policy (Section 4) ---
+
+10. What is the early payment discount offered to suppliers and what
+    are the terms?
+
+--- Returns & Refunds Policy (Section 5) ---
+
+11. What is the return window and restocking fee for electronics?
+
+12. What items are classified as non-returnable?
+
+--- AI & Automation Policy (Section 6) ---
+
+13. What is the MAPE target for demand forecasting and what is the
+    maximum allowed before retraining?
+
+14. Does the AI chat assistant have the ability to modify inventory
+    data?
+
+--- Data Security & Privacy Policy (Section 7) ---
+
+15. What are the three data classification levels and what type of
+    data falls into each?
+
+16. What is the JWT access token lifetime and refresh token lifetime?
+
+17. What is the rate limit for AI endpoints compared to standard
+    endpoints?
+
+18. Within how many hours must affected parties be notified after a
+    security incident?
+
+19. What are the payment terms for domestic vs international suppliers?
+
+20. What is the cancellation fee for a purchase order that has already
+    been sent to the supplier?
+
+================================================================================
