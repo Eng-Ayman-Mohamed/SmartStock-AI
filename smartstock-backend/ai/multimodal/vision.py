@@ -100,25 +100,58 @@ class VisionExtractor:
         """Rasterize each page of a base64 PDF data URL to a list of PNG data URLs.
 
         Groq/OpenAI vision endpoints reject PDFs sent via image_url (HTTP 400);
-        they only accept raster images. We render the pages with Poppler
-        (pdf2image), one image per page (capped at MAX_PDF_PAGES), so multi-page
-        invoices keep every line item instead of losing rows past page 1.
+        they only accept raster images. We try Poppler (pdf2image) first, then
+        fall back to PyMuPDF (fitz), and raise a clear error if neither is available.
         """
         import base64
         from io import BytesIO
 
-        from pdf2image import convert_from_bytes
-
         _, b64data = file_data_url.split(',', 1)
         pdf_bytes = base64.b64decode(b64data)
-        pages = convert_from_bytes(pdf_bytes, last_page=self.MAX_PDF_PAGES, dpi=200)
+
+        pages = None
+
+        # Try Poppler (pdf2image) first
+        try:
+            from pdf2image import convert_from_bytes
+
+            pages = convert_from_bytes(pdf_bytes, last_page=self.MAX_PDF_PAGES, dpi=200)
+        except Exception:
+            pass
+
+        # Fallback: PyMuPDF (fitz) — pure Python, no system dependency
         if not pages:
-            raise ValueError('PDF invoice contained no readable pages.')
+            try:
+                import fitz  # PyMuPDF
+
+                doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+                pages = []
+                for i, page in enumerate(doc):
+                    if i >= self.MAX_PDF_PAGES:
+                        break
+                    mat = fitz.Matrix(200 / 72, 200 / 72)  # 200 DPI
+                    pix = page.get_pixmap(matrix=mat)
+                    from PIL import Image
+
+                    img = Image.frombytes('RGB', [pix.width, pix.height], pix.samples)
+                    pages.append(img)
+                doc.close()
+            except Exception:
+                pass
+
+        if not pages:
+            raise ValueError(
+                'PDF processing requires Poppler or PyMuPDF to be installed. '
+                'Please install one of them, or convert your invoice to JPEG or PNG.'
+            )
 
         data_urls = []
         for page in pages:
             buffer = BytesIO()
-            page.convert('RGB').save(buffer, format='PNG')
+            if hasattr(page, 'convert'):
+                page.convert('RGB').save(buffer, format='PNG')
+            else:
+                page.save(buffer, format='PNG')
             encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
             data_urls.append(f'data:image/png;base64,{encoded}')
         return data_urls

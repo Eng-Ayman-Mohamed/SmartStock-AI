@@ -109,9 +109,7 @@ class POFromFlagCreator:
         quantity = decision.get('quantity')
 
         if not supplier_id or not quantity:
-            logger.error(
-                'PO creator LLM missing supplier_id or quantity for flag %s', flag.id
-            )
+            logger.error('PO creator LLM missing supplier_id or quantity for flag %s', flag.id)
             return {
                 'status': 'failed',
                 'flag_id': flag.id,
@@ -165,10 +163,12 @@ class POFromFlagCreator:
             }
 
         except IntegrityError:
-            logger.warning(
-                'Duplicate PO for flag %s (SKU %s), skipping', flag.id, flag.sku_id
-            )
-            return {'status': 'failed', 'flag_id': flag.id, 'error': 'duplicate PO (IntegrityError)'}
+            logger.warning('Duplicate PO for flag %s (SKU %s), skipping', flag.id, flag.sku_id)
+            return {
+                'status': 'failed',
+                'flag_id': flag.id,
+                'error': 'duplicate PO (IntegrityError)',
+            }
         except Exception:
             logger.exception('Unexpected error processing flag %s', flag.id)
             return {'status': 'failed', 'flag_id': flag.id, 'error': 'unexpected error'}

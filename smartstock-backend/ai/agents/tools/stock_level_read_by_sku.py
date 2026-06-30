@@ -10,7 +10,9 @@ class StockLevelReadBySKUInput(BaseModel):
 
 class StockLevelReadBySKUTool(BaseTool):
     name = 'stock_level_read_by_sku_tool'
-    description = 'Reads current stock, reorder point, lead time, and safety stock for a specific SKU.'
+    description = (
+        'Reads current stock, reorder point, lead time, and safety stock for a specific SKU.'
+    )
     args_schema = StockLevelReadBySKUInput
 
     def __init__(self, service=None):

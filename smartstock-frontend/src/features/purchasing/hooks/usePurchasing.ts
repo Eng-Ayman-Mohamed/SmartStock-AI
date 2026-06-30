@@ -18,9 +18,9 @@ export function useApprovePO() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string }) => purchasingApi.approvePO(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: purchasingQueryKey });
-      void qc.invalidateQueries({ queryKey: poHistoryQueryKey });
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: purchasingQueryKey });
+      await qc.refetchQueries({ queryKey: poHistoryQueryKey });
     },
   });
 }
@@ -29,9 +29,9 @@ export function useRejectPO() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string }) => purchasingApi.rejectPO(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: purchasingQueryKey });
-      void qc.invalidateQueries({ queryKey: poHistoryQueryKey });
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: purchasingQueryKey });
+      await qc.refetchQueries({ queryKey: poHistoryQueryKey });
     },
   });
 }
@@ -65,6 +65,7 @@ export function usePOHistory(
   pageSize = 20,
   sortField?: string,
   sortOrder?: string,
+  searchQuery?: string,
 ) {
   const token = useAuthStore((s) => s.token);
   const ordering = sortField
@@ -73,8 +74,8 @@ export function usePOHistory(
       : (poHistoryOrderingMap[sortField] ?? sortField)
     : '';
   return useQuery({
-    queryKey: [...poHistoryQueryKey, page, pageSize, sortField, sortOrder],
-    queryFn: () => purchasingApi.listPOHistory(page, pageSize, ordering),
+    queryKey: [...poHistoryQueryKey, page, pageSize, sortField, sortOrder, searchQuery],
+    queryFn: () => purchasingApi.listPOHistory(page, pageSize, ordering, searchQuery),
     enabled: !!token,
     retry: false,
   });

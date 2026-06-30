@@ -5,13 +5,16 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Search,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import { usePagination } from '../../../shared/hooks/usePagination';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
 import Card from '../../../shared/components/Card';
 import Button from '../../../shared/components/Button';
+import Input from '../../../shared/components/Input';
 import DataTable, { type Column, type PaginationConfig } from '../../../shared/components/DataTable';
 import EmptyState from '../../../shared/components/EmptyState';
 import DocumentDetailModal from '../components/DocumentDetailModal';
@@ -53,6 +56,8 @@ export default function DocumentsPage() {
   const [page, setPage] = useState(1);
   const [sortField, setSortField] = useState('');
   const [sortOrder, setSortOrder] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput, 300);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'admin' || user?.role === 'manager';
 
@@ -69,7 +74,7 @@ export default function DocumentsPage() {
     setPage(1);
   }
 
-  const { data, isLoading, error } = useDocuments(page, PAGE_SIZE, sortField || undefined, sortOrder || undefined);
+  const { data, isLoading, error } = useDocuments(page, PAGE_SIZE, sortField || undefined, sortOrder || undefined, debouncedSearch || undefined);
   const documents = data?.results ?? [];
   const totalCount = data?.count ?? 0;
   const deleteDoc = useDeleteDocument();
@@ -201,6 +206,20 @@ export default function DocumentsPage() {
       </div>
 
       <Card noPadding>
+        <div className="px-4 pt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
+            <Input
+              placeholder="Search by document name or type..."
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
+        </div>
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 text-brand-600 animate-spin" />

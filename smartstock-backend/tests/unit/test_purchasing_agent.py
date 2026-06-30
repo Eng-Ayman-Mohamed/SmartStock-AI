@@ -116,6 +116,9 @@ class FakePurchasingService:
         self.timeouted.append(po_id)
         return SimpleNamespace(id=po_id, status='timeout')
 
+    def transition_po_status(self, po_id, new_status):
+        return SimpleNamespace(id=po_id, status=new_status)
+
 
 class FakeWorkflowService:
     def __init__(self):
