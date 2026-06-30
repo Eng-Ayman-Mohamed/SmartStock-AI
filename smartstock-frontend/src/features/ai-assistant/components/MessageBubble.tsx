@@ -5,11 +5,9 @@ import { Bot, User } from 'lucide-react';
 import type { Message } from '../types';
 import CitationTag from '../../../shared/atoms/CitationTag';
 
-const CITATION_PATTERN = /\[Source:\s*([^,]+),\s*Page:\s*(\d+)\]/g;
+const CITATION_PATTERN = /\[Source:\s*(.+?),\s*Page:\s*(\d+)\]/g;
 
 function parseAnswerText(text: string, sources: Message['sources']) {
-  if (!sources || sources.length === 0) return text;
-
   const parts: (string | ReactNode)[] = [];
 
   CITATION_PATTERN.lastIndex = 0;
@@ -23,7 +21,7 @@ function parseAnswerText(text: string, sources: Message['sources']) {
 
     const doc = match[1].trim();
     const page = parseInt(match[2], 10);
-    const source = sources.find((s) => s.document === doc && s.page === page);
+    const source = sources?.find((s) => s.document === doc && s.page === page);
 
     parts.push(
       <CitationTag

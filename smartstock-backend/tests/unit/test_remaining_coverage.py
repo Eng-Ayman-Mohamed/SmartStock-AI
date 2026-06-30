@@ -131,8 +131,12 @@ class _FakePurchasingService:
         self.confirmed = []
         self.failed = []
         self.timeout = []
+        self.transitions = []
 
-    def approve_po(self, po_id, user):
+    def transition_po_status(self, po_id, new_status):
+        self.transitions.append((po_id, new_status))
+
+    def approve_po(self, po_id, user, skip_email=False):
         self.approved.append(po_id)
 
     def reject_po(self, po_id, user):

@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Loader2, X, FileText, Hash, Calendar, User, ExternalLink } from 'lucide-react';
 import Button from '../../../shared/components/Button';
 import { useDocument, useDocumentChunks } from '../hooks/useDocuments';
@@ -42,9 +44,17 @@ export default function DocumentDetailModal({ documentId, onClose, citedPage, ch
     ? (allChunks ?? []).filter((c) => c.page_number === citedPage)
     : allChunks;
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   if (documentId === null) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
       <div className="relative z-10 mx-4 w-full max-w-2xl max-h-[85vh] rounded-lg border border-hairline bg-canvas shadow-lg flex flex-col">
@@ -167,6 +177,7 @@ export default function DocumentDetailModal({ documentId, onClose, citedPage, ch
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

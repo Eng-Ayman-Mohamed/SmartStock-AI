@@ -86,7 +86,12 @@ class FakePurchasingService:
         self.confirmed = []
         self.emailed = []
         self.waiting = []
+        self.transitions = []
         self.repo = MagicMock()
+
+    def transition_po_status(self, po_id, new_status):
+        self.transitions.append((po_id, new_status))
+        return SimpleNamespace(id=po_id, status=new_status)
 
     def approve_po(self, po_id, user, skip_email=False):
         self.approved.append(po_id)
