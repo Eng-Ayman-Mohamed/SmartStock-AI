@@ -150,6 +150,9 @@ class FakePurchasingService:
     def draft_po(self, sku_id, quantity, supplier_id, user):
         return SimpleNamespace(id=100, status='draft')
 
+    def transition_po_status(self, po_id, new_status):
+        return SimpleNamespace(id=po_id, status=new_status)
+
 
 class FakeWorkflowService:
     def __init__(self):

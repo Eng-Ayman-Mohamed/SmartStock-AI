@@ -168,12 +168,15 @@ class ForecastingAgent:
             _outcome = (
                 'failure' if output.get('failed', 0) > 0 or output.get('error') else 'success'
             )
-            record_agent_run_task.delay(
-                agent_name='forecasting_agent',
-                outcome=_outcome,
-                duration_ms=_duration,
-                error_message=output.get('error', ''),
-            )
+            try:
+                record_agent_run_task.delay(
+                    agent_name='forecasting_agent',
+                    outcome=_outcome,
+                    duration_ms=_duration,
+                    error_message=output.get('error', ''),
+                )
+            except Exception:
+                logger.debug('Could not dispatch record_agent_run_task (Celery/Redis unavailable)')
         return output
 
     def _forecast_for_sku(self, sku_id: int, sku_code: str, trace_spans: list) -> dict:

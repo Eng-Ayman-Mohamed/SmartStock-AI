@@ -112,12 +112,15 @@ class PurchasingAgent:
                 if result.get('status') in ('failed', 'rejected', 'timeout')
                 else 'success'
             )
-            record_agent_run_task.delay(
-                agent_name='purchasing_agent',
-                outcome=_outcome,
-                duration_ms=_duration,
-                error_message=result.get('error', ''),
-            )
+            try:
+                record_agent_run_task.delay(
+                    agent_name='purchasing_agent',
+                    outcome=_outcome,
+                    duration_ms=_duration,
+                    error_message=result.get('error', ''),
+                )
+            except Exception:
+                logger.debug('Could not dispatch record_agent_run_task (Celery/Redis unavailable)')
         return result
 
     def _execute_workflow(self, context: dict, trace_spans: list) -> dict:

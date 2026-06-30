@@ -631,6 +631,26 @@ class InvoiceScanView(APIView):
                 },
                 status=code,
             )
+        except Exception as exc:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.exception('Invoice scan failed unexpectedly')
+            msg = str(exc)
+            if 'pdf2image' in msg or 'poppler' in msg.lower() or 'No module named' in msg:
+                msg = (
+                    'PDF processing requires Poppler to be installed. '
+                    'Please convert your invoice to JPEG or PNG, or ask your admin to install Poppler.'
+                )
+            return Response(
+                {
+                    'status': 'error',
+                    'error': 'ScanFailed',
+                    'message': msg or 'Failed to scan invoice. Please try again.',
+                    'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         return Response({'status': 'success', 'data': result}, status=status.HTTP_200_OK)
 
 

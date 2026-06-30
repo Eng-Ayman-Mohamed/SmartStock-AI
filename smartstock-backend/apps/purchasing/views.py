@@ -272,6 +272,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     serializer_class = PurchaseOrderSerializer
     permission_classes = [IsAuthenticated]
     filterset_class = PurchaseOrderFilter
+    search_fields = ['id', 'sku__code', 'sku__product__name', 'supplier__name']
     ordering_fields = [
         'id',
         'sku__product__name',

@@ -19,11 +19,13 @@ export async function listDocuments(
   page: number = 1,
   pageSize: number = 20,
   ordering?: string,
+  searchQuery?: string,
 ): Promise<PaginatedDocuments> {
   const params: Record<string, string | number | undefined> = {
     page,
     page_size: pageSize,
     ordering: ordering || undefined,
+    search: searchQuery || undefined,
   };
   const { data } = await api.get('/ai/documents/', { params });
   const envelope = data as ApiEnvelope<Document[]> & { meta?: { total?: number } };

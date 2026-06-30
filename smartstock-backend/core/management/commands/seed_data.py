@@ -1,7 +1,5 @@
-import argparse
 import os
 import random
-import uuid
 from datetime import date, datetime, timedelta
 
 from django.contrib.auth.hashers import make_password
@@ -12,6 +10,7 @@ from django.utils import timezone
 from apps.audit.models import AgentRun, AuditLog
 from apps.authentication.models import CustomUser
 from apps.forecasting.models import ForecastResult, ReorderFlag
+from apps.ingestion.models import Document, DocumentChunk, InvoiceScan
 from apps.inventory.models import SKU, Category, Product, SalesRecord, StockLevel, Supplier
 from apps.purchasing.models import PurchaseOrder as PurchasingPurchaseOrder
 
@@ -38,6 +37,9 @@ BASE_COUNTS = {
     PurchasingPurchaseOrder: 500,
     ForecastResult: 4000,
     ReorderFlag: 800,
+    Document: 30,
+    DocumentChunk: 600,
+    InvoiceScan: 100,
     AgentRun: 50,
     AuditLog: 2000,
 }
@@ -53,6 +55,9 @@ SEED_ORDER = [
     PurchasingPurchaseOrder,
     ForecastResult,
     ReorderFlag,
+    Document,
+    DocumentChunk,
+    InvoiceScan,
     AgentRun,
     AuditLog,
 ]
@@ -147,7 +152,6 @@ def seed_users(scale: int) -> list[CustomUser]:
             last_name=last_name,
             role=role,
             is_active=True,
-            email_verified=random.random() < 0.85,
             date_joined=aware_dt(start_date='-2y', end_date='-1d'),
         )
         users.append(user)
@@ -327,7 +331,7 @@ def seed_stock_levels(scale: int, skus: list[SKU]) -> list[StockLevel]:
 
     for sku in skus[:count]:
         on_hand = random.randint(0, 1000)
-        reserved = int(on_hand * random.uniform(0, 0.15))
+        reserved = random.randint(0, min(on_hand, 100))
         levels.append(
             StockLevel(
                 sku=sku,
@@ -342,78 +346,47 @@ def seed_stock_levels(scale: int, skus: list[SKU]) -> list[StockLevel]:
     return levels
 
 
-def _seasonal_demand(
-    base_demand: float, day_of_week: int, day_of_month: int, day_offset: int
-) -> float:
-    """Compute seasonal demand multiplier from baseline."""
-    weekday_mult = 1.3 if day_of_week < 5 else 0.6
-    monthly_mult = 1.1 if 8 <= day_of_month <= 20 else 0.9
-    trend_mult = 1.0 + (day_offset / 365) * random.uniform(-0.15, 0.15)
-    noise = random.gauss(1.0, 0.1)
-    return base_demand * weekday_mult * monthly_mult * trend_mult * noise
-
-
-def seed_sales_records(scale: int, skus: list[SKU]) -> dict[int, float]:
-    """Seed sales with seasonal patterns. Returns avg daily demand per SKU."""
+def seed_sales_records(scale: int, skus: list[SKU]):
     count = BASE_COUNTS[SalesRecord] * scale
+    records = []
     end_date = date.today() - timedelta(days=1)
     start_date = end_date - timedelta(days=365)
 
-    sku_base_demand = {sku.id: random.uniform(5, 50) for sku in skus}
-    sku_total_sales: dict[int, float] = {sku.id: 0.0 for sku in skus}
-    sku_days_with_sales: dict[int, int] = {sku.id: 0 for sku in skus}
+    sku_popularity = {sku.id: random.expovariate(1 / 3) for sku in skus}
 
-    records = []
     existing = set()
 
     for _ in range(count):
-        sku = random.choice(skus)
+        sku = random.choices(skus, weights=[sku_popularity[s.id] for s in skus], k=1)[0]
         record_date = fake.date_between(start_date=start_date, end_date=end_date)
 
         key = (sku.id, record_date)
         while key in existing:
-            sku = random.choice(skus)
+            sku = random.choices(skus, weights=[sku_popularity[s.id] for s in skus], k=1)[0]
             record_date = fake.date_between(start_date=start_date, end_date=end_date)
             key = (sku.id, record_date)
         existing.add(key)
 
-        day_offset = (record_date - start_date).days
-        qty = max(
-            0,
-            int(
-                _seasonal_demand(
-                    sku_base_demand[sku.id],
-                    record_date.weekday(),
-                    record_date.day,
-                    day_offset,
-                )
-            ),
+        records.append(
+            SalesRecord(
+                sku=sku,
+                date=record_date,
+                quantity_sold=max(0, int(random.gauss(20, 8))),
+            )
         )
 
-        records.append(SalesRecord(sku=sku, date=record_date, quantity_sold=qty))
-        sku_total_sales[sku.id] += qty
-        sku_days_with_sales[sku.id] += 1
-
     SalesRecord.objects.bulk_create(records, batch_size=500)
-
-    avg_daily_demand = {}
-    for sku in skus:
-        days = max(sku_days_with_sales[sku.id], 1)
-        avg_daily_demand[sku.id] = sku_total_sales[sku.id] / days
-    return avg_daily_demand
+    return records
 
 
 PO_STATUS_WEIGHTS = {
-    'draft': 0.05,
-    'pending_approval': 0.10,
-    'approved': 0.15,
-    'sent': 0.10,
-    'confirmed': 0.40,
-    'rejected': 0.05,
-    'cancelled': 0.05,
-    'waiting_confirmation': 0.05,
-    'email_sent': 0.03,
-    'failed': 0.02,
+    'draft': 0.1,
+    'pending_approval': 0.1,
+    'approved': 0.2,
+    'sent': 0.1,
+    'confirmed': 0.3,
+    'rejected': 0.1,
+    'cancelled': 0.1,
 }
 
 
@@ -423,19 +396,14 @@ def seed_purchase_orders(
     suppliers: list[Supplier],
     users: list[CustomUser],
     managers: list[CustomUser],
-    stock_levels: list[StockLevel],
-    avg_daily_demand: dict[int, float],
 ):
     count = BASE_COUNTS[PurchasingPurchaseOrder] * scale
     orders = []
-    po_counter = 0
-    CONSTRAINTED_STATUSES = {'draft', 'pending_approval', 'approved'}
-    used_constrained_combos: set[tuple[int, int, int, str]] = set()
+    existing_active = set()
 
     for _ in range(count):
-        po_counter += 1
         chosen_sku = random.choice(skus)
-        supplier = random.choice(suppliers) if suppliers else None
+        chosen_supplier = random.choice(suppliers) if suppliers else None
         quantity = random.choice([10, 25, 50, 100, 200, 500, 1000])
         unit_cost = round(random.uniform(1, 500), 2)
         total_cost = round(quantity * unit_cost, 2)
@@ -443,41 +411,51 @@ def seed_purchase_orders(
             list(PO_STATUS_WEIGHTS.keys()),
             weights=list(PO_STATUS_WEIGHTS.values()),
         )[0]
-        if status in CONSTRAINTED_STATUSES and supplier:
-            key = (chosen_sku.id, supplier.id, quantity, status)
-            while key in used_constrained_combos:
-                quantity = random.randint(5, 1000)
+
+        active_statuses = {
+            'draft',
+            'pending_approval',
+            'approved',
+            'email_sent',
+            'sent',
+            'waiting_confirmation',
+            'confirmed',
+        }
+        if status in active_statuses:
+            key = (chosen_sku.id, chosen_supplier.id if chosen_supplier else None, quantity, status)
+            while key in existing_active:
+                chosen_sku = random.choice(skus)
+                chosen_supplier = random.choice(suppliers) if suppliers else None
+                quantity = random.choice([10, 25, 50, 100, 200, 500, 1000])
+                unit_cost = round(random.uniform(1, 500), 2)
                 total_cost = round(quantity * unit_cost, 2)
-                key = (chosen_sku.id, supplier.id, quantity, status)
-            used_constrained_combos.add(key)
+                status = random.choices(
+                    list(PO_STATUS_WEIGHTS.keys()),
+                    weights=list(PO_STATUS_WEIGHTS.values()),
+                )[0]
+                key = (
+                    chosen_sku.id,
+                    chosen_supplier.id if chosen_supplier else None,
+                    quantity,
+                    status,
+                )
+            existing_active.add(key)
 
         requested_by = random.choice(users) if users else None
         approved_by = None
-        if status in ('approved', 'sent', 'confirmed', 'email_sent', 'waiting_confirmation'):
-            if managers:
-                approved_by = random.choice(managers)
+        if status in ('approved', 'sent', 'confirmed', 'rejected') and managers:
+            approved_by = random.choice(managers)
 
         created = aware_dt(start_date='-1y', end_date='-1d')
-
-        avg_demand = avg_daily_demand.get(chosen_sku.id, 15)
-        lead_time = random.choice([7, 14, 21])
-        predicted_demand = round(avg_demand * lead_time, 1)
-        reasoning = (
-            f'Reorder triggered: stock below predicted demand of '
-            f'{predicted_demand} units over {lead_time}-day lead time.'
-        )
-
         orders.append(
             PurchasingPurchaseOrder(
                 sku=chosen_sku,
-                supplier=supplier,
+                supplier=chosen_supplier,
                 quantity=quantity,
                 total_cost=total_cost,
                 status=status,
                 requested_by=requested_by,
                 approved_by=approved_by,
-                agent_reasoning=reasoning,
-                po_number=f'PO-{date.today().year}-{po_counter:05d}-{uuid.uuid4().hex[:4]}',
                 notes=fake.paragraph(nb_sentences=2) if random.random() < 0.3 else '',
                 created_at=created,
             )
@@ -487,119 +465,123 @@ def seed_purchase_orders(
     return orders
 
 
-def seed_forecasts(scale: int, skus: list[SKU], avg_daily_demand: dict[int, float]):
-    """Generate forecasts for next 90 days, correlated with actual sales."""
+def seed_forecasts(scale: int, skus: list[SKU]):
+    count = BASE_COUNTS[ForecastResult] * scale
     forecasts = []
-    today = date.today()
+    end_date = date.today() + timedelta(days=90)
+    start_date = date.today() - timedelta(days=30)
+
     existing = set()
-    target_count = BASE_COUNTS[ForecastResult] * scale
 
-    for sku in skus:
-        base = avg_daily_demand.get(sku.id, 15)
-        num_forecast_days = min(90, target_count // len(skus))
+    for _ in range(count):
+        sku = random.choice(skus)
+        forecast_date = fake.date_between(start_date=start_date, end_date=end_date)
 
-        for day_offset in range(1, num_forecast_days + 1):
-            forecast_date = today + timedelta(days=day_offset)
-
+        key = (sku.id, forecast_date)
+        while key in existing:
+            sku = random.choice(skus)
+            forecast_date = fake.date_between(start_date=start_date, end_date=end_date)
             key = (sku.id, forecast_date)
-            if key in existing:
-                continue
-            existing.add(key)
+        existing.add(key)
 
-            growth = 1.0 + (day_offset / 90) * random.uniform(-0.05, 0.05)
-            predicted = round(base * growth * random.uniform(0.85, 1.15), 1)
-            lower = round(predicted * random.uniform(0.6, 0.85), 1)
-            upper = round(predicted * random.uniform(1.15, 1.8), 1)
-
-            data_points = random.randint(50, 300)
-            mae = round(max(0.5, predicted * 0.1 * (300 / data_points)), 2)
-            mape = round(max(1.0, mae / max(predicted, 1) * 100), 2)
-
-            forecasts.append(
-                ForecastResult(
-                    sku=sku,
-                    forecast_date=forecast_date,
-                    predicted_quantity=predicted,
-                    lower_bound=lower,
-                    upper_bound=upper,
-                    mae=mae,
-                    mape=mape,
-                    model_version='prophet-1.1.5',
-                )
+        predicted = round(random.uniform(5, 200), 1)
+        forecasts.append(
+            ForecastResult(
+                sku=sku,
+                forecast_date=forecast_date,
+                predicted_quantity=predicted,
+                lower_bound=round(predicted * random.uniform(0.5, 0.85), 1),
+                upper_bound=round(predicted * random.uniform(1.15, 1.8), 1),
+                mae=round(random.uniform(1, 15), 2),
+                mape=round(random.uniform(2, 25), 2),
+                model_version='prophet-1.1.5',
             )
-
-            if len(forecasts) >= target_count:
-                break
-        if len(forecasts) >= target_count:
-            break
+        )
 
     ForecastResult.objects.bulk_create(forecasts, batch_size=500)
     return forecasts
 
 
-def seed_reorder_flags(
-    scale: int,
-    skus: list[SKU],
-    stock_levels: list[StockLevel],
-    avg_daily_demand: dict[int, float],
-    purchase_orders: list[PurchasingPurchaseOrder],
-):
-    """Compute reorder flags from real stock + forecast conditions."""
-    sku_stock = {sl.sku.id: sl for sl in stock_levels}
-    sku_open_pos: dict[int, list] = {}
-    for po in purchase_orders:
-        if po.status not in ('rejected', 'cancelled', 'failed', 'timeout'):
-            sku_open_pos.setdefault(po.sku_id, []).append(po)
-
+def seed_reorder_flags(scale: int, skus: list[SKU]):
+    count = BASE_COUNTS[ReorderFlag] * scale
     flags = []
-    for sku in skus:
-        sl = sku_stock.get(sku.id)
-        if not sl:
-            continue
 
-        quantity_available = sl.quantity_on_hand - sl.quantity_reserved
-        lead_time = sku.product.supplier.default_lead_time_days if sku.product.supplier else 7
-        predicted_demand = round(avg_daily_demand.get(sku.id, 15) * lead_time, 1)
-        safety_stock = sku.product.safety_stock
-
-        reorder_required = quantity_available < predicted_demand + safety_stock
-        if not reorder_required:
-            continue
-
-        open_pos = sku_open_pos.get(sku.id, [])
-        has_open_po = len(open_pos) > 0
-        open_po_id = open_pos[0].id if open_pos else None
-
-        deficit = predicted_demand + safety_stock - quantity_available
-        reasoning = (
-            f'Stock level critically low: {quantity_available} units available, '
-            f'{predicted_demand:.0f} predicted demand over {lead_time}-day lead time, '
-            f'{safety_stock} safety stock required. Deficit of {deficit:.0f} units.'
-        )
-
-        status = random.choices(
-            ['open', 'consumed', 'dismissed'],
-            weights=[0.6, 0.25, 0.15],
-        )[0]
-
+    for sku in random.choices(skus, k=count):
+        on_hand = random.randint(0, 200)
+        predicted_demand = round(random.uniform(10, 500), 1)
         flags.append(
             ReorderFlag(
                 sku=sku,
-                quantity_available=quantity_available,
+                quantity_available=on_hand,
                 total_predicted_demand=predicted_demand,
-                safety_stock=safety_stock,
-                lead_time_days=lead_time,
-                forecast_days=lead_time,
-                reorder_required=True,
-                has_open_po=has_open_po,
-                open_po_id=open_po_id,
-                reasoning=reasoning,
-                status=status,
+                safety_stock=random.randint(0, 50),
+                lead_time_days=random.choice([3, 5, 7, 10, 14]),
+                forecast_days=random.choice([7, 14, 30, 90]),
+                reorder_required=on_hand < predicted_demand,
+                has_open_po=random.random() < 0.3,
+                open_po_id=random.randint(1, 500) if random.random() < 0.2 else None,
+                reasoning=fake.paragraph(nb_sentences=3),
+                status=random.choices(
+                    ['open', 'consumed', 'dismissed'],
+                    weights=[0.5, 0.3, 0.2],
+                )[0],
             )
         )
 
     ReorderFlag.objects.bulk_create(flags, batch_size=200)
     return flags
+
+
+def seed_invoice_scans(scale: int, users: list[CustomUser]):
+    count = BASE_COUNTS[InvoiceScan] * scale
+    scans = []
+
+    for i in range(count):
+        user = random.choice(users)
+        ext = random.choice(['.pdf', '.jpg', '.png'])
+        filename = f'invoice_{i + 1}{ext}'
+        status = random.choices(
+            ['pending', 'extracted', 'partial', 'failed', 'confirmed', 'rejected'],
+            weights=[0.1, 0.3, 0.15, 0.05, 0.3, 0.1],
+        )[0]
+        extracted = {
+            'invoice_number': f'INV-{fake.random_number(digits=6)}',
+            'vendor': fake.company(),
+            'total': round(random.uniform(100, 50000), 2),
+            'date': str(fake.date_between(start_date='-6M', end_date='today')),
+        }
+
+        scans.append(
+            InvoiceScan(
+                uploaded_by=user,
+                original_filename=filename,
+                content_type=f'image/{ext[1:]}' if ext in ('.jpg', '.png') else 'application/pdf',
+                file_size=random.randint(100000, 10000000),
+                status=status,
+                extracted_data=extracted,
+                confidence={
+                    'invoice_number': round(random.uniform(0.7, 1.0), 2),
+                    'vendor': round(random.uniform(0.6, 1.0), 2),
+                    'total': round(random.uniform(0.5, 1.0), 2),
+                },
+                missing_fields=random.sample(
+                    ['vendor', 'date', 'total', 'line_items'],
+                    k=random.choices([0, 1, 2, 3], weights=[0.5, 0.3, 0.15, 0.05])[0],
+                ),
+                failure_reason=fake.sentence() if status == 'failed' else '',
+                confirmed_data=extracted if status == 'confirmed' else {},
+                is_confirmed=status == 'confirmed',
+                confirmed_at=aware_dt(start_date='-30d', end_date='-1d')
+                if status == 'confirmed'
+                else None,
+                rejected_at=aware_dt(start_date='-30d', end_date='-1d')
+                if status == 'rejected'
+                else None,
+            )
+        )
+
+    InvoiceScan.objects.bulk_create(scans, batch_size=100)
+    return scans
 
 
 def seed_agent_runs(scale: int):
@@ -639,6 +621,9 @@ def seed_agent_runs(scale: int):
     return runs
 
 
+DOC_TYPES_POOL = ['policy', 'contract', 'procedure', 'specification']
+DOC_TYPE_WEIGHTS = [0.3, 0.3, 0.2, 0.2]
+
 AUDIT_EVENTS_POOL = [
     'USER_LOGIN',
     'PO_CREATED',
@@ -651,33 +636,21 @@ AUDIT_EVENTS_POOL = [
     'INVOICE_CONFIRMED',
     'INVOICE_REJECTED',
     'AI_RAG_QUERY',
-    'AI_NL_QUERY',
-    'AI_CHAT_QUERY',
     'AGENT_RUN_COMPLETED',
-    'PROMPT_INJECTION_ATTEMPT',
-    'VISION_EXTRACTION_FAILED',
-    'EMAIL_DELIVERY_FAILED',
-    'SUPPLIER_TIMEOUT',
 ]
 AUDIT_EVENT_WEIGHTS = [
-    0.21,
-    0.07,
+    0.25,
+    0.08,
+    0.06,
+    0.04,
+    0.04,
+    0.1,
+    0.08,
+    0.08,
     0.05,
     0.03,
-    0.03,
-    0.09,
+    0.12,
     0.07,
-    0.07,
-    0.04,
-    0.02,
-    0.10,
-    0.06,
-    0.04,
-    0.06,
-    0.01,
-    0.01,
-    0.02,
-    0.02,
 ]
 
 ENTITY_TYPES = [
@@ -686,9 +659,61 @@ ENTITY_TYPES = [
     'Product',
     'SKU',
     'StockLevel',
+    'InvoiceScan',
     'ReorderFlag',
     'AgentRun',
 ]
+
+
+def seed_documents(scale: int, users: list[CustomUser]) -> list[Document]:
+    count = BASE_COUNTS[Document] * scale
+    documents = []
+
+    for i in range(count):
+        doc_type = random.choices(DOC_TYPES_POOL, weights=DOC_TYPE_WEIGHTS)[0]
+        ext = random.choice(['.pdf', '.docx', '.txt'])
+        filename = f'{doc_type}_{i + 1}{ext}'
+
+        uploaded_by = random.choice(users) if users and random.random() < 0.8 else None
+
+        documents.append(
+            Document(
+                filename=filename,
+                original_filename=filename,
+                doc_type=doc_type,
+                file_size=random.randint(50000, 5000000),
+                total_chunks=random.randint(5, 50),
+                cloudinary_url=f'https://res.cloudinary.com/smartstock/raw/upload/{filename}',
+                uploaded_by=uploaded_by,
+                ingested_at=aware_dt(start_date='-6M', end_date='-1d')
+                if random.random() < 0.9
+                else None,
+                is_active=random.random() < 0.95,
+            )
+        )
+
+    Document.objects.bulk_create(documents, batch_size=100)
+    return documents
+
+
+def seed_document_chunks(scale: int, documents: list[Document]):
+    count = BASE_COUNTS[DocumentChunk] * scale
+    chunks = []
+
+    for _ in range(count):
+        doc = random.choice(documents) if documents else None
+        chunks.append(
+            DocumentChunk(
+                chunk_text=fake.paragraph(nb_sentences=10),
+                source_document=doc.filename if doc else 'unknown.pdf',
+                page_number=random.randint(1, 50),
+                metadata={'heading': fake.sentence(nb_words=4)},
+                document=doc,
+            )
+        )
+
+    DocumentChunk.objects.bulk_create(chunks, batch_size=200)
+    return chunks
 
 
 def seed_audit_logs(scale: int, users: list[CustomUser]):
@@ -724,20 +749,15 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--truncate',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=True,
-            help=(
-                'Truncate all tables before seeding (default: True). '
-                'Use --no-truncate to skip. '
-                'WARNING: --no-truncate may cause IntegrityError on unique fields '
-                '(po_number, SKU code, category name, etc.) if run more than once.'
-            ),
+            help='Truncate all tables before seeding (default: True).',
         )
         parser.add_argument(
             '--validate',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=True,
-            help='Run validation queries after seeding (default: True). Use --no-validate to skip.',
+            help='Run validation queries after seeding (default: True).',
         )
         parser.add_argument(
             '--skip-agent-runs',
@@ -771,7 +791,10 @@ class Command(BaseCommand):
         self.stdout.write(f'  SalesRecs:   {BASE_COUNTS[SalesRecord] * scale}')
         self.stdout.write(f'  POs:         {BASE_COUNTS[PurchasingPurchaseOrder] * scale}')
         self.stdout.write(f'  Forecasts:   {BASE_COUNTS[ForecastResult] * scale}')
-        self.stdout.write('  ReorderFlags: computed from stock + forecast')
+        self.stdout.write(f'  ReorderFlags:{BASE_COUNTS[ReorderFlag] * scale}')
+        self.stdout.write(f'  Documents:   {BASE_COUNTS[Document] * scale}')
+        self.stdout.write(f'  Chunks:      {BASE_COUNTS[DocumentChunk] * scale}')
+        self.stdout.write(f'  InvoiceScans:{BASE_COUNTS[InvoiceScan] * scale}')
         self.stdout.write(f'  AgentRuns:   {BASE_COUNTS[AgentRun] * scale}')
         self.stdout.write(f'  AuditLogs:   {BASE_COUNTS[AuditLog] * scale}')
 
@@ -798,21 +821,28 @@ class Command(BaseCommand):
             skus = seed_skus(scale, products)
 
             self.stdout.write('Seeding stock levels...')
-            stock_levels = seed_stock_levels(scale, skus)
+            seed_stock_levels(scale, skus)
 
-            self.stdout.write('Seeding sales records (seasonal + trend)...')
-            avg_daily_demand = seed_sales_records(scale, skus)
+            self.stdout.write('Seeding sales records...')
+            seed_sales_records(scale, skus)
 
             self.stdout.write('Seeding purchase orders...')
-            purchase_orders = seed_purchase_orders(
-                scale, skus, suppliers, users, managers, stock_levels, avg_daily_demand
-            )
+            seed_purchase_orders(scale, skus, suppliers, users, managers)
 
-            self.stdout.write('Seeding forecasts (correlated with sales)...')
-            seed_forecasts(scale, skus, avg_daily_demand)
+            self.stdout.write('Seeding forecasts...')
+            seed_forecasts(scale, skus)
 
-            self.stdout.write('Seeding reorder flags (computed from stock + forecast)...')
-            seed_reorder_flags(scale, skus, stock_levels, avg_daily_demand, purchase_orders)
+            self.stdout.write('Seeding reorder flags...')
+            seed_reorder_flags(scale, skus)
+
+            self.stdout.write('Seeding documents...')
+            docs = seed_documents(scale, users)
+
+            self.stdout.write('Seeding document chunks...')
+            seed_document_chunks(scale, docs)
+
+            self.stdout.write('Seeding invoice scans...')
+            seed_invoice_scans(scale, users)
 
             if not skip_agent_runs:
                 self.stdout.write('Seeding agent runs...')
@@ -846,6 +876,9 @@ class Command(BaseCommand):
             PurchasingPurchaseOrder,
             ForecastResult,
             ReorderFlag,
+            Document,
+            DocumentChunk,
+            InvoiceScan,
             AgentRun,
             AuditLog,
         ]
@@ -853,18 +886,15 @@ class Command(BaseCommand):
         for model in all_models:
             count = model.objects.count()
             expected = BASE_COUNTS.get(model, 0)
-            if model is ReorderFlag:
-                status_msg = '✓' if count > 0 else '✗'
-            else:
-                status_msg = '✓' if count >= expected else '~' if count > 0 else '✗'
-            checks.append((model.__name__, count, expected, status_msg))
+            status = '✓' if count > 0 else '✗'
+            checks.append((model.__name__, count, expected, status))
 
         header = f'{"Model":<25} {"Count":>8} {"Expected":>10}  Status'
         self.stdout.write(header)
         self.stdout.write('-' * len(header))
         all_ok = True
-        for name, count, expected, status_msg in checks:
-            line = f'{name:<25} {count:>8} {expected:>10}  {status_msg}'
+        for name, count, expected, status in checks:
+            line = f'{name:<25} {count:>8} {expected:>10}  {status}'
             self.stdout.write(line)
             if count == 0:
                 all_ok = False
@@ -875,6 +905,8 @@ class Command(BaseCommand):
             ('PurchaseOrder → Supplier', PurchasingPurchaseOrder, 'supplier_id', Supplier),
             ('ForecastResult → SKU', ForecastResult, 'sku_id', SKU),
             ('ReorderFlag → SKU', ReorderFlag, 'sku_id', SKU),
+            ('DocumentChunk → Document', DocumentChunk, 'document_id', Document),
+            ('InvoiceScan → User', InvoiceScan, 'uploaded_by_id', CustomUser),
             ('AuditLog → User', AuditLog, 'user_id', CustomUser),
         ]
 
@@ -886,8 +918,8 @@ class Command(BaseCommand):
                 .exclude(**{f'{fk_field}__in': parent_model.objects.values_list('pk', flat=True)})
                 .count()
             )
-            status_msg = '✓' if orphans == 0 else '✗'
-            self.stdout.write(f'  {status_msg} {label}: {orphans} orphans')
+            status = '✓' if orphans == 0 else '✗'
+            self.stdout.write(f'  {status} {label}: {orphans} orphans')
             if orphans > 0:
                 all_ok = False
 
